@@ -102,6 +102,10 @@ export function BuilderShell({
     setEditedSinceLoad(true);
     setSubmittedNow(false);
     setSendFailedNow(false);
+    // Also clear the resend flag: an edit makes the note re-submittable, and a
+    // lingering resentNow would keep the chip on "Submitted" and disable both
+    // Submit and Resend, wedging the edited draft behind a false status.
+    setResentNow(false);
     markEdited(state, title);
   }, [state, title, canEdit, markEdited, initialNote, initialTitle]);
 

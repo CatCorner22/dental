@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, type DraftRow, type NewDraft } from "../schema";
 import { DEFAULT_PAGE_SIZE, type PageParams } from "@/lib/http/pagination";
@@ -103,19 +103,60 @@ export async function claimDraftForSubmit(db: Db, id: string, now: Date): Promis
   return rows.length > 0;
 }
 
+// Post-email status write (submit and resend call it after the send round-trip).
+// Bumps updatedAt (a submission is activity) but NOT version, so an open builder
+// tab's next save does not hit a false conflict.
+//
+// expectVersion GUARDS against clobbering a concurrent edit: the email round-
+// trip takes seconds, and in that window a second tab can PATCH the note (which
+// bumps version, nulls lastSubmissionId, and recomputes status away from
+// submitted). Without the guard, a late "error"/"submitted" write would stamp a
+// stale status onto that edited row — falsely marking an edited draft "Send
+// failed", or worse leaving it both un-submittable and un-resendable. When
+// expectVersion is given, the write only lands on the still-filed row it was
+// computed for; a concurrent edit wins. Returns whether it applied.
 export async function setDraftStatus(
   db: Db,
   id: string,
   status: string,
   lastSendFailed: boolean,
-  now: Date
-): Promise<void> {
-  // Bumps updatedAt (a submission is activity) but NOT version, so an open
-  // builder tab's next save does not hit a false conflict.
-  await db
+  now: Date,
+  expectVersion?: number
+): Promise<boolean> {
+  const where =
+    expectVersion === undefined
+      ? eq(drafts.id, id)
+      : and(
+          eq(drafts.id, id),
+          eq(drafts.version, expectVersion),
+          isNotNull(drafts.lastSubmissionId)
+        );
+  const rows = await db
     .update(drafts)
     .set({ status, lastSendFailed, updatedAt: now })
-    .where(eq(drafts.id, id));
+    .where(where)
+    .returning();
+  return rows.length > 0;
+}
+
+// Atomically claim a filed-but-undelivered draft for a resend. Flips
+// lastSendFailed off so two concurrent resends cannot both send the same frozen
+// copy — exactly one claim matches; the other gets undefined and bows out. A
+// concurrent edit (which also clears lastSendFailed and nulls lastSubmissionId)
+// makes the claim miss, so a resend never fights an edit. Returns the version
+// and submission id to send, or undefined if there was nothing to claim.
+export async function claimResend(
+  db: Db,
+  id: string,
+  now: Date
+): Promise<{ version: number; lastSubmissionId: number } | undefined> {
+  const [row] = await db
+    .update(drafts)
+    .set({ lastSendFailed: false, updatedAt: now })
+    .where(and(eq(drafts.id, id), eq(drafts.lastSendFailed, true), isNotNull(drafts.lastSubmissionId)))
+    .returning();
+  if (!row || row.lastSubmissionId === null) return undefined;
+  return { version: row.version, lastSubmissionId: row.lastSubmissionId };
 }
 
 export async function transferDraft(db: Db, id: string, toUserId: string, now: Date): Promise<void> {

@@ -6,11 +6,34 @@ import { SCHEMA_STATEMENTS } from "./ddl";
 
 export type Db = NodePgDatabase<typeof schema> | PgliteDatabase<typeof schema>;
 
+// Postgres SQLSTATEs raised when two instances run the same CREATE at once.
+// IF NOT EXISTS narrows but does not close the window — the existence check and
+// the create are not atomic, so a concurrent first-time bootstrap of two
+// serverless instances against one database can still collide. These are the
+// "someone else already created it" codes, which mean the DDL's goal is met.
+const DUPLICATE_DDL_CODES = new Set([
+  "42710", // duplicate_object (e.g. the role enum)
+  "42P06", // duplicate_schema
+  "42P07", // duplicate_table / index
+  "42701", // duplicate_column
+  "23505" // unique_violation on a catalog insert (pg_type, pg_class)
+]);
+
 // Apply the embedded idempotent DDL. Reliable inside the Next server bundle,
 // where the file-based drizzle migrator cannot resolve the migrations folder.
+// Each statement tolerates a concurrent creator: a duplicate-object error means
+// the object now exists, which is exactly the desired end state, so it is
+// swallowed rather than failing the whole bootstrap (which would trip the
+// cooldown and flake a first multi-instance deploy). Any other error rethrows.
 export async function applySchema(db: Db): Promise<void> {
   for (const statement of SCHEMA_STATEMENTS) {
-    await db.execute(sql.raw(statement));
+    try {
+      await db.execute(sql.raw(statement));
+    } catch (e) {
+      const code = (e as { code?: string })?.code;
+      if (code && DUPLICATE_DDL_CODES.has(code)) continue;
+      throw e;
+    }
   }
 }
 

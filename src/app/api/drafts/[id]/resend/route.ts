@@ -1,6 +1,6 @@
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
-import { getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
+import { claimResend, getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
 import { getSubmission } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { sendSubmissionEmail } from "@/lib/email/sendSubmission";
@@ -47,15 +47,33 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
   // metered like the other expensive endpoints. During an outage a user will
   // press this repeatedly — that must cost one attempt, not a flood.
   const throttleKey = resendKey(draft.id);
-  const throttled = await checkThrottle(db, throttleKey, new Date());
+  const now = new Date();
+  const throttled = await checkThrottle(db, throttleKey, now);
   if (throttled.locked) {
     return Response.json(
       { error: `Too many resend attempts. Try again in ${throttled.retryAfterSec} seconds.` },
       { status: 429, headers: { "retry-after": String(throttled.retryAfterSec) } }
     );
   }
-  const submission = await getSubmission(db, draft.lastSubmissionId);
+
+  // Claim BEFORE sending. Two concurrent resends would otherwise both read
+  // lastSendFailed=true and both send the frozen copy — one ticket, N emails to
+  // the corporate address. The claim flips the flag atomically; exactly one
+  // request wins, and a concurrent edit (which also clears the flag) makes the
+  // claim miss so a resend never races an edit.
+  const claim = await claimResend(db, draft.id, now);
+  if (!claim) {
+    return Response.json(
+      { error: "This note is being resent or was just edited. Reload to see its current state." },
+      { status: 409 }
+    );
+  }
+
+  const submission = await getSubmission(db, claim.lastSubmissionId);
   if (!submission) {
+    // Nothing to send — undo the claim so the draft is not stranded as
+    // "delivered" with no email out.
+    await setDraftStatus(db, draft.id, "error", true, now, claim.version);
     return Response.json({ error: "The filed submission is missing." }, { status: 404 });
   }
 
@@ -73,21 +91,32 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
   });
 
   if (!outcome.attempted) {
+    // Email not configured: undo the claim (restore the send-failed state) so
+    // the draft is not left falsely "delivered".
+    await setDraftStatus(db, draft.id, "error", true, now, claim.version);
     return Response.json(
       { error: "Email is not configured on this deployment." },
       { status: 503 }
     );
   }
 
-  const now = new Date();
   // Meter attempts, not just failures: every press sends real mail, so a
   // success counts toward the budget too. A delivered note clears the streak
   // along with the flag.
   if (outcome.sent) await clearThrottle(db, throttleKey);
   else await recordFailure(db, throttleKey, now);
-  // Only a successful send clears the flag; a failed resend leaves the draft
-  // exactly as it was so the user can try again.
-  await setDraftStatus(db, draft.id, outcome.sent ? "submitted" : "error", !outcome.sent, now);
+  // Version-guarded so a note edited during the send round-trip is not stamped
+  // back to a stale status: on success "submitted", on failure restore the
+  // send-failed state. The claim already cleared lastSendFailed, so a failed
+  // send must set it back to true.
+  await setDraftStatus(
+    db,
+    draft.id,
+    outcome.sent ? "submitted" : "error",
+    !outcome.sent,
+    now,
+    claim.version
+  );
   await logAction(db, {
     actorId: guard.user.id,
     actorName: `${guard.user.displayName} (${guard.user.username})`,

@@ -18,9 +18,24 @@ describe("passwordPolicyError", () => {
   });
 
   it("measures the cap in bytes, not characters", () => {
-    // Each of these is 3 bytes in UTF-8, so 25 of them exceed 72 bytes
-    // while being only 25 characters long.
+    // Each Korean syllable is 3 bytes in UTF-8, so 25 exceed 72 bytes while
+    // being only 25 characters long.
     expect(passwordPolicyError("한".repeat(25))).toContain("at most");
-    expect(passwordPolicyError("한".repeat(20))).toBeNull();
+    // A VARIED 20-char multibyte string (60 bytes) is within the cap and
+    // otherwise fine — not a single repeated character.
+    expect(passwordPolicyError("가나다라마바사아자차카타파하거너더러머버")).toBeNull();
+  });
+
+  // Length is not entropy: these clear the character minimum but are the first
+  // things an online guesser tries.
+  it("rejects a single repeated character", () => {
+    expect(passwordPolicyError("a".repeat(PASSWORD_MIN))).toContain("repeated");
+    expect(passwordPolicyError("aaaaaaaaaaaa")).toContain("repeated");
+  });
+
+  it("rejects common long passwords, case-insensitively", () => {
+    expect(passwordPolicyError("password123")).toContain("common");
+    expect(passwordPolicyError("Password123")).toContain("common");
+    expect(passwordPolicyError("1234567890")).toContain("common");
   });
 });

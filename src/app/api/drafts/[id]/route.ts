@@ -9,7 +9,7 @@ import {
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
-import { sameNoteState } from "@/lib/schema/sameNoteState";
+import { filedNoteEqual } from "@/lib/compose/filedNoteEqual";
 import { statusForNote } from "@/lib/status/statusForNote";
 
 export const runtime = "nodejs";
@@ -72,11 +72,13 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     // note + title together on every keystroke, so a title-only rename arrives
     // here carrying the unchanged note. Clearing the re-file guard on the mere
     // PRESENCE of a note key (rather than an actual change) let a rename after
-    // a submit file a second, byte-identical ticket for the same encounter —
-    // it also overwrote the "submitted" status, defeating the submit route's
-    // status fallback. Compare against what is stored and touch the guard only
-    // when the note truly differs.
-    const noteChanged = !sameNoteState(res.value, draft.noteState);
+    // a submit file a second, byte-identical ticket for the same encounter.
+    // "Changed" is measured on the COMPOSED note — the artifact that freezes
+    // into the ticket — not on raw NoteState: composition normalizes value
+    // order, whitespace, and stray otherText, so a raw compare would report a
+    // spurious change (e.g. re-toggling a multiselect chip reorders its array)
+    // and re-open the gate for an output-identical edit.
+    const noteChanged = !filedNoteEqual(res.value, draft.noteState);
     if (noteChanged) {
       // The note is no longer the one that failed to send, nor the one already
       // on file, so both flags clear and the status is recomputed live. This is

@@ -41,7 +41,9 @@ const PHI_PATTERNS: PhiPattern[] = [
   },
   {
     id: "phi.email",
-    pattern: /\b[\w.+-]+@[\w-]+\.[\w.]+\b/g,
+    // Quantifiers are bounded (RFC-plausible maximums) so a long run of word
+    // characters with no "@" fails fast instead of backtracking quadratically.
+    pattern: /\b[\w.+-]{1,64}@[\w-]{1,255}\.[\w.]{1,24}\b/g,
     severity: "S0",
     message: "This looks like an email address. Remove it. Contact details belong only in the EDR."
   },

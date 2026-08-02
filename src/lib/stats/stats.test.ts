@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FIRST_PASS_STATUS, computeStats } from "./computeStats";
 import { deriveBadges } from "./badges";
-import { sparkleLine } from "./sparkle";
+import { ALL_SPARKLE_LINES, daySeed, sparkleLine } from "./sparkle";
 
 const pass = (daysAgo: number) => ({
   auditStatus: FIRST_PASS_STATUS,
@@ -49,5 +49,59 @@ describe("sparkleLine", () => {
     expect(sparkleLine("afterSubmit", 42)).toBe(sparkleLine("afterSubmit", 42));
     expect(sparkleLine("firstPass", 0)).toMatch(/Sparkle says:/);
     expect(sparkleLine("dashboard", -7)).toMatch(/Sparkle says:/); // negative seed safe
+    expect(sparkleLine("empty", 3)).toMatch(/Sparkle says:/);
+    expect(sparkleLine("conflict", 3)).toMatch(/Sparkle says:/);
+  });
+
+  it("daySeed is stable within a day and advances the next day", () => {
+    const morning = new Date("2026-08-02T00:10:00Z");
+    const evening = new Date("2026-08-02T23:50:00Z");
+    const tomorrow = new Date("2026-08-03T00:10:00Z");
+    expect(daySeed(morning)).toBe(daySeed(evening));
+    expect(daySeed(tomorrow)).toBe(daySeed(morning) + 1);
+  });
+});
+
+describe("sparkle copy quality (ethics guard)", () => {
+  it("never lectures, corrects, or pressures", () => {
+    // Supportive and encouraging only. These markers signal lecturing or
+    // negative framing, and no line may ever contain them.
+    const banned = [
+      "you should",
+      "you must",
+      "you need to",
+      "remember to",
+      "don't",
+      "do not",
+      "never ",
+      "always ",
+      "etc",
+      "fail",
+      "wrong",
+      "bad ",
+      "blame"
+    ];
+    for (const line of ALL_SPARKLE_LINES) {
+      const lower = line.toLowerCase();
+      for (const marker of banned) {
+        expect(lower.includes(marker), `"${line}" contains "${marker.trim()}"`).toBe(false);
+      }
+    }
+  });
+
+  it("stays brief and visibly comes from the mascot", () => {
+    for (const line of ALL_SPARKLE_LINES) {
+      expect(line.startsWith("Sparkle says:"), line).toBe(true);
+      expect(line.length, line).toBeLessThanOrEqual(90);
+    }
+  });
+
+  it("compares nobody — no singling out of people or performance", () => {
+    for (const line of ALL_SPARKLE_LINES) {
+      const lower = line.toLowerCase();
+      for (const marker of ["best ", "worst", "faster than", "behind", "rank"]) {
+        expect(lower.includes(marker), `"${line}" contains "${marker.trim()}"`).toBe(false);
+      }
+    }
   });
 });

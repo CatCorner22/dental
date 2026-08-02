@@ -4,13 +4,17 @@ import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import type { AuditFinding } from "@/lib/audit/types";
 import type { NoteState } from "@/lib/schema/types";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 export function ConflictDialog({ onReload, onClose }: { onReload: () => void; onClose: () => void }) {
   return (
     <Dialog title="A newer version of this note exists" onClose={onClose}>
-      <p className="mb-4 text-sm text-slate-700">
-        Someone (or another tab) saved this note after you opened it. Reload to get the latest
-        version. Your unsaved edits in this tab will be replaced.
+      <p className="mb-2 text-sm text-slate-700">
+        A teammate (or another tab) saved a newer version after you opened this one. Reloading
+        keeps you both in step; the unsaved edits in this tab will be replaced.
+      </p>
+      <p className="mb-4 text-xs text-slate-500">
+        {sparkleLine("conflict", daySeed(new Date()))}
       </p>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>

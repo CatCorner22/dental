@@ -3,6 +3,7 @@ import { auth } from "@/lib/auth/auth";
 import { getDb } from "@/lib/db/client";
 import { listAllSubmissions, listSubmissionsByUser } from "@/lib/db/repo/submissions";
 import { formatTicket } from "@/lib/tickets/ticket";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 export const runtime = "nodejs";
 export const metadata = { title: "History — Dental Note Builder" };
@@ -21,7 +22,7 @@ export default async function HistoryPage() {
       <h1 className="mb-4 text-2xl font-bold">Submission history</h1>
       {rows.length === 0 ? (
         <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
-          No submissions yet.
+          No submissions yet. {sparkleLine("empty", daySeed(new Date()))}
         </p>
       ) : (
         <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">

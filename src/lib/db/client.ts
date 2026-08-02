@@ -58,15 +58,20 @@ async function seedAdmin(db: Db): Promise<void> {
   const username = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!username || !password) return;
-  if (password.length < 10) {
+  if (!/^[a-z0-9][a-z0-9._-]{2,39}$/i.test(username)) {
     console.error(
-      "[db] ADMIN_PASSWORD must be at least 10 characters; skipping first-admin seed. Use /setup or fix the env."
+      "[db] ADMIN_USERNAME must be 3-40 letters, digits, or . _ - ; skipping first-admin seed. Use /setup or fix the env."
     );
+    return;
+  }
+  const { hashPassword, passwordPolicyError } = await import("@/lib/auth/password");
+  const pwError = passwordPolicyError(password);
+  if (pwError) {
+    console.error(`[db] ADMIN_PASSWORD rejected (${pwError}); skipping first-admin seed. Use /setup or fix the env.`);
     return;
   }
   const { countUsers, insertUser } = await import("./repo/users");
   if ((await countUsers(db)) > 0) return;
-  const { hashPassword } = await import("@/lib/auth/password");
   await insertUser(db, {
     id: crypto.randomUUID(),
     username,

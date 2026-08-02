@@ -1,4 +1,4 @@
-import { and, eq, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { users, type NewUser, type UserRow } from "../schema";
 
@@ -35,8 +35,17 @@ export async function updateUser(
   return row;
 }
 
-export async function ackNotice(db: Db, id: string, at: Date): Promise<void> {
-  await db.update(users).set({ noticeAckAt: at }).where(eq(users.id, id));
+// Returns true only when this call is what actually recorded the
+// acknowledgement. Acknowledging is idempotent, so a repeat POST must not
+// append another audit-log row — the log is a record of things that happened,
+// and re-clicking is not a new event.
+export async function ackNotice(db: Db, id: string, at: Date): Promise<boolean> {
+  const rows = await db
+    .update(users)
+    .set({ noticeAckAt: at })
+    .where(and(eq(users.id, id), isNull(users.noticeAckAt)))
+    .returning();
+  return rows.length > 0;
 }
 
 export async function deleteUser(db: Db, id: string): Promise<void> {

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { getUserById, updateUser } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
-import { hashPassword, verifyPassword } from "@/lib/auth/password";
+import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/auth/password";
 
 export const runtime = "nodejs";
 
@@ -18,9 +18,8 @@ export async function POST(req: Request): Promise<Response> {
   const b = parsed.value;
   const current = typeof b.current === "string" ? b.current : "";
   const next = typeof b.next === "string" ? b.next : "";
-  if (next.length < 10) {
-    return Response.json({ error: "New password must be at least 10 characters." }, { status: 400 });
-  }
+  const pwError = passwordPolicyError(next);
+  if (pwError) return Response.json({ error: `New password rejected: ${pwError}` }, { status: 400 });
   const db = await getDb();
   const user = await getUserById(db, guard.user.id);
   if (!user) return Response.json({ error: "Not found." }, { status: 404 });

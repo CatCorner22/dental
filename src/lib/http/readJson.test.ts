@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { readJsonRecord } from "./readJson";
+import { MAX_BODY_BYTES, readJsonRecord } from "./readJson";
 
 function req(body: string | null): Request {
   return new Request("http://test.local/api", {
@@ -26,5 +26,19 @@ describe("readJsonRecord", () => {
     for (const body of ["null", "5", '"hi"', "true", "[1,2]", "{not json"]) {
       expect((await readJsonRecord(req(body))).kind, body).toBe("invalid");
     }
+  });
+
+  // The note-size cap in validateNoteState only runs AFTER the body is read
+  // and parsed, so without a limit here a single request could buffer an
+  // arbitrary amount of memory before any check fires.
+  it("rejects a body larger than the cap", async () => {
+    const huge = `{"a":"${"x".repeat(MAX_BODY_BYTES)}"}`;
+    expect((await readJsonRecord(req(huge))).kind).toBe("invalid");
+  });
+
+  it("still accepts a body just under the cap", async () => {
+    const padding = "y".repeat(MAX_BODY_BYTES - 100);
+    const r = await readJsonRecord(req(`{"a":"${padding}"}`));
+    expect(r.kind).toBe("object");
   });
 });

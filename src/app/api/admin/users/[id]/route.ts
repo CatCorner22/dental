@@ -5,6 +5,7 @@ import { ownerDraftCount } from "@/lib/db/repo/drafts";
 import { submissionCountByUser } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
+import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
 import type { Role } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
@@ -26,7 +27,10 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   }
   const b = parsed.value;
   const patch: { displayName?: string; role?: Role; active?: boolean } = {};
-  if (typeof b.displayName === "string" && b.displayName.trim()) patch.displayName = b.displayName.trim();
+  if (typeof b.displayName === "string") {
+    const cleanName = sanitizeIdentity(b.displayName);
+    if (cleanName) patch.displayName = cleanName;
+  }
   if (ROLES.includes(b.role as Role)) patch.role = b.role as Role;
   if (typeof b.active === "boolean") patch.active = b.active;
   if (Object.keys(patch).length === 0) {

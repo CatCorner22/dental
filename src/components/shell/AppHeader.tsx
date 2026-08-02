@@ -7,11 +7,15 @@ import { NavLinks } from "./NavLinks";
 export function AppHeader({ user }: { user: SessionUser | null }) {
   return (
     <header className="border-b border-slate-200 bg-white">
-      <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-        <Link href="/" className="text-lg font-semibold tracking-tight">
+      {/* Wraps to a second line on a phone instead of forcing the page wider
+          than the screen. An unwrapped nav here expanded the layout viewport
+          to 554px on a 375px device, which pushed every page sideways and
+          left dialogs partly off-screen — verified in a real browser. */}
+      <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
+        <Link href="/" className="text-base font-semibold tracking-tight sm:text-lg">
           🦷 Dental Note Builder
         </Link>
-        <nav className="flex items-center gap-3 text-sm">
+        <nav className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
           {user ? (
             <>
               <NavLinks

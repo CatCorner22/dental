@@ -23,7 +23,12 @@ export function NavLinks({ items }: { items: NavItem[] }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            className={`font-medium hover:text-slate-900 ${active ? "text-blue-700 underline" : "text-slate-700"}`}
+            // The most-tapped controls in the app, and previously bare
+            // 20px-tall text. `.tap` grows them only where a finger is
+            // driving, so the desktop header keeps its compact spacing.
+            className={`tap rounded px-1 font-medium hover:text-slate-900 ${
+              active ? "text-blue-700 underline" : "text-slate-700"
+            }`}
           >
             {item.label}
           </Link>

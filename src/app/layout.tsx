@@ -1,12 +1,26 @@
-import type { Metadata } from "next";
+import type { Metadata, Viewport } from "next";
 import { auth } from "@/lib/auth/auth";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { SignOutButton } from "@/components/shell/SignOutButton";
-import { NoticeGate } from "@/components/notice/NoticeGate";
+import { SessionNotices } from "@/components/notice/SessionNotices";
+import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
 import "./globals.css";
 
 export const runtime = "nodejs";
+
+// viewportFit: "cover" is what makes env(safe-area-inset-*) resolve to real
+// numbers on a notched iPhone; without it those insets are always 0 and the
+// padding in globals.css silently does nothing. The rest matches what Next
+// emits by default, spelled out so it cannot drift.
+export const viewport: Viewport = {
+  width: "device-width",
+  initialScale: 1,
+  viewportFit: "cover",
+  // Colours the browser chrome to match the header instead of leaving a
+  // mismatched bar above the app on mobile.
+  themeColor: "#ffffff"
+};
 
 export const metadata: Metadata = {
   title: "Dental Note Builder",
@@ -55,7 +69,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Skip to content
         </a>
         <AppHeader user={user} />
-        {user && <NoticeGate acknowledged={user.noticeAcked} />}
+        {user && <SessionNotices acknowledged={user.noticeAcked} />}
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">
           {children}
         </main>
@@ -66,6 +80,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             calculate doses, assign billing codes, or determine discharge readiness. A licensed
             clinician must compare every fact with the source record, resolve every audit finding,
             and sign in the EDR. Reference summaries are internal training aids, not legal advice.
+          </p>
+          {/* The reminder is dismissible, so the route to the developer has to
+              survive it being dismissed. */}
+          <p className="mt-3">
+            Support, upgrade requests, ideas and suggestions, or a bug to report?{" "}
+            <a
+              href={feedbackMailto()}
+              className="tap rounded font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+            >
+              Send feedback
+            </a>{" "}
+            <span className="text-slate-400">({FEEDBACK_EMAIL})</span>
           </p>
         </footer>
       </body>

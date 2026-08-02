@@ -57,7 +57,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
               type="button"
               aria-pressed={status === s}
               onClick={() => setStatus(status === s ? null : s)}
-              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+              className={`tap rounded-full border px-3 text-xs font-medium ${
                 status === s
                   ? "border-blue-700 bg-blue-700 text-white"
                   : "border-slate-300 bg-white text-slate-600 hover:bg-blue-50"

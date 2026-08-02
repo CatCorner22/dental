@@ -24,7 +24,7 @@ function ChartRow({ ids, selected, onPick }: { ids: string[]; selected: string |
             aria-label={tooth ? `${id} — ${tooth.name}` : id}
             aria-pressed={selected === id}
             onClick={() => onPick(id)}
-            className={`h-9 w-9 rounded border text-sm font-medium ${
+            className={`tap-sq h-9 w-9 rounded border text-sm font-medium ${
               selected === id
                 ? "border-blue-700 bg-blue-700 text-white"
                 : tooth?.isAnterior

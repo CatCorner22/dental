@@ -17,7 +17,7 @@ export default function ReferenceLayout({ children }: { children: React.ReactNod
           <Link
             key={l.href}
             href={l.href}
-            className="rounded px-3 py-1.5 text-sm font-medium text-slate-700 hover:bg-slate-200"
+            className="tap rounded px-3 text-sm font-medium text-slate-700 hover:bg-slate-200"
           >
             {l.label}
           </Link>

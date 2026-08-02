@@ -1,0 +1,66 @@
+import { drizzle as drizzlePg, type NodePgDatabase } from "drizzle-orm/node-postgres";
+import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
+import { schema } from "./schema";
+
+export type Db = NodePgDatabase<typeof schema> | PgliteDatabase<typeof schema>;
+
+// One memoized bootstrap per process: pick the driver, run migrations, seed the
+// first admin from env if the users table is empty. Safe for serverless cold
+// starts (the migrator keeps its own __drizzle_migrations table).
+let bootstrap: Promise<Db> | null = null;
+
+async function build(): Promise<Db> {
+  const url = process.env.POSTGRES_URL?.trim();
+  if (url) {
+    const { Pool } = await import("pg");
+    const db = drizzlePg(new Pool({ connectionString: url }), { schema });
+    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
+    await migrate(db, { migrationsFolder: "drizzle" });
+    await seedAdmin(db);
+    return db;
+  }
+
+  if (process.env.NODE_ENV === "production") {
+    // PGlite on a filesystem dir does not persist across Vercel cold starts.
+    console.warn(
+      "[db] POSTGRES_URL is not set in production. Falling back to PGlite; data will NOT persist. Configure Vercel Postgres/Neon."
+    );
+  }
+  const { PGlite } = await import("@electric-sql/pglite");
+  const dir =
+    process.env.NODE_ENV === "test" ? "memory://" : (process.env.PGLITE_DIR ?? ".data/pglite");
+  const db = drizzlePglite(new PGlite(dir), { schema });
+  const { migrate } = await import("drizzle-orm/pglite/migrator");
+  await migrate(db, { migrationsFolder: "drizzle" });
+  await seedAdmin(db);
+  return db;
+}
+
+async function seedAdmin(db: Db): Promise<void> {
+  const username = process.env.ADMIN_USERNAME?.trim();
+  const password = process.env.ADMIN_PASSWORD;
+  if (!username || !password) return;
+  const { countUsers, insertUser } = await import("./repo/users");
+  if ((await countUsers(db)) > 0) return;
+  const { hashPassword } = await import("@/lib/auth/password");
+  await insertUser(db, {
+    id: crypto.randomUUID(),
+    username,
+    displayName: username,
+    role: "admin",
+    passHash: await hashPassword(password),
+    active: true
+  });
+  const { logAction } = await import("./repo/auditLog");
+  await logAction(db, { actorId: null, action: "setup.first-admin", target: username });
+}
+
+export function getDb(): Promise<Db> {
+  if (!bootstrap) bootstrap = build();
+  return bootstrap;
+}
+
+// For tests: inject a ready db and skip env bootstrap.
+export function __setDbForTests(db: Db | null): void {
+  bootstrap = db ? Promise.resolve(db) : null;
+}

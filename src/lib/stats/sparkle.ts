@@ -12,14 +12,14 @@ type SparkleContext = "dashboard" | "afterSubmit" | "firstPass" | "empty" | "con
 
 const LINES: Record<SparkleContext, string[]> = {
   dashboard: [
-    "Sparkle says: standard words, standard order, standard-issue great notes.",
+    "Sparkle says: standard words, standard order, notes we can all trust.",
     "Sparkle says: a clean note covers the next teammate's visit.",
     "Sparkle says: the audit is a teammate, not a judge.",
     "Sparkle says: simple and standard wins every time.",
     "Sparkle says: every clean note is a gift to the next shift.",
     "Sparkle says: one module per procedure keeps everything tidy.",
     "Sparkle says: own the note, and the note takes care of the team.",
-    "Sparkle says: say it clearly once and the whole chain wins.",
+    "Sparkle says: say it clearly once and the whole team wins.",
     "Sparkle says: top finding first. Then the next one.",
     "Sparkle says: a good note today is a calm phone call tomorrow."
   ],
@@ -41,7 +41,7 @@ const LINES: Record<SparkleContext, string[]> = {
     "Sparkle says: a quiet list is a fine place to begin."
   ],
   conflict: [
-    "Sparkle says: two hands on one note — reloading keeps you in step.",
+    "Sparkle says: two hands on one note — reloading keeps the team in sync.",
     "Sparkle says: teamwork moment! The newer save wins, nothing is lost."
   ]
 };

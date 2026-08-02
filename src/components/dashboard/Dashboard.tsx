@@ -239,7 +239,7 @@ function StatsCard({ stats }: { stats: UserStats }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
       <p className="mb-2 text-center text-xs text-slate-400">
-        Your clean notes carry the whole team. 🦷
+        Every clean note helps the whole team. 🦷
       </p>
       <div className="grid grid-cols-3 gap-4 text-center">
         <Stat label="Submitted" value={String(stats.totalSubmitted)} />

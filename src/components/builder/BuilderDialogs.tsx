@@ -11,7 +11,7 @@ export function ConflictDialog({ onReload, onClose }: { onReload: () => void; on
     <Dialog title="A newer version of this note exists" onClose={onClose}>
       <p className="mb-2 text-sm text-slate-700">
         A teammate (or another tab) saved a newer version after you opened this one. Reloading
-        keeps you both in step; the unsaved edits in this tab will be replaced.
+        keeps you both in sync; the unsaved edits in this tab will be replaced.
       </p>
       <p className="mb-4 text-xs text-slate-500">
         {sparkleLine("conflict", daySeed(new Date()))}

@@ -104,4 +104,53 @@ describe("sparkle copy quality (ethics guard)", () => {
       }
     }
   });
+
+  it("stays PG and kind — no harsh or edgy words", () => {
+    const banned = [
+      /\bdamn/,
+      /\bhell\b/,
+      /\bcrap/,
+      /\bsuck/,
+      /\bstupid/,
+      /\bdumb\b/,
+      /\bhate\b/,
+      /\bkill/,
+      /\bdead\b/,
+      /\bscrew/
+    ];
+    for (const line of ALL_SPARKLE_LINES) {
+      const lower = line.toLowerCase();
+      for (const marker of banned) {
+        expect(marker.test(lower), `"${line}" matches ${marker}`).toBe(false);
+      }
+    }
+  });
+
+  it("uses warm, everyday words — no military or drill-team flavor", () => {
+    // Team lines say "we" and "team", never command-culture words like
+    // "chain", "in step", or "standard-issue". Word-boundary regexes so
+    // ordinary words (e.g. "submission") never false-positive.
+    const banned = [
+      /\bchain/,
+      /\bin step\b/,
+      /standard-issue/,
+      /\bsoldier/,
+      /\bbattle/,
+      /\bdrill/,
+      /\bmission\b/,
+      /\btroop/,
+      /\bcombat\b/,
+      /\bwarrior/,
+      /\bcommand/,
+      /\bmarch/,
+      /\brecruit/,
+      /\bsquad\b/
+    ];
+    for (const line of ALL_SPARKLE_LINES) {
+      const lower = line.toLowerCase();
+      for (const marker of banned) {
+        expect(marker.test(lower), `"${line}" matches ${marker}`).toBe(false);
+      }
+    }
+  });
 });

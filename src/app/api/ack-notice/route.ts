@@ -1,0 +1,15 @@
+import { requireRole } from "@/lib/auth/guards";
+import { getDb } from "@/lib/db/client";
+import { ackNotice } from "@/lib/db/repo/users";
+import { logAction } from "@/lib/db/repo/auditLog";
+
+export const runtime = "nodejs";
+
+export async function POST(): Promise<Response> {
+  const guard = await requireRole("readonly");
+  if (!guard.ok) return guard.response;
+  const db = await getDb();
+  await ackNotice(db, guard.user.id, new Date());
+  await logAction(db, { actorId: guard.user.id, action: "notice.ack" });
+  return Response.json({ ok: true });
+}

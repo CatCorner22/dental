@@ -1,0 +1,98 @@
+import { requireRole } from "@/lib/auth/guards";
+import { getDb } from "@/lib/db/client";
+import {
+  deleteDraft,
+  draftSubmissionCount,
+  getDraft,
+  updateDraftChecked
+} from "@/lib/db/repo/drafts";
+import { validateNoteState } from "@/lib/schema/validateNoteState";
+import { statusForNote } from "@/lib/status/statusForNote";
+
+export const runtime = "nodejs";
+
+type Ctx = { params: Promise<{ id: string }> };
+
+function canWrite(role: string, ownerId: string, userId: string): boolean {
+  return role === "admin" || (role === "user" && ownerId === userId);
+}
+
+export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
+  const guard = await requireRole("readonly");
+  if (!guard.ok) return guard.response;
+  const { id } = await params;
+  const db = await getDb();
+  const draft = await getDraft(db, id);
+  if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
+  // A user may only open their own draft; readonly/admin may open any.
+  if (guard.user.role === "user" && draft.ownerId !== guard.user.id) {
+    return Response.json({ error: "Not found." }, { status: 404 });
+  }
+  return Response.json({ draft });
+}
+
+export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
+  const guard = await requireRole("user");
+  if (!guard.ok) return guard.response;
+  const { id } = await params;
+  const db = await getDb();
+  const draft = await getDraft(db, id);
+  if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
+  if (!canWrite(guard.user.role, draft.ownerId, guard.user.id)) {
+    return Response.json({ error: "You cannot edit this draft." }, { status: 403 });
+  }
+
+  let body: unknown;
+  try {
+    body = await req.json();
+  } catch {
+    return Response.json({ error: "Invalid JSON." }, { status: 400 });
+  }
+  const b = body as Record<string, unknown>;
+  if (typeof b.baseVersion !== "number") {
+    return Response.json({ error: "baseVersion is required." }, { status: 400 });
+  }
+
+  const patch: { title?: string; noteState?: typeof draft.noteState; status?: string; lastSendFailed?: boolean } = {};
+  if (typeof b.title === "string") patch.title = b.title.trim().slice(0, 200) || "Untitled note";
+  if (b.note !== undefined) {
+    const res = validateNoteState(b.note);
+    if (!res.ok) return Response.json({ error: res.error }, { status: 400 });
+    patch.noteState = res.value;
+    const derived = statusForNote(res.value, { submitted: false, lastSendFailed: draft.lastSendFailed });
+    patch.status = derived.status;
+  }
+
+  const updated = await updateDraftChecked(db, id, b.baseVersion, patch, new Date());
+  if (!updated) {
+    return Response.json(
+      { error: "conflict", version: draft.version, updatedAt: draft.updatedAt },
+      { status: 409 }
+    );
+  }
+  return Response.json({
+    version: updated.version,
+    status: updated.status,
+    savedAt: updated.updatedAt
+  });
+}
+
+export async function DELETE(_req: Request, { params }: Ctx): Promise<Response> {
+  const guard = await requireRole("user");
+  if (!guard.ok) return guard.response;
+  const { id } = await params;
+  const db = await getDb();
+  const draft = await getDraft(db, id);
+  if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
+  if (!canWrite(guard.user.role, draft.ownerId, guard.user.id)) {
+    return Response.json({ error: "You cannot delete this draft." }, { status: 403 });
+  }
+  if ((await draftSubmissionCount(db, id)) > 0) {
+    return Response.json(
+      { error: "This draft has submissions and cannot be deleted; its history must survive." },
+      { status: 409 }
+    );
+  }
+  await deleteDraft(db, id);
+  return new Response(null, { status: 204 });
+}

@@ -22,10 +22,17 @@ function FindingRow({ finding }: { finding: AuditFinding }) {
   const jump = () => {
     if (!finding.fieldRef) return;
     const el = document.getElementById(`field-${finding.fieldRef.moduleId}-${finding.fieldRef.fieldId}`);
-    el?.scrollIntoView({ behavior: "smooth", block: "center" });
+    if (!el) return;
+    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // Land the cursor in the field, not just the viewport on it — one click
+    // instead of scroll-then-click for every finding fixed.
+    el.querySelector<HTMLElement>("input, select, textarea, button")?.focus({ preventScroll: true });
   };
   return (
-    <li className={`rounded border px-2.5 py-2 text-xs ${SEVERITY_STYLES[finding.severity]}`}>
+    <li
+      className={`rounded border px-2.5 py-2 text-xs ${SEVERITY_STYLES[finding.severity]} ${finding.fieldRef ? "cursor-pointer" : ""}`}
+      onClick={finding.fieldRef ? jump : undefined}
+    >
       <div className="flex items-start justify-between gap-2">
         <span className="font-semibold">
           {finding.severity} {SEVERITY_LABELS[finding.severity]}

@@ -51,3 +51,34 @@ export async function countOtherActiveAdmins(db: Db, excludeId: string): Promise
     .where(and(eq(users.role, "admin"), eq(users.active, true), ne(users.id, excludeId)));
   return rows[0]?.n ?? 0;
 }
+
+// One lock key serializes every admin-losing mutation. Without it, two
+// concurrent requests that each demote a DIFFERENT admin both pass the
+// count check and together lock everyone out.
+const ADMIN_GUARD_LOCK = 742001;
+
+// Demote, deactivate, or delete an admin — atomically re-checking that
+// another active admin remains. Returns false when the target is the last
+// active admin (nothing is changed).
+export async function mutateAdminGuarded(
+  db: Db,
+  id: string,
+  action:
+    | { kind: "update"; patch: Partial<Pick<UserRow, "displayName" | "role" | "active">> }
+    | { kind: "delete" }
+): Promise<boolean> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${ADMIN_GUARD_LOCK})`);
+    const rows = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(users)
+      .where(and(eq(users.role, "admin"), eq(users.active, true), ne(users.id, id)));
+    if ((rows[0]?.n ?? 0) === 0) return false;
+    if (action.kind === "update") {
+      await tx.update(users).set(action.patch).where(eq(users.id, id));
+    } else {
+      await tx.delete(users).where(eq(users.id, id));
+    }
+    return true;
+  });
+}

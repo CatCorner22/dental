@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useMemo, useReducer, useRef, useState } from "react";
+import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
@@ -53,15 +53,18 @@ export function BuilderShell({
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [toast, setToast] = useState<string | null>(null);
+  const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
 
   const autosave = useAutosave(draftId, initialVersion);
-  const { markEdited } = autosave;
-  const firstRender = useRef(true);
+  const { markEdited, flush } = autosave;
   // The stored submitted / send-failed state holds until the first edit here;
   // an edit means the note has changed since it was filed (the server's PATCH
-  // recompute makes the same call).
+  // recompute makes the same call). A submit in THIS tab flips submittedNow
+  // so the chip is honest without a reload.
   const [editedSinceLoad, setEditedSinceLoad] = useState(false);
+  const [submittedNow, setSubmittedNow] = useState(false);
+  const [sendFailedNow, setSendFailedNow] = useState(false);
+  const [moduleQuery, setModuleQuery] = useState("");
 
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
   const markdown = useMemo(() => composeNote(state, modules), [state, modules]);
@@ -81,23 +84,81 @@ export function BuilderShell({
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
-    submitted: initialSubmitted && !editedSinceLoad,
-    lastSendFailed: initialSendFailed && !editedSinceLoad
+    submitted: (initialSubmitted && !editedSinceLoad) || submittedNow,
+    lastSendFailed: (initialSendFailed && !editedSinceLoad) || sendFailedNow
   });
 
-  // Autosave on any change (skip the initial render). Depends on the stable
-  // markEdited callback — never on the autosave object itself.
+  // Autosave on any change. The content-identity guard (not a first-render
+  // ref) survives StrictMode's double effect run: until a real edit, `state`
+  // IS `initialNote` and `title` IS `initialTitle`, so nothing fires.
   useEffect(() => {
     if (!canEdit) return;
-    if (firstRender.current) {
-      firstRender.current = false;
-      return;
-    }
+    if (state === initialNote && title === initialTitle) return;
     setEditedSinceLoad(true);
+    setSubmittedNow(false);
+    setSendFailedNow(false);
     markEdited(state, title);
-  }, [state, title, canEdit, markEdited]);
+  }, [state, title, canEdit, markEdited, initialNote, initialTitle]);
 
   const filename = suggestedFilename(state, ALL_MODULES);
+
+  // Submit is only offered when every local edit is on the server — the
+  // server audits and files what IT stores, so a stale or conflicted flush
+  // must stop the flow, not silently proceed.
+  const trySubmit = useCallback(async () => {
+    const outcome = await flush();
+    if (outcome === "clean") {
+      setShowSubmit(true);
+    } else if (outcome === "error") {
+      setToast({ text: "Could not save your latest edits — check the connection, then try again.", tone: "error" });
+    }
+    // "conflict": the ConflictDialog is already on screen; nothing to add.
+  }, [flush]);
+
+  // Toasts announce and then get out of the way.
+  useEffect(() => {
+    if (!toast) return;
+    const t = setTimeout(() => setToast(null), 6000);
+    return () => clearTimeout(t);
+  }, [toast]);
+
+  // Keyboard shortcuts, Curve-style: Ctrl/Cmd+S saves, Ctrl/Cmd+Enter submits.
+  const submitEnabledRef = useRef(false);
+  submitEnabledRef.current =
+    canEdit && hasContent && gates.emailAllowed && liveStatus !== "submitted" && !showSubmit;
+  useEffect(() => {
+    if (!canEdit) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (!(e.ctrlKey || e.metaKey)) return;
+      if (e.key === "s" || e.key === "S") {
+        e.preventDefault();
+        void flush();
+      } else if (e.key === "Enter" && submitEnabledRef.current) {
+        e.preventDefault();
+        void trySubmit();
+      }
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [canEdit, flush, trySubmit]);
+
+  // "Start another like this": a new draft with the same modules and title —
+  // structure only, never a single value (no clinical assertion carries over).
+  const startAnother = async () => {
+    try {
+      const res = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, note: { selectedModuleIds: state.selectedModuleIds, values: {} } })
+      });
+      if (!res.ok) throw new Error();
+      const { id } = (await res.json()) as { id: string };
+      window.location.assign(`/note/${id}`);
+    } catch {
+      setShowSubmit(false);
+      setToast({ text: "Could not start the next note — try New note from the dashboard.", tone: "error" });
+    }
+  };
 
   const copy = async () => {
     try {
@@ -127,7 +188,7 @@ export function BuilderShell({
           {canEdit && <SaveIndicator state={autosave.state} />}
           {canEdit && (
             <>
-              <button className="btn-secondary" onClick={() => void autosave.flush()}>Save</button>
+              <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>Save</button>
               <button
                 className="btn-primary"
                 disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
@@ -135,13 +196,10 @@ export function BuilderShell({
                   liveStatus === "submitted"
                     ? "Already submitted — edit the note to submit again"
                     : gates.emailAllowed
-                      ? "Submit to the office"
+                      ? "Submit to the office (Ctrl+Enter)"
                       : "Resolve every STOP and REQUIRED finding first"
                 }
-                onClick={async () => {
-                  await autosave.flush();
-                  setShowSubmit(true);
-                }}
+                onClick={() => void trySubmit()}
               >
                 Submit
               </button>
@@ -161,11 +219,21 @@ export function BuilderShell({
         <aside className="shrink-0 lg:w-60">
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
             <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
+            <input
+              type="search"
+              className="field-input mb-1.5 py-1 text-xs"
+              placeholder="Filter modules…"
+              value={moduleQuery}
+              onChange={(e) => setModuleQuery(e.target.value)}
+              aria-label="Filter the module list"
+            />
             <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
               <input type="checkbox" checked disabled /> Universal Core
             </label>
             <div className="max-h-[55vh] space-y-0.5 overflow-y-auto">
-              {ALL_MODULES.filter((m) => !m.alwaysOn).map((m) => (
+              {ALL_MODULES.filter(
+                (m) => !m.alwaysOn && m.title.toLowerCase().includes(moduleQuery.toLowerCase())
+              ).map((m) => (
                 <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
                   <input
                     type="checkbox"
@@ -241,8 +309,15 @@ export function BuilderShell({
       </div>
 
       {toast && (
-        <div className="fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-lg border border-green-300 bg-green-50 px-4 py-2 text-sm font-medium text-green-900 shadow-lg" role="status">
-          {toast}
+        <div
+          className={`fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
+            toast.tone === "error"
+              ? "border-rose-300 bg-rose-50 text-rose-900"
+              : "border-green-300 bg-green-50 text-green-900"
+          }`}
+          role={toast.tone === "error" ? "alert" : "status"}
+        >
+          {toast.text}
         </div>
       )}
 
@@ -267,11 +342,15 @@ export function BuilderShell({
           draftId={draftId}
           phiOverrideReason={overrideActive ? override!.reason : null}
           onClose={() => setShowSubmit(false)}
-          onSubmitted={(ticket, sparkle) => {
-            setShowSubmit(false);
-            setToast(`Submitted as ${ticket}. ${sparkle}`);
-            setTimeout(() => router.push("/history"), 1800);
+          onFiled={(r) => {
+            // A failed send stays resubmittable (matches the server, which
+            // marks it "error"), so only a clean filing flips to Submitted.
+            const failed = r.emailConfigured && !r.emailed;
+            setSubmittedNow(!failed);
+            setSendFailedNow(failed);
           }}
+          onStartAnother={() => void startAnother()}
+          onGoToDashboard={() => router.push("/")}
         />
       )}
     </div>

@@ -5,9 +5,10 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/Dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { QUICK_PICKS } from "@/lib/presets/quickPicks";
+import { FEATURED_PICK_IDS, QUICK_PICKS } from "@/lib/presets/quickPicks";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { BADGES } from "@/lib/stats/badges";
+import { STATUS_META } from "@/lib/status/draftStatus";
 import type { UserStats } from "@/lib/stats/computeStats";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 
@@ -17,6 +18,7 @@ interface DraftRow {
   status: DraftStatus;
   ownerName?: string;
   updatedAt: string;
+  moduleIds: string[];
 }
 
 export function Dashboard({
@@ -34,6 +36,7 @@ export function Dashboard({
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
+  const [statusFilter, setStatusFilter] = useState<DraftStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPicks, setShowPicks] = useState(false);
   const [transferFor, setTransferFor] = useState<DraftRow | null>(null);
@@ -42,31 +45,56 @@ export function Dashboard({
   const deleteDraft = async (d: DraftRow) => {
     if (!window.confirm(`Delete "${d.title}"? This cannot be undone.`)) return;
     setRowError("");
-    const res = await fetch(`/api/drafts/${d.id}`, { method: "DELETE" });
-    if (res.ok) {
-      router.refresh();
-    } else {
-      setRowError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Could not delete this draft.");
+    try {
+      const res = await fetch(`/api/drafts/${d.id}`, { method: "DELETE" });
+      if (res.ok) {
+        router.refresh();
+      } else {
+        setRowError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Could not delete this draft.");
+      }
+    } catch {
+      setRowError("Could not delete — check the connection and try again.");
     }
   };
 
+  const statusCounts = useMemo(() => {
+    const counts = new Map<DraftStatus, number>();
+    for (const d of drafts) counts.set(d.status, (counts.get(d.status) ?? 0) + 1);
+    return [...counts.entries()];
+  }, [drafts]);
+
   const filtered = useMemo(
-    () => drafts.filter((d) => d.title.toLowerCase().includes(query.toLowerCase())),
-    [drafts, query]
+    () =>
+      drafts.filter(
+        (d) =>
+          d.title.toLowerCase().includes(query.toLowerCase()) &&
+          (!statusFilter || d.status === statusFilter)
+      ),
+    [drafts, query, statusFilter]
+  );
+
+  // The list is newest-activity-first, so the first unsubmitted draft is
+  // "where you left off".
+  const resumeDraft = useMemo(
+    () => (canEdit ? drafts.find((d) => d.status !== "submitted") : undefined),
+    [drafts, canEdit]
   );
 
   const createDraft = async (moduleIds: string[], title: string) => {
     setBusy(true);
-    const res = await fetch("/api/drafts", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ title, note: { selectedModuleIds: moduleIds, values: {} } })
-    });
-    if (res.ok) {
+    setRowError("");
+    try {
+      const res = await fetch("/api/drafts", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, note: { selectedModuleIds: moduleIds, values: {} } })
+      });
+      if (!res.ok) throw new Error();
       const { id } = (await res.json()) as { id: string };
       router.push(`/note/${id}`);
-    } else {
+    } catch {
       setBusy(false);
+      setRowError("Could not create the note — check the connection and try again.");
     }
   };
 
@@ -106,10 +134,40 @@ export function Dashboard({
         )}
       </div>
 
+      {canEdit && (
+        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+          {QUICK_PICKS.filter((p) => (FEATURED_PICK_IDS as readonly string[]).includes(p.id)).map((p) => (
+            <button
+              key={p.id}
+              className="rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm hover:border-blue-400 hover:bg-blue-50 disabled:opacity-50"
+              disabled={busy}
+              onClick={() => createDraft(p.moduleIds, p.label)}
+              title={p.description}
+            >
+              <span className="block text-sm font-semibold text-slate-800">{p.label}</span>
+              <span className="mt-0.5 block text-xs text-slate-500">One click — start now</span>
+            </button>
+          ))}
+        </div>
+      )}
+
+      {resumeDraft && (
+        <Link
+          href={`/note/${resumeDraft.id}`}
+          className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 hover:bg-blue-100"
+        >
+          <span className="min-w-0 text-sm text-slate-700">
+            <span className="font-semibold">Continue where you left off:</span>{" "}
+            <span className="truncate">{resumeDraft.title}</span>
+          </span>
+          <StatusChip status={resumeDraft.status} />
+        </Link>
+      )}
+
       <StatsCard stats={stats} />
 
       <div>
-        <div className="mb-2 flex items-center justify-between gap-2">
+        <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">
             {role === "user" ? "My drafts" : "All drafts"} ({filtered.length})
           </h2>
@@ -122,6 +180,29 @@ export function Dashboard({
             aria-label="Search drafts by title"
           />
         </div>
+        {statusCounts.length > 1 && (
+          <div className="mb-2 flex flex-wrap gap-1.5">
+            {statusCounts.map(([s, n]) => (
+              <button
+                key={s}
+                type="button"
+                aria-pressed={statusFilter === s}
+                onClick={() => setStatusFilter(statusFilter === s ? null : s)}
+                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                  statusFilter === s ? "border-blue-700 bg-blue-700 text-white" : STATUS_META[s].chipClass
+                }`}
+                title={`Show only ${STATUS_META[s].label.toLowerCase()} drafts`}
+              >
+                <span aria-hidden>{STATUS_META[s].icon}</span> {STATUS_META[s].short} ({n})
+              </button>
+            ))}
+            {statusFilter && (
+              <button type="button" className="text-xs text-slate-500 underline" onClick={() => setStatusFilter(null)}>
+                Clear filter
+              </button>
+            )}
+          </div>
+        )}
         {rowError && <p className="mb-2 text-sm text-rose-700" role="alert">{rowError}</p>}
         {filtered.length === 0 ? (
           <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
@@ -152,6 +233,17 @@ export function Dashboard({
                     title="Transfer ownership"
                   >
                     Transfer
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50"
+                    disabled={busy}
+                    onClick={() => createDraft(d.moduleIds, d.title)}
+                    title="Start a new note with the same modules — no values are copied"
+                    aria-label={`Start a new note like ${d.title}`}
+                  >
+                    New like this
                   </button>
                 )}
                 {canEdit && (
@@ -206,20 +298,24 @@ function TransferDialog({
 
   const submit = async () => {
     setError("");
-    const res = await fetch(`/api/admin/drafts/${draft.id}/transfer`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ toUserId })
-    });
-    if (res.ok) return onDone();
-    setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Transfer failed.");
+    try {
+      const res = await fetch(`/api/admin/drafts/${draft.id}/transfer`, {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ toUserId })
+      });
+      if (res.ok) return onDone();
+      setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Transfer failed.");
+    } catch {
+      setError("Transfer failed — check the connection and try again.");
+    }
   };
 
   return (
     <Dialog title={`Transfer "${draft.title}"`} onClose={onClose}>
       <div className="space-y-3">
-        <label className="field-label">Transfer to</label>
-        <select className="field-input" value={toUserId} onChange={(e) => setToUserId(e.target.value)}>
+        <label className="field-label" htmlFor="transfer-to">Transfer to</label>
+        <select id="transfer-to" className="field-input" value={toUserId} onChange={(e) => setToUserId(e.target.value)}>
           <option value="">— select a user —</option>
           {users.map((u) => (
             <option key={u.id} value={u.id}>{u.displayName} ({u.username})</option>

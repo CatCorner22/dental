@@ -41,13 +41,37 @@ describe("autosaveMachine", () => {
     expect(s.status).toBe("idle");
   });
 
-  it("surfaces save errors", () => {
+  it("surfaces save errors, and errors count as unsaved work", () => {
     const s = run([{ type: "edit" }, { type: "saveStart" }, { type: "saveErr", message: "network" }]);
     expect(s).toEqual({ status: "error", message: "network" });
+    // Closing the tab now would lose the edits — the unload guard must fire.
+    expect(isDirty(s)).toBe(true);
   });
 
-  it("saveStart is ignored when not dirty", () => {
-    expect(autosaveReducer(initialAutosave, { type: "saveStart" })).toEqual(initialAutosave);
+  it("an unresolved conflict also counts as unsaved work", () => {
+    const s = run([{ type: "edit" }, { type: "saveStart" }, { type: "save409", serverVersion: 4 }]);
+    expect(isDirty(s)).toBe(true);
+  });
+
+  it("a retry after an error recovers to saved (indicator must not stick)", () => {
+    let s = run([{ type: "edit" }, { type: "saveStart" }, { type: "saveErr", message: "offline" }]);
+    s = autosaveReducer(s, { type: "saveStart" }); // flush() retries
+    expect(s.status).toBe("saving");
+    s = autosaveReducer(s, { type: "saveOk", version: 3, at: 9 });
+    expect(s).toEqual({ status: "saved", at: 9 });
+  });
+
+  it("saveStart never disturbs a conflict or a clean saved state", () => {
+    const conflict: AutosaveState = { status: "conflict", serverVersion: 2 };
+    expect(autosaveReducer(conflict, { type: "saveStart" })).toBe(conflict);
+    const saved: AutosaveState = { status: "saved", at: 5 };
+    expect(autosaveReducer(saved, { type: "saveStart" })).toBe(saved);
+  });
+
+  it("a save kicked off right after a conflict resolves may start from idle", () => {
+    // resolveConflict() -> idle, then the kept edits save immediately.
+    const s = run([{ type: "edit" }, { type: "saveStart" }, { type: "save409", serverVersion: 4 }, { type: "resolved" }, { type: "saveStart" }]);
+    expect(s.status).toBe("saving");
   });
 });
 

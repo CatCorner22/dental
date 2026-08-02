@@ -1,7 +1,7 @@
 import { Resend } from "resend";
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
-import { getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
+import { claimDraftForSubmit, getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
 import { finalizeSubmission, insertSubmissionShell } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { activeModules } from "@/lib/modules";
@@ -73,6 +73,17 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   }
 
   const now = new Date();
+
+  // Atomically claim the draft: of any concurrent submits (double-click, two
+  // tabs), exactly one proceeds past this line. The early status check above
+  // is only the friendly fast path — this is the enforcement.
+  if (!(await claimDraftForSubmit(db, draft.id, now))) {
+    return Response.json(
+      { error: "This note is already submitted. Edit it before submitting again." },
+      { status: 409 }
+    );
+  }
+
   const submittedByName = `${guard.user.displayName} (${guard.user.username})`;
   const submittedAtEt = formatEasternTime(now);
   const filenameBase = slugifyTitle(draft.title);
@@ -124,9 +135,9 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   }
 
   // Honest cache: a failed email shows the rose "Send failed" chip and stays
-  // resubmittable; only a clean filing (or email-off filing) reads "submitted".
+  // resubmittable; the claim above already marked a clean filing "submitted".
   const sendFailed = config.configured && !emailed;
-  await setDraftStatus(db, draft.id, sendFailed ? "error" : "submitted", sendFailed, now);
+  if (sendFailed) await setDraftStatus(db, draft.id, "error", true, now);
   await logAction(db, {
     actorId: guard.user.id,
     action: emailed ? "submit" : config.configured ? "submit.email-failed" : "submit.no-email",

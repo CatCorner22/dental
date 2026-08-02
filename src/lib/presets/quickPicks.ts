@@ -6,7 +6,11 @@ export interface QuickPick {
   label: string;
   description: string;
   moduleIds: string[]; // add-on module ids; universal-core is always present
+  featured?: boolean; // shown as a one-click card on the dashboard
 }
+
+// The four most common visit types in a general practice get one-click cards.
+export const FEATURED_PICK_IDS = ["recall-exam", "restorative", "simple-extraction", "emergency"] as const;
 
 export const QUICK_PICKS: QuickPick[] = [
   {

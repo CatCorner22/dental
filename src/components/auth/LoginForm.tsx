@@ -13,14 +13,33 @@ export function LoginForm() {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const res = await signIn("credentials", { username, password, redirect: false });
+    let res;
+    try {
+      res = await signIn("credentials", { username, password, redirect: false });
+    } catch {
+      setError("Could not reach the server — check the connection and try again.");
+      setBusy(false);
+      return;
+    }
     if (res?.error) {
       setError("Wrong username or password, or the account is inactive.");
       setBusy(false);
       return;
     }
-    // Full navigation reliably picks up the new session cookie.
-    window.location.assign("/");
+    // Full navigation reliably picks up the new session cookie. Honor the
+    // page the middleware bounced the user from — same-origin paths only,
+    // so a crafted link can never redirect the login off-site.
+    let dest = "/";
+    const cb = new URLSearchParams(window.location.search).get("callbackUrl");
+    if (cb) {
+      try {
+        const u = new URL(cb, window.location.origin);
+        if (u.origin === window.location.origin) dest = u.pathname + u.search;
+      } catch {
+        /* keep "/" */
+      }
+    }
+    window.location.assign(dest);
   };
 
   return (

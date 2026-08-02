@@ -2,8 +2,9 @@ import type { AuditReport } from "@/lib/audit/types";
 import { SEVERITY_LABELS } from "@/lib/audit/types";
 import type { ModuleDef } from "@/lib/schema/types";
 import { MODULES_BY_ID } from "@/lib/modules";
+import { RULESET_VERSION } from "@/lib/version";
 
-export const AUDIT_VERSION = "deterministic-checker 1.0.0";
+export const AUDIT_VERSION = `deterministic-checker ${RULESET_VERSION}`;
 
 function ownerFor(severity: string): string {
   if (severity === "S3") return "staff";

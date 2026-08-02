@@ -28,7 +28,12 @@ function sanitizeUserText(text: string): string {
 function formatValue(field: Field, value: FieldValue): string {
   switch (value.kind) {
     case "select":
-      return value.value === "__other__" ? sanitizeUserText((value.otherText ?? "").trim()) : value.value;
+      // Option values are sanitized too, not just the "other" free text: a
+      // tampered client can PATCH any string into a select, and drafts stored
+      // before option-set validation existed may still hold one.
+      return value.value === "__other__"
+        ? sanitizeUserText((value.otherText ?? "").trim())
+        : sanitizeUserText(value.value);
     case "multiselect": {
       const joiner = field.type === "multiselect" ? (field.joiner ?? "; ") : "; ";
       // Compose in the field's canonical option order, not the user's click
@@ -40,7 +45,7 @@ function formatValue(field: Field, value: FieldValue): string {
       const values = order
         ? [...value.values].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999))
         : value.values;
-      return values.join(joiner);
+      return values.map(sanitizeUserText).join(joiner);
     }
     case "text":
       return sanitizeUserText(value.value.trim());

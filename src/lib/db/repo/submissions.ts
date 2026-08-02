@@ -102,13 +102,32 @@ export async function getSubmission(db: Db, id: number): Promise<SubmissionRow |
   return row;
 }
 
-export async function listAllSubmissions(db: Db): Promise<SubmissionRow[]> {
-  return db.select().from(submissions).orderBy(desc(submissions.submittedAtUtc));
+// The history list shows one line per submission. Selecting whole rows would
+// pull every frozen note and audit report — the two largest columns in the
+// schema — for a table that displays neither.
+export type SubmissionSummary = Pick<
+  SubmissionRow,
+  "id" | "draftId" | "filename" | "submittedById" | "submittedByName" | "submittedAtEt" | "auditStatus" | "ruleVersion"
+>;
+
+const submissionSummaryColumns = {
+  id: submissions.id,
+  draftId: submissions.draftId,
+  filename: submissions.filename,
+  submittedById: submissions.submittedById,
+  submittedByName: submissions.submittedByName,
+  submittedAtEt: submissions.submittedAtEt,
+  auditStatus: submissions.auditStatus,
+  ruleVersion: submissions.ruleVersion
+};
+
+export async function listAllSubmissions(db: Db): Promise<SubmissionSummary[]> {
+  return db.select(submissionSummaryColumns).from(submissions).orderBy(desc(submissions.submittedAtUtc));
 }
 
-export async function listSubmissionsByUser(db: Db, userId: string): Promise<SubmissionRow[]> {
+export async function listSubmissionsByUser(db: Db, userId: string): Promise<SubmissionSummary[]> {
   return db
-    .select()
+    .select(submissionSummaryColumns)
     .from(submissions)
     .where(eq(submissions.submittedById, userId))
     .orderBy(desc(submissions.submittedAtUtc));

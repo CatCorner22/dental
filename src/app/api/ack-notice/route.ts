@@ -10,11 +10,14 @@ export async function POST(): Promise<Response> {
   const guard = await requireRole("readonly", { requireAck: false });
   if (!guard.ok) return guard.response;
   const db = await getDb();
-  await ackNotice(db, guard.user.id, new Date());
-  await logAction(db, {
-    actorId: guard.user.id,
-    actorName: `${guard.user.displayName} (${guard.user.username})`,
-    action: "notice.ack"
-  });
+  // Only the acknowledgement that actually landed is worth logging; repeat
+  // calls are idempotent and must not let anyone grow the audit log at will.
+  if (await ackNotice(db, guard.user.id, new Date())) {
+    await logAction(db, {
+      actorId: guard.user.id,
+      actorName: `${guard.user.displayName} (${guard.user.username})`,
+      action: "notice.ack"
+    });
+  }
   return Response.json({ ok: true });
 }

@@ -12,14 +12,36 @@ export async function getDraft(db: Db, id: string): Promise<DraftRow | undefined
   return row;
 }
 
+// List views show a row of scalars, never the note itself. Selecting the
+// whole row would drag every draft's noteState — up to ~120KB of jsonb each —
+// out of the database and through memory just to render a title and a date.
+// The dashboard needs the selected module ids to show what a draft covers,
+// so those are pulled out of the jsonb in SQL rather than shipping the whole
+// note back to render a row of chips.
+export type DraftSummary = Pick<
+  DraftRow,
+  "id" | "title" | "status" | "ownerId" | "version" | "updatedAt" | "lastSendFailed"
+> & { moduleIds: string[] };
+
+const draftSummaryColumns = {
+  id: drafts.id,
+  title: drafts.title,
+  status: drafts.status,
+  ownerId: drafts.ownerId,
+  version: drafts.version,
+  updatedAt: drafts.updatedAt,
+  lastSendFailed: drafts.lastSendFailed,
+  moduleIds: sql<string[]>`coalesce(${drafts.noteState} -> 'selectedModuleIds', '[]'::jsonb)`
+};
+
 // Newest activity first — the note you just touched belongs on top.
-export async function listAllDrafts(db: Db): Promise<DraftRow[]> {
-  return db.select().from(drafts).orderBy(desc(drafts.updatedAt));
+export async function listAllDrafts(db: Db): Promise<DraftSummary[]> {
+  return db.select(draftSummaryColumns).from(drafts).orderBy(desc(drafts.updatedAt));
 }
 
-export async function listDraftsByOwner(db: Db, ownerId: string): Promise<DraftRow[]> {
+export async function listDraftsByOwner(db: Db, ownerId: string): Promise<DraftSummary[]> {
   return db
-    .select()
+    .select(draftSummaryColumns)
     .from(drafts)
     .where(eq(drafts.ownerId, ownerId))
     .orderBy(desc(drafts.updatedAt));
@@ -74,7 +96,14 @@ export async function setDraftStatus(
 }
 
 export async function transferDraft(db: Db, id: string, toUserId: string, now: Date): Promise<void> {
-  await db.update(drafts).set({ ownerId: toUserId, updatedAt: now }).where(eq(drafts.id, id));
+  // Bump the version so an old owner's in-flight save loses its optimistic
+  // check and gets a clean 409 instead of silently writing to a draft that no
+  // longer belongs to them. The new owner loads after the transfer, so they
+  // see the bumped version already.
+  await db
+    .update(drafts)
+    .set({ ownerId: toUserId, version: sql`${drafts.version} + 1`, updatedAt: now })
+    .where(eq(drafts.id, id));
 }
 
 export async function draftSubmissionCount(db: Db, id: string): Promise<number> {

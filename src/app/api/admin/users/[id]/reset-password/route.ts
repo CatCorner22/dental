@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { getUserById, updateUser } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, passwordPolicyError } from "@/lib/auth/password";
 
 export const runtime = "nodejs";
 
@@ -22,9 +22,8 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   }
   const b = parsed.value;
   const password = typeof b.password === "string" ? b.password : "";
-  if (password.length < 10) {
-    return Response.json({ error: "Password must be at least 10 characters." }, { status: 400 });
-  }
+  const pwError = passwordPolicyError(password);
+  if (pwError) return Response.json({ error: pwError }, { status: 400 });
   // passwordChangedAt revokes every session minted before this instant —
   // resetting a possibly-compromised account must cut off the old cookie,
   // not just change what the attacker's NEXT login would need.

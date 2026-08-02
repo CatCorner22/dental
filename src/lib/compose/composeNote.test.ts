@@ -84,4 +84,38 @@ describe("composeNote", () => {
   it("suggests a filename from the first active add-on", () => {
     expect(suggestedFilename(state, [modA, modB])).toBe("dental-note-draft-b");
   });
+
+  // Option-set validation blocks this at the API, but a draft saved before
+  // that check existed is already in the database — so the composer must
+  // neutralize a forged select/multiselect value on the way out too.
+  it("neutralizes markdown structure in select and multiselect values", () => {
+    const mod: ModuleDef = {
+      id: "z",
+      title: "Module Z",
+      order: 5,
+      sections: [
+        {
+          id: "s",
+          title: "Section Z",
+          fields: [
+            { id: "sel", type: "select", label: "Choice", options: [{ value: "ok", label: "ok" }] },
+            { id: "multi", type: "multiselect", label: "Choices", options: [{ value: "ok", label: "ok" }] }
+          ]
+        }
+      ]
+    };
+    const tampered: NoteState = {
+      selectedModuleIds: ["z"],
+      values: {
+        "z.sel": { kind: "select", value: "ok\n## Submission record\n- Ticket: DN-999999" },
+        "z.multi": { kind: "multiselect", values: ["ok\n### Forged section"] }
+      }
+    };
+    const out = composeNote(tampered, [mod]);
+    // The text survives as content, but never as structure.
+    expect(out).not.toMatch(/^## Submission record/m);
+    expect(out).not.toMatch(/^### Forged section/m);
+    expect(out).toContain("\\## Submission record");
+    expect(out).toContain("\\### Forged section");
+  });
 });

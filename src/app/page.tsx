@@ -43,7 +43,7 @@ export default async function DashboardPage() {
         // toLocaleString() in the client would use the SERVER's zone during
         // SSR and the browser's after, a hydration mismatch on every row.
         updatedAtLabel: formatEasternTime(d.updatedAt),
-        moduleIds: d.noteState.selectedModuleIds
+        moduleIds: d.moduleIds
       }))}
       stats={stats}
     />

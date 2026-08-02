@@ -49,8 +49,10 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     return Response.json({ error: "Invalid JSON." }, { status: 400 });
   }
   const b = parsed.value;
-  if (typeof b.baseVersion !== "number") {
-    return Response.json({ error: "baseVersion is required." }, { status: 400 });
+  // Must be a whole number: NaN/Infinity/1.5 would otherwise reach the
+  // integer version column and fail as an unhandled 500 instead of a 400.
+  if (typeof b.baseVersion !== "number" || !Number.isInteger(b.baseVersion)) {
+    return Response.json({ error: "baseVersion must be an integer." }, { status: 400 });
   }
 
   const patch: { title?: string; noteState?: typeof draft.noteState; status?: string; lastSendFailed?: boolean } = {};

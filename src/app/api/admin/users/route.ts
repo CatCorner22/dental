@@ -3,7 +3,8 @@ import { getDb } from "@/lib/db/client";
 import { getUserByUsername, insertUser, listUsers } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
-import { hashPassword } from "@/lib/auth/password";
+import { hashPassword, passwordPolicyError } from "@/lib/auth/password";
+import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
 import type { Role } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
@@ -36,15 +37,15 @@ export async function POST(req: Request): Promise<Response> {
   }
   const b = parsed.value;
   const username = typeof b.username === "string" ? b.username.trim() : "";
-  const displayName = typeof b.displayName === "string" && b.displayName.trim() ? b.displayName.trim() : username;
+  const cleanName = typeof b.displayName === "string" ? sanitizeIdentity(b.displayName) : "";
+  const displayName = cleanName || username;
   const password = typeof b.password === "string" ? b.password : "";
   const role = ROLES.includes(b.role as Role) ? (b.role as Role) : "user";
   if (!/^[a-z0-9][a-z0-9._-]{2,39}$/i.test(username)) {
     return Response.json({ error: "Username must be 3-40 letters, digits, or . _ -" }, { status: 400 });
   }
-  if (password.length < 10) {
-    return Response.json({ error: "Password must be at least 10 characters." }, { status: 400 });
-  }
+  const pwError = passwordPolicyError(password);
+  if (pwError) return Response.json({ error: pwError }, { status: 400 });
   const db = await getDb();
   // Stored lowercase so "Nurse" and "nurse" can never be two people; the
   // unique-constraint catch turns a lost race into a clean 409, not a 500.

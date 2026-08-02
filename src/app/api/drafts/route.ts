@@ -1,12 +1,14 @@
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
-import { insertDraft, listAllDrafts, listDraftsByOwner } from "@/lib/db/repo/drafts";
+import { insertDraft, listAllDrafts, listDraftsByOwner, ownerDraftCount } from "@/lib/db/repo/drafts";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { statusForNote } from "@/lib/status/statusForNote";
 import type { NoteState } from "@/lib/schema/types";
 
 export const runtime = "nodejs";
+
+const MAX_DRAFTS_PER_USER = 500;
 
 const EMPTY: NoteState = { selectedModuleIds: [], values: {} };
 
@@ -47,6 +49,18 @@ export async function POST(req: Request): Promise<Response> {
     note = res.value;
   }
   const db = await getDb();
+  // A ceiling far above any real workload: a clinician's open drafts are a
+  // working set, not an archive (submitted notes live in history). Without
+  // it, one account can mint unlimited ~120KB rows that every admin list
+  // view then has to read.
+  if ((await ownerDraftCount(db, guard.user.id)) >= MAX_DRAFTS_PER_USER) {
+    return Response.json(
+      {
+        error: `You have ${MAX_DRAFTS_PER_USER} drafts open, the maximum. Submit or delete one before starting another.`
+      },
+      { status: 409 }
+    );
+  }
   // Cache the derived status at creation exactly like the PATCH path does —
   // otherwise a complete note created via POST shows "Unfinished" on the
   // dashboard until its first save recomputes it.

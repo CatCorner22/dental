@@ -1,5 +1,5 @@
-import type { FieldValue, NoteState } from "@/lib/schema/types";
-import { MODULES_BY_ID } from "@/lib/modules";
+import type { Field, FieldValue, NoteState } from "@/lib/schema/types";
+import { ALL_MODULES, MODULES_BY_ID } from "@/lib/modules";
 
 export type NoteStateResult =
   | { ok: true; value: NoteState }
@@ -91,6 +91,43 @@ function charCount(v: FieldValue): number {
   }
 }
 
+// Field definitions indexed by `${moduleId}.${fieldId}` — the same key shape
+// note.values uses. Built once; the module set is static at build time.
+let fieldsByKey: Map<string, Field> | null = null;
+function fieldFor(key: string): Field | undefined {
+  if (!fieldsByKey) {
+    fieldsByKey = new Map();
+    for (const mod of ALL_MODULES) {
+      for (const section of mod.sections) {
+        for (const field of section.fields) fieldsByKey.set(`${mod.id}.${field.id}`, field);
+      }
+    }
+  }
+  return fieldsByKey.get(key);
+}
+
+// A select/multiselect value must be one the field actually offers. Without
+// this, a tampered client could PATCH arbitrary prose into a "select" — and
+// the composer renders those verbatim, so a crafted value could forge a
+// heading (e.g. a second "## Submission record") inside the frozen note.
+// Unknown keys are left alone: they belong to no module, so nothing composes
+// them, and rejecting them would break drafts written by an older field set.
+// A mismatched kind is rejected too: sending a "multiselect" value for a
+// "select" field would otherwise skip the option check entirely and slip an
+// arbitrary string through the same gap.
+function valueMatchesOptions(field: Field, v: FieldValue): boolean {
+  if (field.type === "select") {
+    if (v.kind !== "select") return false;
+    if (v.value === "__other__") return field.allowOther === true;
+    return field.options.some((o) => o.value === v.value);
+  }
+  if (field.type === "multiselect") {
+    if (v.kind !== "multiselect") return false;
+    return v.values.every((x) => field.options.some((o) => o.value === x));
+  }
+  return true;
+}
+
 export function validateNoteState(note: unknown): NoteStateResult {
   if (!isPlainObject(note)) return { ok: false, error: "note must be an object." };
   const { selectedModuleIds, values } = note;
@@ -110,6 +147,10 @@ export function validateNoteState(note: unknown): NoteStateResult {
     }
     if (!validateFieldValue(value)) {
       return { ok: false, error: `note.values.${key} is not a valid field value.` };
+    }
+    const field = fieldFor(key);
+    if (field && !valueMatchesOptions(field, value as FieldValue)) {
+      return { ok: false, error: `note.values.${key} is not one of the choices for that field.` };
     }
     totalChars += charCount(value as FieldValue);
     if (totalChars > MAX_TOTAL_CHARS) {

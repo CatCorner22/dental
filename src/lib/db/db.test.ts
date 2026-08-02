@@ -3,6 +3,7 @@ import { sql } from "drizzle-orm";
 import { createTestDb } from "./testDb";
 import type { Db } from "./client";
 import {
+  ackNotice,
   countOtherActiveAdmins,
   countUsers,
   deleteUser,
@@ -109,6 +110,29 @@ describe("db layer (PGlite)", () => {
     await transferDraft(db, d.id, to.id, new Date());
     expect(await ownerDraftCount(db, from.id)).toBe(0);
     expect((await listDraftsByOwner(db, to.id))).toHaveLength(1);
+  });
+
+  // A transfer must invalidate the previous owner's open editor: their next
+  // save carries the pre-transfer baseVersion and has to lose cleanly rather
+  // than write into a draft that is no longer theirs.
+  it("bumps the version on transfer so a stale write from the old owner fails", async () => {
+    const from = await freshUser("nora");
+    const to = await freshUser("omar");
+    const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: from.id, noteState: note });
+    const before = (await getDraft(db, d.id))!.version;
+    await transferDraft(db, d.id, to.id, new Date());
+    const after = (await getDraft(db, d.id))!.version;
+    expect(after).toBe(before + 1);
+    const stale = await updateDraftChecked(db, d.id, before, { title: "old owner" }, new Date());
+    expect(stale).toBeUndefined();
+  });
+
+  // Acknowledging is idempotent; only the call that actually records it
+  // reports true, so a repeat POST cannot append another audit-log row.
+  it("reports the notice acknowledgement only once", async () => {
+    const u = await freshUser("pia");
+    expect(await ackNotice(db, u.id, new Date())).toBe(true);
+    expect(await ackNotice(db, u.id, new Date())).toBe(false);
   });
 
   it("lists drafts newest-updated first", async () => {

@@ -4,13 +4,18 @@ import { validateSendRequest } from "./validateSendRequest";
 const valid = {
   filename: "dental-note-draft-extraction",
   format: "md",
-  content: "## Extraction Add-On\n- Procedure: simple extraction"
+  note: {
+    selectedModuleIds: ["extraction"],
+    values: {
+      "extraction.procedure": { kind: "select", value: "simple extraction" },
+      "extraction.teeth": { kind: "teeth", teeth: ["30"] }
+    }
+  }
 };
 
 describe("validateSendRequest", () => {
-  it("accepts a valid body", () => {
-    const r = validateSendRequest(valid);
-    expect(r.ok).toBe(true);
+  it("accepts a valid structured body", () => {
+    expect(validateSendRequest(valid).ok).toBe(true);
   });
 
   it("rejects any recipient-shaped key outright", () => {
@@ -21,19 +26,48 @@ describe("validateSendRequest", () => {
     }
   });
 
-  it("rejects bad filenames, formats, and empty content", () => {
+  it("rejects bad filenames and formats", () => {
     expect(validateSendRequest({ ...valid, filename: "../etc/passwd" }).ok).toBe(false);
     expect(validateSendRequest({ ...valid, filename: "UPPER" }).ok).toBe(false);
     expect(validateSendRequest({ ...valid, format: "pdf" }).ok).toBe(false);
-    expect(validateSendRequest({ ...valid, content: "  " }).ok).toBe(false);
     expect(validateSendRequest(null).ok).toBe(false);
     expect(validateSendRequest([]).ok).toBe(false);
   });
 
-  it("rejects oversize content with 413", () => {
-    const r = validateSendRequest({ ...valid, content: "x".repeat(200_001) });
+  it("rejects a malformed or empty note", () => {
+    expect(validateSendRequest({ ...valid, note: "text" }).ok).toBe(false);
+    expect(validateSendRequest({ ...valid, note: { selectedModuleIds: [], values: {} } }).ok).toBe(
+      false
+    );
+    expect(
+      validateSendRequest({ ...valid, note: { selectedModuleIds: ["no-such-module"], values: {} } })
+        .ok
+    ).toBe(false);
+  });
+
+  it("rejects field values that are not well-formed", () => {
+    for (const bad of [
+      { "extraction.procedure": { kind: "script", value: "x" } },
+      { "extraction.procedure": { kind: "text", value: 5 } },
+      { "extraction.teeth": { kind: "teeth", teeth: [30] } },
+      { "extraction.m": { kind: "measurement", value: Number.POSITIVE_INFINITY, unit: "mm" } },
+      { "bad key": { kind: "text", value: "x" } }
+    ]) {
+      const r = validateSendRequest({
+        ...valid,
+        note: { selectedModuleIds: ["extraction"], values: bad }
+      });
+      expect(r.ok, JSON.stringify(bad)).toBe(false);
+    }
+  });
+
+  it("rejects prose content — the server composes the note itself", () => {
+    const r = validateSendRequest({
+      filename: "x",
+      format: "md",
+      content: "## Attacker-supplied text that never passed an audit"
+    });
     expect(r.ok).toBe(false);
-    if (!r.ok) expect(r.status).toBe(413);
   });
 
   it("requires a written reason on the override", () => {
@@ -41,10 +75,11 @@ describe("validateSendRequest", () => {
     expect(
       validateSendRequest({ ...valid, phiOverride: { confirmed: true, reason: "  " } }).ok
     ).toBe(false);
-    const ok = validateSendRequest({
-      ...valid,
-      phiOverride: { confirmed: true, reason: "Reviewed each flag; all are clinical values." }
-    });
-    expect(ok.ok).toBe(true);
+    expect(
+      validateSendRequest({
+        ...valid,
+        phiOverride: { confirmed: true, reason: "Reviewed each flag; all are clinical values." }
+      }).ok
+    ).toBe(true);
   });
 });

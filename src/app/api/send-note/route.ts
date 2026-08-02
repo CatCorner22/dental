@@ -2,7 +2,9 @@ import { createHash, timingSafeEqual } from "node:crypto";
 import { Resend } from "resend";
 import { getEmailConfig } from "@/lib/email/config";
 import { validateSendRequest } from "@/lib/email/validateSendRequest";
-import { runTextAudit } from "@/lib/audit/engine";
+import { computeGates, runAudit } from "@/lib/audit/engine";
+import { activeModules } from "@/lib/modules";
+import { composeNote, composeNoteText } from "@/lib/compose/composeNote";
 
 export const runtime = "nodejs";
 
@@ -47,23 +49,34 @@ export async function POST(req: Request): Promise<Response> {
   if (!result.ok) {
     return Response.json({ error: result.error }, { status: result.status });
   }
-  const { filename, format, content, phiOverride } = result.value;
+  const { filename, format, note, phiOverride } = result.value;
 
-  // Server-side re-audit: a tampered client cannot bypass the gate.
-  const findings = runTextAudit(content);
-  const phiStops = findings.filter((f) => f.category === "phi" && f.severity === "S0");
-  const otherStops = findings.filter((f) => f.category !== "phi" && f.severity === "S0");
-  const required = findings.filter((f) => f.severity === "S1");
-  const phiBlocked = phiStops.length > 0 && !phiOverride?.confirmed;
-  if (phiBlocked || otherStops.length > 0 || required.length > 0) {
+  // The server composes the note and runs the FULL audit — every rule the
+  // client runs, including the state-only anatomy and required-field rules.
+  // The attachment is the server's own composition, so a tampered client
+  // cannot smuggle text past the gate or send a note it did not audit.
+  let markdown: string;
+  let content: string;
+  let gates: ReturnType<typeof computeGates>;
+  let blocking: { ruleId: string; severity: string; message: string }[];
+  try {
+    const modules = activeModules(note.selectedModuleIds);
+    markdown = composeNote(note, modules);
+    content = format === "md" ? markdown : composeNoteText(note, modules);
+    const report = runAudit({ note, modules, composedText: markdown });
+    gates = computeGates(report, phiOverride?.confirmed === true);
+    blocking = report.findings
+      .filter((f) => f.severity === "S0" || f.severity === "S1")
+      .map((f) => ({ ruleId: f.ruleId, severity: f.severity, message: f.message }));
+  } catch {
+    return Response.json({ error: "The note could not be composed." }, { status: 400 });
+  }
+
+  if (!gates.emailAllowed) {
     return Response.json(
       {
         error: "The audit found open STOP or REQUIRED findings. Resolve them, then send again.",
-        findings: [...phiStops, ...otherStops, ...required].map((f) => ({
-          ruleId: f.ruleId,
-          severity: f.severity,
-          message: f.message
-        }))
+        findings: blocking
       },
       { status: 422 }
     );

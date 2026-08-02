@@ -112,10 +112,16 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
 export function runAnatomyTextRule(text: string): AuditFinding[] {
   const findings: AuditFinding[] = [];
   const seen = new Map<string, number>();
-  for (const m of text.matchAll(/\b(?:tooth|teeth)\s*#?\s*(\d{1,3})\b/gi)) {
-    const num = m[1];
-    if (isValidToothId(num)) continue;
-    seen.set(num, (seen.get(num) ?? 0) + 1);
+  // A tooth keyword can introduce a list ("teeth 3, 36, and 40"), so every
+  // number in the run is checked, not just the first.
+  for (const m of text.matchAll(
+    /\b(?:tooth|teeth)\s*#?\s*(\d{1,3}(?:[\s,]*(?:and|&|through|to|or|-)?[\s,]*#?\d{1,3})*)/gi
+  )) {
+    for (const numMatch of m[1].matchAll(/\d{1,3}/g)) {
+      const num = numMatch[0];
+      if (isValidToothId(num)) continue;
+      seen.set(num, (seen.get(num) ?? 0) + 1);
+    }
   }
   for (const [num, count] of seen) {
     const n = Number(num);

@@ -86,3 +86,21 @@ describe("orphan surface pruning", () => {
     }
   });
 });
+
+describe("empty-value key hygiene", () => {
+  it("drops a field key when its value becomes empty", () => {
+    let s = noteReducer(initialNoteState, {
+      type: "setValue",
+      key: "universal-core.site",
+      value: { kind: "text", value: "tooth 30" }
+    });
+    expect(Object.keys(s.values)).toContain("universal-core.site");
+    s = noteReducer(s, {
+      type: "setValue",
+      key: "universal-core.site",
+      value: { kind: "text", value: "   " }
+    });
+    expect(Object.keys(s.values)).not.toContain("universal-core.site");
+    expect(Object.keys(s.values)).toEqual([]);
+  });
+})

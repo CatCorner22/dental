@@ -6,8 +6,11 @@ import { STALE_PHRASES } from "@/lib/vocab/vague-phrases";
 
 const RESIDUE_PATTERNS: { id: string; pattern: RegExp; message: string }[] = [
   {
+    // Neither delimiter may sit against whitespace, so a pair of measurement
+    // inequalities ("depth <3mm and recession >2mm") is not mistaken for a
+    // placeholder while "<value>" and "<0-10>" still are.
     id: "residue.angle-placeholder",
-    pattern: /<[^<>\n]{1,80}>/g,
+    pattern: /<[^<>\s](?:[^<>\n]{0,78}[^<>\s])?>/g,
     message: "Unresolved placeholder. Replace it with the fact, or mark the item not assessed, not applicable, unknown, or unresolved."
   },
   {

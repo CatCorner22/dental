@@ -1,5 +1,6 @@
 import type { FieldValue, NoteState, Surface, ToothId } from "@/lib/schema/types";
 import { fieldKey } from "@/lib/schema/types";
+import { isValueEmpty } from "@/lib/schema/conditions";
 import { MODULES_BY_ID } from "@/lib/modules";
 
 export type NoteAction =
@@ -55,7 +56,11 @@ export function noteReducer(state: NoteState, action: NoteAction): NoteState {
       };
     }
     case "setValue": {
-      const values = { ...state.values, [action.key]: action.value };
+      const values = { ...state.values };
+      // An emptied field drops its key entirely, so a note the user cleared is
+      // treated as empty by hasContent and the unsaved-work guard.
+      if (isValueEmpty(action.value)) delete values[action.key];
+      else values[action.key] = action.value;
       // Changing the tooth selection drops surfaces belonging to teeth that
       // are no longer listed, so the note can never assert work on a tooth it
       // does not name. The audit still stops any orphan that reaches it.

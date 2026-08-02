@@ -24,6 +24,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       initialTitle={draft.title}
       initialNote={draft.noteState}
       initialVersion={draft.version}
+      initialSubmitted={draft.status === "submitted"}
+      initialSendFailed={draft.lastSendFailed}
       canEdit={canEdit}
     />
   );

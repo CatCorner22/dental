@@ -33,12 +33,16 @@ export function BuilderShell({
   initialTitle,
   initialNote,
   initialVersion,
+  initialSubmitted,
+  initialSendFailed,
   canEdit
 }: {
   draftId: string;
   initialTitle: string;
   initialNote: NoteState;
   initialVersion: number;
+  initialSubmitted: boolean;
+  initialSendFailed: boolean;
   canEdit: boolean;
 }) {
   const router = useRouter();
@@ -52,7 +56,12 @@ export function BuilderShell({
   const [toast, setToast] = useState<string | null>(null);
 
   const autosave = useAutosave(draftId, initialVersion);
+  const { markEdited } = autosave;
   const firstRender = useRef(true);
+  // The stored submitted / send-failed state holds until the first edit here;
+  // an edit means the note has changed since it was filed (the server's PATCH
+  // recompute makes the same call).
+  const [editedSinceLoad, setEditedSinceLoad] = useState(false);
 
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
   const markdown = useMemo(() => composeNote(state, modules), [state, modules]);
@@ -72,19 +81,21 @@ export function BuilderShell({
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
-    submitted: false,
-    lastSendFailed: false
+    submitted: initialSubmitted && !editedSinceLoad,
+    lastSendFailed: initialSendFailed && !editedSinceLoad
   });
 
-  // Autosave on any change (skip the initial render).
+  // Autosave on any change (skip the initial render). Depends on the stable
+  // markEdited callback — never on the autosave object itself.
   useEffect(() => {
     if (!canEdit) return;
     if (firstRender.current) {
       firstRender.current = false;
       return;
     }
-    autosave.markEdited(state, title);
-  }, [state, title, canEdit, autosave]);
+    setEditedSinceLoad(true);
+    markEdited(state, title);
+  }, [state, title, canEdit, markEdited]);
 
   const filename = suggestedFilename(state, ALL_MODULES);
 
@@ -119,8 +130,14 @@ export function BuilderShell({
               <button className="btn-secondary" onClick={() => void autosave.flush()}>Save</button>
               <button
                 className="btn-primary"
-                disabled={!hasContent || !gates.emailAllowed}
-                title={gates.emailAllowed ? "Submit to the office" : "Resolve every STOP and REQUIRED finding first"}
+                disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+                title={
+                  liveStatus === "submitted"
+                    ? "Already submitted — edit the note to submit again"
+                    : gates.emailAllowed
+                      ? "Submit to the office"
+                      : "Resolve every STOP and REQUIRED finding first"
+                }
                 onClick={async () => {
                   await autosave.flush();
                   setShowSubmit(true);

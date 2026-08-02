@@ -2,7 +2,7 @@ import { auth } from "@/lib/auth/auth";
 import { getDb } from "@/lib/db/client";
 import { listAllDrafts, listDraftsByOwner } from "@/lib/db/repo/drafts";
 import { statRowsForUser } from "@/lib/db/repo/submissions";
-import { getUserById } from "@/lib/db/repo/users";
+import { listUsers } from "@/lib/db/repo/users";
 import { computeStats } from "@/lib/stats/computeStats";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import type { DraftStatus } from "@/lib/status/draftStatus";
@@ -17,12 +17,10 @@ export default async function DashboardPage() {
   const rows =
     user.role === "user" ? await listDraftsByOwner(db, user.id) : await listAllDrafts(db);
 
-  // Owner display names for the admin/readonly "all drafts" view.
+  // Owner display names for the admin/readonly "all drafts" view — one query.
   const ownerNames: Record<string, string> = {};
   if (user.role !== "user") {
-    for (const ownerId of new Set(rows.map((d) => d.ownerId))) {
-      ownerNames[ownerId] = (await getUserById(db, ownerId))?.displayName ?? "unknown";
-    }
+    for (const u of await listUsers(db)) ownerNames[u.id] = u.displayName;
   }
 
   const stats = computeStats(await statRowsForUser(db, user.id));

@@ -50,3 +50,13 @@ describe("autosaveMachine", () => {
     expect(autosaveReducer(initialAutosave, { type: "saveStart" })).toEqual(initialAutosave);
   });
 });
+
+describe("reference stability (render-loop guard)", () => {
+  it("edit while already dirty returns the SAME state object", () => {
+    const dirty = autosaveReducer(initialAutosave, { type: "edit" });
+    const again = autosaveReducer(dirty, { type: "edit" });
+    // Identity matters: a new object here re-renders React and forms a
+    // render -> effect -> dispatch loop that starves the autosave debounce.
+    expect(again).toBe(dirty);
+  });
+})

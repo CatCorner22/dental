@@ -1,4 +1,4 @@
-import { and, eq, sql } from "drizzle-orm";
+import { and, desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, type DraftRow, type NewDraft } from "../schema";
 
@@ -12,12 +12,17 @@ export async function getDraft(db: Db, id: string): Promise<DraftRow | undefined
   return row;
 }
 
+// Newest activity first — the note you just touched belongs on top.
 export async function listAllDrafts(db: Db): Promise<DraftRow[]> {
-  return db.select().from(drafts).orderBy(drafts.updatedAt);
+  return db.select().from(drafts).orderBy(desc(drafts.updatedAt));
 }
 
 export async function listDraftsByOwner(db: Db, ownerId: string): Promise<DraftRow[]> {
-  return db.select().from(drafts).where(eq(drafts.ownerId, ownerId)).orderBy(drafts.updatedAt);
+  return db
+    .select()
+    .from(drafts)
+    .where(eq(drafts.ownerId, ownerId))
+    .orderBy(desc(drafts.updatedAt));
 }
 
 // Optimistic-concurrency update: only applies when the caller's baseVersion
@@ -41,9 +46,15 @@ export async function setDraftStatus(
   db: Db,
   id: string,
   status: string,
-  lastSendFailed: boolean
+  lastSendFailed: boolean,
+  now: Date
 ): Promise<void> {
-  await db.update(drafts).set({ status, lastSendFailed }).where(eq(drafts.id, id));
+  // Bumps updatedAt (a submission is activity) but NOT version, so an open
+  // builder tab's next save does not hit a false conflict.
+  await db
+    .update(drafts)
+    .set({ status, lastSendFailed, updatedAt: now })
+    .where(eq(drafts.id, id));
 }
 
 export async function transferDraft(db: Db, id: string, toUserId: string, now: Date): Promise<void> {

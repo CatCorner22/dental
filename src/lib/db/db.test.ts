@@ -101,6 +101,17 @@ describe("db layer (PGlite)", () => {
     expect((await listDraftsByOwner(db, to.id))).toHaveLength(1);
   });
 
+  it("lists drafts newest-updated first", async () => {
+    const owner = await freshUser("iris");
+    const older = await insertDraft(db, { id: crypto.randomUUID(), ownerId: owner.id, title: "older", noteState: note });
+    const newer = await insertDraft(db, { id: crypto.randomUUID(), ownerId: owner.id, title: "newer", noteState: note });
+    // Touch "newer" so its updatedAt is later.
+    await updateDraftChecked(db, newer.id, 1, { title: "newer" }, new Date(2026, 5, 1));
+    await updateDraftChecked(db, older.id, 1, { title: "older" }, new Date(2026, 0, 1));
+    const list = await listDraftsByOwner(db, owner.id);
+    expect(list.map((d) => d.title)).toEqual(["newer", "older"]);
+  });
+
   it("mints sequential ticket numbers and freezes submission text", async () => {
     const u = await freshUser("fay");
     const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });

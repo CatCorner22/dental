@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useRef, useReducer } from "react";
+import { useCallback, useEffect, useMemo, useRef, useReducer } from "react";
 import type { NoteState } from "@/lib/schema/types";
 import {
   autosaveReducer,
@@ -88,8 +88,16 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
       if (isDirty(stateRef.current)) e.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
-    return () => window.removeEventListener("beforeunload", warn);
+    return () => {
+      window.removeEventListener("beforeunload", warn);
+      // Never fire a save after the builder unmounts.
+      if (timer.current) clearTimeout(timer.current);
+    };
   }, []);
 
-  return { state, version: versionRef.current, markEdited, flush, resolveConflict };
+  // Memoized so consumers can safely use this object in effect dependencies.
+  return useMemo(
+    () => ({ state, version: versionRef.current, markEdited, flush, resolveConflict }),
+    [state, markEdited, flush, resolveConflict]
+  );
 }

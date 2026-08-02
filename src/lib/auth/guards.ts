@@ -1,4 +1,6 @@
 import { auth } from "./auth";
+import { getDb } from "@/lib/db/client";
+import { getUserById } from "@/lib/db/repo/users";
 import { meetsRole, type Role, type SessionUser } from "./roles";
 
 export type GuardResult =
@@ -6,18 +8,38 @@ export type GuardResult =
   | { ok: false; response: Response };
 
 // The authority for API authorization. Middleware is convenience; every route
-// calls this so a role check is never skipped.
+// calls this so a role check is never skipped. Role and active state are read
+// fresh from the database (one primary-key lookup), so deactivating or
+// demoting a user takes effect on their very next request — not when their
+// 30-day token expires.
 export async function requireRole(min: Role): Promise<GuardResult> {
   const session = await auth();
-  const user = session?.user;
-  if (!user) {
+  const sessionUser = session?.user;
+  if (!sessionUser) {
     return { ok: false, response: Response.json({ error: "Not signed in." }, { status: 401 }) };
   }
-  if (!meetsRole(user.role, min)) {
+  const db = await getDb();
+  const row = await getUserById(db, sessionUser.id);
+  if (!row || !row.active) {
+    return {
+      ok: false,
+      response: Response.json({ error: "This account is not active." }, { status: 403 })
+    };
+  }
+  if (!meetsRole(row.role, min)) {
     return {
       ok: false,
       response: Response.json({ error: "You do not have access to this action." }, { status: 403 })
     };
   }
-  return { ok: true, user: user as SessionUser };
+  return {
+    ok: true,
+    user: {
+      id: row.id,
+      username: row.username,
+      displayName: row.displayName,
+      role: row.role,
+      noticeAcked: row.noticeAckAt !== null
+    }
+  };
 }

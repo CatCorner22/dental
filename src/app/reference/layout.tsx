@@ -6,7 +6,8 @@ const LINKS = [
   { href: "/reference/abbreviations", label: "Abbreviation rules" },
   { href: "/reference/tooth-chart", label: "Tooth chart" },
   { href: "/reference/sedation-imaging", label: "Sedation & imaging" },
-  { href: "/reference/tennessee-law", label: "Tennessee law" }
+  { href: "/reference/tennessee-law", label: "Tennessee law" },
+  { href: "/reference/data-hygiene", label: "Data Hygiene Guide" }
 ];
 
 export default function ReferenceLayout({ children }: { children: React.ReactNode }) {

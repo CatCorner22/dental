@@ -10,7 +10,8 @@ const DOCS = {
   sedationImaging: "skill/references/sedation-and-imaging.md",
   tennesseeLaw: "skill/references/tennessee-dental-law-summary.md",
   sourceLedger: "skill/references/source-ledger.md",
-  deployment: "skill/references/deployment-recommendation.md"
+  deployment: "skill/references/deployment-recommendation.md",
+  dataHygiene: "skill/references/data-hygiene-guide.md"
 } as const;
 
 export type DocName = keyof typeof DOCS;

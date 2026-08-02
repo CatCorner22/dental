@@ -15,15 +15,26 @@ interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
   value: V | undefined;
   onChange: (value: FieldValue) => void;
+  describedBy?: string;
+  invalid?: boolean;
 }
 
-export function SelectInput({ field, value, onChange }: InputProps<SelectField, Extract<FieldValue, { kind: "select" }>>) {
+// Shared a11y attributes for the primary control of each field.
+function aria(describedBy?: string, invalid?: boolean) {
+  return {
+    "aria-describedby": describedBy || undefined,
+    "aria-invalid": invalid ? true : undefined
+  };
+}
+
+export function SelectInput({ field, value, onChange, describedBy, invalid }: InputProps<SelectField, Extract<FieldValue, { kind: "select" }>>) {
   const current = value?.value ?? "";
   return (
     <div>
       <select
         className="field-input"
         value={current}
+        {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "select", value: e.target.value, otherText: value?.otherText })}
       >
         <option value="">— select —</option>
@@ -47,18 +58,19 @@ export function SelectInput({ field, value, onChange }: InputProps<SelectField, 
   );
 }
 
-export function MultiselectInput({ field, value, onChange }: InputProps<MultiselectField, Extract<FieldValue, { kind: "multiselect" }>>) {
+export function MultiselectInput({ field, value, onChange, describedBy }: InputProps<MultiselectField, Extract<FieldValue, { kind: "multiselect" }>>) {
   const selected = value?.values ?? [];
   const toggle = (v: string) => {
     const next = selected.includes(v) ? selected.filter((x) => x !== v) : [...selected, v];
     onChange({ kind: "multiselect", values: next });
   };
   return (
-    <div className="flex flex-wrap gap-1.5">
+    <div className="flex flex-wrap gap-1.5" role="group" aria-label={field.label} aria-describedby={describedBy || undefined}>
       {field.options.map((o) => (
         <button
           key={o.value}
           type="button"
+          aria-pressed={selected.includes(o.value)}
           onClick={() => toggle(o.value)}
           className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
             selected.includes(o.value)
@@ -86,7 +98,7 @@ function PhraseChips({ phrases, onInsert }: { phrases: string[]; onInsert: (phra
   );
 }
 
-export function TextInputField({ field, value, onChange }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
+export function TextInputField({ field, value, onChange, describedBy, invalid }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLInputElement>(null);
   const insert = (phrase: string) => {
     const el = ref.current;
@@ -103,6 +115,7 @@ export function TextInputField({ field, value, onChange }: InputProps<TextField,
         className="field-input"
         placeholder={field.placeholderHint}
         value={value?.value ?? ""}
+        {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
@@ -110,7 +123,7 @@ export function TextInputField({ field, value, onChange }: InputProps<TextField,
   );
 }
 
-export function TextareaField_({ field, value, onChange }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
+export function TextareaField_({ field, value, onChange, describedBy, invalid }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const insert = (phrase: string) => {
     const el = ref.current;
@@ -127,6 +140,7 @@ export function TextareaField_({ field, value, onChange }: InputProps<TextareaFi
         rows={field.rows ?? 3}
         placeholder={field.placeholderHint}
         value={value?.value ?? ""}
+        {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
@@ -134,7 +148,7 @@ export function TextareaField_({ field, value, onChange }: InputProps<TextareaFi
   );
 }
 
-export function MeasurementInput({ field, value, onChange }: InputProps<MeasurementField, Extract<FieldValue, { kind: "measurement" }>>) {
+export function MeasurementInput({ field, value, onChange, describedBy, invalid }: InputProps<MeasurementField, Extract<FieldValue, { kind: "measurement" }>>) {
   const unit = value?.unit ?? field.units[0];
   return (
     <div className="flex gap-1.5">
@@ -145,6 +159,8 @@ export function MeasurementInput({ field, value, onChange }: InputProps<Measurem
         max={field.max}
         step={field.decimals ? 10 ** -field.decimals : "any"}
         value={value?.value ?? ""}
+        {...aria(describedBy, invalid)}
+        aria-label={`${field.label} value`}
         onChange={(e) =>
           onChange({
             kind: "measurement",

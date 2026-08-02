@@ -1,6 +1,7 @@
 import Link from "next/link";
 import type { SessionUser } from "@/lib/auth/roles";
 import { SignOutButton } from "./SignOutButton";
+import { NavLinks } from "./NavLinks";
 
 // Server component. The banner is always visible; nav adapts to role.
 export function AppHeader({ user }: { user: SessionUser | null }) {
@@ -13,12 +14,20 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
         <nav className="flex items-center gap-3 text-sm">
           {user ? (
             <>
-              <Link href="/" className="font-medium text-slate-700 hover:text-slate-900">Dashboard</Link>
-              <Link href="/history" className="font-medium text-slate-700 hover:text-slate-900">History</Link>
-              <Link href="/reference/templates" className="font-medium text-slate-700 hover:text-slate-900">References</Link>
-              {user.role === "admin" && (
-                <Link href="/admin/users" className="font-medium text-slate-700 hover:text-slate-900">Admin</Link>
-              )}
+              <NavLinks
+                items={[
+                  { href: "/", label: "Dashboard" },
+                  { href: "/history", label: "History" },
+                  { href: "/reference/templates", label: "References" },
+                  ...(user.role === "admin"
+                    ? [
+                        { href: "/admin/users", label: "Users" },
+                        { href: "/admin/audit", label: "Audit log" }
+                      ]
+                    : []),
+                  { href: "/account", label: "Account" }
+                ]}
+              />
               <span className="hidden text-slate-400 sm:inline">·</span>
               <span className="hidden text-xs text-slate-500 sm:inline" title={`Role: ${user.role}`}>
                 {user.displayName} ({user.role})

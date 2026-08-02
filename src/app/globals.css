@@ -2,6 +2,21 @@
 @tailwind components;
 @tailwind utilities;
 
+@layer base {
+  /* Always-visible keyboard focus ring on interactive elements. */
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible {
+    @apply outline-none ring-2 ring-blue-600 ring-offset-1;
+  }
+  [aria-invalid="true"] {
+    @apply border-red-500;
+  }
+}
+
 /* Rendered reference markdown */
 .doc {
   @apply max-w-3xl text-sm leading-relaxed text-slate-800;

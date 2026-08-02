@@ -1,0 +1,56 @@
+"use client";
+
+import { useState } from "react";
+
+export function AccountForm() {
+  const [current, setCurrent] = useState("");
+  const [next, setNext] = useState("");
+  const [confirm, setConfirm] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  const [busy, setBusy] = useState(false);
+
+  const submit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setMsg(null);
+    if (next !== confirm) {
+      setMsg({ ok: false, text: "The new passwords do not match." });
+      return;
+    }
+    setBusy(true);
+    const res = await fetch("/api/me/password", {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ current, next })
+    });
+    setBusy(false);
+    if (res.ok) {
+      setMsg({ ok: true, text: "Password changed." });
+      setCurrent("");
+      setNext("");
+      setConfirm("");
+    } else {
+      setMsg({ ok: false, text: ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Change failed." });
+    }
+  };
+
+  return (
+    <form onSubmit={submit} className="space-y-3">
+      <div>
+        <label className="field-label" htmlFor="ac-cur">Current password</label>
+        <input id="ac-cur" type="password" className="field-input" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
+      </div>
+      <div>
+        <label className="field-label" htmlFor="ac-new">New password (10+ characters)</label>
+        <input id="ac-new" type="password" className="field-input" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" required />
+      </div>
+      <div>
+        <label className="field-label" htmlFor="ac-conf">Confirm new password</label>
+        <input id="ac-conf" type="password" className="field-input" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
+      </div>
+      {msg && <p className={`text-sm ${msg.ok ? "text-green-700" : "text-red-700"}`} role="alert">{msg.text}</p>}
+      <button type="submit" className="btn-primary" disabled={busy || next.length < 10}>
+        {busy ? "Changing…" : "Change password"}
+      </button>
+    </form>
+  );
+}

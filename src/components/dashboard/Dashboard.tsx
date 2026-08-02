@@ -37,6 +37,18 @@ export function Dashboard({
   const [busy, setBusy] = useState(false);
   const [showPicks, setShowPicks] = useState(false);
   const [transferFor, setTransferFor] = useState<DraftRow | null>(null);
+  const [rowError, setRowError] = useState("");
+
+  const deleteDraft = async (d: DraftRow) => {
+    if (!window.confirm(`Delete "${d.title}"? This cannot be undone.`)) return;
+    setRowError("");
+    const res = await fetch(`/api/drafts/${d.id}`, { method: "DELETE" });
+    if (res.ok) {
+      router.refresh();
+    } else {
+      setRowError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Could not delete this draft.");
+    }
+  };
 
   const filtered = useMemo(
     () => drafts.filter((d) => d.title.toLowerCase().includes(query.toLowerCase())),
@@ -110,6 +122,7 @@ export function Dashboard({
             aria-label="Search drafts by title"
           />
         </div>
+        {rowError && <p className="mb-2 text-sm text-rose-700" role="alert">{rowError}</p>}
         {filtered.length === 0 ? (
           <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
             {drafts.length === 0
@@ -139,6 +152,16 @@ export function Dashboard({
                     title="Transfer ownership"
                   >
                     Transfer
+                  </button>
+                )}
+                {canEdit && (
+                  <button
+                    className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                    onClick={() => deleteDraft(d)}
+                    title="Delete draft"
+                    aria-label={`Delete ${d.title}`}
+                  >
+                    Delete
                   </button>
                 )}
               </li>
@@ -218,7 +241,10 @@ function StatsCard({ stats }: { stats: UserStats }) {
       <div className="grid grid-cols-3 gap-4 text-center">
         <Stat label="Submitted" value={String(stats.totalSubmitted)} />
         <Stat label="First-pass" value={`${Math.round(stats.firstPassRate * 100)}%`} />
-        <Stat label="Clean streak" value={String(stats.currentStreak)} />
+        <Stat
+          label="Clean streak"
+          value={`${stats.currentStreak}${stats.currentStreak >= 3 ? " 🔥" : ""}`}
+        />
       </div>
       {stats.badges.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">

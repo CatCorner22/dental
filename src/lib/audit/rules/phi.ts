@@ -14,13 +14,13 @@ interface PhiPattern {
 const PHI_PATTERNS: PhiPattern[] = [
   {
     id: "phi.ssn",
-    pattern: /\b\d{3}-\d{2}-\d{4}\b/g,
+    pattern: /\b\d{3}[-.\s]\d{2}[-.\s]\d{4}\b/g,
     severity: "S0",
     message: "This looks like a Social Security number. Remove it. Identifiers belong only in the EDR."
   },
   {
     id: "phi.phone",
-    pattern: /(?:\(\d{3}\)\s?|\b\d{3}[-.])\d{3}[-.]\d{4}\b/g,
+    pattern: /(?:\(\d{3}\)\s?|\b\d{3}[-.\s])\d{3}[-.\s]\d{4}\b/g,
     severity: "S0",
     message: "This looks like a phone number. Remove it. Contact details belong only in the EDR."
   },
@@ -32,6 +32,15 @@ const PHI_PATTERNS: PhiPattern[] = [
       "This looks like an exact date. Use a relative interval (for example, three days ago) and enter exact dates only in the EDR."
   },
   {
+    // ISO 8601, e.g. 2026-08-02. Anchored to a plausible year so ordinary
+    // hyphenated measurements do not match.
+    id: "phi.date-iso",
+    pattern: /\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b/g,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
     id: "phi.date-name",
     pattern:
       /\b(?:january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/gi,
@@ -40,14 +49,29 @@ const PHI_PATTERNS: PhiPattern[] = [
       "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
   },
   {
+    // "May" is also a modal verb, so this one is case-sensitive and must be
+    // followed by a day number that is not a duration ("May 14" vs "may 3 days").
+    id: "phi.date-may",
+    pattern: /\bMay\s+\d{1,2}(?:st|nd|rd|th)?\b(?!\s*(?:days?|weeks?|months?|years?|hours?|minutes?|mm|cm|ml)\b)/g,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
     id: "phi.email",
-    pattern: /\b[\w.+-]+@[\w-]+\.[\w.]+\b/g,
+    // Quantifiers are bounded (RFC-plausible maximums) so a long run of word
+    // characters with no "@" fails fast instead of backtracking quadratically.
+    pattern: /\b[\w.+-]{1,64}@[\w-]{1,255}\.[\w.]{1,24}\b/g,
     severity: "S0",
     message: "This looks like an email address. Remove it. Contact details belong only in the EDR."
   },
   {
+    // The trailing token must look like an identifier (contains a digit), so
+    // ordinary prose such as "the patient's account of the injury" is not a
+    // stop. "account"/"acct" additionally require an explicit number cue.
     id: "phi.mrn",
-    pattern: /\b(?:mrn|medical record|chart\s*(?:no|number|#)|record\s*(?:no|number|#)|account|acct)\s*[:#]?\s*[\w-]+/gi,
+    pattern:
+      /\b(?:mrn|medical record|chart\s*(?:no\.?|number|#)|record\s*(?:no\.?|number|#)|(?:account|acct)\s*(?:no\.?|number|#))\s*[:#]?\s*(?=[\w-]*\d)[\w-]+/gi,
     severity: "S0",
     message: "This looks like a record or account number. Remove it. Record links belong only in the EDR."
   },
@@ -65,8 +89,17 @@ const PHI_PATTERNS: PhiPattern[] = [
     message: "Do not enter names. Identity belongs only in the EDR."
   },
   {
+    // Exactly nine digits is the unpunctuated Social Security format; no
+    // clinical measurement uses it, so it stops rather than asks.
+    id: "phi.ssn-bare",
+    pattern: /\b\d{9}\b/g,
+    severity: "S0",
+    message:
+      "This looks like an unpunctuated Social Security number. Remove it. Identifiers belong only in the EDR."
+  },
+  {
     id: "phi.long-number",
-    pattern: /\b\d{9,}\b/g,
+    pattern: /\b\d{10,}\b/g,
     severity: "S2",
     message:
       "This long number could be an identifier. A clinician confirms it is a clinical value, not an identifier."

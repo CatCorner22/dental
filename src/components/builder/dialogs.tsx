@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import type { AuditFinding } from "@/lib/audit/types";
+import type { NoteState } from "@/lib/schema/types";
 
 function Dialog({ title, onClose, children }: { title: string; onClose: () => void; children: React.ReactNode }) {
   return (
@@ -82,12 +83,12 @@ interface EmailCapability {
 
 export function EmailDialog({
   filename,
-  buildContent,
+  note,
   phiOverrideReason,
   onClose
 }: {
   filename: string;
-  buildContent: (format: "md" | "txt") => string;
+  note: NoteState;
   phiOverrideReason: string | null;
   onClose: () => void;
 }) {
@@ -117,7 +118,7 @@ export function EmailDialog({
         body: JSON.stringify({
           filename,
           format,
-          content: buildContent(format),
+          note,
           ...(phiOverrideReason ? { phiOverride: { confirmed: true, reason: phiOverrideReason } } : {})
         })
       });

@@ -201,3 +201,88 @@ describe("spelling rule via full audit", () => {
     expect(report.findings.filter((f) => f.category === "spelling")).toEqual([]);
   });
 });
+
+describe("wrong-site guard", () => {
+  it("stops a note whose surfaces name a tooth the tooth field does not list", () => {
+    const state: NoteState = {
+      selectedModuleIds: ["direct-restorative"],
+      values: {
+        "direct-restorative.teeth": { kind: "teeth", teeth: ["19"] },
+        "direct-restorative.surfaces": { kind: "surfaces", byTooth: { "30": ["M", "O", "D"] } }
+      }
+    };
+    const modules = activeModules(state.selectedModuleIds);
+    const report = runAudit({ note: state, modules, composedText: composeNote(state, modules) });
+    const orphan = report.findings.find((f) => f.ruleId === "anatomy.surface-orphan");
+    expect(orphan).toBeDefined();
+    expect(orphan?.severity).toBe("S0");
+    expect(report.status).toBe("BLOCKED");
+    expect(computeGates(report, true).emailAllowed).toBe(false);
+  });
+
+  it("stays quiet when surfaces match the selected teeth", () => {
+    const state: NoteState = {
+      selectedModuleIds: ["direct-restorative"],
+      values: {
+        "direct-restorative.teeth": { kind: "teeth", teeth: ["30"] },
+        "direct-restorative.surfaces": { kind: "surfaces", byTooth: { "30": ["M", "O", "D"] } }
+      }
+    };
+    const modules = activeModules(state.selectedModuleIds);
+    const report = runAudit({ note: state, modules, composedText: composeNote(state, modules) });
+    expect(report.findings.some((f) => f.ruleId === "anatomy.surface-orphan")).toBe(false);
+  });
+});
+
+describe("PHI evasion resistance", () => {
+  const s0 = (text: string) =>
+    runTextAudit(text).filter((f) => f.severity === "S0").map((f) => f.ruleId);
+
+  it("stops identifiers written in alternate formats", () => {
+    expect(s0("Procedure performed 2026-08-02.")).toContain("phi.date-iso");
+    expect(s0("Call 615 555 0142 for questions.")).toContain("phi.phone");
+    expect(s0("SSN 123 45 6789")).toContain("phi.ssn");
+    expect(s0("Identifier 123456789 on file.")).toContain("phi.ssn-bare");
+    expect(s0("Seen on May 14 for evaluation.")).toContain("phi.date-may");
+  });
+
+  it("does not stop clinical prose that resembles those formats", () => {
+    for (const clean of [
+      "The patient's account of the injury was consistent.",
+      "The chart notes prior care.",
+      "The patient may 3 days later return.",
+      "Swelling may 2 weeks after surgery persist.",
+      "Blood pressure 120/80 mm Hg.",
+      "2% lidocaine 1:100,000 epinephrine.",
+      "Insertion torque 35 Ncm."
+    ]) {
+      expect(s0(clean), clean).toEqual([]);
+    }
+  });
+
+  it("checks every tooth number in a list, not only the first", () => {
+    const found = runTextAudit("Extracted teeth 3, 36, and 40.").filter(
+      (f) => f.ruleId === "anatomy.text-tooth"
+    );
+    expect(found.map((f) => f.matchedText).sort()).toEqual(["tooth 36", "tooth 40"]);
+    expect(runTextAudit("Extracted teeth 3, 14, and 30.").filter((f) => f.category === "anatomy")).toEqual([]);
+  });
+
+  it("does not mistake measurement inequalities for placeholders", () => {
+    for (const clean of [
+      "Probing depth <3mm and recession >2mm on the facial.",
+      "Overjet <2mm, overbite >4mm noted."
+    ]) {
+      expect(
+        runTextAudit(clean).filter((f) => f.ruleId === "residue.angle-placeholder"),
+        clean
+      ).toEqual([]);
+    }
+    for (const placeholder of ["Site: <tooth>", "Pain <0-10> of 10", "<clinician-supplied term>"]) {
+      expect(
+        runTextAudit(placeholder).some((f) => f.ruleId === "residue.angle-placeholder"),
+        placeholder
+      ).toBe(true);
+    }
+  });
+});

@@ -6,6 +6,7 @@ import { initialNoteState, noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { composeAuditReport } from "@/lib/compose/composeAuditReport";
 import { computeGates, runAudit } from "@/lib/audit/engine";
+import { isValueEmpty } from "@/lib/schema/conditions";
 import type { FieldValue } from "@/lib/schema/types";
 import { NoteForm } from "./NoteForm";
 import { AuditPanel } from "./AuditPanel";
@@ -45,21 +46,30 @@ export function NoteBuilder() {
   const overrideActive = override !== null && override.signature === phiSignature;
   const gates = computeGates(report, overrideActive);
 
+  const dirty = useMemo(
+    () => Object.values(state.values).some((v) => !isValueEmpty(v)),
+    [state.values]
+  );
   useEffect(() => {
     const warn = (e: BeforeUnloadEvent) => {
-      if (Object.keys(state.values).length > 0) e.preventDefault();
+      if (dirty) e.preventDefault();
     };
     window.addEventListener("beforeunload", warn);
     return () => window.removeEventListener("beforeunload", warn);
-  }, [state.values]);
+  }, [dirty]);
 
   const filename = suggestedFilename(state, ALL_MODULES);
-  const hasContent = Object.keys(state.values).length > 0;
+  const hasContent = dirty;
 
   const copy = async () => {
-    await navigator.clipboard.writeText(markdown);
-    setCopied(true);
-    setTimeout(() => setCopied(false), 1500);
+    try {
+      await navigator.clipboard.writeText(markdown);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 1500);
+    } catch {
+      // Clipboard access is blocked outside a secure context; fall back to a download.
+      download(`${filename}.md`, markdown);
+    }
   };
 
   return (
@@ -247,7 +257,7 @@ export function NoteBuilder() {
       {showEmailDialog && (
         <EmailDialog
           filename={filename}
-          buildContent={(format) => (format === "md" ? markdown : composeNoteText(state, modules))}
+          note={state}
           phiOverrideReason={overrideActive ? override!.reason : null}
           onClose={() => setShowEmailDialog(false)}
         />

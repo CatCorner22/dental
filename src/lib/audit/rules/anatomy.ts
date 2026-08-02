@@ -47,6 +47,29 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
         }
 
         if (value.kind === "surfaces") {
+          // Wrong-site guard: surfaces must belong to a tooth the linked tooth
+          // field actually lists. Changing or clearing the tooth after picking
+          // surfaces would otherwise leave the note asserting work on a tooth
+          // it never names.
+          if (field.type === "surfacePicker") {
+            const linked = state.values[fieldKey(mod.id, field.linkedToothFieldId)];
+            const linkedTeeth = linked?.kind === "teeth" ? linked.teeth : [];
+            const toothLabel =
+              section.fields.find((f) => f.id === field.linkedToothFieldId)?.label ?? "the tooth field";
+            for (const [toothId, surfaces] of Object.entries(value.byTooth)) {
+              if ((surfaces as Surface[]).length === 0) continue;
+              if (linkedTeeth.includes(toothId)) continue;
+              findings.push({
+                ruleId: "anatomy.surface-orphan",
+                category: "anatomy",
+                severity: "S0",
+                message: `Surfaces are recorded for tooth ${toothId}, but "${toothLabel}" does not list that tooth. Correct the site before this entry leaves the tool.`,
+                matchedText: toothId,
+                fieldRef
+              });
+            }
+          }
+
           for (const [toothId, surfaces] of Object.entries(value.byTooth)) {
             const tooth = getTooth(toothId);
             if (!tooth) {
@@ -89,10 +112,16 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
 export function runAnatomyTextRule(text: string): AuditFinding[] {
   const findings: AuditFinding[] = [];
   const seen = new Map<string, number>();
-  for (const m of text.matchAll(/\b(?:tooth|teeth)\s*#?\s*(\d{1,3})\b/gi)) {
-    const num = m[1];
-    if (isValidToothId(num)) continue;
-    seen.set(num, (seen.get(num) ?? 0) + 1);
+  // A tooth keyword can introduce a list ("teeth 3, 36, and 40"), so every
+  // number in the run is checked, not just the first.
+  for (const m of text.matchAll(
+    /\b(?:tooth|teeth)\s*#?\s*(\d{1,3}(?:[\s,]*(?:and|&|through|to|or|-)?[\s,]*#?\d{1,3})*)/gi
+  )) {
+    for (const numMatch of m[1].matchAll(/\d{1,3}/g)) {
+      const num = numMatch[0];
+      if (isValidToothId(num)) continue;
+      seen.set(num, (seen.get(num) ?? 0) + 1);
+    }
   }
   for (const [num, count] of seen) {
     const n = Number(num);

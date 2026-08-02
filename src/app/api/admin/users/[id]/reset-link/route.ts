@@ -26,6 +26,15 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
   // Authority is measured against the target's role: a Team Lead may reset a
   // team member but must not be able to seize a Hierarchy Manager's or a
   // Developer's account by mailing themselves a link.
+  // A deactivated account cannot sign in anyway, so a link would be a dead end
+  // mailed to a possibly-former employee — and if the account were reactivated
+  // within the hour, a stale link would still work.
+  if (!target.active) {
+    return Response.json(
+      { error: "That account is deactivated. Reactivate it before sending a reset link." },
+      { status: 409 }
+    );
+  }
   if (!canSendResetLink(guard.user.role, target.role)) {
     return Response.json(
       { error: `You cannot send a reset link to a ${ROLE_LABEL[target.role]} account.` },
@@ -50,7 +59,9 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
         ? "This account has no email address on file. Add one first."
         : result.reason === "not-configured"
           ? "Email is not configured on this deployment, so a link cannot be sent."
-          : "The email could not be sent. Try again shortly.";
+          : result.reason === "no-base-url"
+            ? "APP_URL is not set on this deployment, so the link in the email would not work. Ask a Smile Notes Developer to configure it."
+            : "The email could not be sent. Try again shortly.";
     return Response.json({ error: message }, { status: result.reason === "no-email" ? 409 : 502 });
   }
   return Response.json({ ok: true, sentTo: target.email });

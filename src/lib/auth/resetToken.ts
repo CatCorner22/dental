@@ -40,7 +40,20 @@ export function resetTokenExpiry(now: Date): Date {
 // The link a person clicks. Base URL comes from configuration, never from the
 // request — a Host header an attacker controls would otherwise let them mail a
 // victim a link that points at their own server and harvests the token.
-export function resetLinkUrl(token: string): string {
-  const base = (process.env.APP_URL ?? process.env.NEXTAUTH_URL ?? "").trim().replace(/\/+$/, "");
-  return `${base}/reset/${token}`;
+//
+// Returns null when no absolute base is configured. That matters: with an empty
+// base the email would contain a bare "/reset/<token>", which is not clickable
+// from a mail client — and because the send itself succeeds, the account would
+// be reported as invited or reset while the person can never actually get in.
+// Failing here turns a silent dead end into a visible configuration error.
+export function resetLinkUrl(token: string): string | null {
+  const raw = (process.env.APP_URL ?? process.env.NEXTAUTH_URL ?? "").trim().replace(/\/+$/, "");
+  if (!raw) return null;
+  try {
+    const url = new URL(raw);
+    if (url.protocol !== "https:" && url.protocol !== "http:") return null;
+    return `${raw}/reset/${token}`;
+  } catch {
+    return null;
+  }
 }

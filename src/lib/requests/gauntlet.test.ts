@@ -160,3 +160,50 @@ describe("evaluateGauntlet", () => {
     expect(v.sterile).toBe(false);
   });
 });
+
+describe("hardening against gaming and denial of service", () => {
+  // A measured 24-second event-loop block before the fix: two unbounded \s*
+  // either side of an optional group let a digit run + whitespace run
+  // backtrack quadratically. One field was enough to pin the whole server.
+  it("evaluates a hostile 4000-char input in well under a second", () => {
+    const hostile = "9".repeat(1000) + " ".repeat(2998) + "z!";
+    const a = clone();
+    a.answers.ripple = hostile;
+    const started = Date.now();
+    evaluateGauntlet(a);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
+
+  it("stays fast on hostile input aimed at every other pattern", () => {
+    for (const seed of ["would be ", "haven t ", "might be ", "more data is always "]) {
+      const a = clone();
+      a.answers.necessity = seed + " ".repeat(3900);
+      const started = Date.now();
+      evaluateGauntlet(a);
+      expect(Date.now() - started, seed).toBeLessThan(500);
+    }
+  });
+
+  // Padding used to satisfy an 80-CHARACTER floor with three words.
+  it("rejects whitespace padding masquerading as an argument", () => {
+    const a = clone();
+    a.answers.necessity = "chart" + " ".repeat(73) + "b";
+    const v = evaluateGauntlet(a);
+    expect(v.sterile).toBe(false);
+    expect(v.cycles[0].problems.join(" ")).toMatch(/Too short|different words/);
+  });
+
+  // One zero-width space used to defeat BOTH the duplicate check and every
+  // contaminated phrase, because normalize only collapsed ordinary whitespace.
+  it("sees through zero-width characters", () => {
+    const a = clone();
+    a.answers.necessity = "It would​ be nice for later analysis and we might look at it someday when there is time to spare.";
+    expect(evaluateGauntlet(a).cycles[0].problems.join(" ")).toContain("Contaminated");
+
+    const b = clone();
+    b.answers.protection = b.answers.necessity.slice(0, 10) + "​" + b.answers.necessity.slice(10);
+    expect(evaluateGauntlet(b).cycles.find((c) => c.id === "protection")!.problems.join(" ")).toContain(
+      "same answer"
+    );
+  });
+});

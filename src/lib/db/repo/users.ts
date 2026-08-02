@@ -81,7 +81,7 @@ export async function createFirstAdminGuarded(db: Db, user: NewUser): Promise<"c
 
 export type MergeResult =
   | { ok: true; draftsMoved: number; submissionsKept: number }
-  | { ok: false; reason: "same-user" | "missing" | "last-admin" };
+  | { ok: false; reason: "same-user" | "missing" | "last-admin" | "bad-target" };
 
 // Merge a duplicate account into the one the person actually uses.
 //
@@ -106,6 +106,12 @@ export async function mergeUsers(
     const [source] = await tx.select().from(users).where(eq(users.id, sourceId)).limit(1);
     const [target] = await tx.select().from(users).where(eq(users.id, targetId)).limit(1);
     if (!source || !target) return { ok: false, reason: "missing" as const };
+    // The target inherits live work, so it must be able to do that work: an
+    // inactive or read-only target would strand every moved draft with an owner
+    // who can never edit or file it, recoverable only by a Developer.
+    if (!target.active || target.role === "readonly") {
+      return { ok: false, reason: "bad-target" as const };
+    }
 
     // Merging away an admin must not close the last door in.
     if (source.role === "admin" && source.active) {
@@ -118,7 +124,10 @@ export async function mergeUsers(
 
     const moved = await tx
       .update(drafts)
-      .set({ ownerId: targetId, updatedAt: now })
+      // Bump the version like transferDraft does, so the source owner's
+      // in-flight autosave loses its optimistic check and 409s instead of
+      // silently writing into the merged draft.
+      .set({ ownerId: targetId, version: sql`${drafts.version} + 1`, updatedAt: now })
       .where(eq(drafts.ownerId, sourceId))
       .returning();
 

@@ -161,6 +161,7 @@ export interface GauntletVerdict {
 // lazy ones; the human reading the ticket is the real filter.
 
 const MIN_CHARS = 80;
+const MIN_DISTINCT_WORDS = 12;
 
 // Drawn from the contaminated exemplars in the guide.
 const CONTAMINATED_PHRASES: { re: RegExp; why: string }[] = [
@@ -178,7 +179,13 @@ const CONTAMINATED_PHRASES: { re: RegExp; why: string }[] = [
 ];
 
 // Cycle 3 must carry a real number with a unit — that IS the calculation.
-const QUANTIFIED = /\d+\s*(\+|-)?\s*(hour|hr|hrs|hours|min|minute|minutes|day|days|week|weeks|month|months|%|percent|error|errors|claim|claims|case|cases|chart|charts|recall|recalls|appointment|appointments|patient|patients|time|times|x\b)/i;
+// Bounded gaps ({0,3}) and non-capturing groups. Unbounded adjacent \s* runs
+// backtrack catastrophically: a digit run followed by a long whitespace run that
+// does not end in a unit gave the engine O(n^2) ways to split the spaces —
+// measured at 24 SECONDS of blocked event loop on a 4000-char input, which is
+// the whole request budget of a single-threaded server.
+const QUANTIFIED =
+  /\d+\s{0,3}[+-]?\s{0,3}(?:hour|hr|hrs|hours|min|minute|minutes|day|days|week|weeks|month|months|%|percent|error|errors|claim|claims|case|cases|chart|charts|recall|recalls|appointment|appointments|patient|patients|time|times|x\b)/i;
 
 // Cycle 2 must name something actually inspected.
 const NAMED_ARTIFACT = /\b(report|reports|template|templates|dashboard|dashboards|view|views|field|fields|dropdown|dropdowns|chart|charts|schedule|treatment[-\s]?plan|note|notes|filter|filters|module|modules)\b/i;
@@ -186,8 +193,22 @@ const NAMED_ARTIFACT = /\b(report|reports|template|templates|dashboard|dashboard
 // Cycle 4 must name a moment in the day where the entry is forced.
 const CHOKE_POINT = /\b(check[-\s]?in|check[-\s]?out|chart\s+close|closing\s+the\s+chart|claim\s+generation|checkout|hand[-\s]?off|handoff|sign[-\s]?off|appointment\s+(start|end)|before\s+dismissal|at\s+the\s+chair|chairside|intake)\b/i;
 
+// Invisible code points are the cheapest way to defeat every text signal here:
+// one zero-width space makes two identical answers hash differently and hides a
+// contaminated phrase from its pattern. They carry no meaning in an answer, so
+// they are removed before anything is measured or compared.
+const INVISIBLE = /[\u00AD\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\uFEFF]/g;
+
 function normalize(s: string): string {
-  return s.trim().toLowerCase().replace(/\s+/g, " ");
+  return s.replace(INVISIBLE, "").trim().toLowerCase().replace(/\s+/g, " ");
+}
+
+// Meaningful length is measured AFTER normalizing, so 73 spaces between two
+// words is not an 80-character argument. Word count is the harder floor to pad.
+function substanceOf(raw: string): { chars: number; words: number } {
+  const n = normalize(raw);
+  const words = n.split(" ").filter((w) => w.length > 0);
+  return { chars: n.length, words: new Set(words).size };
 }
 
 function looksLikeEcho(answer: string, prompt: string): boolean {
@@ -217,11 +238,17 @@ export function evaluateGauntlet(input: GauntletAnswers): GauntletVerdict {
     if (raw.length === 0) {
       problems.push("No answer yet.");
     } else {
-      if (raw.length < MIN_CHARS) {
+      const substance = substanceOf(raw);
+      if (substance.chars < MIN_CHARS) {
         problems.push(`Too short to be an argument — write at least ${MIN_CHARS} characters.`);
+      } else if (substance.words < MIN_DISTINCT_WORDS) {
+        // Padding defeats a character count; it cannot fake distinct vocabulary.
+        problems.push(
+          `Too repetitive to be an argument — use at least ${MIN_DISTINCT_WORDS} different words.`
+        );
       }
       for (const { re, why } of CONTAMINATED_PHRASES) {
-        if (re.test(raw)) problems.push(`Contaminated: ${why}.`);
+        if (re.test(normalize(raw))) problems.push(`Contaminated: ${why}.`);
       }
       // The strongest real slop signal: the same text pasted into two cycles.
       const key = normalize(raw);
@@ -234,13 +261,13 @@ export function evaluateGauntlet(input: GauntletAnswers): GauntletVerdict {
       if (looksLikeEcho(raw, cycle.prompt)) {
         problems.push("This restates the question instead of answering it.");
       }
-      if (cycle.id === "ripple" && !QUANTIFIED.test(raw)) {
+      if (cycle.id === "ripple" && !QUANTIFIED.test(normalize(raw))) {
         problems.push("No measurable gain given — state a number and a unit (e.g. “saves 6 hours a week”, “cuts 12 claim rejections a month”).");
       }
-      if (cycle.id === "exhaustion" && !NAMED_ARTIFACT.test(raw)) {
+      if (cycle.id === "exhaustion" && !NAMED_ARTIFACT.test(normalize(raw))) {
         problems.push("Name what you actually checked (a report, template, view, field, or dropdown).");
       }
-      if (cycle.id === "behavior" && !CHOKE_POINT.test(raw)) {
+      if (cycle.id === "behavior" && !CHOKE_POINT.test(normalize(raw))) {
         problems.push("Name the workflow choke point where the entry is forced (check-in, chart close, claim generation, checkout…).");
       }
     }

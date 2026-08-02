@@ -7,6 +7,7 @@ import { canSubmitChangeRequest } from "@/lib/auth/roles";
 import { getEmailConfig } from "@/lib/email/config";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { sanitizeMultiline } from "@/lib/text/sanitizeMultiline";
+import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
 import {
   CHECKLIST,
   CYCLES,
@@ -43,12 +44,22 @@ export async function POST(req: Request): Promise<Response> {
 
   // Normalize untrusted input into the exact shape the gauntlet expects. Text
   // is sanitized and length-capped here, before it can reach an email body.
-  const str = (v: unknown) =>
-    typeof v === "string" ? sanitizeMultiline(v, MAX_ANSWER) : "";
+  // Over-length is REFUSED, not truncated. Truncating meant the server judged a
+  // different string than the browser did — and cutting the tail could delete
+  // the contaminated phrase that the client had correctly flagged, making the
+  // server strictly more permissive than the gate the user saw.
+  let tooLong = false;
+  const str = (v: unknown) => {
+    if (typeof v !== "string") return "";
+    if (v.length > MAX_ANSWER) tooLong = true;
+    return sanitizeMultiline(v, MAX_ANSWER);
+  };
   const rawAnswers = (b.answers ?? {}) as Record<string, unknown>;
   const rawChecklist = (b.checklist ?? {}) as Record<string, unknown>;
   const input: GauntletAnswers = {
-    summary: str(b.summary).slice(0, 200),
+    // Collapsed to ONE line: these render as header fields in the ticket, so a
+    // newline here would forge a line indistinguishable from "Requested by:".
+    summary: typeof b.summary === "string" ? sanitizeIdentity(b.summary).slice(0, 200) : "",
     changeType: CHANGE_TYPES.includes(String(b.changeType)) ? String(b.changeType) : "",
     answers: Object.fromEntries(
       CYCLES.map((c) => [c.id, str(rawAnswers[c.id])])
@@ -56,13 +67,34 @@ export async function POST(req: Request): Promise<Response> {
     checklist: Object.fromEntries(
       CHECKLIST.map((c) => [c.id, rawChecklist[c.id] === true])
     ) as Record<ChecklistId, boolean>,
-    dataOwner: str(b.dataOwner).slice(0, 120),
+    dataOwner: typeof b.dataOwner === "string" ? sanitizeIdentity(b.dataOwner).slice(0, 120) : "",
     downstream: Array.isArray(b.downstream)
       ? b.downstream
           .filter((m): m is string => typeof m === "string")
           .filter((m) => (DOWNSTREAM_MODULES as readonly string[]).includes(m))
       : []
   };
+
+  if (tooLong) {
+    return Response.json(
+      { error: `Each answer must be under ${MAX_ANSWER} characters. Shorten it and try again.` },
+      { status: 422 }
+    );
+  }
+
+  const db = await getDb();
+  const now = new Date();
+  // Metered BEFORE any expensive work, per throttle.ts's own contract: a gate
+  // that runs after the analysis lets an attacker spend server CPU for free by
+  // looping requests that never reach the meter.
+  const key = `changereq:${guard.user.id}`;
+  const throttled = await checkThrottle(db, key, now);
+  if (throttled.locked) {
+    return Response.json(
+      { error: `Too many requests just now. Try again in ${throttled.retryAfterSec} seconds.` },
+      { status: 429, headers: { "retry-after": String(throttled.retryAfterSec) } }
+    );
+  }
 
   // The gate is re-run HERE, on the server, against the same pure function the
   // browser used. The client's opinion that a request is sterile is never
@@ -79,17 +111,6 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const db = await getDb();
-  const now = new Date();
-  // Metered per requester: this endpoint sends mail to a real inbox.
-  const key = `changereq:${guard.user.id}`;
-  const throttled = await checkThrottle(db, key, now);
-  if (throttled.locked) {
-    return Response.json(
-      { error: `Too many requests just now. Try again in ${throttled.retryAfterSec} seconds.` },
-      { status: 429, headers: { "retry-after": String(throttled.retryAfterSec) } }
-    );
-  }
   await recordFailure(db, key, now, REQUEST_FREE_ATTEMPTS);
 
   const requestedBy = `${guard.user.displayName} (${guard.user.username})`;

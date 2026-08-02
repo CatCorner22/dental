@@ -87,10 +87,17 @@ const MANAGE_CEILING: Partial<Record<Role, Role>> = {
   admin: "admin" // Smile Notes Developer handles anyone
 };
 
-function canActOn(actor: Role, target: Role): boolean {
+export function canActOn(actor: Role, target: Role): boolean {
   const ceiling = MANAGE_CEILING[actor];
   if (!ceiling) return false;
   return ROLE_RANK[target] <= ROLE_RANK[ceiling];
+}
+
+// A note's owner must be someone who can actually work it: never a read-only
+// account. Named so the transfer route, the merge route, and the dashboard
+// picker share one rule instead of three inline `role === "readonly"` copies.
+export function canReceiveTransfer(role: Role): boolean {
+  return role !== "readonly";
 }
 
 // Who may CREATE an account at a given role. A Hierarchy Manager is top of the
@@ -131,6 +138,18 @@ export function canManageUsers(role: Role): boolean {
   return meetsRole(role, "lead");
 }
 
+// Deactivating is reversible; deleting is not. The capability matrix grants a
+// Team Lead add/merge/reset — not permanent removal — so deletion needs a
+// Hierarchy Manager or Developer even for an account inside the lead's ceiling.
+export function canDeactivate(actor: Role, targetRole: Role): boolean {
+  return canActOn(actor, targetRole);
+}
+
+export function canDeleteUser(actor: Role, targetRole: Role): boolean {
+  return meetsRole(actor, "manager") && canActOn(actor, targetRole);
+}
+
+// Kept as the "may this actor modify this row at all" gate.
 export function canDeactivateOrDelete(actor: Role, targetRole: Role): boolean {
   return canActOn(actor, targetRole);
 }

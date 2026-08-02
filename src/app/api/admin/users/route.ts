@@ -5,7 +5,14 @@ import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword, passwordPolicyError } from "@/lib/auth/password";
 import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
-import { canAddUser, canManageUsers, canSetPasswordDirectly, ROLE_LABEL, type Role } from "@/lib/auth/roles";
+import {
+  canAddUser,
+  canManageUsers,
+  canSendResetLink,
+  canSetPasswordDirectly,
+  ROLE_LABEL,
+  type Role
+} from "@/lib/auth/roles";
 import { emailPolicyError, normalizeEmail } from "@/lib/auth/emails";
 import { issueResetLink } from "@/lib/auth/issueResetLink";
 import { generateResetToken } from "@/lib/auth/resetToken";
@@ -28,8 +35,12 @@ export async function GET(): Promise<Response> {
       displayName: u.displayName,
       role: u.role,
       active: u.active,
-      email: u.email,
-      groupEmail: u.groupEmail,
+      // Addresses are where a reset link is DELIVERED, so they are targeting
+      // data for an account takeover. Only shown for accounts this caller is
+      // actually allowed to send a link to.
+      ...(canSendResetLink(guard.user.role, u.role)
+        ? { email: u.email, groupEmail: u.groupEmail }
+        : {}),
       createdAt: u.createdAt
     }))
   });

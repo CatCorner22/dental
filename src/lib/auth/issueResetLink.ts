@@ -8,7 +8,7 @@ import { resetDestination } from "./emails";
 
 export type IssueResetResult =
   | { ok: true }
-  | { ok: false; reason: "no-email" | "not-configured" | "send-failed" };
+  | { ok: false; reason: "no-email" | "not-configured" | "no-base-url" | "send-failed" };
 
 // Mint a single-use reset link and email it to the account holder.
 //
@@ -26,10 +26,19 @@ export async function issueResetLink(
   const to = resetDestination({ email: target.email, groupEmail: target.groupEmail });
   if (!to) return { ok: false, reason: "no-email" };
 
+  // A reset goes to the person's own address, so it needs sending credentials
+  // but NOT the corporate recipient that submissions use — gating on
+  // config.configured would block resets on a deployment that simply has no
+  // CORPORATE_EMAIL.
   const config = getEmailConfig();
-  if (!config.configured) return { ok: false, reason: "not-configured" };
+  if (!config.apiKey || !config.from) return { ok: false, reason: "not-configured" };
 
   const token = generateResetToken();
+  // Refuse BEFORE writing a token if the link would be unusable, so a
+  // misconfigured deployment reports the problem instead of mailing a dead
+  // link and recording it as a success.
+  const link = resetLinkUrl(token);
+  if (!link) return { ok: false, reason: "no-base-url" };
   // Any outstanding link is retired first, so only the newest one works.
   await invalidateUserResetTokens(db, target.id, now);
   await insertResetToken(db, {
@@ -41,7 +50,6 @@ export async function issueResetLink(
   });
   await pruneResetTokens(db, now);
 
-  const link = resetLinkUrl(token);
   const heading =
     purpose === "welcome"
       ? "Your Smile Notes account is ready"

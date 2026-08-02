@@ -68,7 +68,38 @@ export async function redeemResetToken(
       .update(users)
       .set({ passHash, passwordChangedAt: now })
       .where(eq(users.id, userId));
+    // Retire any OTHER live link for this account too: issuing is not
+    // transactional with invalidation, so a race can leave two live tokens and
+    // redeeming one must not leave the other usable.
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: now })
+      .where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
     return true;
+  });
+}
+
+// Set a password and, in the SAME transaction, consume every outstanding reset
+// link for that account.
+//
+// Every password write must go through here. Otherwise a link that was already
+// mailed stays live for the rest of its hour, and the textbook remediation —
+// "someone may have seen my reset email, I will change my password" — does not
+// actually remediate: the attacker still holds a working bearer credential and
+// can take the account after the victim has fixed it. passwordChangedAt also
+// kills every existing session via the watermark in guards.ts.
+export async function setPasswordAndRevokeLinks(
+  db: Db,
+  userId: string,
+  passHash: string,
+  now: Date
+): Promise<void> {
+  await db.transaction(async (tx) => {
+    await tx.update(users).set({ passHash, passwordChangedAt: now }).where(eq(users.id, userId));
+    await tx
+      .update(passwordResetTokens)
+      .set({ usedAt: now })
+      .where(and(eq(passwordResetTokens.userId, userId), isNull(passwordResetTokens.usedAt)));
   });
 }
 

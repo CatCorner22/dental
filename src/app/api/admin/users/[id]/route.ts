@@ -9,6 +9,7 @@ import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
 import {
   canAssignRole,
   canDeactivateOrDelete,
+  canDeleteUser,
   ROLE_LABEL,
   type Role
 } from "@/lib/auth/roles";
@@ -114,9 +115,9 @@ export async function DELETE(_req: Request, { params }: Ctx): Promise<Response> 
   const db = await getDb();
   const target = await getUserById(db, id);
   if (!target) return Response.json({ error: "Not found." }, { status: 404 });
-  if (!canDeactivateOrDelete(guard.user.role, target.role)) {
+  if (!canDeleteUser(guard.user.role, target.role)) {
     return Response.json(
-      { error: `You cannot delete a ${ROLE_LABEL[target.role]} account.` },
+      { error: `You cannot delete a ${ROLE_LABEL[target.role]} account. Deactivate it instead.` },
       { status: 403 }
     );
   }

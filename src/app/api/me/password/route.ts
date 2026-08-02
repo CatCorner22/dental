@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/guards";
+import { setPasswordAndRevokeLinks } from "@/lib/db/repo/resetTokens";
 import { getDb } from "@/lib/db/client";
 import { getUserById, updateUser } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
@@ -43,7 +44,7 @@ export async function POST(req: Request): Promise<Response> {
   // Revokes every session minted before this instant — including this one.
   // Changing your password after a compromise must sign the attacker out,
   // and "signs you out everywhere" is the honest, expected trade.
-  await updateUser(db, user.id, { passHash: await hashPassword(next), passwordChangedAt: new Date() });
+  await setPasswordAndRevokeLinks(db, user.id, await hashPassword(next), new Date());
   await logAction(db, {
     actorId: user.id,
     actorName: `${user.displayName} (${user.username})`,

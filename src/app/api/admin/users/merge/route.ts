@@ -62,7 +62,9 @@ export async function POST(req: Request): Promise<Response> {
         ? "That is the last active Smile Notes Developer — merging it away would lock everyone out."
         : result.reason === "same-user"
           ? "Those are the same account."
-          : "Not found.";
+          : result.reason === "bad-target"
+            ? "Merge into an active account that can edit notes — not a deactivated or read-only one."
+            : "Not found.";
     return Response.json({ error: message }, { status: result.reason === "missing" ? 404 : 409 });
   }
 

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { canTransferNotes, seesAllNotes, type Role } from "@/lib/auth/roles";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/Dialog";
@@ -182,7 +183,7 @@ export function Dashboard({
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">
-            {role === "user" ? "My drafts" : "All drafts"} ({filtered.length})
+            {seesAllNotes(role as Role) ? "All Smile Notes" : "My Smile Notes"} ({filtered.length})
           </h2>
           <input
             type="search"
@@ -255,7 +256,7 @@ export function Dashboard({
                   </span>
                   <StatusChip status={d.status} />
                 </Link>
-                {role === "admin" && (
+                {canTransferNotes(role as Role) && (
                   <button
                     className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                     onClick={() => setTransferFor(d)}

@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/guards";
+import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import {
   deleteDraft,
@@ -16,10 +17,6 @@ export const runtime = "nodejs";
 
 type Ctx = { params: Promise<{ id: string }> };
 
-function canWrite(role: string, ownerId: string, userId: string): boolean {
-  return role === "admin" || (role === "user" && ownerId === userId);
-}
-
 export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
   const guard = await requireRole("readonly");
   if (!guard.ok) return guard.response;
@@ -27,8 +24,8 @@ export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
-  // A user may only open their own draft; readonly/admin may open any.
-  if (guard.user.role === "user" && draft.ownerId !== guard.user.id) {
+  // Scoped viewers see only their own; oversight roles may open any.
+  if (!seesAllNotes(guard.user.role) && draft.ownerId !== guard.user.id) {
     return Response.json({ error: "Not found." }, { status: 404 });
   }
   return Response.json({ draft });
@@ -41,7 +38,7 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
-  if (!canWrite(guard.user.role, draft.ownerId, guard.user.id)) {
+  if (!canWriteNote(guard.user.role, draft.ownerId, guard.user.id)) {
     return Response.json({ error: "You cannot edit this draft." }, { status: 403 });
   }
 
@@ -110,7 +107,7 @@ export async function DELETE(_req: Request, { params }: Ctx): Promise<Response> 
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
-  if (!canWrite(guard.user.role, draft.ownerId, guard.user.id)) {
+  if (!canWriteNote(guard.user.role, draft.ownerId, guard.user.id)) {
     return Response.json({ error: "You cannot delete this draft." }, { status: 403 });
   }
   if ((await draftSubmissionCount(db, id)) > 0) {

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { canReadAuditLog } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listAuditLog } from "@/lib/db/repo/auditLog";
@@ -26,7 +27,7 @@ const ACTION_LABEL: Record<string, string> = {
 export default async function AuditLogPage() {
   const user = await freshSessionUser(); // fresh role — a demoted admin loses this page NOW
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/");
+  if (!canReadAuditLog(user.role)) redirect("/");
   const db = await getDb();
   const [log, users] = await Promise.all([listAuditLog(db, 300), listUsers(db)]);
   const nameById = new Map(users.map((u) => [u.id, `${u.displayName} (${u.username})`]));

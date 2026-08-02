@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { canManageUsers, canReadAuditLog, canSubmitChangeRequest } from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/roles";
 import { SignOutButton } from "./SignOutButton";
 import { NavLinks } from "./NavLinks";
@@ -23,12 +24,11 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                   { href: "/", label: "Dashboard" },
                   { href: "/history", label: "History" },
                   { href: "/reference/templates", label: "References", activePrefix: "/reference" },
-                  ...(user.role === "admin"
-                    ? [
-                        { href: "/admin/users", label: "Users" },
-                        { href: "/admin/audit", label: "Audit log" }
-                      ]
+                  ...(canSubmitChangeRequest(user.role)
+                    ? [{ href: "/requests", label: "Requests" }]
                     : []),
+                  ...(canManageUsers(user.role) ? [{ href: "/admin/users", label: "Users" }] : []),
+                  ...(canReadAuditLog(user.role) ? [{ href: "/admin/audit", label: "Audit log" }] : []),
                   { href: "/account", label: "Account" }
                 ]}
               />

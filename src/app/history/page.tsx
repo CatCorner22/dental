@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import {
@@ -18,7 +19,7 @@ export default async function HistoryPage() {
   const user = await freshSessionUser(); // fresh role/active — never the stale token
   if (!user) redirect("/login");
   const db = await getDb();
-  const mine = user.role === "user";
+  const mine = !seesAllNotes(user.role);
   const rows = mine
     ? await listSubmissionsByUser(db, user.id)
     : await listAllSubmissions(db);

@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { canManageUsers } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listUsers } from "@/lib/db/repo/users";
@@ -10,7 +11,7 @@ export const metadata = { title: "User admin — Dental Note Builder" };
 export default async function AdminUsersPage() {
   const user = await freshSessionUser(); // fresh role — a demoted admin loses this page NOW
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/");
+  if (!canManageUsers(user.role)) redirect("/");
   const db = await getDb();
   const users = await listUsers(db);
   return (

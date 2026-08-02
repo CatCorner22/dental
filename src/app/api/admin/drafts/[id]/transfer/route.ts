@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/guards";
+import { canTransferNotes } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import { getDraft, transferDraft } from "@/lib/db/repo/drafts";
 import { getUserById } from "@/lib/db/repo/users";
@@ -10,8 +11,11 @@ export const runtime = "nodejs";
 type Ctx = { params: Promise<{ id: string }> };
 
 export async function POST(req: Request, { params }: Ctx): Promise<Response> {
-  const guard = await requireRole("admin");
+  const guard = await requireRole("lead");
   if (!guard.ok) return guard.response;
+  if (!canTransferNotes(guard.user.role)) {
+    return Response.json({ error: "You cannot transfer Smile Notes." }, { status: 403 });
+  }
   const { id } = await params;
   const db = await getDb();
   const draft = await getDraft(db, id);

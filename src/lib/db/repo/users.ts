@@ -1,6 +1,6 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
-import { users, type NewUser, type UserRow } from "../schema";
+import { drafts, submissions, users, type NewUser, type UserRow } from "../schema";
 
 export async function countUsers(db: Db): Promise<number> {
   const rows = await db.select({ n: sql<number>`count(*)::int` }).from(users);
@@ -76,6 +76,62 @@ export async function createFirstAdminGuarded(db: Db, user: NewUser): Promise<"c
     if ((rows[0]?.n ?? 0) > 0) return "exists";
     await tx.insert(users).values(user);
     return "created";
+  });
+}
+
+export type MergeResult =
+  | { ok: true; draftsMoved: number; submissionsKept: number }
+  | { ok: false; reason: "same-user" | "missing" | "last-admin" };
+
+// Merge a duplicate account into the one the person actually uses.
+//
+// The governing rule: FROZEN SUBMISSION ATTRIBUTION IS NEVER REWRITTEN.
+// `submissions.submittedByName` is a snapshot of who signed a filed Smile Note,
+// and those notes are a legal and medical record. Retroactively re-attributing
+// them to a different account would forge history — so submissions keep their
+// original submittedById and submittedByName, and only the LIVE work (drafts)
+// moves. The duplicate is deactivated rather than deleted for the same reason:
+// its id is still referenced by the record it signed.
+export async function mergeUsers(
+  db: Db,
+  sourceId: string,
+  targetId: string,
+  now: Date
+): Promise<MergeResult> {
+  if (sourceId === targetId) return { ok: false, reason: "same-user" };
+  return db.transaction(async (tx) => {
+    // Serialized on the same key as the other privilege-losing mutations, so a
+    // merge cannot race a demotion into leaving no admin behind.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${ADMIN_GUARD_LOCK})`);
+    const [source] = await tx.select().from(users).where(eq(users.id, sourceId)).limit(1);
+    const [target] = await tx.select().from(users).where(eq(users.id, targetId)).limit(1);
+    if (!source || !target) return { ok: false, reason: "missing" as const };
+
+    // Merging away an admin must not close the last door in.
+    if (source.role === "admin" && source.active) {
+      const [{ n }] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(users)
+        .where(and(eq(users.role, "admin"), eq(users.active, true), ne(users.id, sourceId)));
+      if ((n ?? 0) === 0) return { ok: false, reason: "last-admin" as const };
+    }
+
+    const moved = await tx
+      .update(drafts)
+      .set({ ownerId: targetId, updatedAt: now })
+      .where(eq(drafts.ownerId, sourceId))
+      .returning();
+
+    const [{ n: kept }] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(submissions)
+      .where(eq(submissions.submittedById, sourceId));
+
+    // Deactivated, not deleted: filed submissions still point at this id, and
+    // the account must not be able to sign in afterwards.
+    await tx.update(users).set({ active: false }).where(eq(users.id, sourceId));
+
+    return { ok: true as const, draftsMoved: moved.length, submissionsKept: kept ?? 0 };
   });
 }
 

@@ -12,7 +12,8 @@ import {
   insertUser,
   listUsers,
   mutateAdminGuarded,
-  updateUser
+  updateUser,
+  mergeUsers
 } from "./repo/users";
 import {
   claimDraftForSubmit,
@@ -31,7 +32,8 @@ import {
   getSubmission,
   insertSubmissionShell,
   statRowsForUser,
-  submissionCountByUser
+  submissionCountByUser,
+  listAllSubmissions
 } from "./repo/submissions";
 import { listAuditLog, logAction } from "./repo/auditLog";
 import {
@@ -69,7 +71,7 @@ describe("db layer (PGlite)", () => {
   beforeEach(async () => {
     // One WASM instance per file; wipe tables between tests (FK-safe order).
     await db.execute(
-      sql`TRUNCATE submissions, drafts, audit_log, users, auth_throttle RESTART IDENTITY CASCADE`
+      sql`TRUNCATE password_reset_tokens, submissions, drafts, audit_log, users, auth_throttle RESTART IDENTITY CASCADE`
     );
   });
   afterAll(async () => {
@@ -261,6 +263,86 @@ describe("db layer (PGlite)", () => {
     expect((await getDraft(db, filedDraft.id))!.lastSubmissionId).not.toBeNull();
     // Edited-after-filing must remain submittable, so it stays NULL.
     expect((await getDraft(db, editedDraft.id))!.lastSubmissionId).toBeNull();
+  });
+
+  // The plan's highest-risk assumption: ALTER TYPE ... ADD VALUE inside a
+  // guarded DO block, run by applySchema, then USED by a later statement.
+  // Proven here rather than assumed, on the same engine the tests and the
+  // PGlite fallback deployment use.
+  it("accepts every hierarchy role after the idempotent enum migration", async () => {
+    await applySchema(db); // re-run: must be a no-op, not an error
+    for (const role of ["readonly", "user", "lead", "manager", "admin"] as const) {
+      const u = await insertUser(db, {
+        id: crypto.randomUUID(),
+        username: `role-${role}`,
+        displayName: role,
+        role,
+        passHash: "x",
+        active: true
+      });
+      expect(u.role, role).toBe(role);
+    }
+  });
+
+  describe("merge users", () => {
+    // The governing rule: filed submissions are a legal record of who signed
+    // them, so a merge moves LIVE work only and never rewrites attribution.
+    it("moves drafts but never rewrites frozen submission attribution", async () => {
+      const dupe = await freshUser("dupe");
+      const keep = await freshUser("keep");
+      const d1 = await insertDraft(db, { id: crypto.randomUUID(), ownerId: dupe.id, noteState: note });
+      await insertDraft(db, { id: crypto.randomUUID(), ownerId: dupe.id, noteState: note });
+      await fileSubmissionAtomic(
+        db,
+        {
+          draftId: d1.id,
+          submittedById: dupe.id,
+          submittedByName: "Dupe (dupe)",
+          submittedAtEt: "2026-06-01 10:00 ET",
+          filename: "note",
+          format: "md",
+          ruleVersion: "2.0.0",
+          auditStatus: "PASS"
+        },
+        d1.version,
+        new Date(),
+        () => ({ note: "frozen", audit: "audit" })
+      );
+
+      const res = await mergeUsers(db, dupe.id, keep.id, new Date());
+      expect(res.ok).toBe(true);
+      if (!res.ok) return;
+      expect(res.draftsMoved).toBe(2);
+      expect(res.submissionsKept).toBe(1);
+
+      // Every draft now belongs to the surviving account...
+      expect(await ownerDraftCount(db, dupe.id)).toBe(0);
+      expect(await ownerDraftCount(db, keep.id)).toBe(2);
+      // ...but the filed record still names who actually signed it.
+      expect(await submissionCountByUser(db, dupe.id)).toBe(1);
+      expect(await submissionCountByUser(db, keep.id)).toBe(0);
+      const [filed] = await listAllSubmissions(db);
+      expect(filed.submittedByName).toBe("Dupe (dupe)");
+      // The duplicate is deactivated, not deleted — the record points at it.
+      const after = await getUserByUsername(db, "dupe");
+      expect(after?.active).toBe(false);
+    });
+
+    it("refuses to merge an account into itself", async () => {
+      const u = await freshUser("solo");
+      const res = await mergeUsers(db, u.id, u.id, new Date());
+      expect(res.ok).toBe(false);
+    });
+
+    it("refuses to merge away the last active developer", async () => {
+      const onlyDev = await freshUser("onlydev", "admin");
+      const other = await freshUser("other");
+      const res = await mergeUsers(db, onlyDev.id, other.id, new Date());
+      expect(res.ok).toBe(false);
+      if (!res.ok) expect(res.reason).toBe("last-admin");
+      // Nothing changed.
+      expect((await getUserByUsername(db, "onlydev"))?.active).toBe(true);
+    });
   });
 
   it("lists drafts newest-updated first", async () => {

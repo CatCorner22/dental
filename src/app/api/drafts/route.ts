@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/guards";
+import { seesAllNotes } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import {
   countAllDrafts,
@@ -25,7 +26,7 @@ export async function GET(req: Request): Promise<Response> {
   if (!guard.ok) return guard.response;
   const db = await getDb();
   const page = parsePageParams(req.url);
-  const mine = guard.user.role === "user";
+  const mine = !seesAllNotes(guard.user.role);
   const rows = mine
     ? await listDraftsByOwner(db, guard.user.id, page)
     : await listAllDrafts(db, page);

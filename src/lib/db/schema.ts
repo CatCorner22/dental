@@ -12,7 +12,11 @@ import type { NoteState } from "@/lib/schema/types";
 
 // PGlite is real Postgres, so pgEnum / jsonb / serial work identically on both
 // the pg and PGlite drivers.
-export const roleEnum = pgEnum("role", ["readonly", "user", "admin"]);
+// "admin" keeps its stored value (it is now labelled "Smile Notes Developer"
+// in the UI) so existing accounts and audit rows need no migration. New values
+// are appended — an enum's declared order is not its authority here; rank lives
+// in ROLE_RANK.
+export const roleEnum = pgEnum("role", ["readonly", "user", "admin", "lead", "manager"]);
 
 export const users = pgTable("users", {
   id: text("id").primaryKey(),
@@ -22,6 +26,11 @@ export const users = pgTable("users", {
   passHash: text("pass_hash").notNull(),
   active: boolean("active").notNull().default(true),
   noticeAckAt: timestamp("notice_ack_at", { withTimezone: true }),
+  // Where a password-reset link is sent. Optional for most roles; a Hierarchy
+  // Manager must have BOTH this and groupEmail (see requiresTwoEmails) so the
+  // practice's escalation path is never one unread personal mailbox.
+  email: text("email"),
+  groupEmail: text("group_email"),
   // Session revocation watermark: a JWT minted before this instant is dead.
   // Null = the password has never been changed since account creation.
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
@@ -97,6 +106,31 @@ export type NewDraft = typeof drafts.$inferInsert;
 export type SubmissionRow = typeof submissions.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
 
-export type AuthThrottleRow = typeof authThrottle.$inferSelect;
+// Password reset by link. Only a HASH of the token is stored: a leaked database
+// dump must not hand anyone a working reset link, exactly as with passwords.
+// Single-use (usedAt) and short-lived (expiresAt).
+export const passwordResetTokens = pgTable("password_reset_tokens", {
+  id: text("id").primaryKey(),
+  userId: text("user_id")
+    .notNull()
+    .references(() => users.id),
+  tokenHash: text("token_hash").notNull().unique(),
+  expiresAt: timestamp("expires_at", { withTimezone: true }).notNull(),
+  usedAt: timestamp("used_at", { withTimezone: true }),
+  // Who sent the link — a Team Lead resetting an account is an auditable act.
+  createdById: text("created_by_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
 
-export const schema = { roleEnum, users, drafts, submissions, auditLog, authThrottle };
+export type AuthThrottleRow = typeof authThrottle.$inferSelect;
+export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
+
+export const schema = {
+  roleEnum,
+  users,
+  drafts,
+  submissions,
+  auditLog,
+  authThrottle,
+  passwordResetTokens
+};

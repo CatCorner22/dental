@@ -4,7 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/Dialog";
 import { generatePassword } from "@/lib/auth/genPassword";
-import type { Role } from "@/lib/auth/roles";
+import { ROLE_LABEL, type Role } from "@/lib/auth/roles";
 
 interface Row {
   id: string;
@@ -14,11 +14,7 @@ interface Row {
   active: boolean;
 }
 
-const ROLE_LABEL: Record<Role, string> = {
-  readonly: "Read only",
-  user: "User (edit)",
-  admin: "Admin"
-};
+
 
 export function UserAdmin({ users, selfId }: { users: Row[]; selfId: string }) {
   const router = useRouter();

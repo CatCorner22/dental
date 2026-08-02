@@ -1,4 +1,5 @@
 import { redirect } from "next/navigation";
+import { seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import {
@@ -24,7 +25,7 @@ export default async function DashboardPage() {
   // The list is capped at one page. The count comes back too so the view can
   // say so out loud — a silently truncated list reads as "this is everything",
   // which is exactly how someone loses track of a note.
-  const mine = user.role === "user";
+  const mine = !seesAllNotes(user.role);
   const rows = mine ? await listDraftsByOwner(db, user.id) : await listAllDrafts(db);
   const total = mine ? await ownerDraftCount(db, user.id) : await countAllDrafts(db);
 

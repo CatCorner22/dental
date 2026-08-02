@@ -3,6 +3,9 @@
 import type { Field, FieldValue, ModuleDef, NoteState } from "@/lib/schema/types";
 import { fieldKey } from "@/lib/schema/types";
 import { isFieldRequired, isFieldVisible } from "@/lib/schema/conditions";
+import type { FieldFindings } from "@/lib/audit/byField";
+import { fieldIsInvalid } from "@/lib/audit/byField";
+import { SEVERITY_LABELS } from "@/lib/audit/types";
 import {
   MeasurementInput,
   MultiselectInput,
@@ -17,26 +20,31 @@ function FieldRenderer({
   moduleId,
   field,
   state,
-  onChange
+  onChange,
+  describedBy,
+  invalid
 }: {
   moduleId: string;
   field: Field;
   state: NoteState;
   onChange: (key: string, value: FieldValue) => void;
+  describedBy?: string;
+  invalid?: boolean;
 }) {
   const key = fieldKey(moduleId, field.id);
   const value = state.values[key];
   const set = (v: FieldValue) => onChange(key, v);
+  const a = { describedBy, invalid };
 
   switch (field.type) {
     case "select":
-      return <SelectInput field={field} value={value?.kind === "select" ? value : undefined} onChange={set} />;
+      return <SelectInput field={field} value={value?.kind === "select" ? value : undefined} onChange={set} {...a} />;
     case "multiselect":
-      return <MultiselectInput field={field} value={value?.kind === "multiselect" ? value : undefined} onChange={set} />;
+      return <MultiselectInput field={field} value={value?.kind === "multiselect" ? value : undefined} onChange={set} {...a} />;
     case "text":
-      return <TextInputField field={field} value={value?.kind === "text" ? value : undefined} onChange={set} />;
+      return <TextInputField field={field} value={value?.kind === "text" ? value : undefined} onChange={set} {...a} />;
     case "textarea":
-      return <TextareaField_ field={field} value={value?.kind === "text" ? value : undefined} onChange={set} />;
+      return <TextareaField_ field={field} value={value?.kind === "text" ? value : undefined} onChange={set} {...a} />;
     case "toothPicker":
       return <ToothPicker field={field} value={value?.kind === "teeth" ? value : undefined} onChange={set} />;
     case "surfacePicker": {
@@ -52,18 +60,20 @@ function FieldRenderer({
       );
     }
     case "measurement":
-      return <MeasurementInput field={field} value={value?.kind === "measurement" ? value : undefined} onChange={set} />;
+      return <MeasurementInput field={field} value={value?.kind === "measurement" ? value : undefined} onChange={set} {...a} />;
   }
 }
 
 export function NoteForm({
   modules,
   state,
-  onChange
+  onChange,
+  findingsByField = {}
 }: {
   modules: ModuleDef[];
   state: NoteState;
   onChange: (key: string, value: FieldValue) => void;
+  findingsByField?: FieldFindings;
 }) {
   return (
     <div className="space-y-4">
@@ -85,14 +95,39 @@ export function NoteForm({
                   {section.fields.map((field) => {
                     if (!isFieldVisible(field, mod.id, state)) return null;
                     const required = isFieldRequired(field, mod.id, state);
+                    const key = fieldKey(mod.id, field.id);
+                    const findings = findingsByField[key];
+                    const invalid = fieldIsInvalid(findings);
+                    const helpId = field.helpText ? `${key}-help` : undefined;
+                    const errId = findings?.length ? `${key}-err` : undefined;
+                    const describedBy = [helpId, errId].filter(Boolean).join(" ") || undefined;
                     return (
                       <div key={field.id} id={`field-${mod.id}-${field.id}`}>
                         <label className="field-label">
                           {field.label}
-                          {required && <span className="ml-1 text-red-600">*</span>}
+                          {required && <span className="ml-1 text-red-600" aria-hidden>*</span>}
+                          {required && <span className="sr-only"> (required)</span>}
                         </label>
-                        <FieldRenderer moduleId={mod.id} field={field} state={state} onChange={onChange} />
-                        {field.helpText && <p className="mt-1 text-xs text-slate-500">{field.helpText}</p>}
+                        <FieldRenderer
+                          moduleId={mod.id}
+                          field={field}
+                          state={state}
+                          onChange={onChange}
+                          describedBy={describedBy}
+                          invalid={invalid}
+                        />
+                        {field.helpText && (
+                          <p id={helpId} className="mt-1 text-xs text-slate-500">{field.helpText}</p>
+                        )}
+                        {findings?.length ? (
+                          <ul id={errId} className="mt-1 space-y-0.5" role={invalid ? "alert" : undefined}>
+                            {findings.map((f, i) => (
+                              <li key={i} className="text-xs text-rose-700">
+                                {SEVERITY_LABELS[f.severity]}: {f.message}
+                              </li>
+                            ))}
+                          </ul>
+                        ) : null}
                       </div>
                     );
                   })}

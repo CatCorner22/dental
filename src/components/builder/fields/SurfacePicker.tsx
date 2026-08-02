@@ -42,7 +42,7 @@ export function SurfacePicker({
             <span className="w-20 shrink-0 text-xs font-semibold text-slate-700" title={tooth?.name}>
               Tooth {toothId}
             </span>
-            <div className="flex gap-1">
+            <div className="flex gap-1" role="group" aria-label={`Surfaces for tooth ${toothId}`}>
               {ALL_SURFACES.map((s) => {
                 const isAllowed = allowed.includes(s);
                 return (
@@ -50,6 +50,8 @@ export function SurfacePicker({
                     key={s}
                     type="button"
                     disabled={!isAllowed}
+                    aria-pressed={chosen.includes(s)}
+                    aria-label={`${SURFACE_NAMES[s]} surface of tooth ${toothId}`}
                     title={
                       isAllowed
                         ? SURFACE_NAMES[s]

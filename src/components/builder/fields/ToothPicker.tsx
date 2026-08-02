@@ -36,7 +36,7 @@ export function ToothPicker({
   const rows = [teeth.slice(0, half), teeth.slice(half)];
 
   return (
-    <div className="rounded border border-slate-200 bg-slate-50 p-2">
+    <div className="rounded border border-slate-200 bg-slate-50 p-2" role="group" aria-label={`${field.label} — tooth picker`}>
       {field.dentitions.length > 1 && (
         <div className="mb-2 flex flex-wrap gap-1">
           {field.dentitions.map((d) => (
@@ -60,6 +60,8 @@ export function ToothPicker({
               key={tooth.id}
               type="button"
               title={tooth.name}
+              aria-label={tooth.name}
+              aria-pressed={selected.includes(tooth.id)}
               onClick={() => toggle(tooth.id)}
               className={`h-8 min-w-8 rounded border px-1 text-xs font-semibold ${
                 selected.includes(tooth.id)

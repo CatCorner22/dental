@@ -1,8 +1,12 @@
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth/auth";
+import { getDb } from "@/lib/db/client";
+import { getUserById } from "@/lib/db/repo/users";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { NoticeGate } from "@/components/notice/NoticeGate";
 import "./globals.css";
+
+export const runtime = "nodejs";
 
 export const metadata: Metadata = {
   title: "Dental Note Builder",
@@ -12,6 +16,13 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
+  // Read the acknowledgment fresh from the DB: it is set after login, so the
+  // JWT's copy is stale and would otherwise re-show the notice every navigation.
+  let noticeAcked = session?.user?.noticeAcked ?? true;
+  if (session?.user) {
+    const db = await getDb();
+    noticeAcked = (await getUserById(db, session.user.id))?.noticeAckAt != null;
+  }
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -22,7 +33,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Skip to content
         </a>
         <AppHeader user={session?.user ?? null} />
-        {session?.user && <NoticeGate acknowledged={session.user.noticeAcked} />}
+        {session?.user && <NoticeGate acknowledged={noticeAcked} />}
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">
           {children}
         </main>

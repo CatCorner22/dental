@@ -6,6 +6,7 @@ import { ALL_MODULES, activeModules } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { computeGates, runAudit } from "@/lib/audit/engine";
+import { findingsByField } from "@/lib/audit/byField";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { useAutosave } from "@/lib/client/useAutosave";
@@ -59,6 +60,7 @@ export function BuilderShell({
     () => runAudit({ note: state, modules, composedText: markdown }),
     [state, modules, markdown]
   );
+  const fieldFindings = useMemo(() => findingsByField(report.findings), [report.findings]);
 
   const phiSignature = useMemo(
     () => JSON.stringify(report.phiStops.map((f) => [f.ruleId, f.matchedText]).sort()),
@@ -169,7 +171,7 @@ export function BuilderShell({
         {/* Form */}
         <section className="min-w-0 flex-1">
           <fieldset disabled={!canEdit} className="min-w-0">
-            <NoteForm modules={modules} state={state} onChange={setValue} />
+            <NoteForm modules={modules} state={state} onChange={setValue} findingsByField={fieldFindings} />
           </fieldset>
         </section>
 

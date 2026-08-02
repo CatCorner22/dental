@@ -4,6 +4,7 @@ import { getUserById, updateUser } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword, passwordPolicyError, verifyPassword } from "@/lib/auth/password";
+import { checkThrottle, clearThrottle, passwordCheckKey, recordFailure } from "@/lib/auth/throttle";
 
 export const runtime = "nodejs";
 
@@ -23,9 +24,22 @@ export async function POST(req: Request): Promise<Response> {
   const db = await getDb();
   const user = await getUserById(db, guard.user.id);
   if (!user) return Response.json({ error: "Not found." }, { status: 404 });
+  // This route verifies a password, so it is a password oracle for anyone
+  // holding a session — throttled on the same terms as login.
+  const key = passwordCheckKey(user.id);
+  const now = new Date();
+  const throttled = await checkThrottle(db, key, now);
+  if (throttled.locked) {
+    return Response.json(
+      { error: `Too many failed attempts. Try again in ${throttled.retryAfterSec} seconds.` },
+      { status: 429, headers: { "retry-after": String(throttled.retryAfterSec) } }
+    );
+  }
   if (!(await verifyPassword(current, user.passHash))) {
+    await recordFailure(db, key, now);
     return Response.json({ error: "Your current password is wrong." }, { status: 403 });
   }
+  await clearThrottle(db, key);
   // Revokes every session minted before this instant — including this one.
   // Changing your password after a compromise must sign the attacker out,
   // and "signs you out everywhere" is the honest, expected trade.

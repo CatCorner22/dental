@@ -37,6 +37,11 @@ export const drafts = pgTable("drafts", {
   noteState: jsonb("note_state").$type<NoteState>().notNull(),
   status: text("status").notNull().default("unfinished"),
   lastSendFailed: boolean("last_send_failed").notNull().default(false),
+  // The submission this draft was filed as, or null when it has never been
+  // filed or has been edited since. This — not the cached status string — is
+  // what blocks a second filing of identical content, so a failed EMAIL can
+  // leave the draft resendable without leaving it re-fileable.
+  lastSubmissionId: integer("last_submission_id"),
   version: integer("version").notNull().default(1),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
@@ -74,6 +79,17 @@ export const auditLog = pgTable("audit_log", {
   detail: text("detail")
 });
 
+// Failed-authentication throttle. Keyed by what is being protected — a
+// username for login, a user id for the change-password check — so a single
+// table covers both. Lives in the database, not process memory, so a restart
+// or a second instance cannot reset an attacker's budget.
+export const authThrottle = pgTable("auth_throttle", {
+  key: text("key").primaryKey(),
+  failCount: integer("fail_count").notNull().default(0),
+  firstFailAt: timestamp("first_fail_at", { withTimezone: true }).notNull().defaultNow(),
+  lockedUntil: timestamp("locked_until", { withTimezone: true })
+});
+
 export type UserRow = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type DraftRow = typeof drafts.$inferSelect;
@@ -81,4 +97,6 @@ export type NewDraft = typeof drafts.$inferInsert;
 export type SubmissionRow = typeof submissions.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
 
-export const schema = { roleEnum, users, drafts, submissions, auditLog };
+export type AuthThrottleRow = typeof authThrottle.$inferSelect;
+
+export const schema = { roleEnum, users, drafts, submissions, auditLog, authThrottle };

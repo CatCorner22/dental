@@ -114,6 +114,21 @@ export function SubmitDialog({
   const [error, setError] = useState("");
   const [filed, setFiled] = useState<FiledResult | null>(null);
   const [busyNext, setBusyNext] = useState(false);
+  const [resend, setResend] = useState<"idle" | "sending" | "sent" | "failed">("idle");
+
+  // Resend re-sends the frozen copy that is already on file. It mints no
+  // ticket and writes no submission row, so it is safe to press repeatedly
+  // during an outage — which is exactly when someone will.
+  const doResend = async () => {
+    setResend("sending");
+    try {
+      const res = await fetch(`/api/drafts/${draftId}/resend`, { method: "POST" });
+      setResend(res.ok ? "sent" : "failed");
+      if (res.ok) setFiled((f) => (f ? { ...f, emailed: true } : f));
+    } catch {
+      setResend("failed");
+    }
+  };
 
   useEffect(() => {
     fetch("/api/submit-config")
@@ -162,19 +177,34 @@ export function SubmitDialog({
   };
 
   if (filed) {
+    const sendFailed = !filed.emailed && filed.emailConfigured;
     return (
       <Dialog title={`Filed as ${filed.ticket}`} onClose={onClose}>
         <p className="mb-2 text-sm text-slate-700">
           {filed.emailed
             ? "The note and its audit report were emailed to the office."
             : filed.emailConfigured
-              ? "The note was filed, but the email did not send. It is marked Send failed in History — edit and submit again, or tell your administrator."
+              ? "The note was filed, but the email did not send. The ticket is safe — use Resend to try the same filed copy again."
               : "The note was filed and appears in History. Email is not configured, so nothing was sent."}
         </p>
-        {!filed.emailed && filed.emailConfigured && (
-          <p className="mb-2 rounded border border-rose-300 bg-rose-50 p-2 text-xs text-rose-900" role="alert">
-            Send failed — the office did not receive this note yet.
-          </p>
+        {sendFailed && (
+          <div className="mb-3 rounded border border-rose-300 bg-rose-50 p-2 text-xs text-rose-900" role="alert">
+            <p className="mb-2">
+              Send failed — the office did not receive this note yet. Resending sends the exact
+              filed copy; it never files a second ticket.
+            </p>
+            <div className="flex items-center gap-2">
+              <button
+                type="button"
+                className="btn-secondary"
+                disabled={resend === "sending"}
+                onClick={doResend}
+              >
+                {resend === "sending" ? "Resending…" : resend === "sent" ? "Sent ✓" : "Resend email"}
+              </button>
+              {resend === "failed" && <span>Still failing. Try again shortly.</span>}
+            </div>
+          </div>
         )}
         <p className="mb-4 text-xs text-slate-500">{filed.sparkle}</p>
         <div className="flex flex-wrap justify-end gap-2">

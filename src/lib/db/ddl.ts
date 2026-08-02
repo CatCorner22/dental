@@ -53,8 +53,23 @@ export const SCHEMA_STATEMENTS: string[] = [
      "target" text,
      "detail" text
    );`,
+  `CREATE TABLE IF NOT EXISTS "auth_throttle" (
+     "key" text PRIMARY KEY NOT NULL,
+     "fail_count" integer DEFAULT 0 NOT NULL,
+     "first_fail_at" timestamp with time zone DEFAULT now() NOT NULL,
+     "locked_until" timestamp with time zone
+   );`,
   // Additive columns for databases created before these existed. IF NOT
   // EXISTS keeps every statement idempotent across restarts.
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_changed_at" timestamp with time zone;`,
-  `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" text;`
+  `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" text;`,
+  `ALTER TABLE "drafts" ADD COLUMN IF NOT EXISTS "last_submission_id" integer;`,
+  // Every list view orders by these; without the indexes each dashboard and
+  // history render is a full scan plus a sort.
+  `CREATE INDEX IF NOT EXISTS "drafts_owner_updated_idx" ON "drafts" ("owner_id", "updated_at" DESC);`,
+  `CREATE INDEX IF NOT EXISTS "drafts_updated_idx" ON "drafts" ("updated_at" DESC);`,
+  `CREATE INDEX IF NOT EXISTS "submissions_draft_idx" ON "submissions" ("draft_id");`,
+  `CREATE INDEX IF NOT EXISTS "submissions_by_user_idx" ON "submissions" ("submitted_by_id", "submitted_at_utc" DESC);`,
+  `CREATE INDEX IF NOT EXISTS "submissions_at_idx" ON "submissions" ("submitted_at_utc" DESC);`,
+  `CREATE INDEX IF NOT EXISTS "audit_log_at_idx" ON "audit_log" ("at" DESC);`
 ];

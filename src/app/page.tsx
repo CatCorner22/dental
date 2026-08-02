@@ -1,7 +1,12 @@
 import { redirect } from "next/navigation";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
-import { listAllDrafts, listDraftsByOwner } from "@/lib/db/repo/drafts";
+import {
+  countAllDrafts,
+  listAllDrafts,
+  listDraftsByOwner,
+  ownerDraftCount
+} from "@/lib/db/repo/drafts";
 import { statRowsForUser } from "@/lib/db/repo/submissions";
 import { listUsers } from "@/lib/db/repo/users";
 import { computeStats } from "@/lib/stats/computeStats";
@@ -16,8 +21,12 @@ export default async function DashboardPage() {
   const user = await freshSessionUser(); // fresh role/active — never the stale token
   if (!user) redirect("/login");
   const db = await getDb();
-  const rows =
-    user.role === "user" ? await listDraftsByOwner(db, user.id) : await listAllDrafts(db);
+  // The list is capped at one page. The count comes back too so the view can
+  // say so out loud — a silently truncated list reads as "this is everything",
+  // which is exactly how someone loses track of a note.
+  const mine = user.role === "user";
+  const rows = mine ? await listDraftsByOwner(db, user.id) : await listAllDrafts(db);
+  const total = mine ? await ownerDraftCount(db, user.id) : await countAllDrafts(db);
 
   // Owner display names for the admin/readonly "all drafts" view — one query.
   const ownerNames: Record<string, string> = {};
@@ -46,6 +55,7 @@ export default async function DashboardPage() {
         moduleIds: d.moduleIds
       }))}
       stats={stats}
+      totalDrafts={total}
     />
   );
 }

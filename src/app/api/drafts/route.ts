@@ -1,6 +1,13 @@
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
-import { insertDraft, listAllDrafts, listDraftsByOwner, ownerDraftCount } from "@/lib/db/repo/drafts";
+import {
+  countAllDrafts,
+  insertDraft,
+  listAllDrafts,
+  listDraftsByOwner,
+  ownerDraftCount
+} from "@/lib/db/repo/drafts";
+import { parsePageParams } from "@/lib/http/pagination";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { statusForNote } from "@/lib/status/statusForNote";
@@ -13,14 +20,16 @@ const MAX_DRAFTS_PER_USER = 500;
 const EMPTY: NoteState = { selectedModuleIds: [], values: {} };
 
 // readonly + admin see all drafts; a user sees their own.
-export async function GET(): Promise<Response> {
+export async function GET(req: Request): Promise<Response> {
   const guard = await requireRole("readonly");
   if (!guard.ok) return guard.response;
   const db = await getDb();
-  const rows =
-    guard.user.role === "user"
-      ? await listDraftsByOwner(db, guard.user.id)
-      : await listAllDrafts(db);
+  const page = parsePageParams(req.url);
+  const mine = guard.user.role === "user";
+  const rows = mine
+    ? await listDraftsByOwner(db, guard.user.id, page)
+    : await listAllDrafts(db, page);
+  const total = mine ? await ownerDraftCount(db, guard.user.id) : await countAllDrafts(db);
   return Response.json({
     drafts: rows.map((d) => ({
       id: d.id,
@@ -29,7 +38,10 @@ export async function GET(): Promise<Response> {
       ownerId: d.ownerId,
       version: d.version,
       updatedAt: d.updatedAt
-    }))
+    })),
+    total,
+    limit: page.limit,
+    offset: page.offset
   });
 }
 

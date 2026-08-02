@@ -27,13 +27,16 @@ export function Dashboard({
   displayName,
   canEdit,
   drafts,
-  stats
+  stats,
+  totalDrafts
 }: {
   role: string;
   displayName: string;
   canEdit: boolean;
   drafts: DraftRow[];
   stats: UserStats;
+  // How many drafts exist in total, versus the page actually rendered.
+  totalDrafts: number;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -182,6 +185,15 @@ export function Dashboard({
             aria-label="Search drafts by title"
           />
         </div>
+        {/* Say it plainly when this is only part of the list. Search and the
+            status chips filter the loaded page, not the whole table, so a
+            silent cap would make a missing note look deleted. */}
+        {totalDrafts > drafts.length && (
+          <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+            Showing the {drafts.length} most recently updated of {totalDrafts} drafts. Older ones
+            are not on this page — search and filters cover the ones shown.
+          </p>
+        )}
         {/* Keep this row mounted while a filter is active, even if the
             filtered status just lost its last draft (e.g. it was deleted) —
             otherwise "Clear filter" unmounts with the chips and the remaining

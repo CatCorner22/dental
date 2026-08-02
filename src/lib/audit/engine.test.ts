@@ -201,3 +201,35 @@ describe("spelling rule via full audit", () => {
     expect(report.findings.filter((f) => f.category === "spelling")).toEqual([]);
   });
 });
+
+describe("wrong-site guard", () => {
+  it("stops a note whose surfaces name a tooth the tooth field does not list", () => {
+    const state: NoteState = {
+      selectedModuleIds: ["direct-restorative"],
+      values: {
+        "direct-restorative.teeth": { kind: "teeth", teeth: ["19"] },
+        "direct-restorative.surfaces": { kind: "surfaces", byTooth: { "30": ["M", "O", "D"] } }
+      }
+    };
+    const modules = activeModules(state.selectedModuleIds);
+    const report = runAudit({ note: state, modules, composedText: composeNote(state, modules) });
+    const orphan = report.findings.find((f) => f.ruleId === "anatomy.surface-orphan");
+    expect(orphan).toBeDefined();
+    expect(orphan?.severity).toBe("S0");
+    expect(report.status).toBe("BLOCKED");
+    expect(computeGates(report, true).emailAllowed).toBe(false);
+  });
+
+  it("stays quiet when surfaces match the selected teeth", () => {
+    const state: NoteState = {
+      selectedModuleIds: ["direct-restorative"],
+      values: {
+        "direct-restorative.teeth": { kind: "teeth", teeth: ["30"] },
+        "direct-restorative.surfaces": { kind: "surfaces", byTooth: { "30": ["M", "O", "D"] } }
+      }
+    };
+    const modules = activeModules(state.selectedModuleIds);
+    const report = runAudit({ note: state, modules, composedText: composeNote(state, modules) });
+    expect(report.findings.some((f) => f.ruleId === "anatomy.surface-orphan")).toBe(false);
+  });
+});

@@ -47,6 +47,29 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
         }
 
         if (value.kind === "surfaces") {
+          // Wrong-site guard: surfaces must belong to a tooth the linked tooth
+          // field actually lists. Changing or clearing the tooth after picking
+          // surfaces would otherwise leave the note asserting work on a tooth
+          // it never names.
+          if (field.type === "surfacePicker") {
+            const linked = state.values[fieldKey(mod.id, field.linkedToothFieldId)];
+            const linkedTeeth = linked?.kind === "teeth" ? linked.teeth : [];
+            const toothLabel =
+              section.fields.find((f) => f.id === field.linkedToothFieldId)?.label ?? "the tooth field";
+            for (const [toothId, surfaces] of Object.entries(value.byTooth)) {
+              if ((surfaces as Surface[]).length === 0) continue;
+              if (linkedTeeth.includes(toothId)) continue;
+              findings.push({
+                ruleId: "anatomy.surface-orphan",
+                category: "anatomy",
+                severity: "S0",
+                message: `Surfaces are recorded for tooth ${toothId}, but "${toothLabel}" does not list that tooth. Correct the site before this entry leaves the tool.`,
+                matchedText: toothId,
+                fieldRef
+              });
+            }
+          }
+
           for (const [toothId, surfaces] of Object.entries(value.byTooth)) {
             const tooth = getTooth(toothId);
             if (!tooth) {

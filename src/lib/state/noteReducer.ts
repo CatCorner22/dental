@@ -1,4 +1,6 @@
-import type { FieldValue, NoteState } from "@/lib/schema/types";
+import type { FieldValue, NoteState, Surface, ToothId } from "@/lib/schema/types";
+import { fieldKey } from "@/lib/schema/types";
+import { MODULES_BY_ID } from "@/lib/modules";
 
 export type NoteAction =
   | { type: "toggleModule"; moduleId: string }
@@ -11,6 +13,31 @@ export const initialNoteState: NoteState = {
   selectedModuleIds: [],
   values: {}
 };
+
+function pruneOrphanSurfaces(
+  values: Record<string, FieldValue>,
+  toothKey: string,
+  teeth: ToothId[]
+): void {
+  const separator = toothKey.indexOf(".");
+  const moduleId = toothKey.slice(0, separator);
+  const toothFieldId = toothKey.slice(separator + 1);
+  const mod = MODULES_BY_ID.get(moduleId);
+  if (!mod) return;
+  for (const section of mod.sections) {
+    for (const field of section.fields) {
+      if (field.type !== "surfacePicker" || field.linkedToothFieldId !== toothFieldId) continue;
+      const key = fieldKey(moduleId, field.id);
+      const current = values[key];
+      if (current?.kind !== "surfaces") continue;
+      const kept: Record<ToothId, Surface[]> = {};
+      for (const [tooth, surfaces] of Object.entries(current.byTooth)) {
+        if (teeth.includes(tooth)) kept[tooth] = surfaces as Surface[];
+      }
+      values[key] = { kind: "surfaces", byTooth: kept };
+    }
+  }
+}
 
 export function noteReducer(state: NoteState, action: NoteAction): NoteState {
   switch (action.type) {
@@ -27,8 +54,16 @@ export function noteReducer(state: NoteState, action: NoteAction): NoteState {
         values
       };
     }
-    case "setValue":
-      return { ...state, values: { ...state.values, [action.key]: action.value } };
+    case "setValue": {
+      const values = { ...state.values, [action.key]: action.value };
+      // Changing the tooth selection drops surfaces belonging to teeth that
+      // are no longer listed, so the note can never assert work on a tooth it
+      // does not name. The audit still stops any orphan that reaches it.
+      if (action.value.kind === "teeth") {
+        pruneOrphanSurfaces(values, action.key, action.value.teeth);
+      }
+      return { ...state, values };
+    }
     case "clearValue": {
       const values = { ...state.values };
       delete values[action.key];

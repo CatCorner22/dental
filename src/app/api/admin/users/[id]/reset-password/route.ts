@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { getUserById, updateUser } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword } from "@/lib/auth/password";
 
 export const runtime = "nodejs";
@@ -15,17 +16,24 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const db = await getDb();
   const target = await getUserById(db, id);
   if (!target) return Response.json({ error: "Not found." }, { status: 404 });
-  let b: Record<string, unknown> = {};
-  try {
-    b = (await req.json()) as Record<string, unknown>;
-  } catch {
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
+  const b = parsed.value;
   const password = typeof b.password === "string" ? b.password : "";
   if (password.length < 10) {
     return Response.json({ error: "Password must be at least 10 characters." }, { status: 400 });
   }
-  await updateUser(db, id, { passHash: await hashPassword(password) });
-  await logAction(db, { actorId: guard.user.id, action: "user.reset-password", target: target.username });
+  // passwordChangedAt revokes every session minted before this instant —
+  // resetting a possibly-compromised account must cut off the old cookie,
+  // not just change what the attacker's NEXT login would need.
+  await updateUser(db, id, { passHash: await hashPassword(password), passwordChangedAt: new Date() });
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "user.reset-password",
+    target: target.username
+  });
   return Response.json({ ok: true });
 }

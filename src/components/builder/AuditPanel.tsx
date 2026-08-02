@@ -75,7 +75,15 @@ export function AuditPanel({ report }: { report: AuditReport }) {
         {SEVERITY_ORDER.flatMap((sev) =>
           report.findings
             .filter((f) => f.severity === sev)
-            .map((f, i) => <FindingRow key={`${f.ruleId}-${f.matchedText ?? ""}-${f.fieldRef?.fieldId ?? i}`} finding={f} />)
+            .map((f, i) => (
+              // moduleId is part of the key: field ids are only unique within
+              // a module, so two modules' identical required/spelling findings
+              // must not collide.
+              <FindingRow
+                key={`${f.ruleId}-${f.matchedText ?? ""}-${f.fieldRef ? `${f.fieldRef.moduleId}.${f.fieldRef.fieldId}` : i}`}
+                finding={f}
+              />
+            ))
         )}
         {report.findings.length === 0 && (
           <li className="rounded border border-green-200 bg-green-50 px-2.5 py-2 text-xs text-green-900">

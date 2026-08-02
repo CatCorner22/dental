@@ -8,6 +8,9 @@ declare module "next-auth" {
       displayName: string;
       role: Role;
       noticeAcked: boolean;
+      // Password watermark (ms epoch) captured at sign-in; 0 = never changed.
+      // Optional so tokens minted before this field existed stay decodable.
+      pwAt?: number;
     };
   }
   interface User {
@@ -16,6 +19,7 @@ declare module "next-auth" {
     displayName: string;
     role: Role;
     noticeAcked: boolean;
+    pwAt?: number;
   }
 }
 
@@ -26,5 +30,6 @@ declare module "next-auth/jwt" {
     displayName: string;
     role: Role;
     noticeAcked: boolean;
+    pwAt?: number;
   }
 }

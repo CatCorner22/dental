@@ -48,8 +48,13 @@ export const SCHEMA_STATEMENTS: string[] = [
      "id" serial PRIMARY KEY NOT NULL,
      "at" timestamp with time zone DEFAULT now() NOT NULL,
      "actor_id" text,
+     "actor_name" text,
      "action" text NOT NULL,
      "target" text,
      "detail" text
-   );`
+   );`,
+  // Additive columns for databases created before these existed. IF NOT
+  // EXISTS keeps every statement idempotent across restarts.
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_changed_at" timestamp with time zone;`,
+  `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" text;`
 ];

@@ -35,7 +35,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           username: user.username,
           displayName: user.displayName,
           role: user.role,
-          noticeAcked: user.noticeAckAt !== null
+          noticeAcked: user.noticeAckAt !== null,
+          // Watermark this token against the password it was minted with, so
+          // a later change/reset revokes it on the very next request.
+          pwAt: user.passwordChangedAt?.getTime() ?? 0
         };
       }
     })

@@ -14,19 +14,33 @@ export function SetupForm() {
     e.preventDefault();
     setBusy(true);
     setError("");
-    const res = await fetch("/api/setup", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ username, displayName, password })
-    });
-    if (!res.ok) {
-      const data = (await res.json().catch(() => ({}))) as { error?: string };
-      setError(data.error ?? "Setup failed.");
+    // Every await is guarded: an unhandled rejection here would leave the
+    // button stuck on "Creating…" forever with no message and no way forward.
+    try {
+      const res = await fetch("/api/setup", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ username, displayName, password })
+      });
+      if (!res.ok) {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setError(data.error ?? "Setup failed.");
+        setBusy(false);
+        return;
+      }
+    } catch {
+      setError("Could not reach the server — check the connection and try again.");
       setBusy(false);
       return;
     }
-    const login = await signIn("credentials", { username, password, redirect: false });
-    window.location.assign(login?.error ? "/login" : "/");
+    // The admin now EXISTS; if the auto sign-in fails for any reason, land on
+    // the sign-in page (where the new credentials work) rather than sticking.
+    try {
+      const login = await signIn("credentials", { username, password, redirect: false });
+      window.location.assign(login?.error ? "/login" : "/");
+    } catch {
+      window.location.assign("/login");
+    }
   };
 
   return (

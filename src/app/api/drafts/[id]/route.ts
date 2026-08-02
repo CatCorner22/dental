@@ -6,6 +6,8 @@ import {
   getDraft,
   updateDraftChecked
 } from "@/lib/db/repo/drafts";
+import { logAction } from "@/lib/db/repo/auditLog";
+import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { statusForNote } from "@/lib/status/statusForNote";
 
@@ -42,13 +44,11 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     return Response.json({ error: "You cannot edit this draft." }, { status: 403 });
   }
 
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid JSON." }, { status: 400 });
   }
-  const b = body as Record<string, unknown>;
+  const b = parsed.value;
   if (typeof b.baseVersion !== "number") {
     return Response.json({ error: "baseVersion is required." }, { status: 400 });
   }
@@ -99,5 +99,15 @@ export async function DELETE(_req: Request, { params }: Ctx): Promise<Response> 
     );
   }
   await deleteDraft(db, id);
+  // Deletion is the one place the row itself vanishes, so the audit log is
+  // the only surviving record of who removed what (an admin may delete a
+  // draft they do not own — the owner deserves a trace, not a mystery).
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "draft.delete",
+    target: draft.title,
+    detail: `${draft.id} (owner ${draft.ownerId})`
+  });
   return new Response(null, { status: 204 });
 }

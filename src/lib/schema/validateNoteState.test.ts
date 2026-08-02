@@ -36,4 +36,17 @@ describe("validateNoteState", () => {
     const r = validateNoteState({ selectedModuleIds: [], values: {} });
     expect(r.ok).toBe(true);
   });
+
+  it("rejects a note whose TOTAL text exceeds the aggregate cap", () => {
+    // Each field is under the 20k per-field cap; together they blow the
+    // 120k aggregate bound that protects the audit from megabyte notes.
+    const chunk = "x".repeat(19_000);
+    const values: Record<string, unknown> = {};
+    for (let i = 0; i < 8; i++) {
+      values[`mod-${i}.field-${i}`] = { kind: "text", value: chunk };
+    }
+    const r = validateNoteState({ selectedModuleIds: [], values });
+    expect(r.ok).toBe(false);
+    if (!r.ok) expect(r.error).toContain("too large");
+  });
 });

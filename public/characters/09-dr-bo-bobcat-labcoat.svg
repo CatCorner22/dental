@@ -1,0 +1,129 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Dr. Bo the Bobcat, specialist in lab coat mascot (male)">
+  <defs>
+    <linearGradient id="bobFur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#DDAE74"/>
+      <stop offset="1" stop-color="#C08F55"/>
+    </linearGradient>
+    <linearGradient id="bobCoat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9EDF3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse cx="256" cy="486" rx="126" ry="14" fill="#2A2016" opacity="0.08"/>
+
+  <!-- bob tail (behind, short with black tip) -->
+  <path d="M 330 400 C 358 396 374 380 376 360 C 360 358 344 366 336 380 Z" fill="#C08F55"/>
+  <path d="M 366 366 C 372 362 375 356 376 350 C 368 350 361 354 357 360 Z" fill="#2B2B33"/>
+
+  <!-- legs / shoes -->
+  <path d="M 210 436 L 210 470 C 210 480 220 486 232 486 C 244 486 252 480 252 470 L 252 440 Z" fill="#8A9BB0"/>
+  <path d="M 260 440 L 260 470 C 260 480 268 486 280 486 C 292 486 302 480 302 470 L 302 436 Z" fill="#8A9BB0"/>
+  <ellipse cx="231" cy="482" rx="26" ry="9" fill="#5B6B80"/>
+  <ellipse cx="281" cy="482" rx="26" ry="9" fill="#5B6B80"/>
+
+  <!-- body -->
+  <path d="M 256 244 C 334 244 356 316 352 380 C 348 432 314 456 256 456 C 198 456 164 432 160 380 C 156 316 178 244 256 244 Z" fill="url(#bobFur)"/>
+  <!-- chest -->
+  <ellipse cx="256" cy="360" rx="56" ry="72" fill="#F2DDBE"/>
+
+  <!-- teal scrub v under coat -->
+  <path d="M 226 282 L 256 312 L 286 282 L 292 352 L 220 352 Z" fill="#5FB3A8"/>
+
+  <!-- lab coat -->
+  <path d="M 214 278 C 194 286 178 306 174 334 L 166 428 C 166 450 184 460 210 462 L 230 458 L 238 314 Z" fill="url(#bobCoat)"/>
+  <path d="M 298 278 C 318 286 334 306 338 334 L 346 428 C 346 450 328 460 302 462 L 282 458 L 274 314 Z" fill="url(#bobCoat)"/>
+  <path d="M 238 314 L 230 458 L 248 462 L 252 310 L 234 284 Z" fill="#F4F7FA"/>
+  <path d="M 274 314 L 282 458 L 264 462 L 260 310 L 278 284 Z" fill="#F4F7FA"/>
+  <path d="M 234 284 L 252 310 L 238 324 C 230 310 230 294 234 284 Z" fill="#DCE4EE"/>
+  <path d="M 278 284 L 260 310 L 274 324 C 282 310 282 294 278 284 Z" fill="#DCE4EE"/>
+  <!-- pocket with pens -->
+  <rect x="290" y="372" width="44" height="42" rx="7" fill="#F4F7FA" stroke="#D5DDE8" stroke-width="3"/>
+  <rect x="298" y="360" width="7" height="18" rx="3" fill="#5FB3A8"/>
+  <rect x="309" y="358" width="7" height="20" rx="3" fill="#F26D6D"/>
+  <!-- buttons -->
+  <circle cx="256" cy="396" r="3.5" fill="#C6CFDB"/>
+  <circle cx="256" cy="422" r="3.5" fill="#C6CFDB"/>
+
+  <!-- stethoscope -->
+  <g fill="none" stroke="#3D6B75" stroke-width="7" stroke-linecap="round">
+    <path d="M 232 286 C 224 316 226 344 240 366"/>
+    <path d="M 280 286 C 288 316 286 344 272 366"/>
+    <path d="M 240 366 C 248 376 264 376 272 366"/>
+  </g>
+  <circle cx="256" cy="384" r="15" fill="#9DA8B4"/>
+  <circle cx="256" cy="384" r="9" fill="#C9D2DC"/>
+
+  <!-- right arm holding mouth mirror -->
+  <g>
+    <path d="M 330 312 C 356 302 372 282 378 260 C 360 254 342 258 330 270 Z" fill="url(#bobCoat)"/>
+    <rect x="370" y="192" width="10" height="58" rx="5" fill="#9DA8B4" transform="rotate(6 375 221)"/>
+    <circle cx="380" cy="184" r="24" fill="#8FA5B8"/>
+    <circle cx="380" cy="184" r="18" fill="#DDEBF4"/>
+    <path d="M 369 176 a 14 14 0 0 1 13 -6" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+    <ellipse cx="374" cy="256" rx="16" ry="14" fill="#DDAE74"/>
+  </g>
+  <!-- left arm relaxed, paw in coat pocket vibe -->
+  <g>
+    <path d="M 182 312 C 158 304 142 286 136 264 C 154 258 172 262 184 274 Z" fill="url(#bobCoat)"/>
+    <ellipse cx="140" cy="260" rx="16" ry="14" fill="#DDAE74"/>
+    <g stroke="#B8834A" stroke-width="3.5" stroke-linecap="round">
+      <path d="M 132 252 l 0 10"/><path d="M 141 250 l 0 11"/>
+    </g>
+  </g>
+
+  <!-- head -->
+  <circle cx="256" cy="156" r="98" fill="url(#bobFur)"/>
+  <!-- cheek ruffs -->
+  <path d="M 162 168 C 148 186 144 206 148 224 C 168 220 184 208 194 192 L 178 172 Z" fill="#DDAE74"/>
+  <path d="M 350 168 C 364 186 368 206 364 224 C 344 220 328 208 318 192 L 334 172 Z" fill="#DDAE74"/>
+  <g stroke="#8A6234" stroke-width="4" stroke-linecap="round">
+    <path d="M 158 196 l 18 4"/><path d="M 160 212 l 16 -2"/>
+    <path d="M 354 196 l -18 4"/><path d="M 352 212 l -16 -2"/>
+  </g>
+  <!-- pointed ears with black tufts -->
+  <path d="M 176 92 L 158 26 L 222 58 Z" fill="#C08F55"/>
+  <path d="M 181 84 L 170 46 L 208 64 Z" fill="#E8CBA4"/>
+  <path d="M 163 44 L 158 26 L 174 34 Z" fill="#2B2B33"/>
+  <path d="M 158 26 C 154 18 152 10 152 2 L 166 16 Z" fill="#2B2B33"/>
+  <path d="M 336 92 L 354 26 L 290 58 Z" fill="#C08F55"/>
+  <path d="M 331 84 L 342 46 L 304 64 Z" fill="#E8CBA4"/>
+  <path d="M 349 44 L 354 26 L 338 34 Z" fill="#2B2B33"/>
+  <path d="M 354 26 C 358 18 360 10 360 2 L 346 16 Z" fill="#2B2B33"/>
+  <!-- fur spots -->
+  <g fill="#B8834A" opacity="0.75">
+    <ellipse cx="190" cy="112" rx="6" ry="4" transform="rotate(-20 190 112)"/>
+    <ellipse cx="322" cy="112" rx="6" ry="4" transform="rotate(20 322 112)"/>
+    <ellipse cx="176" cy="140" rx="5" ry="3.5"/>
+    <ellipse cx="336" cy="140" rx="5" ry="3.5"/>
+    <ellipse cx="196" cy="330" rx="6" ry="4"/>
+    <ellipse cx="318" cy="336" rx="6" ry="4"/>
+  </g>
+
+  <!-- muzzle -->
+  <ellipse cx="256" cy="196" rx="52" ry="38" fill="#F7EBD4"/>
+  <path d="M 242 178 C 248 172 264 172 270 178 C 268 188 262 193 256 193 C 250 193 244 188 242 178 Z" fill="#B85A6E"/>
+  <path d="M 256 193 C 256 201 250 205 244 205 M 256 193 C 256 201 262 205 268 205" fill="none" stroke="#6B4A2B" stroke-width="4" stroke-linecap="round"/>
+  <!-- confident smile with tiny fangs -->
+  <path d="M 234 208 C 244 218 268 218 278 208" fill="none" stroke="#6B4A2B" stroke-width="4.5" stroke-linecap="round"/>
+  <path d="M 240 209 l 4 8 l 4 -6 Z" fill="#FFFFFF"/>
+  <path d="M 264 211 l 4 6 l 4 -8 Z" fill="#FFFFFF"/>
+  <!-- whisker dots -->
+  <g fill="#C89A5E">
+    <circle cx="228" cy="196" r="2"/><circle cx="220" cy="202" r="2"/>
+    <circle cx="284" cy="196" r="2"/><circle cx="292" cy="202" r="2"/>
+  </g>
+
+  <!-- eyes (male: thick confident brows) -->
+  <g>
+    <circle cx="216" cy="148" r="16" fill="#3B2A1D"/>
+    <circle cx="222" cy="142" r="5.5" fill="#FFFFFF"/>
+    <circle cx="212" cy="153" r="2.6" fill="#FFFFFF" opacity="0.85"/>
+    <circle cx="296" cy="148" r="16" fill="#3B2A1D"/>
+    <circle cx="302" cy="142" r="5.5" fill="#FFFFFF"/>
+    <circle cx="292" cy="153" r="2.6" fill="#FFFFFF" opacity="0.85"/>
+    <path d="M 196 124 C 204 118 218 117 226 121" fill="none" stroke="#6B4A2B" stroke-width="7" stroke-linecap="round"/>
+    <path d="M 286 121 C 294 117 308 118 316 124" fill="none" stroke="#6B4A2B" stroke-width="7" stroke-linecap="round"/>
+  </g>
+</svg>

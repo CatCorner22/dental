@@ -1,0 +1,117 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Doc Otto the Otter, dentist mascot (male)">
+  <defs>
+    <linearGradient id="otterFur" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#9B7B5E"/>
+      <stop offset="1" stop-color="#7E6047"/>
+    </linearGradient>
+    <linearGradient id="otterCoat" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#E9EDF3"/>
+    </linearGradient>
+    <linearGradient id="otterCap" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#E3CC9E"/>
+      <stop offset="1" stop-color="#CDB183"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse cx="256" cy="484" rx="124" ry="14" fill="#2A2016" opacity="0.08"/>
+
+  <!-- tail (behind) -->
+  <path d="M 322 420 C 372 428 402 452 410 478 C 380 486 344 480 322 462 Z" fill="#7E6047"/>
+
+  <!-- boots -->
+  <g>
+    <path d="M 200 448 C 178 448 168 460 168 470 C 168 478 178 482 200 482 C 222 482 232 478 232 468 L 232 448 Z" fill="#A98B67"/>
+    <path d="M 312 448 C 334 448 344 460 344 470 C 344 478 334 482 312 482 C 290 482 280 478 280 468 L 280 448 Z" fill="#A98B67"/>
+    <rect x="168" y="474" width="64" height="9" rx="4.5" fill="#8A6E4E"/>
+    <rect x="280" y="474" width="64" height="9" rx="4.5" fill="#8A6E4E"/>
+  </g>
+
+  <!-- body / belly -->
+  <path d="M 256 250 C 330 250 352 322 348 384 C 344 434 312 458 256 458 C 200 458 168 434 164 384 C 160 322 182 250 256 250 Z" fill="url(#otterFur)"/>
+  <ellipse cx="256" cy="380" rx="60" ry="72" fill="#D9C4A8"/>
+
+  <!-- shirt and tie -->
+  <path d="M 226 288 L 256 300 L 286 288 L 292 360 L 220 360 Z" fill="#BBD8F0"/>
+  <path d="M 248 300 L 264 300 L 258 316 L 268 372 L 256 388 L 244 372 L 254 316 Z" fill="#3F6BA8"/>
+  <circle cx="258" cy="330" r="2.6" fill="#6E93C4"/>
+  <circle cx="260" cy="348" r="2.6" fill="#6E93C4"/>
+
+  <!-- lab coat -->
+  <path d="M 216 284 C 196 292 180 312 176 340 L 168 430 C 168 452 186 462 212 464 L 232 460 L 240 320 Z" fill="url(#otterCoat)"/>
+  <path d="M 296 284 C 316 292 332 312 336 340 L 344 430 C 344 452 326 462 300 464 L 280 460 L 272 320 Z" fill="url(#otterCoat)"/>
+  <!-- lapels -->
+  <path d="M 240 320 L 232 460 L 250 464 L 254 316 L 236 290 Z" fill="#F4F7FA"/>
+  <path d="M 272 320 L 280 460 L 262 464 L 258 316 L 276 290 Z" fill="#F4F7FA"/>
+  <path d="M 236 290 L 254 316 L 240 330 C 232 316 232 300 236 290 Z" fill="#DCE4EE"/>
+  <path d="M 276 290 L 258 316 L 272 330 C 280 316 280 300 276 290 Z" fill="#DCE4EE"/>
+  <!-- coat pocket: TN -->
+  <rect x="292" y="368" width="44" height="40" rx="7" fill="#F4F7FA" stroke="#D5DDE8" stroke-width="3"/>
+  <text x="314" y="394" font-family="Verdana, 'Segoe UI', sans-serif" font-size="16" font-weight="bold" fill="#3F6BA8" text-anchor="middle">TN</text>
+  <!-- buttons -->
+  <circle cx="256" cy="400" r="3.5" fill="#C6CFDB"/>
+  <circle cx="256" cy="424" r="3.5" fill="#C6CFDB"/>
+
+  <!-- right arm holding mouth mirror -->
+  <g>
+    <path d="M 330 316 C 356 306 372 286 378 264 C 360 258 342 262 330 274 Z" fill="url(#otterCoat)"/>
+    <circle cx="374" cy="258" r="16" fill="#6B4E36"/>
+    <rect x="370" y="196" width="9" height="56" rx="4.5" fill="#9DA8B4" transform="rotate(6 374 224)"/>
+    <circle cx="378" cy="188" r="23" fill="#8FA5B8"/>
+    <circle cx="378" cy="188" r="17" fill="#DDEBF4"/>
+    <path d="M 368 181 a 13 13 0 0 1 12 -6" fill="none" stroke="#FFFFFF" stroke-width="4.5" stroke-linecap="round" opacity="0.85"/>
+  </g>
+
+  <!-- left arm holding scaler -->
+  <g>
+    <path d="M 182 316 C 156 306 140 286 134 264 C 152 258 170 262 182 274 Z" fill="url(#otterCoat)"/>
+    <circle cx="138" cy="258" r="16" fill="#6B4E36"/>
+    <rect x="132" y="196" width="9" height="56" rx="4.5" fill="#9DA8B4" transform="rotate(-6 137 224)"/>
+    <path d="M 134 196 C 130 184 132 174 142 168 C 150 164 156 166 158 172 C 152 172 146 176 146 184" fill="none" stroke="#9DA8B4" stroke-width="7" stroke-linecap="round"/>
+  </g>
+
+  <!-- head -->
+  <ellipse cx="256" cy="172" rx="102" ry="92" fill="url(#otterFur)"/>
+  <!-- ears -->
+  <circle cx="166" cy="120" r="17" fill="#7E6047"/>
+  <circle cx="166" cy="120" r="9" fill="#B99B7C"/>
+  <circle cx="346" cy="120" r="17" fill="#7E6047"/>
+  <circle cx="346" cy="120" r="9" fill="#B99B7C"/>
+
+  <!-- muzzle -->
+  <ellipse cx="256" cy="212" rx="62" ry="46" fill="#D9C4A8"/>
+  <path d="M 240 190 C 246 184 266 184 272 190 C 270 202 262 208 256 208 C 250 208 242 202 240 190 Z" fill="#4A3527"/>
+  <path d="M 256 208 L 256 222" stroke="#8A6E4E" stroke-width="4" stroke-linecap="round"/>
+  <path d="M 236 228 C 244 238 268 238 276 228" fill="none" stroke="#4A3527" stroke-width="5" stroke-linecap="round"/>
+  <path d="M 247 231 h 18 v 6 a 6 6 0 0 1 -6 6 h -6 a 6 6 0 0 1 -6 -6 Z" fill="#FFFFFF"/>
+  <!-- whiskers -->
+  <g stroke="#B99B7C" stroke-width="3" stroke-linecap="round">
+    <line x1="196" y1="206" x2="158" y2="198"/><line x1="196" y1="218" x2="158" y2="220"/>
+    <line x1="316" y1="206" x2="354" y2="198"/><line x1="316" y1="218" x2="354" y2="220"/>
+  </g>
+
+  <!-- eyes + glasses (male: brows, no lashes) -->
+  <g>
+    <circle cx="218" cy="158" r="17" fill="#3B2A1D"/>
+    <circle cx="224" cy="152" r="5.5" fill="#FFFFFF"/>
+    <circle cx="294" cy="158" r="17" fill="#3B2A1D"/>
+    <circle cx="300" cy="152" r="5.5" fill="#FFFFFF"/>
+    <g fill="none" stroke="#B8935E" stroke-width="5">
+      <circle cx="218" cy="158" r="26"/>
+      <circle cx="294" cy="158" r="26"/>
+      <path d="M 244 156 C 250 152 262 152 268 156"/>
+      <path d="M 192 152 L 172 146"/><path d="M 320 152 L 340 146"/>
+    </g>
+    <path d="M 200 128 C 208 122 224 122 232 126" fill="none" stroke="#5E442F" stroke-width="6" stroke-linecap="round"/>
+    <path d="M 280 126 C 288 122 304 122 312 128" fill="none" stroke="#5E442F" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- Tennessee cap -->
+  <g>
+    <path d="M 168 106 C 168 58 208 30 256 30 C 304 30 344 58 344 106 C 316 94 196 94 168 106 Z" fill="url(#otterCap)"/>
+    <path d="M 168 106 C 196 94 316 94 344 106 C 346 112 344 116 338 118 C 306 106 206 106 174 118 C 168 116 166 112 168 106 Z" fill="#BFa276"/>
+    <path d="M 338 100 C 372 100 392 112 398 126 C 388 132 372 132 356 128 C 348 116 344 108 338 100 Z" fill="#CDB183"/>
+    <text x="256" y="80" font-family="Verdana, 'Segoe UI', sans-serif" font-size="24" font-weight="bold" fill="#2F4A78" text-anchor="middle" letter-spacing="1">TENNESSEE</text>
+  </g>
+</svg>

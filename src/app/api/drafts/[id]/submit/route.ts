@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { requireRole } from "@/lib/auth/guards";
+import { readJsonRecord } from "@/lib/http/readJson";
 import { getDb } from "@/lib/db/client";
 import { getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
 import { fileSubmissionAtomic } from "@/lib/db/repo/submissions";
@@ -39,12 +40,14 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     );
   }
 
-  let body: Record<string, unknown> = {};
-  try {
-    body = (await req.json()) as Record<string, unknown>;
-  } catch {
-    /* format defaults below */
+  // An empty body means "all defaults"; a body that parses to anything other
+  // than a JSON object (null, a number, an array) is refused loudly — the
+  // recipient-key guard below must never throw on a weird body shape.
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind === "invalid") {
+    return Response.json({ error: "Request body must be a JSON object." }, { status: 400 });
   }
+  const body: Record<string, unknown> = parsed.kind === "object" ? parsed.value : {};
   // Poka-yoke: the corporate address is server configuration, never client
   // input. A request that even TRIES to steer the recipient is refused loudly
   // (the README promises this), not silently ignored.
@@ -109,6 +112,10 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
         ruleVersion: RULESET_VERSION,
         auditStatus: report.status
       },
+      // Pin the claim to the exact version whose noteState was composed and
+      // audited above — an autosave landing mid-submit must not be frozen out
+      // of the record, nor a stale copy frozen into it.
+      draft.version,
       now,
       (ticket) => {
         const stamp = composeStamp({
@@ -131,6 +138,15 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     );
   }
   if (!filed.filed) {
+    // Distinguish "someone else already filed it" from "the note changed
+    // while this submit was in flight" so the user gets the right next step.
+    const fresh = await getDraft(db, draft.id);
+    if (fresh && fresh.status !== "submitted" && fresh.version !== draft.version) {
+      return Response.json(
+        { error: "The note changed while submitting. Review the latest version, then submit again." },
+        { status: 409 }
+      );
+    }
     return Response.json(
       { error: "This note is already submitted. Edit it before submitting again." },
       { status: 409 }
@@ -168,6 +184,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   if (sendFailed) await setDraftStatus(db, draft.id, "error", true, now);
   await logAction(db, {
     actorId: guard.user.id,
+    actorName: submittedByName,
     action: emailed ? "submit" : config.configured ? "submit.email-failed" : "submit.no-email",
     target: ticket,
     detail: draft.id
@@ -182,6 +199,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
         : "(no reason given)";
     await logAction(db, {
       actorId: guard.user.id,
+      actorName: submittedByName,
       action: "submit.phi-override",
       target: ticket,
       detail: `${report.phiStops.length} PHI stop(s) attested: ${reason}`
@@ -193,6 +211,9 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     ticket,
     submissionId: filed.submissionId,
     emailed,
+    // The claim bumped the draft version; the open builder adopts this so its
+    // next autosave is not a false 409.
+    version: filed.version,
     sparkle: sparkleLine(firstPass ? "firstPass" : "afterSubmit", filed.submissionId)
   });
 }

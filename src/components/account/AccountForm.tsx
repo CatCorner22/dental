@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { signOut } from "next-auth/react";
 
 export function AccountForm() {
   const [current, setCurrent] = useState("");
@@ -24,10 +25,14 @@ export function AccountForm() {
         body: JSON.stringify({ current, next })
       });
       if (res.ok) {
-        setMsg({ ok: true, text: "Password changed." });
+        // The change revoked every session minted with the old password —
+        // including this one. Say so, then route through a real sign-out so
+        // the user lands on the sign-in page instead of a dead-session screen.
+        setMsg({ ok: true, text: "Password changed. Signing you out so you can sign back in…" });
         setCurrent("");
         setNext("");
         setConfirm("");
+        setTimeout(() => void signOut({ callbackUrl: "/login" }), 1500);
       } else {
         setMsg({ ok: false, text: ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Change failed." });
       }

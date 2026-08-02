@@ -1,0 +1,116 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Sparkle the Rainbow Tooth mascot (gender-neutral, rainbow-themed)">
+  <defs>
+    <linearGradient id="toothBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#FFFFFF"/>
+      <stop offset="1" stop-color="#EAF0F8"/>
+    </linearGradient>
+    <clipPath id="handleClip">
+      <rect x="140" y="240" width="17" height="112" rx="8.5"/>
+    </clipPath>
+  </defs>
+
+  <!-- soft rainbow arc behind -->
+  <g fill="none" stroke-linecap="round" opacity="0.85">
+    <path d="M 96 268 A 160 160 0 0 1 416 268" stroke="#F26D6D" stroke-width="13"/>
+    <path d="M 109 268 A 147 147 0 0 1 403 268" stroke="#F9A758" stroke-width="13"/>
+    <path d="M 122 268 A 134 134 0 0 1 390 268" stroke="#F2CE4B" stroke-width="13"/>
+    <path d="M 135 268 A 121 121 0 0 1 377 268" stroke="#7FC97F" stroke-width="13"/>
+    <path d="M 148 268 A 108 108 0 0 1 364 268" stroke="#6FA8DC" stroke-width="13"/>
+    <path d="M 161 268 A 95 95 0 0 1 351 268" stroke="#9B7FD4" stroke-width="13"/>
+  </g>
+
+  <!-- cloud puffs finishing the rainbow ends -->
+  <g fill="#FFFFFF" stroke="#DCE6F0" stroke-width="3">
+    <circle cx="86" cy="262" r="17"/><circle cx="106" cy="252" r="14"/><circle cx="112" cy="272" r="13"/>
+    <circle cx="426" cy="262" r="17"/><circle cx="406" cy="252" r="14"/><circle cx="400" cy="272" r="13"/>
+  </g>
+
+  <!-- ground shadow -->
+  <ellipse cx="256" cy="470" rx="110" ry="13" fill="#3A4A6B" opacity="0.08"/>
+
+  <!-- tooth body: wide, squat crown with two stubby rounded feet -->
+  <path d="M 140 268
+           C 140 190 172 136 222 136
+           C 238 136 244 150 256 150
+           C 268 150 274 136 290 136
+           C 340 136 372 190 372 268
+           C 372 328 358 372 330 398
+           C 326 430 314 452 296 452
+           C 280 452 272 434 270 406
+           C 266 390 246 390 242 406
+           C 240 434 232 452 216 452
+           C 198 452 186 430 182 398
+           C 154 372 140 328 140 268 Z"
+        fill="url(#toothBody)" stroke="#5A6B8C" stroke-width="6" stroke-linejoin="round"/>
+  <!-- soft shine -->
+  <path d="M 168 232 C 170 192 188 162 214 154 C 200 176 192 208 190 240 Z" fill="#FFFFFF" opacity="0.9"/>
+
+  <!-- face -->
+  <g>
+    <circle cx="217" cy="228" r="17" fill="#33415E"/>
+    <circle cx="223" cy="222" r="5.5" fill="#FFFFFF"/>
+    <circle cx="213" cy="233" r="2.6" fill="#FFFFFF" opacity="0.9"/>
+    <circle cx="295" cy="228" r="17" fill="#33415E"/>
+    <circle cx="301" cy="222" r="5.5" fill="#FFFFFF"/>
+    <circle cx="291" cy="233" r="2.6" fill="#FFFFFF" opacity="0.9"/>
+    <ellipse cx="192" cy="258" rx="13" ry="8" fill="#F5A8BC" opacity="0.6"/>
+    <ellipse cx="320" cy="258" rx="13" ry="8" fill="#F5A8BC" opacity="0.6"/>
+    <path d="M 232 254 C 242 268 270 268 280 254" fill="none" stroke="#33415E" stroke-width="6" stroke-linecap="round"/>
+  </g>
+
+  <!-- rainbow scarf -->
+  <g>
+    <path d="M 162 296 C 196 316 316 316 350 296 L 350 322 C 316 342 196 342 162 322 Z" fill="#F26D6D"/>
+    <path d="M 162 305 C 196 325 316 325 350 305 L 350 311 C 316 331 196 331 162 311 Z" fill="#F9A758"/>
+    <path d="M 162 311 C 196 331 316 331 350 311 L 350 317 C 316 337 196 337 162 317 Z" fill="#F2CE4B"/>
+    <path d="M 162 317 C 196 337 316 337 350 317 L 350 322 C 316 342 196 342 162 322 Z" fill="#7FC97F"/>
+    <!-- knot + trailing tail -->
+    <circle cx="336" cy="322" r="15" fill="#F26D6D"/>
+    <g transform="rotate(14 348 330)">
+      <rect x="336" y="330" width="26" height="64" rx="12" fill="#F26D6D"/>
+      <rect x="336" y="346" width="26" height="10" fill="#F9A758"/>
+      <rect x="336" y="356" width="26" height="10" fill="#F2CE4B"/>
+      <rect x="336" y="366" width="26" height="10" fill="#7FC97F"/>
+      <rect x="336" y="376" width="26" height="10" fill="#6FA8DC"/>
+      <path d="M 336 386 a 13 13 0 0 0 26 0 v -4 h -26 Z" fill="#9B7FD4"/>
+    </g>
+  </g>
+
+  <!-- left arm holding rainbow toothbrush -->
+  <g>
+    <g transform="rotate(-28 150 300)">
+      <g clip-path="url(#handleClip)">
+        <rect x="140" y="240" width="17" height="19" fill="#F26D6D"/>
+        <rect x="140" y="259" width="17" height="19" fill="#F9A758"/>
+        <rect x="140" y="278" width="17" height="18" fill="#F2CE4B"/>
+        <rect x="140" y="296" width="17" height="19" fill="#7FC97F"/>
+        <rect x="140" y="315" width="17" height="18" fill="#6FA8DC"/>
+        <rect x="140" y="333" width="17" height="19" fill="#9B7FD4"/>
+      </g>
+      <rect x="140" y="240" width="17" height="112" rx="8.5" fill="none" stroke="#5A6B8C" stroke-width="4"/>
+      <rect x="133" y="166" width="32" height="32" rx="6" fill="#FFFFFF" stroke="#5A6B8C" stroke-width="4"/>
+      <g stroke="#DDEBF4" stroke-width="3">
+        <line x1="143.5" y1="170" x2="143.5" y2="194"/>
+        <line x1="154.5" y1="170" x2="154.5" y2="194"/>
+      </g>
+      <rect x="130" y="194" width="38" height="52" rx="13" fill="#FFFFFF" stroke="#5A6B8C" stroke-width="4"/>
+    </g>
+    <path d="M 176 330 C 158 328 146 318 140 304 C 152 298 166 300 176 308 Z" fill="#FFFFFF" stroke="#5A6B8C" stroke-width="5" stroke-linejoin="round"/>
+  </g>
+  <!-- right arm waving -->
+  <path d="M 348 350 C 372 346 388 334 394 318 C 380 310 364 312 354 322 Z" fill="#FFFFFF" stroke="#5A6B8C" stroke-width="5" stroke-linejoin="round"/>
+
+  <!-- sparkles -->
+  <g fill="#F2CE4B">
+    <path d="M 118 140 l 5 12 l 12 5 l -12 5 l -5 12 l -5 -12 l -12 -5 l 12 -5 Z"/>
+    <path d="M 398 128 l 4 10 l 10 4 l -10 4 l -4 10 l -4 -10 l -10 -4 l 10 -4 Z"/>
+  </g>
+  <g fill="#9B7FD4">
+    <path d="M 424 300 l 4 9 l 9 4 l -9 4 l -4 9 l -4 -9 l -9 -4 l 9 -4 Z"/>
+  </g>
+  <g fill="#6FA8DC">
+    <path d="M 84 300 l 4 9 l 9 4 l -9 4 l -4 9 l -4 -9 l -9 -4 l 9 -4 Z"/>
+  </g>
+  <circle cx="140" cy="104" r="4" fill="#F9A758"/>
+  <circle cx="376" cy="104" r="4" fill="#7FC97F"/>
+</svg>

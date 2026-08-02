@@ -278,6 +278,7 @@ export function BuilderShell({
                 <button
                   key={t}
                   onClick={() => setTab(t)}
+                  aria-pressed={tab === t}
                   className={`rounded px-3 py-1 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
                 >
                   {label}
@@ -351,6 +352,9 @@ export function BuilderShell({
             const failed = r.emailConfigured && !r.emailed;
             setSubmittedNow(!failed);
             setSendFailedNow(failed);
+            // The submit claim bumped the server version; adopt it so this
+            // tab's next edit saves cleanly instead of hitting a false 409.
+            if (typeof r.version === "number") autosave.adoptVersion(r.version);
           }}
           onStartAnother={() => void startAnother()}
           onGoToDashboard={() => router.push("/")}

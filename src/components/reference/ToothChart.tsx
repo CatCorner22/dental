@@ -21,6 +21,8 @@ function ChartRow({ ids, selected, onPick }: { ids: string[]; selected: string |
             key={id}
             type="button"
             title={tooth?.name}
+            aria-label={tooth ? `${id} — ${tooth.name}` : id}
+            aria-pressed={selected === id}
             onClick={() => onPick(id)}
             className={`h-9 w-9 rounded border text-sm font-medium ${
               selected === id
@@ -52,6 +54,7 @@ export function ToothChart() {
           <button
             key={d}
             type="button"
+            aria-pressed={dentition === d}
             onClick={() => {
               setDentition(d);
               setSelected(null);

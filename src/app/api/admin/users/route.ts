@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { getUserByUsername, insertUser, listUsers } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword } from "@/lib/auth/password";
 import type { Role } from "@/lib/auth/roles";
 
@@ -29,12 +30,11 @@ export async function GET(): Promise<Response> {
 export async function POST(req: Request): Promise<Response> {
   const guard = await requireRole("admin");
   if (!guard.ok) return guard.response;
-  let b: Record<string, unknown> = {};
-  try {
-    b = (await req.json()) as Record<string, unknown>;
-  } catch {
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
+  const b = parsed.value;
   const username = typeof b.username === "string" ? b.username.trim() : "";
   const displayName = typeof b.displayName === "string" && b.displayName.trim() ? b.displayName.trim() : username;
   const password = typeof b.password === "string" ? b.password : "";
@@ -65,6 +65,12 @@ export async function POST(req: Request): Promise<Response> {
   } catch {
     return Response.json({ error: "That username is taken." }, { status: 409 });
   }
-  await logAction(db, { actorId: guard.user.id, action: "user.create", target: uname, detail: role });
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "user.create",
+    target: uname,
+    detail: role
+  });
   return Response.json({ id: created.id }, { status: 201 });
 }

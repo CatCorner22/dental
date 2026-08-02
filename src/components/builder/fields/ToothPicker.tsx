@@ -20,7 +20,16 @@ export function ToothPicker({
   value: Extract<FieldValue, { kind: "teeth" }> | undefined;
   onChange: (value: FieldValue) => void;
 }) {
-  const [dentition, setDentition] = useState<Dentition>(field.dentitions[0]);
+  // Open on the dentition of the stored selection, not blindly on the first
+  // tab — a saved primary tooth (e.g. "K") reopened on the Permanent tab is
+  // highlighted nowhere and cannot be seen or deselected until the user
+  // discovers the other tab. (Remounts — draft reload, conflict reload — run
+  // this initializer again, so the tab always finds the stored teeth.)
+  const [dentition, setDentition] = useState<Dentition>(() => {
+    const first = value?.teeth?.[0];
+    const stored = first ? TOOTH_TABLE.get(first)?.dentition : undefined;
+    return stored && field.dentitions.includes(stored) ? stored : field.dentitions[0];
+  });
   const selected = value?.teeth ?? [];
 
   const toggle = (id: string) => {

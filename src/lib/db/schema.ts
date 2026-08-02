@@ -22,6 +22,9 @@ export const users = pgTable("users", {
   passHash: text("pass_hash").notNull(),
   active: boolean("active").notNull().default(true),
   noticeAckAt: timestamp("notice_ack_at", { withTimezone: true }),
+  // Session revocation watermark: a JWT minted before this instant is dead.
+  // Null = the password has never been changed since account creation.
+  passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
@@ -62,6 +65,10 @@ export const auditLog = pgTable("audit_log", {
   id: serial("id").primaryKey(),
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
   actorId: text("actor_id"),
+  // Frozen "Display (username)" at write time. actor_id has no FK on purpose
+  // (the log outlives accounts), so without this snapshot every entry by a
+  // later-deleted user would render as "unknown" forever.
+  actorName: text("actor_name"),
   action: text("action").notNull(),
   target: text("target"),
   detail: text("detail")

@@ -29,7 +29,7 @@ export async function listUsers(db: Db): Promise<UserRow[]> {
 export async function updateUser(
   db: Db,
   id: string,
-  patch: Partial<Pick<UserRow, "displayName" | "role" | "active" | "passHash">>
+  patch: Partial<Pick<UserRow, "displayName" | "role" | "active" | "passHash" | "passwordChangedAt">>
 ): Promise<UserRow | undefined> {
   const [row] = await db.update(users).set(patch).where(eq(users.id, id)).returning();
   return row;

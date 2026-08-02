@@ -4,6 +4,7 @@ import { deleteUser, getUserById, mutateAdminGuarded, updateUser } from "@/lib/d
 import { ownerDraftCount } from "@/lib/db/repo/drafts";
 import { submissionCountByUser } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { readJsonRecord } from "@/lib/http/readJson";
 import type { Role } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
@@ -19,12 +20,11 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   const target = await getUserById(db, id);
   if (!target) return Response.json({ error: "Not found." }, { status: 404 });
 
-  let b: Record<string, unknown> = {};
-  try {
-    b = (await req.json()) as Record<string, unknown>;
-  } catch {
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
+  const b = parsed.value;
   const patch: { displayName?: string; role?: Role; active?: boolean } = {};
   if (typeof b.displayName === "string" && b.displayName.trim()) patch.displayName = b.displayName.trim();
   if (ROLES.includes(b.role as Role)) patch.role = b.role as Role;
@@ -46,7 +46,13 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   } else {
     await updateUser(db, id, patch);
   }
-  await logAction(db, { actorId: guard.user.id, action: "user.update", target: target.username, detail: JSON.stringify(patch) });
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "user.update",
+    target: target.username,
+    detail: JSON.stringify(patch)
+  });
   return Response.json({ ok: true });
 }
 
@@ -76,6 +82,11 @@ export async function DELETE(_req: Request, { params }: Ctx): Promise<Response> 
   } else {
     await deleteUser(db, id);
   }
-  await logAction(db, { actorId: guard.user.id, action: "user.delete", target: target.username });
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "user.delete",
+    target: target.username
+  });
   return new Response(null, { status: 204 });
 }

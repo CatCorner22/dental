@@ -14,7 +14,7 @@ import { runPhiRule } from "./rules/phi";
 import { runResidueRule } from "./rules/residue";
 import { runAbbreviationRule, runVaguePhraseRule } from "./rules/terminology";
 import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
-import { runSpellingRule } from "./rules/spelling";
+import { newSpellingBudget, runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
 import { runMeasurementRule } from "./rules/measurement";
 
@@ -44,6 +44,9 @@ export function runAudit(ctx: AuditContext): AuditReport {
 
 function runFieldSpelling(note: NoteState, modules: AuditContext["modules"]): AuditFinding[] {
   const findings: AuditFinding[] = [];
+  // ONE budget across every field, so total close-match work per audit run is
+  // bounded no matter how many text fields the note spreads its words across.
+  const budget = newSpellingBudget();
   for (const mod of modules) {
     for (const section of mod.sections) {
       for (const field of section.fields) {
@@ -52,7 +55,7 @@ function runFieldSpelling(note: NoteState, modules: AuditContext["modules"]): Au
         const value = note.values[fieldKey(mod.id, field.id)];
         if (!value || value.kind !== "text" || !value.value.trim()) continue;
         findings.push(
-          ...runSpellingRule(value.value, { moduleId: mod.id, fieldId: field.id })
+          ...runSpellingRule(value.value, { moduleId: mod.id, fieldId: field.id }, budget)
         );
       }
     }

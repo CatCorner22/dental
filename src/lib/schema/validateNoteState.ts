@@ -8,6 +8,10 @@ export type NoteStateResult =
 const MAX_FIELDS = 2000;
 const MAX_TEXT_CHARS = 20_000;
 const MAX_ARRAY = 200; // no real field has hundreds of options/teeth/surfaces
+// Aggregate bound: per-field caps alone still admit ~300 fields × 20k chars
+// (a multi-megabyte note that the audit re-scans on every save). No real
+// clinical note approaches this; a payload that does is abuse, not data.
+const MAX_TOTAL_CHARS = 120_000;
 const VALUE_KINDS = ["select", "multiselect", "text", "teeth", "surfaces", "measurement"];
 
 export function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -65,6 +69,28 @@ export function validateFieldValue(v: unknown): v is FieldValue {
   }
 }
 
+// Character weight of one field value — the text the composer/audit will
+// actually walk. Kept in sync with the kinds in validateFieldValue.
+function charCount(v: FieldValue): number {
+  switch (v.kind) {
+    case "select":
+      return v.value.length + (v.otherText?.length ?? 0);
+    case "multiselect":
+      return v.values.reduce((n, x) => n + x.length, 0);
+    case "text":
+      return v.value.length;
+    case "teeth":
+      return v.teeth.reduce((n, x) => n + x.length, 0);
+    case "surfaces":
+      return Object.entries(v.byTooth).reduce(
+        (n, [k, s]) => n + k.length + s.reduce((m, x) => m + x.length, 0),
+        0
+      );
+    case "measurement":
+      return v.unit.length;
+  }
+}
+
 export function validateNoteState(note: unknown): NoteStateResult {
   if (!isPlainObject(note)) return { ok: false, error: "note must be an object." };
   const { selectedModuleIds, values } = note;
@@ -77,12 +103,17 @@ export function validateNoteState(note: unknown): NoteStateResult {
   if (!isPlainObject(values)) return { ok: false, error: "note.values must be an object." };
   const entries = Object.entries(values);
   if (entries.length > MAX_FIELDS) return { ok: false, error: "The note has too many fields." };
+  let totalChars = 0;
   for (const [key, value] of entries) {
     if (!/^[a-z0-9-]+\.[a-z0-9-]+$/.test(key)) {
       return { ok: false, error: `note.values has an invalid field key: ${key}` };
     }
     if (!validateFieldValue(value)) {
       return { ok: false, error: `note.values.${key} is not a valid field value.` };
+    }
+    totalChars += charCount(value as FieldValue);
+    if (totalChars > MAX_TOTAL_CHARS) {
+      return { ok: false, error: "The note is too large. Split it into separate notes." };
     }
   }
   return {

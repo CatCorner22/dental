@@ -1,0 +1,95 @@
+import type { AuditFinding } from "../types";
+
+// Heuristic prohibited-data screen. It helps; it cannot certify
+// de-identification. Drafts stay de-identified by construction (placeholders),
+// and identifiers are completed only in the EDR.
+
+interface PhiPattern {
+  id: string;
+  pattern: RegExp;
+  severity: "S0" | "S2";
+  message: string;
+}
+
+const PHI_PATTERNS: PhiPattern[] = [
+  {
+    id: "phi.ssn",
+    pattern: /\b\d{3}-\d{2}-\d{4}\b/g,
+    severity: "S0",
+    message: "This looks like a Social Security number. Remove it. Identifiers belong only in the EDR."
+  },
+  {
+    id: "phi.phone",
+    pattern: /(?:\(\d{3}\)\s?|\b\d{3}[-.])\d{3}[-.]\d{4}\b/g,
+    severity: "S0",
+    message: "This looks like a phone number. Remove it. Contact details belong only in the EDR."
+  },
+  {
+    id: "phi.date",
+    pattern: /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval (for example, three days ago) and enter exact dates only in the EDR."
+  },
+  {
+    id: "phi.date-name",
+    pattern:
+      /\b(?:january|february|march|april|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\.?\s+\d{1,2}(?:st|nd|rd|th)?\b/gi,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
+    id: "phi.email",
+    pattern: /\b[\w.+-]+@[\w-]+\.[\w.]+\b/g,
+    severity: "S0",
+    message: "This looks like an email address. Remove it. Contact details belong only in the EDR."
+  },
+  {
+    id: "phi.mrn",
+    pattern: /\b(?:mrn|medical record|chart\s*(?:no|number|#)|record\s*(?:no|number|#)|account|acct)\s*[:#]?\s*[\w-]+/gi,
+    severity: "S0",
+    message: "This looks like a record or account number. Remove it. Record links belong only in the EDR."
+  },
+  {
+    id: "phi.name",
+    pattern: /\b(?:Mr|Mrs|Ms|Miss|Dr)\.?\s+[A-Z][a-z]+/g,
+    severity: "S0",
+    message:
+      "This looks like a person's name. Use a role instead (for example, the treating dentist, the referring provider)."
+  },
+  {
+    id: "phi.name-label",
+    pattern: /\b(?:patient|guardian|parent)\s+name\s*[:=]/gi,
+    severity: "S0",
+    message: "Do not enter names. Identity belongs only in the EDR."
+  },
+  {
+    id: "phi.long-number",
+    pattern: /\b\d{9,}\b/g,
+    severity: "S2",
+    message:
+      "This long number could be an identifier. A clinician confirms it is a clinical value, not an identifier."
+  }
+];
+
+export function runPhiRule(text: string): AuditFinding[] {
+  const findings: AuditFinding[] = [];
+  for (const p of PHI_PATTERNS) {
+    const seen = new Map<string, number>();
+    for (const m of text.matchAll(p.pattern)) {
+      seen.set(m[0], (seen.get(m[0]) ?? 0) + 1);
+    }
+    for (const [matched, count] of seen) {
+      findings.push({
+        ruleId: p.id,
+        category: "phi",
+        severity: p.severity,
+        message: p.message,
+        matchedText: matched,
+        occurrences: count
+      });
+    }
+  }
+  return findings;
+}

@@ -23,6 +23,16 @@ export async function logAction(
   });
 }
 
+// Ordered by id as well as time, not time alone. Several entries routinely
+// share a timestamp — a submit writes its action and its PHI-override
+// attestation in the same instant — and ordering by `at` alone leaves those
+// ties to the query plan, so the same log could render in a different order
+// on two loads. The serial id is the tiebreaker that makes "what happened
+// next" a fact rather than a coincidence.
 export async function listAuditLog(db: Db, limit = 200): Promise<AuditLogRow[]> {
-  return db.select().from(auditLog).orderBy(desc(auditLog.at)).limit(limit);
+  return db
+    .select()
+    .from(auditLog)
+    .orderBy(desc(auditLog.at), desc(auditLog.id))
+    .limit(limit);
 }

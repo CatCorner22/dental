@@ -1,14 +1,27 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 
 // Shown once per user until acknowledged. The permanent banner stays in the
 // header regardless; this is the explicit up-front acknowledgment.
-export function NoticeGate({ acknowledged }: { acknowledged: boolean }) {
+export function NoticeGate({
+  acknowledged,
+  onAcknowledged
+}: {
+  acknowledged: boolean;
+  // Fires on a CONFIRMED save so whatever comes next in the session can
+  // start; the server prop will not change until the next full render.
+  onAcknowledged?: () => void;
+}) {
   const [done, setDone] = useState(acknowledged);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // An account that acknowledged on a previous visit still needs the handoff.
+  useEffect(() => {
+    if (acknowledged) onAcknowledged?.();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [acknowledged]);
   if (done) return null;
 
   // The server refuses every other API until this acknowledgment is stored,
@@ -21,6 +34,7 @@ export function NoticeGate({ acknowledged }: { acknowledged: boolean }) {
       const res = await fetch("/api/ack-notice", { method: "POST" });
       if (!res.ok) throw new Error();
       setDone(true);
+      onAcknowledged?.();
     } catch {
       setError("Could not save your acknowledgment — check the connection and try again.");
       setBusy(false);

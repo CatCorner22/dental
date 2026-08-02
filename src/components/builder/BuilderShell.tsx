@@ -181,7 +181,7 @@ export function BuilderShell({
       <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
         <div className="flex flex-wrap items-center gap-3">
           <input
-            className="min-w-0 flex-1 rounded border border-transparent px-1 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent"
+            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent"
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
@@ -233,7 +233,7 @@ export function BuilderShell({
             <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
               <input type="checkbox" checked disabled /> Universal Core
             </label>
-            <div className="max-h-[55vh] space-y-0.5 overflow-y-auto">
+            <div className="pane-55 space-y-0.5">
               {ALL_MODULES.filter(
                 (m) => !m.alwaysOn && m.title.toLowerCase().includes(moduleQuery.toLowerCase())
               ).map((m) => (
@@ -279,13 +279,13 @@ export function BuilderShell({
                   key={t}
                   onClick={() => setTab(t)}
                   aria-pressed={tab === t}
-                  className={`rounded px-3 py-1 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
+                  className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
                 >
                   {label}
                 </button>
               ))}
             </div>
-            <div className="max-h-[60vh] overflow-y-auto">
+            <div className="pane-60">
               {tab === "audit" ? (
                 <AuditPanel report={report} />
               ) : (
@@ -314,7 +314,7 @@ export function BuilderShell({
 
       {toast && (
         <div
-          className={`fixed bottom-4 left-1/2 z-40 -translate-x-1/2 rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
+          className={`fixed inset-x-4 bottom-4 z-40 mx-auto w-fit max-w-md rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
             toast.tone === "error"
               ? "border-rose-300 bg-rose-50 text-rose-900"
               : "border-green-300 bg-green-50 text-green-900"

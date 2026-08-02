@@ -84,17 +84,38 @@ async function seedAdmin(db: Db): Promise<void> {
   await logAction(db, { actorId: null, action: "setup.first-admin", target: username });
 }
 
+// After a failed bootstrap, wait this long before paying for another one.
+// Bootstrap is expensive — connect, run every DDL statement, maybe seed — so
+// a database that is down turns every incoming request into a full retry, and
+// the pile of retries is exactly what keeps it down. The cooldown lets the
+// failure be cheap: one attempt per window, everyone else gets the error
+// immediately. Short enough that recovery is noticed within seconds.
+const BOOTSTRAP_COOLDOWN_MS = 3000;
+let lastFailureAt = 0;
+let lastFailure: unknown = null;
+
 export function getDb(): Promise<Db> {
   if (!bootstrap) {
     // A transient bootstrap failure (db briefly unreachable on a cold start)
     // must not be memoized forever — that would pin every future request,
     // including /setup and login, to the original error until the process
-    // restarts. Clear the slot on rejection so the next request retries.
+    // restarts. Clear the slot on rejection so a later request retries.
+    const sinceFailure = Date.now() - lastFailureAt;
+    if (lastFailure !== null && sinceFailure < BOOTSTRAP_COOLDOWN_MS) {
+      return Promise.reject(lastFailure);
+    }
     const attempt = build();
     bootstrap = attempt;
-    attempt.catch(() => {
-      if (bootstrap === attempt) bootstrap = null;
-    });
+    attempt.then(
+      () => {
+        lastFailure = null;
+      },
+      (err) => {
+        lastFailureAt = Date.now();
+        lastFailure = err;
+        if (bootstrap === attempt) bootstrap = null;
+      }
+    );
   }
   return bootstrap;
 }
@@ -102,4 +123,6 @@ export function getDb(): Promise<Db> {
 // For tests: inject a ready db and skip env bootstrap.
 export function __setDbForTests(db: Db | null): void {
   bootstrap = db ? Promise.resolve(db) : null;
+  lastFailure = null;
+  lastFailureAt = 0;
 }

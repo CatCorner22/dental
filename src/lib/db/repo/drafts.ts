@@ -1,6 +1,9 @@
 import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, type DraftRow, type NewDraft } from "../schema";
+import { DEFAULT_PAGE_SIZE, type PageParams } from "@/lib/http/pagination";
+
+const DEFAULT_PAGE: PageParams = { limit: DEFAULT_PAGE_SIZE, offset: 0 };
 
 export async function insertDraft(db: Db, draft: NewDraft): Promise<DraftRow> {
   const [row] = await db.insert(drafts).values(draft).returning();
@@ -35,16 +38,34 @@ const draftSummaryColumns = {
 };
 
 // Newest activity first — the note you just touched belongs on top.
-export async function listAllDrafts(db: Db): Promise<DraftSummary[]> {
-  return db.select(draftSummaryColumns).from(drafts).orderBy(desc(drafts.updatedAt));
+// Always bounded: callers pass a page, and the default page is a page, not
+// the whole table.
+export async function listAllDrafts(db: Db, page: PageParams = DEFAULT_PAGE): Promise<DraftSummary[]> {
+  return db
+    .select(draftSummaryColumns)
+    .from(drafts)
+    .orderBy(desc(drafts.updatedAt))
+    .limit(page.limit)
+    .offset(page.offset);
 }
 
-export async function listDraftsByOwner(db: Db, ownerId: string): Promise<DraftSummary[]> {
+export async function listDraftsByOwner(
+  db: Db,
+  ownerId: string,
+  page: PageParams = DEFAULT_PAGE
+): Promise<DraftSummary[]> {
   return db
     .select(draftSummaryColumns)
     .from(drafts)
     .where(eq(drafts.ownerId, ownerId))
-    .orderBy(desc(drafts.updatedAt));
+    .orderBy(desc(drafts.updatedAt))
+    .limit(page.limit)
+    .offset(page.offset);
+}
+
+export async function countAllDrafts(db: Db): Promise<number> {
+  const rows = await db.select({ n: sql<number>`count(*)::int` }).from(drafts);
+  return rows[0]?.n ?? 0;
 }
 
 // Optimistic-concurrency update: only applies when the caller's baseVersion
@@ -53,7 +74,9 @@ export async function updateDraftChecked(
   db: Db,
   id: string,
   baseVersion: number,
-  patch: Partial<Pick<DraftRow, "title" | "noteState" | "status" | "lastSendFailed">>,
+  patch: Partial<
+    Pick<DraftRow, "title" | "noteState" | "status" | "lastSendFailed" | "lastSubmissionId">
+  >,
   now: Date
 ): Promise<DraftRow | undefined> {
   const [row] = await db

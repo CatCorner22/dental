@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createTestDb } from "./testDb";
+import { applySchema } from "./client";
 import type { Db } from "./client";
 import {
   ackNotice,
@@ -33,6 +34,14 @@ import {
   submissionCountByUser
 } from "./repo/submissions";
 import { listAuditLog, logAction } from "./repo/auditLog";
+import {
+  FREE_ATTEMPTS,
+  MAX_LOCK_MS,
+  WINDOW_MS,
+  checkThrottle,
+  clearThrottle,
+  recordFailure
+} from "@/lib/auth/throttle";
 import { formatTicket } from "@/lib/tickets/ticket";
 import type { NoteState } from "@/lib/schema/types";
 
@@ -59,7 +68,9 @@ describe("db layer (PGlite)", () => {
   });
   beforeEach(async () => {
     // One WASM instance per file; wipe tables between tests (FK-safe order).
-    await db.execute(sql`TRUNCATE submissions, drafts, audit_log, users RESTART IDENTITY CASCADE`);
+    await db.execute(
+      sql`TRUNCATE submissions, drafts, audit_log, users, auth_throttle RESTART IDENTITY CASCADE`
+    );
   });
   afterAll(async () => {
     if (close) await close();
@@ -133,6 +144,123 @@ describe("db layer (PGlite)", () => {
     const u = await freshUser("pia");
     expect(await ackNotice(db, u.id, new Date())).toBe(true);
     expect(await ackNotice(db, u.id, new Date())).toBe(false);
+  });
+
+  // The throttle is what stands between an unmetered cost-12 bcrypt endpoint
+  // and anyone with a script, so its state transitions are worth pinning.
+  describe("auth throttle", () => {
+    const now = new Date(2026, 5, 1, 12, 0, 0);
+
+    it("stays unlocked through the free attempts, then locks", async () => {
+      const key = "login:mallory";
+      for (let i = 0; i < FREE_ATTEMPTS; i++) {
+        expect((await recordFailure(db, key, now)).locked, `failure ${i + 1}`).toBe(false);
+      }
+      const locked = await recordFailure(db, key, now);
+      expect(locked.locked).toBe(true);
+      expect(locked.retryAfterSec).toBeGreaterThan(0);
+      expect((await checkThrottle(db, key, now)).locked).toBe(true);
+    });
+
+    it("expires the lock once its time has passed", async () => {
+      const key = "login:transient";
+      for (let i = 0; i <= FREE_ATTEMPTS; i++) await recordFailure(db, key, now);
+      expect((await checkThrottle(db, key, now)).locked).toBe(true);
+      const later = new Date(now.getTime() + MAX_LOCK_MS + 1000);
+      expect((await checkThrottle(db, key, later)).locked).toBe(false);
+    });
+
+    // An attacker must not be able to keep a real user locked out forever by
+    // guessing; the correct password always ends the streak.
+    it("clears on success", async () => {
+      const key = "login:victim";
+      for (let i = 0; i <= FREE_ATTEMPTS; i++) await recordFailure(db, key, now);
+      expect((await checkThrottle(db, key, now)).locked).toBe(true);
+      await clearThrottle(db, key);
+      expect((await checkThrottle(db, key, now)).locked).toBe(false);
+    });
+
+    it("forgives a stale streak instead of compounding it forever", async () => {
+      const key = "login:forgetful";
+      for (let i = 0; i < FREE_ATTEMPTS; i++) await recordFailure(db, key, now);
+      // One failure long after the window: the count restarts rather than
+      // tipping straight into a lock.
+      const muchLater = new Date(now.getTime() + WINDOW_MS + 60_000);
+      expect((await recordFailure(db, key, muchLater)).locked).toBe(false);
+    });
+  });
+
+  // The re-file guard: a filed draft must not be fileable again, but an
+  // edited one must be. This is what keeps an email outage from appending a
+  // duplicate ticket per retry.
+  it("marks a filed draft with its submission and blocks a second filing", async () => {
+    const u = await freshUser("quinn");
+    const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    const filed = await fileSubmissionAtomic(
+      db,
+      {
+        draftId: d.id,
+        submittedById: u.id,
+        submittedByName: "Quinn (quinn)",
+        submittedAtEt: "2026-06-01 10:00 ET",
+        filename: "note",
+        format: "md",
+        ruleVersion: "2.0.0",
+        auditStatus: "PASS"
+      },
+      d.version,
+      new Date(),
+      () => ({ note: "frozen", audit: "frozen-audit" })
+    );
+    expect(filed.filed).toBe(true);
+    const after = (await getDraft(db, d.id))!;
+    expect(after.lastSubmissionId).toBe(filed.filed ? filed.submissionId : null);
+
+    // An edit clears the marker, which is what makes it submittable again.
+    await updateDraftChecked(db, d.id, after.version, { lastSubmissionId: null }, new Date());
+    expect((await getDraft(db, d.id))!.lastSubmissionId).toBeNull();
+  });
+
+  // Drafts filed BEFORE last_submission_id existed have NULL in it. Since the
+  // submit guard now keys on that column, an unbackfilled legacy draft would
+  // read as never-filed and could be filed a second time — a duplicate ticket
+  // for identical content, in a record that is supposed to be immutable.
+  it("backfills last_submission_id for drafts filed before the column existed", async () => {
+    const u = await freshUser("rhea");
+    const shell = (draftId: string) => ({
+      draftId,
+      submittedById: u.id,
+      submittedByName: "Rhea (rhea)",
+      submittedAtEt: "2026-06-01 10:00 ET",
+      filename: "note",
+      format: "md",
+      ruleVersion: "2.0.0",
+      auditStatus: "PASS"
+    });
+
+    // A draft that is filed and still submitted, and one that was filed and
+    // then edited (so it must STAY submittable).
+    const filedDraft = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    await fileSubmissionAtomic(db, shell(filedDraft.id), filedDraft.version, new Date(), () => ({
+      note: "frozen",
+      audit: "audit"
+    }));
+    const editedDraft = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    await fileSubmissionAtomic(db, shell(editedDraft.id), editedDraft.version, new Date(), () => ({
+      note: "frozen",
+      audit: "audit"
+    }));
+    // Re-create the pre-migration state: column NULL on both.
+    await db.execute(sql`UPDATE drafts SET last_submission_id = NULL`);
+    // The edited one also has a recomputed status, which is what tells the
+    // backfill to leave it alone.
+    await db.execute(sql`UPDATE drafts SET status = 'ready' WHERE id = ${editedDraft.id}`);
+
+    await applySchema(db); // idempotent DDL, including the backfill
+
+    expect((await getDraft(db, filedDraft.id))!.lastSubmissionId).not.toBeNull();
+    // Edited-after-filing must remain submittable, so it stays NULL.
+    expect((await getDraft(db, editedDraft.id))!.lastSubmissionId).toBeNull();
   });
 
   it("lists drafts newest-updated first", async () => {

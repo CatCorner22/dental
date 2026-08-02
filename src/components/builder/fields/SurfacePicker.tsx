@@ -38,11 +38,18 @@ export function SurfacePicker({
         const allowed = allowedSurfaces(toothId);
         const chosen = byTooth[toothId] ?? [];
         return (
-          <div key={toothId} className="flex items-center gap-2">
+          // Wraps rather than squeezing: seven surface buttons plus the label
+          // do not fit a phone on one line, and compressed-out-of-square
+          // buttons are exactly where a wrong surface gets recorded.
+          <div key={toothId} className="flex flex-wrap items-center gap-x-2 gap-y-1">
             <span className="w-20 shrink-0 text-xs font-semibold text-slate-700" title={tooth?.name}>
               Tooth {toothId}
             </span>
-            <div className="flex gap-1" role="group" aria-label={`Surfaces for tooth ${toothId}`}>
+            <div
+              className="flex flex-wrap gap-1"
+              role="group"
+              aria-label={`Surfaces for tooth ${toothId}`}
+            >
               {ALL_SURFACES.map((s) => {
                 const isAllowed = allowed.includes(s);
                 return (
@@ -58,7 +65,7 @@ export function SurfacePicker({
                         : `${SURFACE_NAMES[s]} does not apply to this ${tooth?.isAnterior ? "anterior" : "posterior"} tooth`
                     }
                     onClick={() => toggle(toothId, s)}
-                    className={`h-7 w-7 rounded border text-xs font-semibold ${
+                    className={`tap-sq h-7 w-7 rounded border text-xs font-semibold ${
                       chosen.includes(s)
                         ? "border-blue-700 bg-blue-700 text-white"
                         : isAllowed

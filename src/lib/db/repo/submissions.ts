@@ -2,6 +2,9 @@ import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, type SubmissionRow } from "../schema";
 import { formatTicket } from "@/lib/tickets/ticket";
+import { DEFAULT_PAGE_SIZE, type PageParams } from "@/lib/http/pagination";
+
+const DEFAULT_PAGE: PageParams = { limit: DEFAULT_PAGE_SIZE, offset: 0 };
 
 export interface SubmissionShellFields {
   draftId: string;
@@ -93,6 +96,14 @@ export async function fileSubmissionAtomic(
       .update(submissions)
       .set({ noteMarkdown: frozen.note, auditReport: frozen.audit })
       .where(eq(submissions.id, row.id));
+    // Stamp the filing onto the draft inside the same transaction. This is
+    // what makes "already filed" a fact about the record rather than an
+    // inference from a cached status string, so a later email failure can
+    // flip the status without re-opening the door to a duplicate filing.
+    await tx
+      .update(drafts)
+      .set({ lastSubmissionId: row.id })
+      .where(eq(drafts.id, shell.draftId));
     return { filed: true, submissionId: row.id, ticket, version: claimed[0].version };
   });
 }
@@ -121,17 +132,37 @@ const submissionSummaryColumns = {
   ruleVersion: submissions.ruleVersion
 };
 
-export async function listAllSubmissions(db: Db): Promise<SubmissionSummary[]> {
-  return db.select(submissionSummaryColumns).from(submissions).orderBy(desc(submissions.submittedAtUtc));
+export async function listAllSubmissions(
+  db: Db,
+  page: PageParams = DEFAULT_PAGE
+): Promise<SubmissionSummary[]> {
+  return db
+    .select(submissionSummaryColumns)
+    .from(submissions)
+    .orderBy(desc(submissions.submittedAtUtc))
+    .limit(page.limit)
+    .offset(page.offset);
 }
 
-export async function listSubmissionsByUser(db: Db, userId: string): Promise<SubmissionSummary[]> {
+export async function listSubmissionsByUser(
+  db: Db,
+  userId: string,
+  page: PageParams = DEFAULT_PAGE
+): Promise<SubmissionSummary[]> {
   return db
     .select(submissionSummaryColumns)
     .from(submissions)
     .where(eq(submissions.submittedById, userId))
-    .orderBy(desc(submissions.submittedAtUtc));
+    .orderBy(desc(submissions.submittedAtUtc))
+    .limit(page.limit)
+    .offset(page.offset);
 }
+
+export async function countAllSubmissions(db: Db): Promise<number> {
+  const rows = await db.select({ n: sql<number>`count(*)::int` }).from(submissions);
+  return rows[0]?.n ?? 0;
+}
+
 
 // A user with submission history is part of the legal record and must not
 // be deletable — the DELETE route checks this before touching the FK.

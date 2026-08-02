@@ -27,13 +27,16 @@ export function Dashboard({
   displayName,
   canEdit,
   drafts,
-  stats
+  stats,
+  totalDrafts
 }: {
   role: string;
   displayName: string;
   canEdit: boolean;
   drafts: DraftRow[];
   stats: UserStats;
+  // How many drafts exist in total, versus the page actually rendered.
+  totalDrafts: number;
 }) {
   const router = useRouter();
   const [query, setQuery] = useState("");
@@ -118,7 +121,11 @@ export function Dashboard({
               </button>
             </div>
             {showPicks && (
-              <div className="absolute right-0 z-10 mt-1 w-80 rounded-lg border border-slate-200 bg-white p-2 shadow-lg">
+              // Never wider than the screen: a fixed w-80 anchored right of a
+              // narrower button group computed a negative left edge on a
+              // phone, putting the labels off-screen with no way to scroll to
+              // them (absolute overflow to the left creates no scrollbar).
+              <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white p-2 shadow-lg sm:left-auto sm:w-80">
                 {QUICK_PICKS.map((p) => (
                   <button
                     key={p.id}
@@ -158,9 +165,13 @@ export function Dashboard({
           href={`/note/${resumeDraft.id}`}
           className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 hover:bg-blue-100"
         >
-          <span className="min-w-0 text-sm text-slate-700">
+          {/* `truncate` needs a block box — on an inline span the browser
+              honours only its `white-space: nowrap`, so a long user-typed
+              title never wraps AND never ellipsises, and pushes the page
+              wider than the screen instead. */}
+          <span className="min-w-0 flex-1 text-sm text-slate-700">
             <span className="font-semibold">Continue where you left off:</span>{" "}
-            <span className="truncate">{resumeDraft.title}</span>
+            <span className="block truncate">{resumeDraft.title}</span>
           </span>
           <StatusChip status={resumeDraft.status} />
         </Link>
@@ -182,6 +193,15 @@ export function Dashboard({
             aria-label="Search drafts by title"
           />
         </div>
+        {/* Say it plainly when this is only part of the list. Search and the
+            status chips filter the loaded page, not the whole table, so a
+            silent cap would make a missing note look deleted. */}
+        {totalDrafts > drafts.length && (
+          <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-xs text-amber-900">
+            Showing the {drafts.length} most recently updated of {totalDrafts} drafts. Older ones
+            are not on this page — search and filters cover the ones shown.
+          </p>
+        )}
         {/* Keep this row mounted while a filter is active, even if the
             filtered status just lost its last draft (e.g. it was deleted) —
             otherwise "Clear filter" unmounts with the chips and the remaining
@@ -194,7 +214,7 @@ export function Dashboard({
                 type="button"
                 aria-pressed={statusFilter === s}
                 onClick={() => setStatusFilter(statusFilter === s ? null : s)}
-                className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                className={`tap rounded-full border px-3 text-xs font-medium ${
                   statusFilter === s ? "border-blue-700 bg-blue-700 text-white" : STATUS_META[s].chipClass
                 }`}
                 title={`Show only ${STATUS_META[s].label.toLowerCase()} drafts`}
@@ -220,9 +240,12 @@ export function Dashboard({
           </p>
         ) : (
           <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+            {/* flex-wrap: the title link plus three shrink-0 action buttons
+                cannot fit a phone on one line, and without wrapping they
+                forced the page wider than the screen. */}
             {filtered.map((d) => (
-              <li key={d.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
-                <Link href={`/note/${d.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3">
+              <li key={d.id} className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 hover:bg-slate-50">
+                <Link href={`/note/${d.id}`} className="flex min-w-0 flex-1 basis-full items-center justify-between gap-3 sm:basis-auto">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">{d.title}</span>
                     <span className="block text-xs text-slate-500">
@@ -234,7 +257,7 @@ export function Dashboard({
                 </Link>
                 {role === "admin" && (
                   <button
-                    className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                    className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                     onClick={() => setTransferFor(d)}
                     title="Transfer ownership"
                   >
@@ -243,7 +266,7 @@ export function Dashboard({
                 )}
                 {canEdit && (
                   <button
-                    className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50"
+                    className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50"
                     disabled={busy}
                     onClick={() => createDraft(d.moduleIds, d.title)}
                     title="Start a new note with the same modules — no values are copied"
@@ -254,7 +277,7 @@ export function Dashboard({
                 )}
                 {canEdit && (
                   <button
-                    className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                    className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
                     onClick={() => deleteDraft(d)}
                     title="Delete draft"
                     aria-label={`Delete ${d.title}`}

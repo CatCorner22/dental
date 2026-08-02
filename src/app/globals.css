@@ -3,10 +3,48 @@
 @tailwind utilities;
 
 @layer base {
+  html {
+    /* iOS Safari inflates text when a phone turns landscape unless this is
+       pinned, which silently breaks every carefully sized layout below. */
+    -webkit-text-size-adjust: 100%;
+    text-size-adjust: 100%;
+    /* Deliberately NOT scroll-behavior: smooth. Animated scrolling means a
+       control can still be gliding when a tap lands, so the tap hits whatever
+       is passing underneath — verified in a real browser, where it made the
+       notice dialog's own button unclickable. Instant scrolling is also the
+       right call for jump-to-first-error in a long note. */
+  }
+
   /* Office standard: Aptos/Calibri/Arial at 12 pt for body text. Utility
-     sizes (text-sm, text-xs) still apply to captions and dense tables. */
+     sizes (text-sm, text-xs) still apply to captions and dense tables.
+     The stack is spelled out rather than assumed: Aptos ships with current
+     Microsoft 365, Calibri with older installs, Helvetica/Arial everywhere
+     else, and the system-ui front stop keeps Linux and Android sensible. */
   body {
     font-size: 12pt;
+    font-family: Aptos, Calibri, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
+      Arial, sans-serif;
+    /* Notched and rounded screens: keep content clear of the hardware. */
+    padding-left: env(safe-area-inset-left);
+    padding-right: env(safe-area-inset-right);
+  }
+
+  /* Long clinical terms and ticket ids must wrap rather than push the page
+     sideways — a horizontally scrolling body is the most common way a
+     desktop-built layout fails on a phone. */
+  body {
+    overflow-wrap: break-word;
+  }
+
+  /* Honour the OS "reduce motion" setting rather than animating regardless. */
+  @media (prefers-reduced-motion: reduce) {
+    *,
+    *::before,
+    *::after {
+      animation-duration: 0.01ms !important;
+      animation-iteration-count: 1 !important;
+      transition-duration: 0.01ms !important;
+    }
   }
 
   /* Always-visible keyboard focus ring on interactive elements. */
@@ -58,8 +96,23 @@
 .doc pre {
   @apply mb-3 overflow-x-auto rounded bg-slate-100 p-3 text-xs;
 }
+/* Reference tables are wide by nature. Give the TABLE its own scroll area so
+   a wide one slides under the finger instead of stretching the page — a body
+   that scrolls sideways breaks every other screen at the same time. */
 .doc table {
   @apply mb-4 w-full border-collapse text-xs;
+  display: block;
+  max-width: 100%;
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+}
+/* 768px, matching where reference/layout.tsx puts its sidebar out of the
+   content flow. At 640px the table lost its scroller while the content column
+   was still narrow, so wide tables had nowhere to go. */
+@media (min-width: 768px) {
+  .doc table {
+    display: table;
+  }
 }
 .doc th {
   @apply border border-slate-300 bg-slate-100 px-2 py-1 text-left font-semibold;
@@ -70,11 +123,43 @@
 .doc blockquote {
   @apply mb-3 border-l-4 border-slate-300 pl-3 italic;
 }
+/* Checklist boxes in the reference markdown render as unstyled 13px browser
+   defaults, which read as broken next to everything else. They are disabled
+   (the docs are read-only), so this is legibility, not a tap target. */
+.doc input[type="checkbox"] {
+  @apply mr-1.5 h-4 w-4 shrink-0 align-middle accent-blue-700;
+}
+.doc li.task-list-item {
+  @apply list-none;
+}
 
-/* Form controls */
+/* Form controls.
+   Inside @layer components on purpose: these are emitted BEFORE the utility
+   layer, so a `text-xs` or `py-1` added alongside `field-input` on an element
+   actually wins. Defined outside any layer they land after the utilities at
+   equal specificity, and every such override is silently discarded. */
+@layer components {
 .field-input {
   @apply w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
+  /* Date/select controls inherit a different face on iOS unless told not to. */
+  font-family: inherit;
 }
+
+/* iOS Safari zooms the whole page in when a focused field's text is under
+   16px, and never zooms back out — the classic "the form ate my layout" bug
+   on a phone. Any narrow screen OR any finger-driven device gets 16px for
+   that reason alone; a desktop mouse keeps the compact size. The taller
+   min-height at the same time meets the 44px tap-target guideline. */
+@media (max-width: 639px), (pointer: coarse) {
+  .field-input,
+  .tap-input,
+  select.field-input,
+  textarea.field-input {
+    font-size: 16px;
+    min-height: 44px;
+  }
+}
+
 .field-label {
   @apply mb-1 block text-xs font-semibold text-slate-700;
 }
@@ -83,10 +168,76 @@
 }
 .btn {
   @apply inline-flex items-center gap-1.5 rounded border px-3 py-1.5 text-sm font-medium shadow-sm disabled:cursor-not-allowed disabled:opacity-40;
+  /* Kills the grey flash iOS paints over a tapped control, which reads as a
+     rendering glitch next to our own focus and hover states. */
+  -webkit-tap-highlight-color: transparent;
+  /* Stops a double-tap from zooming instead of pressing the button. */
+  touch-action: manipulation;
+}
+
+/* Viewport-height panes, written as a two-declaration fallback rather than a
+   Tailwind `max-h-[55dvh]` class.
+   `dvh` arrived in Safari 15.4 / Chrome 108 / Firefox 101. An engine older
+   than that treats the whole declaration as invalid and DROPS it — which
+   means no height cap at all, so the pane grows without bound and takes the
+   page with it. Declaring `vh` first leaves those engines a working (if
+   slightly tall) value, and any engine that understands `dvh` overrides it on
+   the next line. Two classes in a `class` attribute cannot express this:
+   their order in the stylesheet is decided by Tailwind, not by the markup. */
+.pane-55 {
+  max-height: 55vh;
+  max-height: 55dvh;
+  overflow-y: auto;
+}
+.pane-60 {
+  max-height: 60vh;
+  max-height: 60dvh;
+  overflow-y: auto;
+}
+
+/* Safari has never unprefixed backdrop-filter, and autoprefixer was not
+   emitting the prefix. Written by hand so the frosted header behaves the
+   same in Safari as everywhere else. */
+.backdrop-blur,
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur);
+}
+
+/* Touch-target helpers.
+   Driven by `pointer: coarse`, NOT by a width breakpoint. A tablet is 768px
+   wide and driven by a finger, so width-based rules hand it the same 20px
+   targets as a desktop mouse — which is precisely the device a clinician is
+   most likely to be holding. `.tap` is for text-ish controls, `.tap-sq` for
+   the square tooth/surface cells where width matters as much as height. */
+.tap,
+.tap-sq {
+  /* no-op on a mouse; the media query below does the work */
+}
+@media (pointer: coarse) {
+  .btn,
+  .chip,
+  .tap {
+    min-height: 44px;
+  }
+  .tap {
+    display: inline-flex;
+    align-items: center;
+  }
+  .tap-sq {
+    min-height: 44px;
+    min-width: 44px;
+  }
+  .tap-input {
+    min-height: 44px;
+  }
+  .chip {
+    @apply px-3 py-1.5 text-sm;
+  }
 }
 .btn-primary {
   @apply btn border-blue-700 bg-blue-700 text-white hover:bg-blue-800 disabled:hover:bg-blue-700;
 }
 .btn-secondary {
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
+}
 }

@@ -55,7 +55,13 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     return Response.json({ error: "baseVersion must be an integer." }, { status: 400 });
   }
 
-  const patch: { title?: string; noteState?: typeof draft.noteState; status?: string; lastSendFailed?: boolean } = {};
+  const patch: {
+    title?: string;
+    noteState?: typeof draft.noteState;
+    status?: string;
+    lastSendFailed?: boolean;
+    lastSubmissionId?: number | null;
+  } = {};
   if (typeof b.title === "string") patch.title = b.title.trim().slice(0, 200) || "Untitled note";
   if (b.note !== undefined) {
     const res = validateNoteState(b.note);
@@ -66,6 +72,9 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     // "Send failed" while the open builder shows the live status, a parity
     // break between the two derivations.
     patch.lastSendFailed = false;
+    // The note has changed, so it is no longer the one already on file: this
+    // is what makes an edited draft submittable again after a filing.
+    patch.lastSubmissionId = null;
     const derived = statusForNote(res.value, { submitted: false, lastSendFailed: false });
     patch.status = derived.status;
   }

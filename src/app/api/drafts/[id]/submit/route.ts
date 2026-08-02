@@ -1,4 +1,3 @@
-import { Resend } from "resend";
 import { requireRole } from "@/lib/auth/guards";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { getDb } from "@/lib/db/client";
@@ -9,7 +8,7 @@ import { activeModules } from "@/lib/modules";
 import { composeNote, composeNoteText } from "@/lib/compose/composeNote";
 import { composeAuditReport } from "@/lib/compose/composeAuditReport";
 import { computeGates, runAudit } from "@/lib/audit/engine";
-import { getEmailConfig } from "@/lib/email/config";
+import { sendSubmissionEmail } from "@/lib/email/sendSubmission";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { slugifyTitle } from "@/lib/tickets/slug";
 import { composeStamp } from "@/lib/tickets/stamp";
@@ -32,10 +31,21 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     return Response.json({ error: "You cannot submit this draft." }, { status: 403 });
   }
   // A note that has not changed since its last submission must not file a
-  // duplicate ticket. Any edit flips the status back via the PATCH recompute.
-  if (draft.status === "submitted") {
+  // duplicate ticket. Any edit clears lastSubmissionId via the PATCH recompute.
+  // This is keyed on the filing itself, not on the cached status: when the
+  // email fails the status becomes "error" so the user sees it, and only this
+  // check still stands between them and a second ticket for identical content.
+  // The status check is a fallback for any draft the backfill could not
+  // reach: if it still reads "submitted", it was filed, whatever the column
+  // says. Cheaper to keep both than to file one duplicate ticket.
+  if (draft.lastSubmissionId !== null || draft.status === "submitted") {
     return Response.json(
-      { error: "This note is already submitted. Edit it before submitting again." },
+      {
+        error: draft.lastSendFailed
+          ? "This note is already filed; its email did not go out. Use Resend — submitting again would file a second ticket."
+          : "This note is already submitted. Edit it before submitting again.",
+        canResend: draft.lastSendFailed
+      },
       { status: 409 }
     );
   }
@@ -154,32 +164,25 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   }
   const ticket = filed.ticket;
 
-  // Email (best-effort): the note is already filed; a send failure only marks
-  // the draft resubmittable, it never un-files the ticket.
-  const config = getEmailConfig();
-  let emailed = false;
-  if (config.configured) {
-    try {
-      const resend = new Resend(config.apiKey);
-      const { error } = await resend.emails.send({
-        from: config.from as string,
-        to: [config.corporateEmail as string],
-        subject: `Dental note ${ticket} — ${report.status}`,
-        text: `De-identified dental note ${ticket} attached, with its audit report. Submitted by ${submittedByName} at ${submittedAtEt}. Complete identifiers only in the EDR.`,
-        attachments: [
-          { filename: `${filenameBase}-${ticket}.${format}`, content: Buffer.from(frozenNote, "utf8") },
-          { filename: `${filenameBase}-${ticket}-audit.md`, content: Buffer.from(frozenAudit, "utf8") }
-        ]
-      });
-      emailed = !error;
-      if (error) console.error("submit email failed:", error.name ?? "error");
-    } catch {
-      console.error("submit email threw");
-    }
-  }
+  // Email (best-effort): the note is already filed; a send failure marks the
+  // draft resendable, it never un-files the ticket.
+  const outcome = await sendSubmissionEmail({
+    ticket,
+    filenameBase,
+    format,
+    auditStatus: report.status,
+    submittedByName,
+    submittedAtEt,
+    frozenNote,
+    frozenAudit
+  });
+  const config = { configured: outcome.attempted };
+  const emailed = outcome.attempted && outcome.sent;
 
-  // Honest cache: a failed email shows the rose "Send failed" chip and stays
-  // resubmittable; the atomic filing already marked a clean filing "submitted".
+  // Honest cache: a failed email shows the rose "Send failed" chip and offers
+  // Resend. The ticket is already filed and lastSubmissionId is set, so the
+  // draft is NOT re-fileable — retrying during an outage resends the frozen
+  // copy instead of appending a second ticket for the same note.
   const sendFailed = config.configured && !emailed;
   if (sendFailed) await setDraftStatus(db, draft.id, "error", true, now);
   await logAction(db, {

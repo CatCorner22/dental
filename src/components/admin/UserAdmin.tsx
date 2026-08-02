@@ -78,7 +78,10 @@ export function UserAdmin({ users, selfId }: { users: Row[]; selfId: string }) {
                 <td className="px-3 py-2">{u.displayName}</td>
                 <td className="px-3 py-2">
                   <select
-                    className="rounded border border-slate-300 px-1 py-0.5 text-xs"
+                    // field-input, not a hand-rolled 12px control: below sm
+                    // that class is 16px, which is what stops iOS Safari
+                    // zooming the page in on focus and never zooming back.
+                    className="field-input w-auto"
                     value={u.role}
                     disabled={u.id === selfId}
                     onChange={(e) => patch(u.id, { role: e.target.value })}
@@ -96,15 +99,32 @@ export function UserAdmin({ users, selfId }: { users: Row[]; selfId: string }) {
                   </span>
                 </td>
                 <td className="px-3 py-2">
-                  <div className="flex flex-wrap gap-2 text-xs">
+                  {/* Real tap targets with padding between them. These were
+                      bare ~16px text links, and "Delete" sat directly beside
+                      "Deactivate" — a near-miss on a phone destroyed an
+                      account instead of suspending one. */}
+                  <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs">
                     {u.id !== selfId && (
-                      <button className="text-blue-700 hover:underline" onClick={() => patch(u.id, { active: !u.active })}>
+                      <button
+                        className="tap rounded px-2 text-blue-700 hover:underline"
+                        onClick={() => patch(u.id, { active: !u.active })}
+                      >
                         {u.active ? "Deactivate" : "Reactivate"}
                       </button>
                     )}
-                    <button className="text-blue-700 hover:underline" onClick={() => setResetFor(u)}>Reset password</button>
+                    <button
+                      className="tap rounded px-2 text-blue-700 hover:underline"
+                      onClick={() => setResetFor(u)}
+                    >
+                      Reset password
+                    </button>
                     {u.id !== selfId && (
-                      <button className="text-rose-700 hover:underline" onClick={() => remove(u)}>Delete</button>
+                      <button
+                        className="tap rounded px-2 text-rose-700 hover:underline"
+                        onClick={() => remove(u)}
+                      >
+                        Delete
+                      </button>
                     )}
                     {u.id === selfId && <span className="text-slate-400">(you)</span>}
                   </div>

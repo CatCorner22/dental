@@ -60,7 +60,9 @@ export function SelectInput({ field, value, onChange, describedBy, invalid, id }
               type="button"
               aria-pressed={on}
               onClick={() => onChange({ kind: "select", value: on ? "" : o.value })}
-              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+              // These chips ARE the note: nearly every clinical value is picked
+              // here. Sized for a finger below sm, unchanged on desktop.
+              className={`tap rounded-full border px-3 text-xs font-medium ${
                 on
                   ? "border-blue-700 bg-blue-700 text-white"
                   : `bg-white text-slate-700 hover:bg-blue-50 ${invalid ? "border-rose-400" : "border-slate-300"}`
@@ -123,7 +125,9 @@ export function MultiselectInput({ field, value, onChange, describedBy }: InputP
           type="button"
           aria-pressed={selected.includes(o.value)}
           onClick={() => toggle(o.value)}
-          className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+          // These chips ARE the note: nearly every clinical value is picked
+              // here. Sized for a finger below sm, unchanged on desktop.
+              className={`tap rounded-full border px-3 text-xs font-medium ${
             selected.includes(o.value)
               ? "border-blue-700 bg-blue-700 text-white"
               : "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"
@@ -208,6 +212,7 @@ export function MeasurementInput({ field, value, onChange, describedBy, invalid,
       <input
         id={id}
         type="number"
+        inputMode="decimal"
         className="field-input max-w-36"
         min={field.min}
         max={field.max}

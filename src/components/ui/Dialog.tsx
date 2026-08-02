@@ -52,6 +52,38 @@ export function Dialog({
     };
   }, []);
 
+  // Lock the page behind the dialog. `overflow: hidden` on <body> alone is
+  // not enough — iOS Safari ignores it for touch scrolling, and the page
+  // drifts away behind the modal. Pinning the body with position:fixed at a
+  // negative offset is the technique that actually holds there; the scroll
+  // position is captured and restored so closing the dialog does not fling
+  // the user back to the top of a long note.
+  //
+  // Only the OUTERMOST dialog touches the body: a stacked dialog would
+  // otherwise capture an already-zeroed scroll position and restore that.
+  useEffect(() => {
+    if (openDialogs.length > 1) return;
+    const body = document.body;
+    const scrollY = window.scrollY;
+    const prev = {
+      position: body.style.position,
+      top: body.style.top,
+      width: body.style.width,
+      overflow: body.style.overflow
+    };
+    body.style.position = "fixed";
+    body.style.top = `-${scrollY}px`;
+    body.style.width = "100%";
+    body.style.overflow = "hidden";
+    return () => {
+      body.style.position = prev.position;
+      body.style.top = prev.top;
+      body.style.width = prev.width;
+      body.style.overflow = prev.overflow;
+      window.scrollTo(0, scrollY);
+    };
+  }, []);
+
   useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (openDialogs[openDialogs.length - 1] !== id.current) return; // not topmost
@@ -84,35 +116,51 @@ export function Dialog({
   }, [onClose, dismissible]);
 
   return (
+    // Scroll container outside, centring flexbox inside. A dialog taller than
+    // the phone scrolls to reveal its own buttons; a short one stays centred.
+    // Sizing the panel itself to the viewport instead would put the buttons of
+    // a tall dialog off-screen with no way to reach them.
     <div
-      className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4"
+      className="fixed inset-0 z-50 overflow-y-auto overscroll-contain bg-slate-900/50"
       onMouseDown={(e) => {
         if (dismissible && e.target === e.currentTarget) onClose();
       }}
     >
+      {/* min-h-full, not h-full: it grows with a tall panel rather than
+          clipping it. The mouse-down target check lives on both layers so a
+          click on the padding still counts as "outside". */}
       <div
-        ref={ref}
-        role="dialog"
-        aria-modal="true"
-        aria-labelledby={titleId}
-        className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
+        className="flex min-h-full items-center justify-center p-4"
+        onMouseDown={(e) => {
+          if (dismissible && e.target === e.currentTarget) onClose();
+        }}
       >
-        <div className="mb-3 flex items-center justify-between">
-          <h2 id={titleId} className="text-base font-semibold">
-            {title}
-          </h2>
-          {dismissible && (
-            <button
-              type="button"
-              onClick={onClose}
-              className="rounded p-1 text-slate-400 hover:text-slate-700"
-              aria-label="Close dialog"
-            >
-              ✕
-            </button>
-          )}
+        <div
+          ref={ref}
+          role="dialog"
+          aria-modal="true"
+          aria-labelledby={titleId}
+          className="w-full max-w-lg rounded-lg bg-white p-4 shadow-xl sm:p-5"
+        >
+          <div className="mb-3 flex items-center justify-between gap-2">
+            <h2 id={titleId} className="text-base font-semibold">
+              {title}
+            </h2>
+            {dismissible && (
+              <button
+                type="button"
+                onClick={onClose}
+                // -m-1 p-2 keeps the visual size but gives the finger a real
+                // target; a bare ✕ glyph is well under any usable tap size.
+                className="-m-1 shrink-0 rounded p-2 text-slate-400 hover:text-slate-700"
+                aria-label="Close dialog"
+              >
+                ✕
+              </button>
+            )}
+          </div>
+          {children}
         </div>
-        {children}
       </div>
     </div>
   );

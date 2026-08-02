@@ -54,7 +54,7 @@ export function ToothPicker({
               type="button"
               aria-pressed={dentition === d}
               onClick={() => setDentition(d)}
-              className={`rounded px-2 py-0.5 text-xs font-medium ${
+              className={`tap rounded px-3 py-0.5 text-xs font-medium ${
                 dentition === d ? "bg-blue-700 text-white" : "bg-white text-slate-600 border border-slate-300"
               }`}
             >
@@ -73,7 +73,10 @@ export function ToothPicker({
               aria-label={tooth.name}
               aria-pressed={selected.includes(tooth.id)}
               onClick={() => toggle(tooth.id)}
-              className={`h-8 min-w-8 rounded border px-1 text-xs font-semibold ${
+              // Grows under a finger via .tap-sq. Tapping the tooth next to
+              // the one you meant is a documentation error in the legal
+              // record, so the touch case gets the larger target.
+              className={`tap-sq h-8 min-w-8 rounded border px-1 text-xs font-semibold ${
                 selected.includes(tooth.id)
                   ? "border-blue-700 bg-blue-700 text-white"
                   : "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"

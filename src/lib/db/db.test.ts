@@ -24,7 +24,9 @@ import {
   updateDraftChecked
 } from "./repo/drafts";
 import {
+  fileSubmissionAtomic,
   finalizeSubmission,
+  getSubmission,
   insertSubmissionShell,
   statRowsForUser,
   submissionCountByUser
@@ -159,6 +161,48 @@ describe("db layer (PGlite)", () => {
     expect(await ownerDraftCount(db, u.id)).toBe(0);
     await deleteUser(db, u.id);
     expect(await countUsers(db)).toBe(0);
+  });
+
+  it("files a submission atomically: one winner, no phantom, resubmit after edit", async () => {
+    const u = await freshUser("olivia");
+    const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    const now = new Date(2026, 7, 2);
+    const shell = {
+      draftId: d.id,
+      submittedById: u.id,
+      submittedByName: "Olivia (olivia)",
+      submittedAtEt: "2026-08-02 10:00 EDT",
+      filename: "note",
+      format: "md",
+      ruleVersion: "2.0.0",
+      auditStatus: "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED"
+    };
+    const build = (ticket: string) => ({ note: `# note ${ticket}`, audit: `# audit ${ticket}` });
+
+    const first = await fileSubmissionAtomic(db, shell, now, build);
+    expect(first.filed).toBe(true);
+    // The frozen text is never blank — the shell insert and finalize commit together.
+    if (first.filed) {
+      const row = await getSubmission(db, first.submissionId);
+      expect(row?.noteMarkdown).toContain(first.ticket);
+      expect(row?.auditReport).toContain(first.ticket);
+    }
+    // A concurrent/duplicate submit of the same unedited draft is refused with
+    // no second ticket.
+    const second = await fileSubmissionAtomic(db, shell, now, build);
+    expect(second.filed).toBe(false);
+    expect(await draftSubmissionCount(db, d.id)).toBe(1);
+
+    // A rolled-back attempt (the frozen builder throws) leaves no phantom row
+    // and the draft still reads submitted.
+    await updateDraftChecked(db, d.id, 1, { status: "ready" }, now); // simulate an edit re-opening it
+    await expect(
+      fileSubmissionAtomic(db, shell, now, () => {
+        throw new Error("compose failed");
+      })
+    ).rejects.toBeTruthy();
+    expect(await draftSubmissionCount(db, d.id)).toBe(1); // no blank ticket added
+    expect((await getDraft(db, d.id))?.status).toBe("ready"); // claim rolled back
   });
 
   it("claims a draft for submission exactly once until it is edited", async () => {

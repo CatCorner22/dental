@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
-import { auth } from "@/lib/auth/auth";
+import { notFound, redirect } from "next/navigation";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getDraft } from "@/lib/db/repo/drafts";
 import { BuilderShell } from "@/components/builder/BuilderShell";
@@ -9,8 +9,8 @@ export const metadata = { title: "Note — Dental Note Builder" };
 
 export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const session = await auth();
-  const user = session!.user;
+  const user = await freshSessionUser(); // fresh role/active — never the stale token
+  if (!user) redirect("/login");
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) notFound();

@@ -1,7 +1,6 @@
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth/auth";
-import { getDb } from "@/lib/db/client";
-import { getUserById } from "@/lib/db/repo/users";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { NoticeGate } from "@/components/notice/NoticeGate";
 import "./globals.css";
@@ -15,16 +14,32 @@ export const metadata: Metadata = {
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  // Fresh role/active on every page render — the token alone is never
+  // trusted (a deactivated or demoted account changes on the next request,
+  // not when the 30-day token expires).
   const session = await auth();
-  // The ack flag only ever goes false -> true, so we only need the fresh DB
-  // read when the (possibly stale) token still says "not acked". A deleted
-  // user is treated as acked so the gate can never get stuck open.
-  let noticeAcked = session?.user?.noticeAcked ?? true;
-  if (session?.user && !noticeAcked) {
-    const db = await getDb();
-    const row = await getUserById(db, session.user.id);
-    noticeAcked = !row || row.noticeAckAt != null;
+  const user = await freshSessionUser();
+
+  // A live cookie whose account is gone or inactive gets a dead end, not
+  // the app shell.
+  if (session?.user && !user) {
+    return (
+      <html lang="en">
+        <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+          <main className="mx-auto max-w-md px-4 py-16 text-center">
+            <h1 className="mb-2 text-xl font-bold">This account is not active</h1>
+            <p className="mb-6 text-sm text-slate-600">
+              Your account was deactivated or removed. Ask an administrator if this is a surprise.
+            </p>
+            <a className="btn-primary inline-flex" href="/login">
+              Go to sign in
+            </a>
+          </main>
+        </body>
+      </html>
+    );
   }
+
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
@@ -34,8 +49,8 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         >
           Skip to content
         </a>
-        <AppHeader user={session?.user ?? null} />
-        {session?.user && <NoticeGate acknowledged={noticeAcked} />}
+        <AppHeader user={user} />
+        {user && <NoticeGate acknowledged={user.noticeAcked} />}
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">
           {children}
         </main>

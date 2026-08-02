@@ -59,7 +59,12 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     const res = validateNoteState(b.note);
     if (!res.ok) return Response.json({ error: res.error }, { status: 400 });
     patch.noteState = res.value;
-    const derived = statusForNote(res.value, { submitted: false, lastSendFailed: draft.lastSendFailed });
+    // An edit means this is no longer the note that failed to send, so clear
+    // the send-failed flag here too — otherwise the dashboard keeps showing
+    // "Send failed" while the open builder shows the live status, a parity
+    // break between the two derivations.
+    patch.lastSendFailed = false;
+    const derived = statusForNote(res.value, { submitted: false, lastSendFailed: false });
     patch.status = derived.status;
   }
 

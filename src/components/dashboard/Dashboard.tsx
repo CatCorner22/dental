@@ -17,6 +17,7 @@ interface DraftRow {
   title: string;
   status: DraftStatus;
   ownerName?: string;
+  mine: boolean;
   updatedAt: string;
   moduleIds: string[];
 }
@@ -73,10 +74,11 @@ export function Dashboard({
     [drafts, query, statusFilter]
   );
 
-  // The list is newest-activity-first, so the first unsubmitted draft is
-  // "where you left off".
+  // The list is newest-activity-first, so the first unsubmitted draft the
+  // viewer OWNS is "where you left off" — an admin's all-drafts view must
+  // not present a teammate's note as theirs.
   const resumeDraft = useMemo(
-    () => (canEdit ? drafts.find((d) => d.status !== "submitted") : undefined),
+    () => (canEdit ? drafts.find((d) => d.mine && d.status !== "submitted") : undefined),
     [drafts, canEdit]
   );
 

@@ -1,15 +1,14 @@
 import { Resend } from "resend";
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
-import { claimDraftForSubmit, getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
-import { finalizeSubmission, insertSubmissionShell } from "@/lib/db/repo/submissions";
+import { getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
+import { fileSubmissionAtomic } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { activeModules } from "@/lib/modules";
 import { composeNote, composeNoteText } from "@/lib/compose/composeNote";
 import { composeAuditReport } from "@/lib/compose/composeAuditReport";
 import { computeGates, runAudit } from "@/lib/audit/engine";
 import { getEmailConfig } from "@/lib/email/config";
-import { formatTicket } from "@/lib/tickets/ticket";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { slugifyTitle } from "@/lib/tickets/slug";
 import { composeStamp } from "@/lib/tickets/stamp";
@@ -85,45 +84,62 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   }
 
   const now = new Date();
+  const submittedByName = `${guard.user.displayName} (${guard.user.username})`;
+  const submittedAtEt = formatEasternTime(now);
+  const filenameBase = slugifyTitle(draft.title);
 
-  // Atomically claim the draft: of any concurrent submits (double-click, two
-  // tabs), exactly one proceeds past this line. The early status check above
-  // is only the friendly fast path — this is the enforcement.
-  if (!(await claimDraftForSubmit(db, draft.id, now))) {
+  // File atomically: claim, reserve the ticket, and freeze the immutable
+  // copies in ONE transaction. Of any concurrent submits, exactly one wins;
+  // a mid-way failure rolls the whole thing back so the draft stays
+  // resubmittable and no blank ticket is ever written to the record. The
+  // frozen text is captured here so the email reuses it without recomposing.
+  let frozenNote = "";
+  let frozenAudit = "";
+  let filed;
+  try {
+    filed = await fileSubmissionAtomic(
+      db,
+      {
+        draftId: draft.id,
+        submittedById: guard.user.id,
+        submittedByName,
+        submittedAtEt,
+        filename: filenameBase,
+        format,
+        ruleVersion: RULESET_VERSION,
+        auditStatus: report.status
+      },
+      now,
+      (ticket) => {
+        const stamp = composeStamp({
+          ticket,
+          submittedBy: submittedByName,
+          submittedAtEt,
+          ruleVersion: RULESET_VERSION,
+          auditStatus: report.status
+        });
+        frozenNote = (format === "txt" ? composeNoteText(note, modules) : markdown) + "\n" + stamp;
+        frozenAudit = composeAuditReport(report, modules, markdown) + "\n" + stamp;
+        return { note: frozenNote, audit: frozenAudit };
+      }
+    );
+  } catch (e) {
+    console.error("submit filing failed:", e instanceof Error ? e.name : "error");
+    return Response.json(
+      { error: "Could not file the note. Nothing was sent — try again." },
+      { status: 500 }
+    );
+  }
+  if (!filed.filed) {
     return Response.json(
       { error: "This note is already submitted. Edit it before submitting again." },
       { status: 409 }
     );
   }
+  const ticket = filed.ticket;
 
-  const submittedByName = `${guard.user.displayName} (${guard.user.username})`;
-  const submittedAtEt = formatEasternTime(now);
-  const filenameBase = slugifyTitle(draft.title);
-
-  // Reserve the ticket, compose the stamp, freeze the immutable copies.
-  const shell = await insertSubmissionShell(db, {
-    draftId: draft.id,
-    submittedById: guard.user.id,
-    submittedByName,
-    submittedAtEt,
-    filename: filenameBase,
-    format,
-    ruleVersion: RULESET_VERSION,
-    auditStatus: report.status
-  });
-  const ticket = formatTicket(shell.id);
-  const stamp = composeStamp({
-    ticket,
-    submittedBy: submittedByName,
-    submittedAtEt,
-    ruleVersion: RULESET_VERSION,
-    auditStatus: report.status
-  });
-  const frozenNote = (format === "txt" ? composeNoteText(note, modules) : markdown) + "\n" + stamp;
-  const frozenAudit = composeAuditReport(report, modules, markdown) + "\n" + stamp;
-  await finalizeSubmission(db, shell.id, frozenNote, frozenAudit);
-
-  // Email (best-effort): failure does not lose the filed ticket, but marks the draft.
+  // Email (best-effort): the note is already filed; a send failure only marks
+  // the draft resubmittable, it never un-files the ticket.
   const config = getEmailConfig();
   let emailed = false;
   if (config.configured) {
@@ -147,7 +163,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   }
 
   // Honest cache: a failed email shows the rose "Send failed" chip and stays
-  // resubmittable; the claim above already marked a clean filing "submitted".
+  // resubmittable; the atomic filing already marked a clean filing "submitted".
   const sendFailed = config.configured && !emailed;
   if (sendFailed) await setDraftStatus(db, draft.id, "error", true, now);
   await logAction(db, {
@@ -157,11 +173,26 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     detail: draft.id
   });
 
+  // A PHI override is the one safety gate a person can waive. Record who
+  // attested and why, keyed to the ticket, so the legal record shows it.
+  if (phiOverride) {
+    const reason =
+      typeof (body.phiOverride as { reason?: unknown }).reason === "string"
+        ? ((body.phiOverride as { reason: string }).reason).slice(0, 500)
+        : "(no reason given)";
+    await logAction(db, {
+      actorId: guard.user.id,
+      action: "submit.phi-override",
+      target: ticket,
+      detail: `${report.phiStops.length} PHI stop(s) attested: ${reason}`
+    });
+  }
+
   const firstPass = report.status === FIRST_PASS_STATUS;
   return Response.json({
     ticket,
-    submissionId: shell.id,
+    submissionId: filed.submissionId,
     emailed,
-    sparkle: sparkleLine(firstPass ? "firstPass" : "afterSubmit", shell.id)
+    sparkle: sparkleLine(firstPass ? "firstPass" : "afterSubmit", filed.submissionId)
   });
 }

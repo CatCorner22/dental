@@ -6,6 +6,9 @@ import { usePathname } from "next/navigation";
 interface NavItem {
   href: string;
   label: string;
+  // Highlight when the path starts with this prefix instead of href — e.g.
+  // "References" links to /reference/templates but owns all of /reference.
+  activePrefix?: string;
 }
 
 export function NavLinks({ items }: { items: NavItem[] }) {
@@ -13,8 +16,8 @@ export function NavLinks({ items }: { items: NavItem[] }) {
   return (
     <>
       {items.map((item) => {
-        const active =
-          item.href === "/" ? pathname === "/" : pathname.startsWith(item.href);
+        const prefix = item.activePrefix ?? item.href;
+        const active = prefix === "/" ? pathname === "/" : pathname.startsWith(prefix);
         return (
           <Link
             key={item.href}

@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth/auth";
+import { redirect } from "next/navigation";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listAllDrafts, listDraftsByOwner } from "@/lib/db/repo/drafts";
 import { statRowsForUser } from "@/lib/db/repo/submissions";
@@ -11,8 +12,8 @@ export const runtime = "nodejs";
 export const metadata = { title: "Dashboard — Dental Note Builder" };
 
 export default async function DashboardPage() {
-  const session = await auth();
-  const user = session!.user; // middleware guarantees a session here
+  const user = await freshSessionUser(); // fresh role/active — never the stale token
+  if (!user) redirect("/login");
   const db = await getDb();
   const rows =
     user.role === "user" ? await listDraftsByOwner(db, user.id) : await listAllDrafts(db);
@@ -35,6 +36,7 @@ export default async function DashboardPage() {
         title: d.title,
         status: d.status as DraftStatus,
         ownerName: ownerNames[d.ownerId],
+        mine: d.ownerId === user.id,
         updatedAt: d.updatedAt.toISOString(),
         moduleIds: d.noteState.selectedModuleIds
       }))}

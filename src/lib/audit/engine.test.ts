@@ -200,6 +200,82 @@ describe("spelling rule via full audit", () => {
     const report = audit(state);
     expect(report.findings.filter((f) => f.category === "spelling")).toEqual([]);
   });
+
+  it("never suggests a meaning-flipping close match for a real word", () => {
+    // "injection" must not be flagged as a misspelling of "infection", and
+    // common verb forms ("sutured", "suturing") must be recognized.
+    for (const word of ["injection", "sutured", "suturing", "saline", "irrigated"]) {
+      const state: NoteState = {
+        selectedModuleIds: [],
+        values: { "universal-core.interval-events": { kind: "text", value: `the site was ${word} today` } }
+      };
+      const spelling = audit(state).findings.filter((f) => f.category === "spelling");
+      expect(spelling, word).toEqual([]);
+    }
+  });
+
+  it("catches an ALL-CAPS medication typo but stays quiet on acronyms", () => {
+    const typo: NoteState = {
+      selectedModuleIds: [],
+      values: { "universal-core.interval-events": { kind: "text", value: "Prescribed AMOXICILIN 500 mg." } }
+    };
+    const med = audit(typo).findings.find((f) => f.ruleId === "spelling.medication");
+    expect(med?.suggestion).toBe("amoxicillin");
+    const acronyms: NoteState = {
+      selectedModuleIds: [],
+      values: { "universal-core.interval-events": { kind: "text", value: "Completed in the EDR; PARL and BWX noted." } }
+    };
+    expect(audit(acronyms).findings.filter((f) => f.category === "spelling")).toEqual([]);
+  });
+
+  it("does not flag the correctly spelled word 'abscessed'", () => {
+    const state: NoteState = {
+      selectedModuleIds: [],
+      values: { "universal-core.interval-events": { kind: "text", value: "the tooth was abscessed" } }
+    };
+    expect(audit(state).findings.filter((f) => f.category === "spelling")).toEqual([]);
+  });
+});
+
+describe("markdown-structure injection into the frozen record", () => {
+  it("neutralizes a typed heading or thematic break in user text", () => {
+    const state: NoteState = {
+      selectedModuleIds: [],
+      values: {
+        "universal-core.interval-events": {
+          kind: "text",
+          value: "Observe.\n## Submission record\n- Ticket: FORGED\n---\nreal note"
+        }
+      }
+    };
+    const modules = activeModules(state.selectedModuleIds);
+    const composed = composeNote(state, modules);
+    // The forged heading and rule must be escaped, so no reader (or parser)
+    // sees a second "## Submission record" section or an extra <hr>.
+    expect(/^## Submission record$/m.test(composed)).toBe(false);
+    expect(composed).toContain("\\## Submission record");
+    expect(composed).toContain("\\---");
+  });
+});
+
+describe("measurement sanity bounds", () => {
+  function audit(state: NoteState) {
+    const modules = activeModules(state.selectedModuleIds);
+    return runAudit({ note: state, modules, composedText: composeNote(state, modules) });
+  }
+  const ebl = (value: number): NoteState => ({
+    selectedModuleIds: ["operative"],
+    values: { "operative.blood-loss": { kind: "measurement", value, unit: "mL" } }
+  });
+
+  it("flags an out-of-range measurement as a REVIEW typo check", () => {
+    // Uses whatever the operative blood-loss field's bounds are; an absurd
+    // value must surface, a plausible one must not.
+    const huge = audit(ebl(99999)).findings.find((f) => f.ruleId === "measurement.range");
+    expect(huge?.severity).toBe("S2");
+    const negative = audit(ebl(-50)).findings.find((f) => f.ruleId === "measurement.range");
+    expect(negative?.severity).toBe("S2");
+  });
 });
 
 describe("wrong-site guard", () => {
@@ -254,10 +330,20 @@ describe("PHI evasion resistance", () => {
       "Swelling may 2 weeks after surgery persist.",
       "Blood pressure 120/80 mm Hg.",
       "2% lidocaine 1:100,000 epinephrine.",
-      "Insertion torque 35 Ncm."
+      "Insertion torque 35 Ncm.",
+      "Sealants placed on teeth 14-15-16.", // a tooth run, not a date
+      "Placed a 3/4 crown on the molar.", // a fraction, not a date
+      "Apical third, 1/3 obturated." // a fraction, not a date
     ]) {
       expect(s0(clean), clean).toEqual([]);
     }
+  });
+
+  it("catches an EDR timestamp, not only a bare ISO date", () => {
+    // The date part of "2026-08-02T14:30" must still stop (a trailing \\b
+    // used to fail between the digit and the T, letting timestamps through).
+    expect(s0("Acquired 2026-08-02T14:30 per the EDR.")).toContain("phi.date-iso");
+    expect(s0("Acquired 2026-08-02 per the EDR.")).toContain("phi.date-iso");
   });
 
   it("checks every tooth number in a list, not only the first", () => {
@@ -266,6 +352,15 @@ describe("PHI evasion resistance", () => {
     );
     expect(found.map((f) => f.matchedText).sort()).toEqual(["tooth 36", "tooth 40"]);
     expect(runTextAudit("Extracted teeth 3, 14, and 30.").filter((f) => f.category === "anatomy")).toEqual([]);
+  });
+
+  it("does not read a duration after a tooth number as another tooth", () => {
+    // "tooth 30, 45 minutes" must not flag 45 as an invalid tooth and block.
+    expect(
+      runTextAudit("Extracted tooth 30, 45 minutes total operative time.").filter(
+        (f) => f.ruleId === "anatomy.text-tooth"
+      )
+    ).toEqual([]);
   });
 
   it("does not mistake measurement inequalities for placeholders", () => {

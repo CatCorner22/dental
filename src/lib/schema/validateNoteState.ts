@@ -7,6 +7,7 @@ export type NoteStateResult =
 
 const MAX_FIELDS = 2000;
 const MAX_TEXT_CHARS = 20_000;
+const MAX_ARRAY = 200; // no real field has hundreds of options/teeth/surfaces
 const VALUE_KINDS = ["select", "multiselect", "text", "teeth", "surfaces", "measurement"];
 
 export function isPlainObject(v: unknown): v is Record<string, unknown> {
@@ -31,24 +32,33 @@ export function validateFieldValue(v: unknown): v is FieldValue {
     case "multiselect":
       return (
         Array.isArray(v.values) &&
+        v.values.length <= MAX_ARRAY &&
         v.values.every((x) => typeof x === "string" && x.length <= MAX_TEXT_CHARS)
       );
     case "text":
       return typeof v.value === "string" && v.value.length <= MAX_TEXT_CHARS;
     case "teeth":
-      return Array.isArray(v.teeth) && v.teeth.every((x) => typeof x === "string" && x.length <= 8);
+      return (
+        Array.isArray(v.teeth) &&
+        v.teeth.length <= MAX_ARRAY &&
+        v.teeth.every((x) => typeof x === "string" && x.length <= 8)
+      );
     case "surfaces":
       return (
         isPlainObject(v.byTooth) &&
+        Object.keys(v.byTooth).length <= MAX_ARRAY &&
         Object.values(v.byTooth).every(
-          (s) => Array.isArray(s) && s.every((x) => typeof x === "string" && x.length <= 2)
+          (s) => Array.isArray(s) && s.length <= MAX_ARRAY && s.every((x) => typeof x === "string" && x.length <= 2)
         )
       );
     case "measurement":
       return (
         (v.value === null || (typeof v.value === "number" && Number.isFinite(v.value))) &&
         typeof v.unit === "string" &&
-        v.unit.length <= 16
+        v.unit.length <= 16 &&
+        // A unit is a short token (mm, mL, L/min); it must never contain a
+        // newline that could forge a line in the composed note.
+        !/[\n\r]/.test(v.unit)
       );
     default:
       return false;

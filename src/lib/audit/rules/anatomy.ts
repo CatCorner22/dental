@@ -109,14 +109,21 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
 
 // Free-text cross-check: catches impossible Universal numbers and probable
 // FDI leakage ("tooth 36") in narrative text.
+// A number immediately followed by a unit of time or measurement is not a
+// tooth, so the lookahead below ends the tooth run there. Without it,
+// "tooth 30, 45 minutes total" would flag 45 as an invalid tooth and block.
+const NOT_A_UNIT = "(?!\\s*(?:minutes?|mins?|seconds?|secs?|hours?|hrs?|days?|weeks?|months?|years?|mm|cm|ml|mg|%)\\b)";
+const TOOTH_LIST = new RegExp(
+  `\\b(?:tooth|teeth)\\s*#?\\s*(\\d{1,3}${NOT_A_UNIT}(?:[\\s,]*(?:and|&|through|to|or|-)?[\\s,]*#?\\d{1,3}${NOT_A_UNIT})*)`,
+  "gi"
+);
+
 export function runAnatomyTextRule(text: string): AuditFinding[] {
   const findings: AuditFinding[] = [];
   const seen = new Map<string, number>();
   // A tooth keyword can introduce a list ("teeth 3, 36, and 40"), so every
   // number in the run is checked, not just the first.
-  for (const m of text.matchAll(
-    /\b(?:tooth|teeth)\s*#?\s*(\d{1,3}(?:[\s,]*(?:and|&|through|to|or|-)?[\s,]*#?\d{1,3})*)/gi
-  )) {
+  for (const m of text.matchAll(TOOTH_LIST)) {
     for (const numMatch of m[1].matchAll(/\d{1,3}/g)) {
       const num = numMatch[0];
       if (isValidToothId(num)) continue;

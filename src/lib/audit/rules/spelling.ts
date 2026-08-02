@@ -10,21 +10,21 @@ import { MEDICATION_WORDS, MISSPELLINGS } from "@/lib/vocab/misspellings";
 
 const MAX_UNKNOWN_WORD_FINDINGS = 15;
 
+function inAnyLexicon(word: string): boolean {
+  return DENTAL_LEXICON.has(word) || COMMON_LEXICON.has(word) || GENERATED_LEXICON.has(word);
+}
+
 function known(word: string): boolean {
-  if (DENTAL_LEXICON.has(word) || COMMON_LEXICON.has(word) || GENERATED_LEXICON.has(word)) {
-    return true;
-  }
-  // Naive plural/verb endings.
-  for (const suffix of ["s", "es", "ed", "ing", "ly"]) {
-    if (word.endsWith(suffix)) {
-      const stem = word.slice(0, -suffix.length);
-      if (
-        stem.length >= 3 &&
-        (DENTAL_LEXICON.has(stem) || COMMON_LEXICON.has(stem) || GENERATED_LEXICON.has(stem))
-      ) {
-        return true;
-      }
-    }
+  if (inAnyLexicon(word)) return true;
+  // Naive plural/verb endings. "d" handles the -ed form of an e-ending stem
+  // ("suture" -> "sutured"); for "ed"/"ing" we also restore the dropped "e"
+  // ("suture" -> "suturing") so common verb forms are not flagged as typos.
+  for (const suffix of ["s", "es", "ed", "ing", "ly", "d"]) {
+    if (!word.endsWith(suffix)) continue;
+    const stem = word.slice(0, -suffix.length);
+    if (stem.length < 3) continue;
+    if (inAnyLexicon(stem)) return true;
+    if ((suffix === "ed" || suffix === "ing") && inAnyLexicon(stem + "e")) return true;
   }
   return false;
 }
@@ -62,8 +62,12 @@ export function runSpellingRule(
   const findings: AuditFinding[] = [];
   const seen = new Set<string>();
   let unknownCount = 0;
-  for (const m of text.matchAll(/[A-Za-z][a-z']{2,}/g)) {
+  // Also capture ALL-CAPS words so a shouted medication typo ("AMOXICILIN")
+  // still reaches the medication check. Their generic unknown-word finding is
+  // suppressed below so ordinary acronyms (EDR, BWX, PARL) stay quiet.
+  for (const m of text.matchAll(/[A-Za-z][A-Za-z']{2,}/g)) {
     const raw = m[0];
+    const isAllCaps = raw.length >= 2 && raw === raw.toUpperCase();
     const word = raw.toLowerCase().replace(/'s?$/, "");
     if (word.length < 3 || seen.has(word)) continue;
     seen.add(word);
@@ -103,7 +107,7 @@ export function runSpellingRule(
       continue;
     }
 
-    if (word.length >= 5 && unknownCount < MAX_UNKNOWN_WORD_FINDINGS) {
+    if (!isAllCaps && word.length >= 5 && unknownCount < MAX_UNKNOWN_WORD_FINDINGS) {
       unknownCount++;
       findings.push({
         ruleId: "spelling.unknown-word",

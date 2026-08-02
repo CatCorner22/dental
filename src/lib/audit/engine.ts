@@ -16,6 +16,7 @@ import { runAbbreviationRule, runVaguePhraseRule } from "./rules/terminology";
 import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
 import { runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
+import { runMeasurementRule } from "./rules/measurement";
 
 // Pure and isomorphic. The client runs the full audit live; the email route
 // re-runs the text audit server-side so a tampered client cannot bypass it.
@@ -34,6 +35,7 @@ export function runAudit(ctx: AuditContext): AuditReport {
   const findings: AuditFinding[] = [
     ...runRequiredRule(ctx.note, ctx.modules),
     ...runAnatomyStateRule(ctx.note, ctx.modules),
+    ...runMeasurementRule(ctx.note, ctx.modules),
     ...runTextAudit(ctx.composedText),
     ...runFieldSpelling(ctx.note, ctx.modules)
   ];
@@ -80,8 +82,13 @@ export function buildReport(findings: AuditFinding[]): AuditReport {
 export function computeGates(report: AuditReport, phiOverridden: boolean): AuditGates {
   const phiBlocked = report.phiStops.length > 0 && !phiOverridden;
   const nonPhiStops = report.counts.S0 - report.phiStops.length;
+  // Any unresolved S0 stops the line: a wrong-site or invalid-tooth note must
+  // not leave the tool by copy/download either, matching the finding's own
+  // "correct the site before this entry leaves the tool." A PHI S0 is the one
+  // stop a person can waive, via the attested override.
+  const blocked = phiBlocked || nonPhiStops > 0;
   return {
-    exportAllowed: !phiBlocked,
-    emailAllowed: !phiBlocked && nonPhiStops === 0 && report.counts.S1 === 0
+    exportAllowed: !blocked,
+    emailAllowed: !blocked && report.counts.S1 === 0
   };
 }

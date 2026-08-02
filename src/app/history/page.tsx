@@ -1,4 +1,5 @@
-import { auth } from "@/lib/auth/auth";
+import { redirect } from "next/navigation";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listAllSubmissions, listSubmissionsByUser } from "@/lib/db/repo/submissions";
 import { formatTicket } from "@/lib/tickets/ticket";
@@ -9,8 +10,8 @@ export const runtime = "nodejs";
 export const metadata = { title: "History — Dental Note Builder" };
 
 export default async function HistoryPage() {
-  const session = await auth();
-  const user = session!.user;
+  const user = await freshSessionUser(); // fresh role/active — never the stale token
+  if (!user) redirect("/login");
   const db = await getDb();
   const rows =
     user.role === "user"

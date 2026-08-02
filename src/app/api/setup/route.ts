@@ -1,5 +1,5 @@
 import { getDb } from "@/lib/db/client";
-import { countUsers, getUserByUsername, insertUser } from "@/lib/db/repo/users";
+import { countUsers, createFirstAdminGuarded } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { hashPassword } from "@/lib/auth/password";
 
@@ -27,17 +27,21 @@ export async function POST(req: Request): Promise<Response> {
   if (password.length < 10) {
     return Response.json({ error: "Password must be at least 10 characters." }, { status: 400 });
   }
-  if (await getUserByUsername(db, username)) {
-    return Response.json({ error: "That username is taken." }, { status: 409 });
-  }
-  await insertUser(db, {
+  // Atomic: the count re-check and the insert share one serialized
+  // transaction, so two concurrent setups can never both become admin.
+  // Usernames are stored lowercase so "Admin" and "admin" can never be
+  // two different people in the audit log.
+  const outcome = await createFirstAdminGuarded(db, {
     id: crypto.randomUUID(),
-    username,
+    username: username.toLowerCase(),
     displayName,
     role: "admin",
     passHash: await hashPassword(password),
     active: true
   });
-  await logAction(db, { actorId: null, action: "setup.first-admin", target: username });
+  if (outcome === "exists") {
+    return Response.json({ error: "Setup is already complete." }, { status: 409 });
+  }
+  await logAction(db, { actorId: null, action: "setup.first-admin", target: username.toLowerCase() });
   return Response.json({ ok: true }, { status: 201 });
 }

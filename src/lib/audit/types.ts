@@ -25,7 +25,8 @@ export type AuditCategory =
   | "anatomy"
   | "abbreviation"
   | "vague-phrase"
-  | "spelling";
+  | "spelling"
+  | "measurement";
 
 export interface AuditFinding {
   ruleId: string;
@@ -52,10 +53,11 @@ export interface AuditReport {
 }
 
 export interface AuditGates {
-  // Copy and download: blocked only by PHI stops (jidoka), unless the user
-  // completes the explicit override dialog.
+  // Copy and download: blocked by ANY S0 stop (jidoka — a defective note does
+  // not leave the tool). A PHI stop is the one kind a person can waive, via
+  // the explicit override dialog.
   exportAllowed: boolean;
-  // Email: additionally requires zero S0 of any category and zero S1.
+  // Email: everything export requires, plus zero S1.
   emailAllowed: boolean;
 }
 

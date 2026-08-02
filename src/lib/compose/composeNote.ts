@@ -9,16 +9,41 @@ import { formatSurfaces } from "@/lib/vocab/surfaces";
 // Empty optional fields are omitted: a blank never silently becomes normal,
 // and required blanks surface as audit findings instead.
 
+// Neutralize markdown structure in user-entered free text so a typed
+// "## Submission record" or "---" can never forge a heading or thematic
+// break in the frozen note or audit report (the real stamp uses those exact
+// markers). Only leading structural tokens are escaped; ordinary content,
+// including dashes used as bullets mid-line, is untouched.
+function sanitizeUserText(text: string): string {
+  return text
+    .split("\n")
+    .map((line) => {
+      if (/^\s{0,3}#{1,6}(\s|$)/.test(line)) return line.replace(/^(\s{0,3})(#)/, "$1\\$2");
+      if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) return line.replace(/^(\s{0,3})([-*_])/, "$1\\$2");
+      return line;
+    })
+    .join("\n");
+}
+
 function formatValue(field: Field, value: FieldValue): string {
   switch (value.kind) {
     case "select":
-      return value.value === "__other__" ? (value.otherText ?? "").trim() : value.value;
+      return value.value === "__other__" ? sanitizeUserText((value.otherText ?? "").trim()) : value.value;
     case "multiselect": {
       const joiner = field.type === "multiselect" ? (field.joiner ?? "; ") : "; ";
-      return value.values.join(joiner);
+      // Compose in the field's canonical option order, not the user's click
+      // order, so the same selections always render identically (standard work).
+      const order =
+        field.type === "multiselect"
+          ? new Map(field.options.map((o, i) => [o.value, i]))
+          : null;
+      const values = order
+        ? [...value.values].sort((a, b) => (order.get(a) ?? 999) - (order.get(b) ?? 999))
+        : value.values;
+      return values.join(joiner);
     }
     case "text":
-      return value.value.trim();
+      return sanitizeUserText(value.value.trim());
     case "teeth":
       return describeTeeth(value.teeth);
     case "surfaces": {

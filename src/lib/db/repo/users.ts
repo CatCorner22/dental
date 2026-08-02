@@ -57,6 +57,19 @@ export async function countOtherActiveAdmins(db: Db, excludeId: string): Promise
 // count check and together lock everyone out.
 const ADMIN_GUARD_LOCK = 742001;
 
+// Bootstrap the first admin atomically: two concurrent /api/setup requests
+// with different usernames would otherwise both see an empty table and both
+// become admin. Same lock family as the admin guard.
+export async function createFirstAdminGuarded(db: Db, user: NewUser): Promise<"created" | "exists"> {
+  return db.transaction(async (tx) => {
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${ADMIN_GUARD_LOCK})`);
+    const rows = await tx.select({ n: sql<number>`count(*)::int` }).from(users);
+    if ((rows[0]?.n ?? 0) > 0) return "exists";
+    await tx.insert(users).values(user);
+    return "created";
+  });
+}
+
 // Demote, deactivate, or delete an admin — atomically re-checking that
 // another active admin remains. Returns false when the target is the last
 // active admin (nothing is changed).

@@ -46,17 +46,25 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Password must be at least 10 characters." }, { status: 400 });
   }
   const db = await getDb();
-  if (await getUserByUsername(db, username)) {
+  // Stored lowercase so "Nurse" and "nurse" can never be two people; the
+  // unique-constraint catch turns a lost race into a clean 409, not a 500.
+  const uname = username.toLowerCase();
+  if (await getUserByUsername(db, uname)) {
     return Response.json({ error: "That username is taken." }, { status: 409 });
   }
-  const created = await insertUser(db, {
-    id: crypto.randomUUID(),
-    username,
-    displayName,
-    role,
-    passHash: await hashPassword(password),
-    active: true
-  });
-  await logAction(db, { actorId: guard.user.id, action: "user.create", target: username, detail: role });
+  let created;
+  try {
+    created = await insertUser(db, {
+      id: crypto.randomUUID(),
+      username: uname,
+      displayName,
+      role,
+      passHash: await hashPassword(password),
+      active: true
+    });
+  } catch {
+    return Response.json({ error: "That username is taken." }, { status: 409 });
+  }
+  await logAction(db, { actorId: guard.user.id, action: "user.create", target: uname, detail: role });
   return Response.json({ id: created.id }, { status: 201 });
 }

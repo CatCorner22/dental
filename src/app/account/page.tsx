@@ -1,12 +1,13 @@
-import { auth } from "@/lib/auth/auth";
+import { redirect } from "next/navigation";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AccountForm } from "@/components/account/AccountForm";
 
 export const runtime = "nodejs";
 export const metadata = { title: "My account — Dental Note Builder" };
 
 export default async function AccountPage() {
-  const session = await auth();
-  const user = session!.user;
+  const user = await freshSessionUser(); // fresh display name and role
+  if (!user) redirect("/login");
   return (
     <div className="mx-auto max-w-md">
       <h1 className="mb-1 text-2xl font-bold">My account</h1>

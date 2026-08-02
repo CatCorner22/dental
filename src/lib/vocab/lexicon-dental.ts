@@ -45,6 +45,8 @@ submentovertex suppuration supraeruption supragingival suture sutures symphysis 
 syringe tachycardia temporomandibular titanium tomography torus tori tramadol
 transcranial transpharyngeal triazolam trigeminal trismus tuberosity ulcer ulceration
 unilateral veneer verrucous vestibule vestibuloplasty xerostomia zirconia
+injection injections saline irrigated granulation inferior superior anterior posterior
+periapical interim provisional palliative
 `;
 
 export const DENTAL_LEXICON: ReadonlySet<string> = new Set(

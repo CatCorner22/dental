@@ -32,11 +32,17 @@ field. History has a note-label column, search, and status filters.
 | **User** | Create, auto-save, and submit their own drafts |
 | **Admin** | Everything, plus add / deactivate / delete users, reset passwords, and transfer draft ownership |
 
-The first admin is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`). Every API
-route re-checks the caller's role server-side. The last active admin can never be locked out —
-the guard runs inside a serialized transaction, so even two simultaneous demotes cannot slip
-past it. A user with submission history cannot be deleted (the record must survive); deactivate
-instead. Admin dialogs generate strong temporary passwords with one click (copyable, no typing).
+The first admin is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`). Both the
+API routes **and the pages** re-read the caller's role and active state fresh from the database
+on every request, so demoting or deactivating a user takes effect on their very next click, not
+when their token expires. The legal-record notice is enforced server-side: until a user
+acknowledges it, every API refuses to act (except the acknowledgment itself). The last active
+admin can never be locked out — the guard runs inside a serialized transaction, so even two
+simultaneous demotes cannot slip past it, and first-time setup is atomic against a concurrent
+double-bootstrap. A user with submission history cannot be deleted (the record must survive);
+deactivate instead. Admin dialogs generate strong temporary passwords with one click (copyable,
+no typing). Usernames are stored lowercase, and login burns constant bcrypt time whether or not
+the username exists.
 
 ### Draft lifecycle and status colors
 
@@ -129,7 +135,7 @@ The office asked which is best. The answer is **both, staged** — matching
 |---|---|
 | Standard work | One Universal Core + modular add-ons compose in one canonical order for every user |
 | Poka-yoke (error-proofing) | Controlled dropdowns, tooth/surface pickers that disable invalid anatomy, recipient-less email API |
-| Jidoka (stop the line) | S0 STOP findings block export; S0/S1 block email; the server re-audits so a tampered client cannot bypass the gate |
+| Jidoka (stop the line) | Any S0 STOP blocks export (copy/download) and email; S1 additionally blocks email; submission files atomically (claim + ticket + frozen copies in one transaction) so a partial failure never strands a note or writes a blank ticket; the server re-audits so a tampered client cannot bypass the gate |
 | Andon (visible signal) | Live audit panel with S0–S4 severity chips and overall status, always visible while typing |
 | Kaizen | Terminology lives in one data file (`src/lib/vocab/`); the reference page and the audit both read it, so improvement happens in one place |
 

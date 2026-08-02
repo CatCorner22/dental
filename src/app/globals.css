@@ -3,6 +3,12 @@
 @tailwind utilities;
 
 @layer base {
+  /* Office standard: Aptos/Calibri/Arial at 12 pt for body text. Utility
+     sizes (text-sm, text-xs) still apply to captions and dense tables. */
+  body {
+    font-size: 12pt;
+  }
+
   /* Always-visible keyboard focus ring on interactive elements. */
   a:focus-visible,
   button:focus-visible,

@@ -18,7 +18,7 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                 items={[
                   { href: "/", label: "Dashboard" },
                   { href: "/history", label: "History" },
-                  { href: "/reference/templates", label: "References" },
+                  { href: "/reference/templates", label: "References", activePrefix: "/reference" },
                   ...(user.role === "admin"
                     ? [
                         { href: "/admin/users", label: "Users" },

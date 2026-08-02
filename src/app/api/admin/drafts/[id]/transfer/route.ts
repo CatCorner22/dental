@@ -29,6 +29,9 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   if (to.role === "readonly") {
     return Response.json({ error: "Cannot transfer a draft to a read-only user." }, { status: 400 });
   }
+  if (toUserId === draft.ownerId) {
+    return Response.json({ error: "That user already owns this draft." }, { status: 400 });
+  }
   await transferDraft(db, id, toUserId, new Date());
   await logAction(db, {
     actorId: guard.user.id,

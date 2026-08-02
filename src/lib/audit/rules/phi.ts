@@ -25,17 +25,24 @@ const PHI_PATTERNS: PhiPattern[] = [
     message: "This looks like a phone number. Remove it. Contact details belong only in the EDR."
   },
   {
+    // Numeric M/D/Y or D/M/Y with real month (1-12) and day (1-31) parts, so
+    // a tooth sequence like "14-15-16" (month 14 is impossible) does not read
+    // as a date and hard-block a legitimate note. Two-part forms ("3/4 crown",
+    // "1/3 apical") are intentionally NOT matched.
     id: "phi.date",
-    pattern: /\b\d{1,2}[/-]\d{1,2}[/-]\d{2,4}\b/g,
+    pattern:
+      /\b(?:(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])|(?:0?[1-9]|[12]\d|3[01])[/-](?:0?[1-9]|1[0-2]))[/-]\d{2,4}\b/g,
     severity: "S0",
     message:
       "This looks like an exact date. Use a relative interval (for example, three days ago) and enter exact dates only in the EDR."
   },
   {
-    // ISO 8601, e.g. 2026-08-02. Anchored to a plausible year so ordinary
-    // hyphenated measurements do not match.
+    // ISO 8601, e.g. 2026-08-02, and the date part of a timestamp like
+    // 2026-08-02T14:30. The trailing lookahead allows a following "T" or time
+    // separator (a plain \b fails between "2" and "T", letting EDR timestamps
+    // slip through) while still rejecting a run of extra digits.
     id: "phi.date-iso",
-    pattern: /\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])\b/g,
+    pattern: /\b(?:19|20)\d{2}-(?:0[1-9]|1[0-2])-(?:0[1-9]|[12]\d|3[01])(?![\d-])/g,
     severity: "S0",
     message:
       "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."

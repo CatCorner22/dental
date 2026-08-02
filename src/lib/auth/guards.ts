@@ -12,7 +12,15 @@ export type GuardResult =
 // fresh from the database (one primary-key lookup), so deactivating or
 // demoting a user takes effect on their very next request — not when their
 // 30-day token expires.
-export async function requireRole(min: Role): Promise<GuardResult> {
+//
+// The legal-record notice is enforced here too: until a user has
+// acknowledged it, no API works except the acknowledgment itself
+// (requireAck: false). Without this, the notice is only a dismissible
+// modal — curl could file and email notes with no attestation on record.
+export async function requireRole(
+  min: Role,
+  opts: { requireAck?: boolean } = {}
+): Promise<GuardResult> {
   const session = await auth();
   const sessionUser = session?.user;
   if (!sessionUser) {
@@ -30,6 +38,15 @@ export async function requireRole(min: Role): Promise<GuardResult> {
     return {
       ok: false,
       response: Response.json({ error: "You do not have access to this action." }, { status: 403 })
+    };
+  }
+  if (opts.requireAck !== false && row.noticeAckAt === null) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "Acknowledge the legal-record notice first (shown when you open the app)." },
+        { status: 403 }
+      )
     };
   }
   return {

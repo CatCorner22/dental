@@ -39,8 +39,12 @@ export function isSegmentedSelect(field: SelectField): boolean {
 
 export function SelectInput({ field, value, onChange, describedBy, invalid, id }: InputProps<SelectField, Extract<FieldValue, { kind: "select" }>>) {
   const current = value?.value ?? "";
+  // A stored value that is not one of the (few) options — e.g. after a schema
+  // change removed it — would be invisible in the segmented view and unable to
+  // be cleared. Fall back to the dropdown so it stays visible and selectable.
+  const strayValue = current !== "" && !field.options.some((o) => o.value === current);
 
-  if (isSegmentedSelect(field)) {
+  if (isSegmentedSelect(field) && !strayValue) {
     return (
       <div
         className="flex flex-wrap gap-1.5"

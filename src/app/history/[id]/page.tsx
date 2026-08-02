@@ -1,5 +1,5 @@
-import { notFound } from "next/navigation";
-import { auth } from "@/lib/auth/auth";
+import { notFound, redirect } from "next/navigation";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getSubmission } from "@/lib/db/repo/submissions";
 import { formatTicket } from "@/lib/tickets/ticket";
@@ -10,8 +10,8 @@ export const metadata = { title: "Submission — Dental Note Builder" };
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
   const numId = Number(id);
-  const session = await auth();
-  const user = session!.user;
+  const user = await freshSessionUser(); // fresh role/active — never the stale token
+  if (!user) redirect("/login");
   const db = await getDb();
   const s = Number.isInteger(numId) ? await getSubmission(db, numId) : undefined;
   if (!s) notFound();

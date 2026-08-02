@@ -1,5 +1,5 @@
-import { auth } from "@/lib/auth/auth";
 import { redirect } from "next/navigation";
+import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listAuditLog } from "@/lib/db/repo/auditLog";
 import { listUsers } from "@/lib/db/repo/users";
@@ -18,12 +18,14 @@ const ACTION_LABEL: Record<string, string> = {
   "notice.ack": "Notice acknowledged",
   submit: "Note submitted",
   "submit.email-failed": "Note submitted (email failed)",
-  "submit.no-email": "Note submitted (email off)"
+  "submit.no-email": "Note submitted (email off)",
+  "submit.phi-override": "Privacy stop overridden (attested)"
 };
 
 export default async function AuditLogPage() {
-  const session = await auth();
-  if (session!.user.role !== "admin") redirect("/");
+  const user = await freshSessionUser(); // fresh role — a demoted admin loses this page NOW
+  if (!user) redirect("/login");
+  if (user.role !== "admin") redirect("/");
   const db = await getDb();
   const [log, users] = await Promise.all([listAuditLog(db, 300), listUsers(db)]);
   const nameById = new Map(users.map((u) => [u.id, `${u.displayName} (${u.username})`]));
@@ -60,6 +62,11 @@ export default async function AuditLogPage() {
         </table>
       </div>
       {log.length === 0 && <p className="mt-3 text-sm text-slate-500">No events yet.</p>}
+      {log.length === 300 && (
+        <p className="mt-3 text-sm text-slate-500">
+          Showing the latest 300 events. Older events stay in the database.
+        </p>
+      )}
     </div>
   );
 }

@@ -7,7 +7,9 @@ export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {
   matcher: [
-    // Everything except the public auth pages, the auth/setup APIs, and static assets.
-    "/((?!login|setup|api/auth|api/setup|_next/static|_next/image|favicon.ico|icon.svg).*)"
+    // Everything except the public auth pages, the auth/setup APIs, and
+    // static assets. Each exclusion is anchored to a segment boundary so a
+    // future route like /login-help or /setup-guide is NOT silently public.
+    "/((?!login(?:/|$)|setup(?:/|$)|api/auth(?:/|$)|api/setup(?:/|$)|_next/static|_next/image|favicon\\.ico$|icon\\.svg$).*)"
   ]
 };

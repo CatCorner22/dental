@@ -8,12 +8,23 @@ import { Dialog } from "@/components/ui/Dialog";
 export function NoticeGate({ acknowledged }: { acknowledged: boolean }) {
   const [done, setDone] = useState(acknowledged);
   const [busy, setBusy] = useState(false);
+  const [error, setError] = useState("");
   if (done) return null;
 
+  // The server refuses every other API until this acknowledgment is stored,
+  // so the gate must only close on a CONFIRMED save — closing optimistically
+  // would leave the user locked out with no visible reason.
   const ack = async () => {
     setBusy(true);
-    await fetch("/api/ack-notice", { method: "POST" }).catch(() => {});
-    setDone(true);
+    setError("");
+    try {
+      const res = await fetch("/api/ack-notice", { method: "POST" });
+      if (!res.ok) throw new Error();
+      setDone(true);
+    } catch {
+      setError("Could not save your acknowledgment — check the connection and try again.");
+      setBusy(false);
+    }
   };
 
   return (

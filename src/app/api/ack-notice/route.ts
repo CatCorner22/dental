@@ -6,7 +6,8 @@ import { logAction } from "@/lib/db/repo/auditLog";
 export const runtime = "nodejs";
 
 export async function POST(): Promise<Response> {
-  const guard = await requireRole("readonly");
+  // The one route that must work BEFORE the notice is acknowledged.
+  const guard = await requireRole("readonly", { requireAck: false });
   if (!guard.ok) return guard.response;
   const db = await getDb();
   await ackNotice(db, guard.user.id, new Date());

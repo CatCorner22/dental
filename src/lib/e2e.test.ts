@@ -71,15 +71,16 @@ describe("end-to-end IV sedation extraction draft", () => {
     expect(report.findings.some((f) => f.ruleId === "phi.phone")).toBe(true);
   });
 
-  it("blocks the line: no export while PHI stands, no email while any stop stands", () => {
+  it("blocks the line: any stop blocks export and email", () => {
     expect(report.status).toBe("BLOCKED");
     const gates = computeGates(report, false);
     expect(gates.exportAllowed).toBe(false);
     expect(gates.emailAllowed).toBe(false);
-    // Overriding the privacy stop restores download but never email while
-    // the anatomy stop and missing required fields remain.
+    // Overriding the privacy stop does NOT restore export while a wrong-site
+    // anatomy stop still stands — a defective note never leaves the tool, by
+    // any path. The PHI override only waives the PHI stop.
     const overridden = computeGates(report, true);
-    expect(overridden.exportAllowed).toBe(true);
+    expect(overridden.exportAllowed).toBe(false);
     expect(overridden.emailAllowed).toBe(false);
   });
 

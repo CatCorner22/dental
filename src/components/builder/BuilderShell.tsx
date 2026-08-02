@@ -130,6 +130,9 @@ export function BuilderShell({
     if (!canEdit) return;
     const onKey = (e: KeyboardEvent) => {
       if (!(e.ctrlKey || e.metaKey)) return;
+      // Any open dialog (the mandatory notice, conflict, submit, PHI override)
+      // owns the keyboard — the builder's shortcuts must not fire underneath it.
+      if (document.querySelector('[role="dialog"]')) return;
       if (e.key === "s" || e.key === "S") {
         e.preventDefault();
         void flush();

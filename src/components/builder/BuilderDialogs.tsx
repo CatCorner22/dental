@@ -212,8 +212,15 @@ export function SubmitDialog({
       {status === "error" && <p className="mb-3 text-sm text-red-700" role="alert">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn-primary" disabled={status === "sending"} onClick={submit}>
-          {status === "sending" ? "Submitting…" : "Submit note"}
+        <button
+          type="button"
+          className="btn-primary"
+          // Wait for the email-config check so the filed panel reports "sent"
+          // vs "not sent" from real server state, never a pre-load guess.
+          disabled={status === "sending" || cap === null}
+          onClick={submit}
+        >
+          {status === "sending" ? "Submitting…" : cap === null ? "Checking…" : "Submit note"}
         </button>
       </div>
     </Dialog>

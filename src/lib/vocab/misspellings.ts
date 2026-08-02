@@ -42,7 +42,7 @@ export const MEDICATION_WORDS: ReadonlySet<string> = new Set([
 export const MISSPELLINGS: Record<string, string> = {
   abcess: "abscess",
   absess: "abscess",
-  abscessed: "abscessed",
+  abcessed: "abscessed",
   acetaminophin: "acetaminophen",
   aveolitis: "alveolitis",
   alveoler: "alveolar",

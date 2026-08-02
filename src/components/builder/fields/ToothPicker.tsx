@@ -43,6 +43,7 @@ export function ToothPicker({
             <button
               key={d}
               type="button"
+              aria-pressed={dentition === d}
               onClick={() => setDentition(d)}
               className={`rounded px-2 py-0.5 text-xs font-medium ${
                 dentition === d ? "bg-blue-700 text-white" : "bg-white text-slate-600 border border-slate-300"

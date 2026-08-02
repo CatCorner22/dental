@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
-import Link from "next/link";
+import { auth } from "@/lib/auth/auth";
+import { AppHeader } from "@/components/shell/AppHeader";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -8,41 +9,28 @@ export const metadata: Metadata = {
     "Standardized, de-identified dental note drafts with a deterministic audit pass. No patient identifiers ever enter this tool."
 };
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+export default async function RootLayout({ children }: { children: React.ReactNode }) {
+  const session = await auth();
   return (
     <html lang="en">
       <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
-        <header className="border-b border-slate-200 bg-white">
-          <div className="mx-auto flex max-w-7xl items-center justify-between gap-4 px-4 py-3">
-            <Link href="/" className="text-lg font-semibold tracking-tight">
-              🦷 Dental Note Builder
-            </Link>
-            <nav className="flex items-center gap-4 text-sm">
-              <Link href="/" className="font-medium text-slate-700 hover:text-slate-900">
-                Note builder
-              </Link>
-              <Link
-                href="/reference/templates"
-                className="font-medium text-slate-700 hover:text-slate-900"
-              >
-                References
-              </Link>
-            </nav>
-          </div>
-          <div className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs font-medium text-amber-900">
-            De-identified drafts only. Never enter a patient name, exact date, contact detail,
-            record number, or image. Complete identifiers only in the EDR.
-          </div>
-        </header>
-        <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
+        <a
+          href="#main"
+          className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-blue-700 focus:px-3 focus:py-2 focus:text-white"
+        >
+          Skip to content
+        </a>
+        <AppHeader user={session?.user ?? null} />
+        <main id="main" className="mx-auto max-w-7xl px-4 py-6">
+          {children}
+        </main>
         <footer className="mx-auto max-w-7xl px-4 pb-8 pt-4 text-xs leading-relaxed text-slate-500">
           <p>
-            This tool standardizes documentation wording and order. It does not diagnose, select
-            treatment, calculate doses, assign billing codes, or determine discharge readiness. A
-            licensed clinician must compare every fact with the source record, resolve every
-            audit finding, and sign in the EDR. Reference summaries are internal training aids,
-            not legal advice; verify current law, Tennessee Rule 0460, payer rules, and facility
-            policy.
+            This tool standardizes documentation wording and order. It is deterministic — it makes
+            no AI calls and stores no patient data. It does not diagnose, select treatment,
+            calculate doses, assign billing codes, or determine discharge readiness. A licensed
+            clinician must compare every fact with the source record, resolve every audit finding,
+            and sign in the EDR. Reference summaries are internal training aids, not legal advice.
           </p>
         </footer>
       </body>

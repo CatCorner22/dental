@@ -1,8 +1,18 @@
+import { sql } from "drizzle-orm";
 import { drizzle as drizzlePg, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
 import { schema } from "./schema";
+import { SCHEMA_STATEMENTS } from "./ddl";
 
 export type Db = NodePgDatabase<typeof schema> | PgliteDatabase<typeof schema>;
+
+// Apply the embedded idempotent DDL. Reliable inside the Next server bundle,
+// where the file-based drizzle migrator cannot resolve the migrations folder.
+export async function applySchema(db: Db): Promise<void> {
+  for (const statement of SCHEMA_STATEMENTS) {
+    await db.execute(sql.raw(statement));
+  }
+}
 
 // One memoized bootstrap per process: pick the driver, run migrations, seed the
 // first admin from env if the users table is empty. Safe for serverless cold
@@ -14,8 +24,7 @@ async function build(): Promise<Db> {
   if (url) {
     const { Pool } = await import("pg");
     const db = drizzlePg(new Pool({ connectionString: url }), { schema });
-    const { migrate } = await import("drizzle-orm/node-postgres/migrator");
-    await migrate(db, { migrationsFolder: "drizzle" });
+    await applySchema(db);
     await seedAdmin(db);
     return db;
   }
@@ -29,9 +38,13 @@ async function build(): Promise<Db> {
   const { PGlite } = await import("@electric-sql/pglite");
   const dir =
     process.env.NODE_ENV === "test" ? "memory://" : (process.env.PGLITE_DIR ?? ".data/pglite");
+  if (dir !== "memory://" && !dir.startsWith("memory")) {
+    // PGlite's own mkdir is not recursive; ensure the parent path exists.
+    const { mkdirSync } = await import("node:fs");
+    mkdirSync(dir, { recursive: true });
+  }
   const db = drizzlePglite(new PGlite(dir), { schema });
-  const { migrate } = await import("drizzle-orm/pglite/migrator");
-  await migrate(db, { migrationsFolder: "drizzle" });
+  await applySchema(db);
   await seedAdmin(db);
   return db;
 }

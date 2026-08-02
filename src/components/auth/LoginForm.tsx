@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 
 export function LoginForm() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
@@ -21,8 +19,8 @@ export function LoginForm() {
       setBusy(false);
       return;
     }
-    router.push("/");
-    router.refresh();
+    // Full navigation reliably picks up the new session cookie.
+    window.location.assign("/");
   };
 
   return (

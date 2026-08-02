@@ -1,11 +1,9 @@
 "use client";
 
-import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { signIn } from "next-auth/react";
 
 export function SetupForm() {
-  const router = useRouter();
   const [username, setUsername] = useState("");
   const [displayName, setDisplayName] = useState("");
   const [password, setPassword] = useState("");
@@ -28,12 +26,7 @@ export function SetupForm() {
       return;
     }
     const login = await signIn("credentials", { username, password, redirect: false });
-    if (login?.error) {
-      router.push("/login");
-      return;
-    }
-    router.push("/");
-    router.refresh();
+    window.location.assign(login?.error ? "/login" : "/");
   };
 
   return (

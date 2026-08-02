@@ -175,6 +175,34 @@
   touch-action: manipulation;
 }
 
+/* Viewport-height panes, written as a two-declaration fallback rather than a
+   Tailwind `max-h-[55dvh]` class.
+   `dvh` arrived in Safari 15.4 / Chrome 108 / Firefox 101. An engine older
+   than that treats the whole declaration as invalid and DROPS it — which
+   means no height cap at all, so the pane grows without bound and takes the
+   page with it. Declaring `vh` first leaves those engines a working (if
+   slightly tall) value, and any engine that understands `dvh` overrides it on
+   the next line. Two classes in a `class` attribute cannot express this:
+   their order in the stylesheet is decided by Tailwind, not by the markup. */
+.pane-55 {
+  max-height: 55vh;
+  max-height: 55dvh;
+  overflow-y: auto;
+}
+.pane-60 {
+  max-height: 60vh;
+  max-height: 60dvh;
+  overflow-y: auto;
+}
+
+/* Safari has never unprefixed backdrop-filter, and autoprefixer was not
+   emitting the prefix. Written by hand so the frosted header behaves the
+   same in Safari as everywhere else. */
+.backdrop-blur,
+.backdrop-blur-sm {
+  -webkit-backdrop-filter: var(--tw-backdrop-blur);
+}
+
 /* Touch-target helpers.
    Driven by `pointer: coarse`, NOT by a width breakpoint. A tablet is 768px
    wide and driven by a finger, so width-based rules hand it the same 20px

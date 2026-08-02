@@ -233,7 +233,7 @@ export function BuilderShell({
             <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
               <input type="checkbox" checked disabled /> Universal Core
             </label>
-            <div className="max-h-[55dvh] space-y-0.5 overflow-y-auto">
+            <div className="pane-55 space-y-0.5">
               {ALL_MODULES.filter(
                 (m) => !m.alwaysOn && m.title.toLowerCase().includes(moduleQuery.toLowerCase())
               ).map((m) => (
@@ -285,7 +285,7 @@ export function BuilderShell({
                 </button>
               ))}
             </div>
-            <div className="max-h-[60dvh] overflow-y-auto">
+            <div className="pane-60">
               {tab === "audit" ? (
                 <AuditPanel report={report} />
               ) : (

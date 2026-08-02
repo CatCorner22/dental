@@ -1,6 +1,7 @@
 import { afterAll, beforeAll, beforeEach, describe, expect, it } from "vitest";
 import { sql } from "drizzle-orm";
 import { createTestDb } from "./testDb";
+import { applySchema } from "./client";
 import type { Db } from "./client";
 import {
   ackNotice,
@@ -218,6 +219,48 @@ describe("db layer (PGlite)", () => {
     // An edit clears the marker, which is what makes it submittable again.
     await updateDraftChecked(db, d.id, after.version, { lastSubmissionId: null }, new Date());
     expect((await getDraft(db, d.id))!.lastSubmissionId).toBeNull();
+  });
+
+  // Drafts filed BEFORE last_submission_id existed have NULL in it. Since the
+  // submit guard now keys on that column, an unbackfilled legacy draft would
+  // read as never-filed and could be filed a second time — a duplicate ticket
+  // for identical content, in a record that is supposed to be immutable.
+  it("backfills last_submission_id for drafts filed before the column existed", async () => {
+    const u = await freshUser("rhea");
+    const shell = (draftId: string) => ({
+      draftId,
+      submittedById: u.id,
+      submittedByName: "Rhea (rhea)",
+      submittedAtEt: "2026-06-01 10:00 ET",
+      filename: "note",
+      format: "md",
+      ruleVersion: "2.0.0",
+      auditStatus: "PASS"
+    });
+
+    // A draft that is filed and still submitted, and one that was filed and
+    // then edited (so it must STAY submittable).
+    const filedDraft = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    await fileSubmissionAtomic(db, shell(filedDraft.id), filedDraft.version, new Date(), () => ({
+      note: "frozen",
+      audit: "audit"
+    }));
+    const editedDraft = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    await fileSubmissionAtomic(db, shell(editedDraft.id), editedDraft.version, new Date(), () => ({
+      note: "frozen",
+      audit: "audit"
+    }));
+    // Re-create the pre-migration state: column NULL on both.
+    await db.execute(sql`UPDATE drafts SET last_submission_id = NULL`);
+    // The edited one also has a recomputed status, which is what tells the
+    // backfill to leave it alone.
+    await db.execute(sql`UPDATE drafts SET status = 'ready' WHERE id = ${editedDraft.id}`);
+
+    await applySchema(db); // idempotent DDL, including the backfill
+
+    expect((await getDraft(db, filedDraft.id))!.lastSubmissionId).not.toBeNull();
+    // Edited-after-filing must remain submittable, so it stays NULL.
+    expect((await getDraft(db, editedDraft.id))!.lastSubmissionId).toBeNull();
   });
 
   it("lists drafts newest-updated first", async () => {

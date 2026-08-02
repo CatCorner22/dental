@@ -35,7 +35,10 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // This is keyed on the filing itself, not on the cached status: when the
   // email fails the status becomes "error" so the user sees it, and only this
   // check still stands between them and a second ticket for identical content.
-  if (draft.lastSubmissionId !== null) {
+  // The status check is a fallback for any draft the backfill could not
+  // reach: if it still reads "submitted", it was filed, whatever the column
+  // says. Cheaper to keep both than to file one duplicate ticket.
+  if (draft.lastSubmissionId !== null || draft.status === "submitted") {
     return Response.json(
       {
         error: draft.lastSendFailed

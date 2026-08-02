@@ -163,20 +163,6 @@ export async function countAllSubmissions(db: Db): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
-// The submission a draft was most recently filed as — the frozen copy a
-// resend re-sends, rather than composing and filing anything new.
-export async function getLatestSubmissionForDraft(
-  db: Db,
-  draftId: string
-): Promise<SubmissionRow | undefined> {
-  const [row] = await db
-    .select()
-    .from(submissions)
-    .where(eq(submissions.draftId, draftId))
-    .orderBy(desc(submissions.id))
-    .limit(1);
-  return row;
-}
 
 // A user with submission history is part of the legal record and must not
 // be deletable — the DELETE route checks this before touching the FK.

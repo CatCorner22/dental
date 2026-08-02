@@ -5,6 +5,7 @@ import { getSubmission } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { sendSubmissionEmail } from "@/lib/email/sendSubmission";
 import { formatTicket } from "@/lib/tickets/ticket";
+import { checkThrottle, clearThrottle, recordFailure, resendKey } from "@/lib/auth/throttle";
 
 export const runtime = "nodejs";
 
@@ -33,6 +34,26 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
       { status: 409 }
     );
   }
+  // Resend exists to recover a FAILED send, nothing more. Without this an
+  // authenticated user could replay any delivered note at the corporate
+  // address as often as they liked.
+  if (!draft.lastSendFailed) {
+    return Response.json(
+      { error: "This note was already delivered. There is nothing to resend." },
+      { status: 409 }
+    );
+  }
+  // Sending mail is an outbound side effect someone else pays for, so it is
+  // metered like the other expensive endpoints. During an outage a user will
+  // press this repeatedly — that must cost one attempt, not a flood.
+  const throttleKey = resendKey(draft.id);
+  const throttled = await checkThrottle(db, throttleKey, new Date());
+  if (throttled.locked) {
+    return Response.json(
+      { error: `Too many resend attempts. Try again in ${throttled.retryAfterSec} seconds.` },
+      { status: 429, headers: { "retry-after": String(throttled.retryAfterSec) } }
+    );
+  }
   const submission = await getSubmission(db, draft.lastSubmissionId);
   if (!submission) {
     return Response.json({ error: "The filed submission is missing." }, { status: 404 });
@@ -59,6 +80,11 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
   }
 
   const now = new Date();
+  // Meter attempts, not just failures: every press sends real mail, so a
+  // success counts toward the budget too. A delivered note clears the streak
+  // along with the flag.
+  if (outcome.sent) await clearThrottle(db, throttleKey);
+  else await recordFailure(db, throttleKey, now);
   // Only a successful send clears the flag; a failed resend leaves the draft
   // exactly as it was so the user can try again.
   await setDraftStatus(db, draft.id, outcome.sent ? "submitted" : "error", !outcome.sent, now);

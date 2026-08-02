@@ -1,4 +1,4 @@
-import { eq, sql } from "drizzle-orm";
+import { and, eq, isNull, lt, or, sql } from "drizzle-orm";
 import type { Db } from "@/lib/db/client";
 import { authThrottle } from "@/lib/db/schema";
 
@@ -46,6 +46,19 @@ export async function checkThrottle(db: Db, key: string, now: Date): Promise<Thr
 // read the same count and overwrite one another.
 export async function recordFailure(db: Db, key: string, now: Date): Promise<ThrottleState> {
   const windowStart = new Date(now.getTime() - WINDOW_MS);
+  // Failures are recorded for unknown usernames too — otherwise spraying
+  // random names would be free. That makes this table attacker-writable, so
+  // it is pruned on the same path that grows it: rows whose streak has gone
+  // cold and whose lock has expired carry no information. Without this, a
+  // spray of a million distinct usernames would leave a million rows behind.
+  await db
+    .delete(authThrottle)
+    .where(
+      and(
+        lt(authThrottle.firstFailAt, windowStart),
+        or(isNull(authThrottle.lockedUntil), lt(authThrottle.lockedUntil, now))
+      )
+    );
   const [row] = await db
     .insert(authThrottle)
     .values({ key, failCount: 1, firstFailAt: now, lockedUntil: null })
@@ -80,10 +93,23 @@ export async function clearThrottle(db: Db, key: string): Promise<void> {
   await db.delete(authThrottle).where(eq(authThrottle.key, key));
 }
 
+// The login form accepts any string, so the username reaching this is
+// unvalidated input that becomes a primary key. Truncated so a caller cannot
+// write megabyte-wide rows, and lowercased so "Admin" and "admin" share one
+// budget rather than doubling an attacker's free attempts per casing.
+const MAX_KEY_CHARS = 80;
+
 export function loginKey(username: string): string {
-  return `login:${username.toLowerCase()}`;
+  return `login:${username.toLowerCase().slice(0, MAX_KEY_CHARS)}`;
 }
 
 export function passwordCheckKey(userId: string): string {
   return `pwcheck:${userId}`;
+}
+
+// Keyed by draft, not by user: the thing being metered is repeated mail about
+// one note, and an admin resending for someone else draws from the same
+// budget as the owner.
+export function resendKey(draftId: string): string {
+  return `resend:${draftId}`;
 }

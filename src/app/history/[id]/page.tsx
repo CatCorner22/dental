@@ -3,17 +3,20 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getSubmission } from "@/lib/db/repo/submissions";
 import { formatTicket } from "@/lib/tickets/ticket";
+import { parseRowId } from "@/lib/db/int4";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Submission — Dental Note Builder" };
 
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
-  const numId = Number(id);
+  // Range-checked, not just "is it a whole number": an id past int4 would
+  // reach the driver and throw instead of rendering a clean 404.
+  const numId = parseRowId(id);
   const user = await freshSessionUser(); // fresh role/active — never the stale token
   if (!user) redirect("/login");
   const db = await getDb();
-  const s = Number.isInteger(numId) ? await getSubmission(db, numId) : undefined;
+  const s = numId === null ? undefined : await getSubmission(db, numId);
   if (!s) notFound();
   if (user.role === "user" && s.submittedById !== user.id) notFound();
 

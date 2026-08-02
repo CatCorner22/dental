@@ -184,7 +184,10 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // draft is NOT re-fileable — retrying during an outage resends the frozen
   // copy instead of appending a second ticket for the same note.
   const sendFailed = config.configured && !emailed;
-  if (sendFailed) await setDraftStatus(db, draft.id, "error", true, now);
+  // Version-guarded to filed.version: the email round-trip is slow, and a note
+  // edited in another tab during it bumps the version and nulls lastSubmissionId
+  // — that edit must win, not be stamped back to "Send failed".
+  if (sendFailed) await setDraftStatus(db, draft.id, "error", true, now, filed.version);
   await logAction(db, {
     actorId: guard.user.id,
     actorName: submittedByName,

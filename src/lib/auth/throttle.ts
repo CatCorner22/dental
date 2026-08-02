@@ -17,10 +17,16 @@ export const FREE_ATTEMPTS = 5; // typos happen; the first few cost nothing
 export const WINDOW_MS = 15 * 60 * 1000; // failures older than this are forgiven
 export const MAX_LOCK_MS = 15 * 60 * 1000;
 
+// Login throttling is keyed by IP, not by username (see auth.ts for why). A
+// whole dental office can sit behind one NAT address, so the IP budget is far
+// larger than the per-account one — it is a CPU/abuse backstop, not an
+// account lock, and must not trip on a busy Monday morning of fumbled logins.
+export const IP_FREE_ATTEMPTS = 30;
+
 // Doubling backoff, capped. Locks start small so a fumbling clinician waits
 // seconds, not minutes, while a script hits the ceiling almost immediately.
-export function lockMsFor(failCount: number): number {
-  const over = failCount - FREE_ATTEMPTS;
+export function lockMsFor(failCount: number, freeAttempts: number = FREE_ATTEMPTS): number {
+  const over = failCount - freeAttempts;
   if (over <= 0) return 0;
   return Math.min(MAX_LOCK_MS, 1000 * 2 ** (over - 1) * 15);
 }
@@ -43,8 +49,14 @@ export async function checkThrottle(db: Db, key: string, now: Date): Promise<Thr
 
 // Record a failure and return the state the NEXT attempt will see. The whole
 // read-modify-write is one upsert so concurrent failed attempts cannot each
-// read the same count and overwrite one another.
-export async function recordFailure(db: Db, key: string, now: Date): Promise<ThrottleState> {
+// read the same count and overwrite one another. freeAttempts lets a key type
+// (e.g. per-IP) carry a larger budget than the per-account default.
+export async function recordFailure(
+  db: Db,
+  key: string,
+  now: Date,
+  freeAttempts: number = FREE_ATTEMPTS
+): Promise<ThrottleState> {
   const windowStart = new Date(now.getTime() - WINDOW_MS);
   // Failures are recorded for unknown usernames too — otherwise spraying
   // random names would be free. That makes this table attacker-writable, so
@@ -79,16 +91,18 @@ export async function recordFailure(db: Db, key: string, now: Date): Promise<Thr
     })
     .returning();
 
-  const lockMs = lockMsFor(row.failCount);
+  const lockMs = lockMsFor(row.failCount, freeAttempts);
   if (lockMs <= 0) return UNLOCKED;
   const lockedUntil = new Date(now.getTime() + lockMs);
   await db.update(authThrottle).set({ lockedUntil }).where(eq(authThrottle.key, key));
   return { locked: true, retryAfterSec: Math.ceil(lockMs / 1000) };
 }
 
-// A correct credential clears the streak — an attacker cannot lock a
-// legitimate user out permanently, and a user who finally remembers their
-// password is not still serving a sentence.
+// A correct credential clears the streak, so a user who finally remembers
+// their password is not still serving a sentence. (Login is keyed by IP, so
+// this also means a good login clears that IP's budget; it never lets an
+// attacker's failures leave a specific account locked — there is no per-account
+// login lock to leave behind.)
 export async function clearThrottle(db: Db, key: string): Promise<void> {
   await db.delete(authThrottle).where(eq(authThrottle.key, key));
 }
@@ -101,6 +115,16 @@ const MAX_KEY_CHARS = 80;
 
 export function loginKey(username: string): string {
   return `login:${username.toLowerCase().slice(0, MAX_KEY_CHARS)}`;
+}
+
+// Login is throttled by client IP rather than by username. A username-keyed
+// lock, checked before bcrypt, lets anyone who knows a username hold the real
+// account owner out (and does nothing about an attacker who simply varies the
+// username to keep spending bcrypt CPU). Keying on IP fixes both: it bounds
+// one source's bcrypt spend across every username, and it cannot trap a
+// legitimate user who logs in from a different address.
+export function loginIpKey(ip: string): string {
+  return `loginip:${ip.slice(0, MAX_KEY_CHARS)}`;
 }
 
 export function passwordCheckKey(userId: string): string {

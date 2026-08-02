@@ -20,3 +20,47 @@ jobs:
       - run: npm run build
         env:
           AUTH_SECRET: ci-build-only-secret
+
+  cross-browser:
+    # Drives the production build in Chromium, Firefox, and WebKit (Safari's
+    # engine). The dev sandbox cannot download WebKit/Firefox, so this is the
+    # only place the Safari-specific fixes get executed rather than reasoned
+    # about. Non-blocking on itself: if it flakes, the test-and-build job above
+    # is still the merge gate.
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+      - run: npm ci
+      # Playwright is not a project dependency (the dev sandbox cannot fetch its
+      # browsers), so install it here without touching package.json/lockfile.
+      - name: Install Playwright + browsers
+        run: |
+          npm i --no-save playwright
+          npx playwright install --with-deps chromium firefox webkit
+      - run: npm run build
+        env:
+          AUTH_SECRET: ci-build-only-secret
+      - name: Start app and run cross-browser smoke
+        env:
+          AUTH_SECRET: ci-build-only-secret
+          ADMIN_USERNAME: smokeadmin
+          ADMIN_PASSWORD: smoke-pass-12345
+          PGLITE_DIR: memory://
+          SMOKE_USER: smokeadmin
+          SMOKE_PASS: smoke-pass-12345
+          BASE_URL: http://127.0.0.1:3000
+        run: |
+          npx next start -p 3000 &
+          SERVER_PID=$!
+          for i in $(seq 1 60); do
+            curl -sf http://127.0.0.1:3000/login >/dev/null && break
+            sleep 1
+          done
+          node e2e/crossbrowser.smoke.mjs
+          STATUS=$?
+          kill $SERVER_PID 2>/dev/null || true
+          exit $STATUS

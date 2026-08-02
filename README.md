@@ -1,4 +1,4 @@
-# Dental Note Builder
+# Smile Notes
 
 A standardized, de-identified dental-note platform for a Tennessee dental office, plus a
 companion ChatGPT Skill. Every team member composes notes from the same modular templates, with

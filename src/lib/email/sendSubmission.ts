@@ -32,8 +32,8 @@ export async function sendSubmissionEmail(mail: SubmissionMail): Promise<SendOut
     const { error } = await resend.emails.send({
       from: config.from as string,
       to: [config.corporateEmail as string],
-      subject: `Dental note ${mail.ticket} — ${mail.auditStatus}`,
-      text: `De-identified dental note ${mail.ticket} attached, with its audit report. Submitted by ${mail.submittedByName} at ${mail.submittedAtEt}. Complete identifiers only in the EDR.`,
+      subject: `Smile Note ${mail.ticket} — ${mail.auditStatus}`,
+      text: `De-identified Smile Note ${mail.ticket} attached, with its audit report. Submitted by ${mail.submittedByName} at ${mail.submittedAtEt}. Complete identifiers only in the EDR.`,
       attachments: [
         {
           filename: `${mail.filenameBase}-${mail.ticket}.${mail.format}`,

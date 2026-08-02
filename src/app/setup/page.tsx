@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { countUsers } from "@/lib/db/repo/users";
 import { SetupForm } from "@/components/auth/SetupForm";
 
-export const metadata = { title: "Set up — Dental Note Builder" };
+export const metadata = { title: "Set up — Smile Notes" };
 
 export default async function SetupPage() {
   const db = await getDb();

@@ -6,7 +6,7 @@ import { listUsers } from "@/lib/db/repo/users";
 import { UserAdmin } from "@/components/admin/UserAdmin";
 
 export const runtime = "nodejs";
-export const metadata = { title: "User admin — Dental Note Builder" };
+export const metadata = { title: "User admin — Smile Notes" };
 
 export default async function AdminUsersPage() {
   const user = await freshSessionUser(); // fresh role — a demoted admin loses this page NOW

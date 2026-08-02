@@ -13,7 +13,7 @@ import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { HistoryTable } from "@/components/history/HistoryTable";
 
 export const runtime = "nodejs";
-export const metadata = { title: "History — Dental Note Builder" };
+export const metadata = { title: "History — Smile Notes" };
 
 export default async function HistoryPage() {
   const user = await freshSessionUser(); // fresh role/active — never the stale token

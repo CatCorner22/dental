@@ -12,6 +12,6 @@ export const FEEDBACK_REASONS = [
 
 // A prefilled subject means the developer can sort an inbox without opening
 // anything; the body is left empty so the writer starts where the cursor is.
-export function feedbackMailto(subject = "Dental Note Builder — feedback"): string {
+export function feedbackMailto(subject = "Smile Notes — feedback"): string {
   return `mailto:${FEEDBACK_EMAIL}?subject=${encodeURIComponent(subject)}`;
 }

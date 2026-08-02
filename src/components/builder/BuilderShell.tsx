@@ -217,7 +217,7 @@ export function BuilderShell({
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
-            aria-label="Note title"
+            aria-label="Smile Note title"
           />
           <StatusChip status={liveStatus} size="md" />
           {canEdit && <SaveIndicator state={autosave.state} />}

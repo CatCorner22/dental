@@ -16,7 +16,7 @@ import { Dashboard } from "@/components/dashboard/Dashboard";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Dashboard — Dental Note Builder" };
+export const metadata = { title: "Dashboard — Smile Notes" };
 
 export default async function DashboardPage() {
   const user = await freshSessionUser(); // fresh role/active — never the stale token

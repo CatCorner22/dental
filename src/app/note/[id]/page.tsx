@@ -6,7 +6,7 @@ import { getDraft } from "@/lib/db/repo/drafts";
 import { BuilderShell } from "@/components/builder/BuilderShell";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Note — Dental Note Builder" };
+export const metadata = { title: "Note — Smile Notes" };
 
 export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

@@ -23,9 +23,9 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Dental Note Builder",
+  title: "Smile Notes",
   description:
-    "Standardized, de-identified dental note drafts with a deterministic audit pass. No patient identifiers ever enter this tool."
+    "Standardized, de-identified Smile Note drafts with a deterministic audit pass. No patient identifiers ever enter this tool."
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {

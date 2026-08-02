@@ -17,6 +17,9 @@ interface InputProps<F extends Field, V extends FieldValue> {
   onChange: (value: FieldValue) => void;
   describedBy?: string;
   invalid?: boolean;
+  // id of the primary control, so the visible <label htmlFor> names it for
+  // screen readers. Group-style controls use aria-label instead.
+  id?: string;
 }
 
 // Shared a11y attributes for the primary control of each field.
@@ -27,11 +30,50 @@ function aria(describedBy?: string, invalid?: boolean) {
   };
 }
 
-export function SelectInput({ field, value, onChange, describedBy, invalid }: InputProps<SelectField, Extract<FieldValue, { kind: "select" }>>) {
+// Short single-choice lists render as one-click buttons instead of a
+// two-click dropdown (open, then choose) — the recall-day click saver.
+// "Other — specify" lists keep the dropdown so the free-text flow is clear.
+export function isSegmentedSelect(field: SelectField): boolean {
+  return field.options.length <= 4 && !field.allowOther;
+}
+
+export function SelectInput({ field, value, onChange, describedBy, invalid, id }: InputProps<SelectField, Extract<FieldValue, { kind: "select" }>>) {
   const current = value?.value ?? "";
+
+  if (isSegmentedSelect(field)) {
+    return (
+      <div
+        className="flex flex-wrap gap-1.5"
+        role="group"
+        aria-label={field.label}
+        aria-describedby={describedBy || undefined}
+      >
+        {field.options.map((o) => {
+          const on = current === o.value;
+          return (
+            <button
+              key={o.value}
+              type="button"
+              aria-pressed={on}
+              onClick={() => onChange({ kind: "select", value: on ? "" : o.value })}
+              className={`rounded-full border px-2.5 py-0.5 text-xs font-medium ${
+                on
+                  ? "border-blue-700 bg-blue-700 text-white"
+                  : `bg-white text-slate-700 hover:bg-blue-50 ${invalid ? "border-rose-400" : "border-slate-300"}`
+              }`}
+            >
+              {o.label ?? o.value}
+            </button>
+          );
+        })}
+      </div>
+    );
+  }
+
   return (
     <div>
       <select
+        id={id}
         className="field-input"
         value={current}
         {...aria(describedBy, invalid)}
@@ -50,6 +92,7 @@ export function SelectInput({ field, value, onChange, describedBy, invalid }: In
           type="text"
           className="field-input mt-1"
           placeholder="Name it exactly"
+          aria-label={`${field.label} — other, name it exactly`}
           value={value?.otherText ?? ""}
           onChange={(e) => onChange({ kind: "select", value: "__other__", otherText: e.target.value })}
         />
@@ -98,7 +141,7 @@ function PhraseChips({ phrases, onInsert }: { phrases: string[]; onInsert: (phra
   );
 }
 
-export function TextInputField({ field, value, onChange, describedBy, invalid }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
+export function TextInputField({ field, value, onChange, describedBy, invalid, id }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLInputElement>(null);
   const insert = (phrase: string) => {
     const el = ref.current;
@@ -111,6 +154,7 @@ export function TextInputField({ field, value, onChange, describedBy, invalid }:
     <div>
       <input
         ref={ref}
+        id={id}
         type="text"
         className="field-input"
         placeholder={field.placeholderHint}
@@ -123,7 +167,7 @@ export function TextInputField({ field, value, onChange, describedBy, invalid }:
   );
 }
 
-export function TextareaField_({ field, value, onChange, describedBy, invalid }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
+export function TextareaField_({ field, value, onChange, describedBy, invalid, id }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const insert = (phrase: string) => {
     const el = ref.current;
@@ -136,6 +180,7 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid }:
     <div>
       <textarea
         ref={ref}
+        id={id}
         className="field-input"
         rows={field.rows ?? 3}
         placeholder={field.placeholderHint}
@@ -148,11 +193,12 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid }:
   );
 }
 
-export function MeasurementInput({ field, value, onChange, describedBy, invalid }: InputProps<MeasurementField, Extract<FieldValue, { kind: "measurement" }>>) {
+export function MeasurementInput({ field, value, onChange, describedBy, invalid, id }: InputProps<MeasurementField, Extract<FieldValue, { kind: "measurement" }>>) {
   const unit = value?.unit ?? field.units[0];
   return (
     <div className="flex gap-1.5">
       <input
+        id={id}
         type="number"
         className="field-input max-w-36"
         min={field.min}
@@ -172,6 +218,7 @@ export function MeasurementInput({ field, value, onChange, describedBy, invalid 
       <select
         className="field-input max-w-32"
         value={unit}
+        aria-label={`${field.label} unit`}
         onChange={(e) => onChange({ kind: "measurement", value: value?.value ?? null, unit: e.target.value as never })}
       >
         {field.units.map((u) => (

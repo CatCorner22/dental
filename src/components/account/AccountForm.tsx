@@ -17,19 +17,24 @@ export function AccountForm() {
       return;
     }
     setBusy(true);
-    const res = await fetch("/api/me/password", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ current, next })
-    });
-    setBusy(false);
-    if (res.ok) {
-      setMsg({ ok: true, text: "Password changed." });
-      setCurrent("");
-      setNext("");
-      setConfirm("");
-    } else {
-      setMsg({ ok: false, text: ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Change failed." });
+    try {
+      const res = await fetch("/api/me/password", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ current, next })
+      });
+      if (res.ok) {
+        setMsg({ ok: true, text: "Password changed." });
+        setCurrent("");
+        setNext("");
+        setConfirm("");
+      } else {
+        setMsg({ ok: false, text: ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Change failed." });
+      }
+    } catch {
+      setMsg({ ok: false, text: "Could not reach the server — check the connection and try again." });
+    } finally {
+      setBusy(false);
     }
   };
 

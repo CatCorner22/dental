@@ -1,4 +1,4 @@
-import { and, desc, eq, sql } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, type DraftRow, type NewDraft } from "../schema";
 
@@ -40,6 +40,22 @@ export async function updateDraftChecked(
     .where(and(eq(drafts.id, id), eq(drafts.version, baseVersion)))
     .returning();
   return row;
+}
+
+// Atomically claim a draft for submission. Exactly one of any set of
+// concurrent submit requests flips the status to "submitted"; the rest see
+// zero rows and give up. This closes the double-click / two-tab race that a
+// read-then-check cannot: two tickets and two corporate emails for one note.
+// If the process dies between this claim and inserting the submission row,
+// the draft merely reads "submitted" until the next edit recomputes it —
+// no phantom ticket exists.
+export async function claimDraftForSubmit(db: Db, id: string, now: Date): Promise<boolean> {
+  const rows = await db
+    .update(drafts)
+    .set({ status: "submitted", lastSendFailed: false, updatedAt: now })
+    .where(and(eq(drafts.id, id), ne(drafts.status, "submitted")))
+    .returning();
+  return rows.length > 0;
 }
 
 export async function setDraftStatus(

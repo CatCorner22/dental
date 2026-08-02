@@ -60,6 +60,7 @@ export function PhiOverrideDialog({
         type="text"
         className="field-input mb-3"
         placeholder="Why these are clinical values (required)"
+        aria-label="Why these are clinical values (required)"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
@@ -77,21 +78,36 @@ interface SubmitCapability {
   emailConfigured: boolean;
 }
 
+export interface FiledResult {
+  ticket: string;
+  sparkle: string;
+  emailed: boolean;
+  emailConfigured: boolean;
+}
+
 export function SubmitDialog({
   draftId,
   phiOverrideReason,
   onClose,
-  onSubmitted
+  onFiled,
+  onStartAnother,
+  onGoToDashboard
 }: {
   draftId: string;
   phiOverrideReason: string | null;
   onClose: () => void;
-  onSubmitted: (ticket: string, sparkle: string) => void;
+  // Fires the moment the filing succeeds (even if the user stays), so the
+  // builder can flip its status chip to Submitted right away.
+  onFiled: (result: FiledResult) => void;
+  onStartAnother: () => void;
+  onGoToDashboard: () => void;
 }) {
   const [cap, setCap] = useState<SubmitCapability | null>(null);
   const [format, setFormat] = useState<"md" | "txt">("md");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState("");
+  const [filed, setFiled] = useState<FiledResult | null>(null);
+  const [busyNext, setBusyNext] = useState(false);
 
   useEffect(() => {
     fetch("/api/submit-config")
@@ -113,8 +129,15 @@ export function SubmitDialog({
         })
       });
       if (res.ok) {
-        const data = (await res.json()) as { ticket: string; sparkle: string };
-        onSubmitted(data.ticket, data.sparkle);
+        const data = (await res.json()) as { ticket: string; sparkle: string; emailed: boolean };
+        const result: FiledResult = {
+          ticket: data.ticket,
+          sparkle: data.sparkle,
+          emailed: data.emailed,
+          emailConfigured: cap?.emailConfigured ?? false
+        };
+        setFiled(result);
+        onFiled(result);
         return;
       }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
@@ -125,6 +148,46 @@ export function SubmitDialog({
       setStatus("error");
     }
   };
+
+  if (filed) {
+    return (
+      <Dialog title={`Filed as ${filed.ticket}`} onClose={onClose}>
+        <p className="mb-2 text-sm text-slate-700">
+          {filed.emailed
+            ? "The note and its audit report were emailed to the office."
+            : filed.emailConfigured
+              ? "The note was filed, but the email did not send. It is marked Send failed in History — edit and submit again, or tell your administrator."
+              : "The note was filed and appears in History. Email is not configured, so nothing was sent."}
+        </p>
+        {!filed.emailed && filed.emailConfigured && (
+          <p className="mb-2 rounded border border-rose-300 bg-rose-50 p-2 text-xs text-rose-900" role="alert">
+            Send failed — the office did not receive this note yet.
+          </p>
+        )}
+        <p className="mb-4 text-xs text-slate-500">{filed.sparkle}</p>
+        <div className="flex flex-wrap justify-end gap-2">
+          <button type="button" className="btn-secondary" onClick={onClose}>
+            Stay here
+          </button>
+          <button type="button" className="btn-secondary" onClick={onGoToDashboard}>
+            Dashboard
+          </button>
+          <button
+            type="button"
+            className="btn-primary"
+            disabled={busyNext}
+            title="Start a new note with the same modules — no values are copied"
+            onClick={() => {
+              setBusyNext(true);
+              onStartAnother();
+            }}
+          >
+            {busyNext ? "Starting…" : "Start another like this"}
+          </button>
+        </div>
+      </Dialog>
+    );
+  }
 
   return (
     <Dialog title="Submit note to the office" onClose={onClose}>

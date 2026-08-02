@@ -20,6 +20,10 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
 
   return (
     <BuilderShell
+      // Keyed by version: "Reload latest" calls router.refresh(), and without
+      // a key change the client state (including an open conflict) survives —
+      // the advertised recovery path would reload nothing.
+      key={`${draft.id}:${draft.version}`}
       draftId={draft.id}
       initialTitle={draft.title}
       initialNote={draft.noteState}

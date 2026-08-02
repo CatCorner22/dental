@@ -17,7 +17,7 @@ export function NoticeGate({ acknowledged }: { acknowledged: boolean }) {
   };
 
   return (
-    <Dialog title="Before you begin" onClose={() => {}}>
+    <Dialog title="Before you begin" onClose={() => {}} dismissible={false}>
       <div className="space-y-3 text-sm text-slate-700">
         <p className="font-semibold text-slate-900">
           This system may form part of a legal and medical record.

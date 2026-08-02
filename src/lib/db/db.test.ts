@@ -9,18 +9,26 @@ import {
   getUserByUsername,
   insertUser,
   listUsers,
+  mutateAdminGuarded,
   updateUser
 } from "./repo/users";
 import {
+  claimDraftForSubmit,
   deleteDraft,
   draftSubmissionCount,
+  getDraft,
   insertDraft,
   listDraftsByOwner,
   ownerDraftCount,
   transferDraft,
   updateDraftChecked
 } from "./repo/drafts";
-import { finalizeSubmission, insertSubmissionShell, statRowsForUser } from "./repo/submissions";
+import {
+  finalizeSubmission,
+  insertSubmissionShell,
+  statRowsForUser,
+  submissionCountByUser
+} from "./repo/submissions";
 import { listAuditLog, logAction } from "./repo/auditLog";
 import { formatTicket } from "@/lib/tickets/ticket";
 import type { NoteState } from "@/lib/schema/types";
@@ -151,6 +159,54 @@ describe("db layer (PGlite)", () => {
     expect(await ownerDraftCount(db, u.id)).toBe(0);
     await deleteUser(db, u.id);
     expect(await countUsers(db)).toBe(0);
+  });
+
+  it("claims a draft for submission exactly once until it is edited", async () => {
+    const u = await freshUser("jill");
+    const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    const now = new Date(2026, 7, 2);
+    // First claim wins; the immediate second (a double-click) loses.
+    expect(await claimDraftForSubmit(db, d.id, now)).toBe(true);
+    expect(await claimDraftForSubmit(db, d.id, now)).toBe(false);
+    expect((await getDraft(db, d.id))?.status).toBe("submitted");
+    // An edit recomputes the status (as the PATCH route does) and the draft
+    // becomes claimable again.
+    await updateDraftChecked(db, d.id, 1, { status: "ready" }, now);
+    expect(await claimDraftForSubmit(db, d.id, now)).toBe(true);
+  });
+
+  it("admin-guarded mutation refuses to remove the last active admin", async () => {
+    const a1 = await freshUser("kira", "admin");
+    const a2 = await freshUser("liam", "admin");
+    // Demoting one of two admins works…
+    expect(await mutateAdminGuarded(db, a2.id, { kind: "update", patch: { role: "user" } })).toBe(true);
+    // …but the survivor is untouchable, by demote, deactivate, or delete.
+    expect(await mutateAdminGuarded(db, a1.id, { kind: "update", patch: { role: "user" } })).toBe(false);
+    expect(await mutateAdminGuarded(db, a1.id, { kind: "update", patch: { active: false } })).toBe(false);
+    expect(await mutateAdminGuarded(db, a1.id, { kind: "delete" })).toBe(false);
+    expect((await getUserByUsername(db, "kira"))?.role).toBe("admin");
+  });
+
+  it("counts submissions per user so deletion can be blocked (FK safety)", async () => {
+    const u = await freshUser("mona");
+    const v = await freshUser("nate");
+    const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
+    await insertSubmissionShell(db, {
+      draftId: d.id,
+      submittedById: u.id,
+      submittedByName: "Mona (mona)",
+      submittedAtEt: "2026-08-02 10:00 EDT",
+      filename: "note",
+      format: "md",
+      ruleVersion: "2.0.0",
+      auditStatus: "READY FOR CLINICIAN REVIEW"
+    });
+    // Transfer the draft away: mona owns nothing, yet her submission remains.
+    await transferDraft(db, d.id, v.id, new Date());
+    expect(await ownerDraftCount(db, u.id)).toBe(0);
+    expect(await submissionCountByUser(db, u.id)).toBe(1);
+    // Deleting her would violate the submissions FK — prove the DB agrees.
+    await expect(deleteUser(db, u.id)).rejects.toBeTruthy();
   });
 
   it("writes and reads the audit log newest-first", async () => {

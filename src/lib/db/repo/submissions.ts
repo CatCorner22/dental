@@ -1,4 +1,4 @@
-import { desc, eq } from "drizzle-orm";
+import { desc, eq, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { submissions, type SubmissionRow } from "../schema";
 
@@ -48,6 +48,16 @@ export async function listSubmissionsByUser(db: Db, userId: string): Promise<Sub
     .from(submissions)
     .where(eq(submissions.submittedById, userId))
     .orderBy(desc(submissions.submittedAtUtc));
+}
+
+// A user with submission history is part of the legal record and must not
+// be deletable — the DELETE route checks this before touching the FK.
+export async function submissionCountByUser(db: Db, userId: string): Promise<number> {
+  const rows = await db
+    .select({ n: sql<number>`count(*)::int` })
+    .from(submissions)
+    .where(eq(submissions.submittedById, userId));
+  return rows[0]?.n ?? 0;
 }
 
 export async function statRowsForUser(

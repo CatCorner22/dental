@@ -35,7 +35,8 @@ export default async function DashboardPage() {
         title: d.title,
         status: d.status as DraftStatus,
         ownerName: ownerNames[d.ownerId],
-        updatedAt: d.updatedAt.toISOString()
+        updatedAt: d.updatedAt.toISOString(),
+        moduleIds: d.noteState.selectedModuleIds
       }))}
       stats={stats}
     />

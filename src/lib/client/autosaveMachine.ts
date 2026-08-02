@@ -21,9 +21,10 @@ export type AutosaveEvent =
 export const initialAutosave: AutosaveState = { status: "idle" };
 
 // True when there is unsaved work — drives the beforeunload guard and whether
-// a debounced save should fire.
+// a debounced save should fire. "error" and "conflict" both mean local edits
+// exist that the server has not accepted, so closing the tab loses work.
 export function isDirty(s: AutosaveState): boolean {
-  return s.status === "dirty" || s.status === "saving";
+  return s.status === "dirty" || s.status === "saving" || s.status === "error" || s.status === "conflict";
 }
 
 export function needsSave(s: AutosaveState): boolean {
@@ -41,7 +42,10 @@ export function autosaveReducer(state: AutosaveState, event: AutosaveEvent): Aut
       if (state.status === "conflict" || state.status === "dirty") return state;
       return { status: "dirty" };
     case "saveStart":
-      return state.status === "dirty" ? { status: "saving" } : state;
+      // A save may start from dirty, from error (a retry), or from idle (a
+      // save kicked off right after a conflict resolves) — never from an
+      // unresolved conflict, and a stale saveStart never demotes "saved".
+      return state.status === "conflict" || state.status === "saved" ? state : { status: "saving" };
     case "saveOk":
       // A save that completes after a fresh edit stays dirty so the edit is not lost.
       return state.status === "saving" ? { status: "saved", at: event.at } : state;

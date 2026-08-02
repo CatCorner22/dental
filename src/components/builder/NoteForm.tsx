@@ -11,10 +11,24 @@ import {
   MultiselectInput,
   SelectInput,
   TextInputField,
-  TextareaField_
+  TextareaField_,
+  isSegmentedSelect
 } from "./fields/inputs";
 import { ToothPicker } from "./fields/ToothPicker";
 import { SurfacePicker } from "./fields/SurfacePicker";
+
+// A single labelable control gets an id so the visible label can name it via
+// htmlFor. Group-style fields (chips, pickers, segmented selects) are named
+// by aria-label on the group instead — and must NOT get htmlFor, because a
+// label pointed at a button would activate it, changing a clinical value.
+function controlId(moduleId: string, field: Field): string | undefined {
+  const labelable =
+    field.type === "text" ||
+    field.type === "textarea" ||
+    field.type === "measurement" ||
+    (field.type === "select" && !isSegmentedSelect(field));
+  return labelable ? `ctl-${fieldKey(moduleId, field.id)}` : undefined;
+}
 
 function FieldRenderer({
   moduleId,
@@ -34,7 +48,7 @@ function FieldRenderer({
   const key = fieldKey(moduleId, field.id);
   const value = state.values[key];
   const set = (v: FieldValue) => onChange(key, v);
-  const a = { describedBy, invalid };
+  const a = { describedBy, invalid, id: controlId(moduleId, field) };
 
   switch (field.type) {
     case "select":
@@ -103,7 +117,7 @@ export function NoteForm({
                     const describedBy = [helpId, errId].filter(Boolean).join(" ") || undefined;
                     return (
                       <div key={field.id} id={`field-${mod.id}-${field.id}`}>
-                        <label className="field-label">
+                        <label className="field-label" htmlFor={controlId(mod.id, field)}>
                           {field.label}
                           {required && <span className="ml-1 text-red-600" aria-hidden>*</span>}
                           {required && <span className="sr-only"> (required)</span>}

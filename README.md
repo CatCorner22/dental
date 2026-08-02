@@ -16,8 +16,13 @@ electronic dental record (EDR).
 ## Multi-user platform (V2)
 
 A shared, role-based web app benchmarked on Curve Hero's UX patterns (a dashboard hub, a sticky
-note header, a "Sidekick" side panel, color-coded statuses, quick-pick presets) — patterns only,
-no copied material.
+note header, a "Sidekick" side panel, color-coded statuses, quick-pick presets, minimal-click
+charting) — patterns only, no copied material. The dashboard leads with **one-click cards** for
+the four most common visit types, a **"continue where you left off"** card, clickable
+**status-filter chips**, and a per-draft **"New like this"** action (same modules, empty values).
+In the builder, short single-choice lists render as **one-click buttons** instead of dropdowns,
+the module rail has a filter box, and clicking an audit finding jumps to **and focuses** the
+field. History has a note-label column, search, and status filters.
 
 ### Roles
 
@@ -28,7 +33,10 @@ no copied material.
 | **Admin** | Everything, plus add / deactivate / delete users, reset passwords, and transfer draft ownership |
 
 The first admin is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`). Every API
-route re-checks the caller's role server-side; the last active admin can never be locked out.
+route re-checks the caller's role server-side. The last active admin can never be locked out —
+the guard runs inside a serialized transaction, so even two simultaneous demotes cannot slip
+past it. A user with submission history cannot be deleted (the record must survive); deactivate
+instead. Admin dialogs generate strong temporary passwords with one click (copyable, no typing).
 
 ### Draft lifecycle and status colors
 
@@ -48,8 +56,15 @@ color with an icon and a text label:
 ### Auto-save and submit
 
 Edits auto-save after ~1.5 s (version-checked; a concurrent edit elsewhere raises a reload
-prompt), with an explicit **Save** button and an unsaved-work guard. **Submit** composes the note
-and runs the full audit **server-side**, then files it with a ticket.
+prompt), with an explicit **Save** button (**Ctrl+S**) and an unsaved-work guard that also covers
+failed and conflicted saves. A failed save never retries in a loop — the next edit, Ctrl+S, or
+Submit retries it. **Submit** (**Ctrl+Enter**) first drains every unsaved edit and refuses to
+continue on a save error or conflict, so the server can never file content the user has not
+seen; the server then composes the note and runs the full audit **server-side** and files it
+with a ticket. Two concurrent submits of the same draft cannot double-file: an atomic claim in
+the database lets exactly one through. After filing, the user chooses: **stay**, go to the
+**dashboard**, or **start another like this** — a new note with the same modules and title and
+**zero values copied** (structure only, never a clinical assertion).
 
 ### Tickets and traceability (anti-drift)
 

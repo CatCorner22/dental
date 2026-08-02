@@ -1,7 +1,7 @@
 import { MarkdownDoc } from "@/components/reference/MarkdownDoc";
 import { readReferenceDoc } from "@/lib/content";
 
-export const metadata = { title: "Tennessee law — Smile Notes" };
+export const metadata = { title: "Tennessee law" };
 
 export default function Page() {
   return (

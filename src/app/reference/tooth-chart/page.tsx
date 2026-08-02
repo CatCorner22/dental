@@ -2,7 +2,7 @@ import { MarkdownDoc } from "@/components/reference/MarkdownDoc";
 import { ToothChart } from "@/components/reference/ToothChart";
 import { readReferenceDoc } from "@/lib/content";
 
-export const metadata = { title: "Tooth chart — Smile Notes" };
+export const metadata = { title: "Tooth chart" };
 
 export default function Page() {
   return (

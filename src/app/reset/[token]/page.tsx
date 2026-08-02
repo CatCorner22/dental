@@ -1,7 +1,7 @@
 import { ResetForm } from "@/components/auth/ResetForm";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Set your password — Smile Notes" };
+export const metadata = { title: "Set your password" };
 // The token is a credential in the URL; never let a proxy or CDN keep a copy.
 export const dynamic = "force-dynamic";
 

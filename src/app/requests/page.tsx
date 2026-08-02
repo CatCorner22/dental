@@ -5,7 +5,7 @@ import { canSubmitChangeRequest } from "@/lib/auth/roles";
 import { GauntletForm } from "@/components/requests/GauntletForm";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Data change request — Smile Notes" };
+export const metadata = { title: "Data change request" };
 
 export default async function RequestsPage() {
   const user = await freshSessionUser(); // fresh role/active — never the stale token

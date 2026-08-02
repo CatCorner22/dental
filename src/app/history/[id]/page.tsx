@@ -7,7 +7,7 @@ import { formatTicket } from "@/lib/tickets/ticket";
 import { parseRowId } from "@/lib/db/int4";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Submission — Smile Notes" };
+export const metadata = { title: "Submission" };
 
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;

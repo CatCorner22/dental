@@ -10,6 +10,7 @@ import {
   canAssignRole,
   canDeactivateOrDelete,
   canDeleteUser,
+  canEditContact,
   ROLE_LABEL,
   type Role
 } from "@/lib/auth/roles";
@@ -69,8 +70,22 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     patch.role = newRole;
   }
   if (typeof b.active === "boolean") patch.active = b.active;
-  if (typeof b.email === "string") patch.email = normalizeEmail(b.email) || null;
-  if (typeof b.groupEmail === "string") patch.groupEmail = normalizeEmail(b.groupEmail) || null;
+  // Repointing an address is an account-takeover primitive, not an edit: mail
+  // yourself the reset link and you can sign Smile Notes as that clinician.
+  // Held one tier above the reset-link power on purpose.
+  if (typeof b.email === "string" || typeof b.groupEmail === "string") {
+    if (!canEditContact(guard.user.role, target.role)) {
+      return Response.json(
+        {
+          error:
+            "Only a Hierarchy Manager or Smile Notes Developer can change the email on an existing account."
+        },
+        { status: 403 }
+      );
+    }
+    if (typeof b.email === "string") patch.email = normalizeEmail(b.email) || null;
+    if (typeof b.groupEmail === "string") patch.groupEmail = normalizeEmail(b.groupEmail) || null;
+  }
   if (Object.keys(patch).length === 0) {
     return Response.json({ error: "Nothing valid to update." }, { status: 400 });
   }

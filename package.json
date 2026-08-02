@@ -1,8 +1,8 @@
 {
-  "name": "dental-note-builder",
+  "name": "smile-notes",
   "version": "1.0.0",
   "private": true,
-  "description": "Standardized, de-identified dental note builder with deterministic audit pass and corporate email export",
+  "description": "Smile Notes — standardized, de-identified dental documentation with a deterministic audit pass and email export",
   "scripts": {
     "dev": "next dev",
     "build": "next build",

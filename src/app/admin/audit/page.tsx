@@ -6,7 +6,7 @@ import { listAuditLog } from "@/lib/db/repo/auditLog";
 import { listUsers } from "@/lib/db/repo/users";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Audit log — Smile Notes" };
+export const metadata = { title: "Audit log" };
 
 const ACTION_LABEL: Record<string, string> = {
   "setup.first-admin": "First admin created",

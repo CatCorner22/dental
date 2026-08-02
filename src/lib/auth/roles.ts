@@ -126,6 +126,21 @@ export function canSendResetLink(actor: Role, targetRole: Role): boolean {
   return canActOn(actor, targetRole);
 }
 
+// Changing the address on an EXISTING account is not the same power as sending
+// a link to the address already on file. Whoever controls the destination
+// controls the account: repoint the email, mail yourself a link, and you can
+// sign Smile Notes in someone else's name — which is precisely the frozen
+// attribution the merge rules exist to protect. So editing contact details
+// needs Hierarchy Manager authority, one tier above the reset-link tier.
+//
+// Setting an address at CREATION time is deliberately not restricted this way:
+// a brand-new account has no history to steal, and a Team Lead must be able to
+// invite someone. A typo'd address is fixed by a manager or by deactivating and
+// re-inviting — the annoying direction, but the safe one.
+export function canEditContact(actor: Role, targetRole: Role): boolean {
+  return meetsRole(actor, "manager") && canActOn(actor, targetRole);
+}
+
 // Setting or reading a password directly is developer-only. Team Leads and
 // Hierarchy Managers reset ONLY by emailing a link, so a practice manager can
 // restore access without ever learning a credential.

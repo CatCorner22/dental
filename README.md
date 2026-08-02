@@ -209,3 +209,13 @@ This tool standardizes documentation wording and order. It does not provide clin
 coding, or billing advice; does not certify HIPAA de-identification or regulatory compliance;
 and does not replace the licensed clinician, who must compare every fact with the source record,
 resolve every finding, and sign in the EDR.
+
+## Copyright and privacy
+
+© Copyright 2026 Blake Reagan, all rights reserved.
+
+Privacy Policy: by using this software platform, you agree that you will not input PII or other
+legally sensitive information into Smile Notes.
+
+The same notice is rendered in the footer of every page and on the sign-in screen — see
+`src/lib/brand.ts`, which is the single source for the product name and both legal lines.

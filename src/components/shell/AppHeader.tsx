@@ -1,8 +1,14 @@
 import Link from "next/link";
-import { canManageUsers, canReadAuditLog, canSubmitChangeRequest } from "@/lib/auth/roles";
+import {
+  canManageUsers,
+  canReadAuditLog,
+  canSubmitChangeRequest,
+  ROLE_LABEL
+} from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/roles";
 import { SignOutButton } from "./SignOutButton";
 import { NavLinks } from "./NavLinks";
+import { BrandMark } from "./BrandMark";
 
 // Server component. The banner is always visible; nav adapts to role.
 export function AppHeader({ user }: { user: SessionUser | null }) {
@@ -13,8 +19,8 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
           to 554px on a 375px device, which pushed every page sideways and
           left dialogs partly off-screen — verified in a real browser. */}
       <div className="mx-auto flex max-w-7xl flex-wrap items-center justify-between gap-x-4 gap-y-2 px-4 py-3">
-        <Link href="/" className="text-base font-semibold tracking-tight sm:text-lg">
-          🦷 Smile Notes
+        <Link href="/" className="tap rounded">
+          <BrandMark />
         </Link>
         <nav className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
           {user ? (
@@ -33,8 +39,11 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                 ]}
               />
               <span className="hidden text-slate-400 sm:inline">·</span>
-              <span className="hidden text-xs text-slate-500 sm:inline" title={`Role: ${user.role}`}>
-                {user.displayName} ({user.role})
+              {/* The human label, not the enum value. "lead" told nobody what
+                  they could do; "Team Lead" is the word the hierarchy is
+                  actually documented in. */}
+              <span className="hidden text-xs text-slate-500 sm:inline">
+                {user.displayName} ({ROLE_LABEL[user.role]})
               </span>
               <SignOutButton />
             </>

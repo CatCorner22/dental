@@ -5,6 +5,7 @@ import {
   canAddUser,
   canAssignRole,
   canDeactivateOrDelete,
+  canEditContact,
   canManageUsers,
   canMergeUsers,
   canReadAuditLog,
@@ -158,6 +159,28 @@ describe("other capabilities", () => {
     expect(canSubmitChangeRequest("user")).toBe(false);
     expect(canSubmitChangeRequest("lead")).toBe(true);
     expect(canSubmitChangeRequest("manager")).toBe(true);
+  });
+
+  // Whoever controls the address receives the reset link, so editing contact
+  // details is strictly stronger than sending one. A Team Lead who could
+  // repoint a clinician's email could mail themselves a link and then file
+  // Smile Notes under that clinician's name.
+  it("holds contact edits one tier above the reset-link power", () => {
+    for (const t of ALL) {
+      expect(canSendResetLink("lead", t) && !canEditContact("lead", t), t).toBe(
+        canSendResetLink("lead", t)
+      );
+      expect(canEditContact("lead", t), t).toBe(false);
+    }
+    expect(canEditContact("manager", "user")).toBe(true);
+    expect(canEditContact("manager", "lead")).toBe(true);
+    // Still bounded by the same ceiling as every other management action.
+    expect(canEditContact("manager", "manager")).toBe(false);
+    expect(canEditContact("manager", "admin")).toBe(false);
+    for (const t of ALL) expect(canEditContact("admin", t), t).toBe(true);
+    for (const r of ["readonly", "user"] as Role[]) {
+      for (const t of ALL) expect(canEditContact(r, t), `${r}->${t}`).toBe(false);
+    }
   });
 
   it("requires two emails only for a Hierarchy Manager", () => {

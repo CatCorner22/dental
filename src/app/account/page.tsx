@@ -3,7 +3,7 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AccountForm } from "@/components/account/AccountForm";
 
 export const runtime = "nodejs";
-export const metadata = { title: "My account — Smile Notes" };
+export const metadata = { title: "My account" };
 
 export default async function AccountPage() {
   const user = await freshSessionUser(); // fresh display name and role

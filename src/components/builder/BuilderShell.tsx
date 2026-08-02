@@ -64,6 +64,10 @@ export function BuilderShell({
   const [editedSinceLoad, setEditedSinceLoad] = useState(false);
   const [submittedNow, setSubmittedNow] = useState(false);
   const [sendFailedNow, setSendFailedNow] = useState(false);
+  // Flips true after a successful resend so the chip reads "submitted" without
+  // a reload — the resend delivered the already-filed copy, it did not edit it.
+  const [resentNow, setResentNow] = useState(false);
+  const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
 
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
@@ -84,8 +88,9 @@ export function BuilderShell({
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
-    submitted: (initialSubmitted && !editedSinceLoad) || submittedNow,
-    lastSendFailed: (initialSendFailed && !editedSinceLoad) || sendFailedNow
+    submitted: resentNow || (initialSubmitted && !editedSinceLoad) || submittedNow,
+    // A successful resend clears the failure — it wins over the stored flag.
+    lastSendFailed: !resentNow && ((initialSendFailed && !editedSinceLoad) || sendFailedNow)
   });
 
   // Autosave on any change. The content-identity guard (not a first-render
@@ -145,6 +150,29 @@ export function BuilderShell({
     return () => window.removeEventListener("keydown", onKey);
   }, [canEdit, flush, trySubmit]);
 
+  // Resend the already-filed copy when the email failed. This is the ONLY
+  // resend affordance reachable after a reload — before it, a send-failed
+  // draft offered Submit (which 409s, pointing at a Resend that did not exist
+  // outside the just-closed modal), so the undelivered ticket was wedged and
+  // the only escape, editing the note, filed a duplicate.
+  const doResend = useCallback(async () => {
+    setResending(true);
+    try {
+      const res = await fetch(`/api/drafts/${draftId}/resend`, { method: "POST" });
+      if (res.ok) {
+        setResentNow(true);
+        setToast({ text: "Resent — the office received the note.", tone: "success" });
+      } else {
+        const data = (await res.json().catch(() => ({}))) as { error?: string };
+        setToast({ text: data.error ?? "Resend failed — try again shortly.", tone: "error" });
+      }
+    } catch {
+      setToast({ text: "Resend failed — check the connection and try again.", tone: "error" });
+    } finally {
+      setResending(false);
+    }
+  }, [draftId]);
+
   // "Start another like this": a new draft with the same modules and title —
   // structure only, never a single value (no clinical assertion carries over).
   const startAnother = async () => {
@@ -189,6 +217,16 @@ export function BuilderShell({
           />
           <StatusChip status={liveStatus} size="md" />
           {canEdit && <SaveIndicator state={autosave.state} />}
+          {canEdit && liveStatus === "error" && (
+            <button
+              className="btn-primary border-rose-600 bg-rose-600 hover:bg-rose-700"
+              disabled={resending}
+              title="The note is filed but its email did not send. Resend the same filed copy — this never files a second ticket."
+              onClick={() => void doResend()}
+            >
+              {resending ? "Resending…" : "Resend email"}
+            </button>
+          )}
           {canEdit && (
             <>
               <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>Save</button>

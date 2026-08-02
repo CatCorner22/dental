@@ -9,6 +9,7 @@ import {
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
+import { sameNoteState } from "@/lib/schema/sameNoteState";
 import { statusForNote } from "@/lib/status/statusForNote";
 
 export const runtime = "nodejs";
@@ -67,16 +68,23 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     const res = validateNoteState(b.note);
     if (!res.ok) return Response.json({ error: res.error }, { status: 400 });
     patch.noteState = res.value;
-    // An edit means this is no longer the note that failed to send, so clear
-    // the send-failed flag here too — otherwise the dashboard keeps showing
-    // "Send failed" while the open builder shows the live status, a parity
-    // break between the two derivations.
-    patch.lastSendFailed = false;
-    // The note has changed, so it is no longer the one already on file: this
-    // is what makes an edited draft submittable again after a filing.
-    patch.lastSubmissionId = null;
-    const derived = statusForNote(res.value, { submitted: false, lastSendFailed: false });
-    patch.status = derived.status;
+    // Only a REAL content change re-opens the submit gate. The client autosaves
+    // note + title together on every keystroke, so a title-only rename arrives
+    // here carrying the unchanged note. Clearing the re-file guard on the mere
+    // PRESENCE of a note key (rather than an actual change) let a rename after
+    // a submit file a second, byte-identical ticket for the same encounter —
+    // it also overwrote the "submitted" status, defeating the submit route's
+    // status fallback. Compare against what is stored and touch the guard only
+    // when the note truly differs.
+    const noteChanged = !sameNoteState(res.value, draft.noteState);
+    if (noteChanged) {
+      // The note is no longer the one that failed to send, nor the one already
+      // on file, so both flags clear and the status is recomputed live. This is
+      // what makes an edited draft submittable again after a filing.
+      patch.lastSendFailed = false;
+      patch.lastSubmissionId = null;
+      patch.status = statusForNote(res.value, { submitted: false, lastSendFailed: false }).status;
+    }
   }
 
   const updated = await updateDraftChecked(db, id, b.baseVersion, patch, new Date());

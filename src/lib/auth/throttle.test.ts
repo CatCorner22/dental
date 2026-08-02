@@ -1,5 +1,13 @@
 import { describe, expect, it } from "vitest";
-import { FREE_ATTEMPTS, MAX_LOCK_MS, lockMsFor, loginKey, passwordCheckKey } from "./throttle";
+import {
+  FREE_ATTEMPTS,
+  IP_FREE_ATTEMPTS,
+  MAX_LOCK_MS,
+  lockMsFor,
+  loginIpKey,
+  loginKey,
+  passwordCheckKey
+} from "./throttle";
 
 describe("lockMsFor", () => {
   it("costs nothing for the first few attempts", () => {
@@ -24,9 +32,19 @@ describe("lockMsFor", () => {
     expect(lockMsFor(10_000)).toBe(MAX_LOCK_MS);
   });
 
-  it("namespaces keys so login and password-check throttles never collide", () => {
+  it("gives an IP a larger, NAT-friendly budget than a single account", () => {
+    expect(lockMsFor(IP_FREE_ATTEMPTS, IP_FREE_ATTEMPTS)).toBe(0);
+    expect(lockMsFor(IP_FREE_ATTEMPTS + 1, IP_FREE_ATTEMPTS)).toBe(15_000);
+    // A whole office behind one NAT must clear the per-account budget without
+    // tripping the IP gate.
+    expect(IP_FREE_ATTEMPTS).toBeGreaterThan(FREE_ATTEMPTS);
+    expect(lockMsFor(FREE_ATTEMPTS + 1, IP_FREE_ATTEMPTS)).toBe(0);
+  });
+
+  it("namespaces keys so login, IP, and password-check throttles never collide", () => {
     expect(loginKey("Ann")).toBe("login:ann");
+    expect(loginIpKey("203.0.113.7")).toBe("loginip:203.0.113.7");
     expect(passwordCheckKey("u1")).toBe("pwcheck:u1");
-    expect(loginKey("u1")).not.toBe(passwordCheckKey("u1"));
+    expect(new Set([loginKey("x"), loginIpKey("x"), passwordCheckKey("x")]).size).toBe(3);
   });
 });

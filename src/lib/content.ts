@@ -1,0 +1,20 @@
+import { readFileSync } from "node:fs";
+import path from "node:path";
+
+// Single source of truth: the app renders the same markdown files the
+// ChatGPT Skill ships with. Allowlist only — never a caller-supplied path.
+const DOCS = {
+  templates: "skill/assets/dental-note-templates.md",
+  terminology: "skill/references/terminology-and-style.md",
+  toothNotation: "skill/references/tooth-and-surface-notation.md",
+  sedationImaging: "skill/references/sedation-and-imaging.md",
+  tennesseeLaw: "skill/references/tennessee-dental-law-summary.md",
+  sourceLedger: "skill/references/source-ledger.md",
+  deployment: "skill/references/deployment-recommendation.md"
+} as const;
+
+export type DocName = keyof typeof DOCS;
+
+export function readReferenceDoc(name: DocName): string {
+  return readFileSync(path.join(process.cwd(), DOCS[name]), "utf8");
+}

@@ -1,8 +1,9 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { Dialog } from "@/components/ui/Dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { QUICK_PICKS } from "@/lib/presets/quickPicks";
 import { sparkleLine } from "@/lib/stats/sparkle";
@@ -35,6 +36,7 @@ export function Dashboard({
   const [query, setQuery] = useState("");
   const [busy, setBusy] = useState(false);
   const [showPicks, setShowPicks] = useState(false);
+  const [transferFor, setTransferFor] = useState<DraftRow | null>(null);
 
   const filtered = useMemo(
     () => drafts.filter((d) => d.title.toLowerCase().includes(query.toLowerCase())),
@@ -119,8 +121,8 @@ export function Dashboard({
         ) : (
           <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
             {filtered.map((d) => (
-              <li key={d.id}>
-                <Link href={`/note/${d.id}`} className="flex items-center justify-between gap-3 px-4 py-3 hover:bg-slate-50">
+              <li key={d.id} className="flex items-center gap-3 px-4 py-3 hover:bg-slate-50">
+                <Link href={`/note/${d.id}`} className="flex min-w-0 flex-1 items-center justify-between gap-3">
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">{d.title}</span>
                     <span className="block text-xs text-slate-500">
@@ -130,12 +132,83 @@ export function Dashboard({
                   </span>
                   <StatusChip status={d.status} />
                 </Link>
+                {role === "admin" && (
+                  <button
+                    className="shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                    onClick={() => setTransferFor(d)}
+                    title="Transfer ownership"
+                  >
+                    Transfer
+                  </button>
+                )}
               </li>
             ))}
           </ul>
         )}
       </div>
+
+      {transferFor && (
+        <TransferDialog
+          draft={transferFor}
+          onClose={() => setTransferFor(null)}
+          onDone={() => {
+            setTransferFor(null);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+function TransferDialog({
+  draft,
+  onClose,
+  onDone
+}: {
+  draft: DraftRow;
+  onClose: () => void;
+  onDone: () => void;
+}) {
+  const [users, setUsers] = useState<{ id: string; username: string; displayName: string; role: string; active: boolean }[]>([]);
+  const [toUserId, setToUserId] = useState("");
+  const [error, setError] = useState("");
+
+  useEffect(() => {
+    fetch("/api/admin/users")
+      .then((r) => r.json())
+      .then((d) => setUsers((d.users ?? []).filter((u: { active: boolean; role: string }) => u.active && u.role !== "readonly")))
+      .catch(() => setError("Could not load users."));
+  }, []);
+
+  const submit = async () => {
+    setError("");
+    const res = await fetch(`/api/admin/drafts/${draft.id}/transfer`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ toUserId })
+    });
+    if (res.ok) return onDone();
+    setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Transfer failed.");
+  };
+
+  return (
+    <Dialog title={`Transfer "${draft.title}"`} onClose={onClose}>
+      <div className="space-y-3">
+        <label className="field-label">Transfer to</label>
+        <select className="field-input" value={toUserId} onChange={(e) => setToUserId(e.target.value)}>
+          <option value="">— select a user —</option>
+          {users.map((u) => (
+            <option key={u.id} value={u.id}>{u.displayName} ({u.username})</option>
+          ))}
+        </select>
+        {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
+        <div className="flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onClose}>Cancel</button>
+          <button className="btn-primary" disabled={!toUserId} onClick={submit}>Transfer</button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

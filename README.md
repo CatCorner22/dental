@@ -9,6 +9,68 @@ line before a defective or identifying draft leaves the tool.
 construction; identities, exact dates, signatures, permits, and codes are completed only in the
 electronic dental record (EDR).
 
+> **This system may form part of a legal and medical record.** It is **deterministic — it makes
+> no AI calls** and stores only de-identified drafts and staff usernames. Every user acknowledges
+> this once before use.
+
+## Multi-user platform (V2)
+
+A shared, role-based web app benchmarked on Curve Hero's UX patterns (a dashboard hub, a sticky
+note header, a "Sidekick" side panel, color-coded statuses, quick-pick presets) — patterns only,
+no copied material.
+
+### Roles
+
+| Role | Can do |
+|---|---|
+| **Read only** | View any draft and the references; no editing or submitting |
+| **User** | Create, auto-save, and submit their own drafts |
+| **Admin** | Everything, plus add / deactivate / delete users, reset passwords, and transfer draft ownership |
+
+The first admin is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`). Every API
+route re-checks the caller's role server-side; the last active admin can never be locked out.
+
+### Draft lifecycle and status colors
+
+Statuses are derived once (server + client share the logic) and shown as a chip that always pairs
+color with an icon and a text label:
+
+| Status | Meaning |
+|---|---|
+| Unfinished (slate) | Started, nothing to flag yet |
+| Blocked (red) | An S0 STOP — must fix before submit |
+| Action needed (orange) | An S1 REQUIRED field or placeholder |
+| Review (amber) | An S2 REVIEW suggestion |
+| Ready (green) | Passes the gate — ready to submit |
+| Submitted (blue) | Filed with a ticket |
+| Send failed (rose) | Filed, but the email did not go out |
+
+### Auto-save and submit
+
+Edits auto-save after ~1.5 s (version-checked; a concurrent edit elsewhere raises a reload
+prompt), with an explicit **Save** button and an unsaved-work guard. **Submit** composes the note
+and runs the full audit **server-side**, then files it with a ticket.
+
+### Tickets and traceability (anti-drift)
+
+Every submission gets a `DN-000000` ticket and a frozen stamp: the ticket, the submitter
+(display name + username), the date and time in **US Eastern** (EST/EDT resolved automatically),
+the ruleset version, and the audit status. The note **and** its audit report are frozen as
+immutable copies at submit time and emailed to the fixed corporate address as two attachments —
+so a later change to the templates or rules never rewrites what a past note said. A single
+`RULESET_VERSION` constant is stamped everywhere, and CI (`.github/workflows/ci.yml`) runs
+typecheck + tests + build on every push and PR.
+
+### Encouragement (personal only)
+
+Each user sees their own submission count, first-pass rate, clean-note streak, a few badges, and
+Sparkle the tooth mascot's (deterministic, non-AI) micro-copy — no cross-staff comparison.
+
+### Accessibility
+
+Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by color alone,
+`prefers-reduced-motion` respected, keyboard-operable pickers, and `role="alert"` on errors.
+
 ## What is in this repository
 
 | Path | What it is |
@@ -79,21 +141,28 @@ a dental lexicon and medication-name protection; duplicate-sentence and stale-te
 
 ```bash
 npm install
-npm test        # 63 tests: vocab, schema, composer, audit rules, gating, email validation, e2e
-npm run dev     # http://localhost:3000
+cp .env.example .env.local   # set AUTH_SECRET (openssl rand -base64 33)
+npm test        # unit + PGlite db + full-audit tests (zero infrastructure)
+npm run dev     # http://localhost:3000  → first run opens /setup
 ```
+
+With no `POSTGRES_URL`, the app uses in-process PGlite under `.data/` — no database to install.
+Open `/setup` to create the first admin, or set `ADMIN_USERNAME` / `ADMIN_PASSWORD`.
 
 ## Deploy to Vercel
 
-1. Push this repository to GitHub and import it in Vercel (defaults work; no config needed).
-2. Optional — enable the email export in Project Settings → Environment Variables:
-   - `RESEND_API_KEY` — from [resend.com](https://resend.com) after verifying your sending domain
-   - `EMAIL_FROM` — verified sender, e.g. `notes@yourpractice.com`
-   - `CORPORATE_EMAIL` — the one fixed recipient inbox
-   - `ACCESS_CODE` — optional shared code required to send
-   Without these, the app runs download-only and says so.
-3. Restrict access (recommended): enable Vercel Deployment Protection so only the team can open
-   the app, and treat the corporate inbox as inside the practice's HIPAA boundary.
+1. Push this repository to GitHub and import it in Vercel.
+2. Add a Postgres database (Vercel Postgres or Neon) and set `POSTGRES_URL`. Set `AUTH_SECRET`.
+   The schema is applied automatically on first boot.
+3. Optional — enable email export: `RESEND_API_KEY`, `EMAIL_FROM`, `CORPORATE_EMAIL`. Without
+   them, submissions still file with a ticket and appear in History; they just are not emailed.
+4. Optionally set `ADMIN_USERNAME` / `ADMIN_PASSWORD` to seed the first admin; otherwise use
+   `/setup`. Enable Vercel Deployment Protection so only the team can reach the app, and treat the
+   corporate inbox as inside the practice's HIPAA boundary.
+
+See `.env.example` for the full list. Do **not** run without `POSTGRES_URL` in production —
+PGlite's per-instance storage does not persist across serverless cold starts (the app logs a loud
+warning).
 
 ## Keep it current
 

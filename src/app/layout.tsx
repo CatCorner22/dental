@@ -1,6 +1,7 @@
 import type { Metadata } from "next";
 import { auth } from "@/lib/auth/auth";
 import { AppHeader } from "@/components/shell/AppHeader";
+import { NoticeGate } from "@/components/notice/NoticeGate";
 import "./globals.css";
 
 export const metadata: Metadata = {
@@ -21,6 +22,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
           Skip to content
         </a>
         <AppHeader user={session?.user ?? null} />
+        {session?.user && <NoticeGate acknowledged={session.user.noticeAcked} />}
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">
           {children}
         </main>

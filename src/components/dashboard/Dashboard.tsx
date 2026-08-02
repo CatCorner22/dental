@@ -6,7 +6,7 @@ import Link from "next/link";
 import { Dialog } from "@/components/ui/Dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { QUICK_PICKS } from "@/lib/presets/quickPicks";
-import { sparkleLine } from "@/lib/stats/sparkle";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { BADGES } from "@/lib/stats/badges";
 import type { UserStats } from "@/lib/stats/computeStats";
 import type { DraftStatus } from "@/lib/status/draftStatus";
@@ -75,7 +75,7 @@ export function Dashboard({
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div>
           <h1 className="text-2xl font-bold">Hi {displayName} 👋</h1>
-          <p className="text-sm text-slate-600">{sparkleLine("dashboard", drafts.length + stats.totalSubmitted)}</p>
+          <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
         </div>
         {canEdit && (
           <div className="relative">
@@ -127,7 +127,7 @@ export function Dashboard({
           <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
             {drafts.length === 0
               ? canEdit
-                ? "No drafts yet. Start one with New note or a Quick pick."
+                ? `No drafts yet. Start one with New note or a Quick pick. ${sparkleLine("empty", daySeed(new Date()))}`
                 : "No drafts to view yet."
               : "No drafts match your search."}
           </p>
@@ -238,6 +238,9 @@ function TransferDialog({
 function StatsCard({ stats }: { stats: UserStats }) {
   return (
     <div className="rounded-lg border border-slate-200 bg-white p-4">
+      <p className="mb-2 text-center text-xs text-slate-400">
+        Every clean note helps the whole team. 🦷
+      </p>
       <div className="grid grid-cols-3 gap-4 text-center">
         <Stat label="Submitted" value={String(stats.totalSubmitted)} />
         <Stat label="First-pass" value={`${Math.round(stats.firstPassRate * 100)}%`} />

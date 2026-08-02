@@ -34,8 +34,11 @@ export function autosaveReducer(state: AutosaveState, event: AutosaveEvent): Aut
   switch (event.type) {
     case "edit":
       // An edit always marks work pending, even mid-save (a trailing save
-      // follows), but never overwrites an unresolved conflict.
-      if (state.status === "conflict") return state;
+      // follows), but never overwrites an unresolved conflict. Returning the
+      // SAME reference when already dirty lets React bail out of the
+      // re-render — without it, a render -> effect -> dispatch loop starves
+      // the debounce and autosave never fires.
+      if (state.status === "conflict" || state.status === "dirty") return state;
       return { status: "dirty" };
     case "saveStart":
       return state.status === "dirty" ? { status: "saving" } : state;

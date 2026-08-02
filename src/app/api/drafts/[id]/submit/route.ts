@@ -11,6 +11,7 @@ import { computeGates, runAudit } from "@/lib/audit/engine";
 import { getEmailConfig } from "@/lib/email/config";
 import { formatTicket } from "@/lib/tickets/ticket";
 import { formatEasternTime } from "@/lib/tickets/etTime";
+import { slugifyTitle } from "@/lib/tickets/slug";
 import { composeStamp } from "@/lib/tickets/stamp";
 import { RULESET_VERSION } from "@/lib/version";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
@@ -29,6 +30,14 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
   if (guard.user.role !== "admin" && draft.ownerId !== guard.user.id) {
     return Response.json({ error: "You cannot submit this draft." }, { status: 403 });
+  }
+  // A note that has not changed since its last submission must not file a
+  // duplicate ticket. Any edit flips the status back via the PATCH recompute.
+  if (draft.status === "submitted") {
+    return Response.json(
+      { error: "This note is already submitted. Edit it before submitting again." },
+      { status: 409 }
+    );
   }
 
   let body: Record<string, unknown> = {};
@@ -66,9 +75,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const now = new Date();
   const submittedByName = `${guard.user.displayName} (${guard.user.username})`;
   const submittedAtEt = formatEasternTime(now);
-  const filenameBase = /^[a-z0-9][a-z0-9-]{0,79}$/.test(draft.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, ""))
-    ? draft.title.toLowerCase().replace(/[^a-z0-9]+/g, "-").replace(/^-+|-+$/g, "").slice(0, 60)
-    : "dental-note";
+  const filenameBase = slugifyTitle(draft.title);
 
   // Reserve the ticket, compose the stamp, freeze the immutable copies.
   const shell = await insertSubmissionShell(db, {
@@ -116,7 +123,10 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     }
   }
 
-  await setDraftStatus(db, draft.id, "submitted", config.configured && !emailed);
+  // Honest cache: a failed email shows the rose "Send failed" chip and stays
+  // resubmittable; only a clean filing (or email-off filing) reads "submitted".
+  const sendFailed = config.configured && !emailed;
+  await setDraftStatus(db, draft.id, sendFailed ? "error" : "submitted", sendFailed, now);
   await logAction(db, {
     actorId: guard.user.id,
     action: emailed ? "submit" : config.configured ? "submit.email-failed" : "submit.no-email",

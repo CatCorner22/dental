@@ -63,3 +63,24 @@ describe("composeStamp", () => {
     expect(block).toContain("no patient identifiers");
   });
 });
+
+describe("slugifyTitle", () => {
+  it("slugs ordinary titles", async () => {
+    const { slugifyTitle } = await import("./slug");
+    expect(slugifyTitle("Test extraction note")).toBe("test-extraction-note");
+  });
+  it("keeps the name for long titles instead of falling back", async () => {
+    const { slugifyTitle } = await import("./slug");
+    const long =
+      "Comprehensive periodontal evaluation and scaling root planing upper right quadrant";
+    const out = slugifyTitle(long);
+    expect(out.startsWith("comprehensive-periodontal")).toBe(true);
+    expect(out.length).toBeLessThanOrEqual(60);
+    expect(out.endsWith("-")).toBe(false);
+  });
+  it("falls back only for empty or symbol-only titles", async () => {
+    const { slugifyTitle } = await import("./slug");
+    expect(slugifyTitle("")).toBe("dental-note");
+    expect(slugifyTitle("###!!!")).toBe("dental-note");
+  });
+})

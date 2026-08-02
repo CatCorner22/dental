@@ -40,8 +40,11 @@ export const authConfig: NextAuthConfig = {
       }
       return session;
     },
-    authorized({ auth }) {
-      // Middleware matcher already excludes public routes; here just require a session.
+    authorized({ auth, request }) {
+      // API routes must answer with JSON (requireRole returns 401/403), never
+      // a login-page redirect that fetch() would follow into HTML.
+      if (request.nextUrl.pathname.startsWith("/api/")) return true;
+      // Pages: require a session; NextAuth redirects to /login otherwise.
       return Boolean(auth?.user);
     }
   }

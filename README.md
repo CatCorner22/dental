@@ -66,6 +66,15 @@ typecheck + tests + build on every push and PR.
 Each user sees their own submission count, first-pass rate, clean-note streak, a few badges, and
 Sparkle the tooth mascot's (deterministic, non-AI) micro-copy — no cross-staff comparison.
 
+### Team-spirit lines
+
+Sparkle's lines gently encourage teamwork: clear communication, covering for each other, keeping
+things simple, and putting the team first. Ground rules, enforced by a test in
+`src/lib/stats/stats.test.ts`: the lines are transparent encouragement (never hidden persuasion),
+fully ignorable, positive only, truthful about this workflow, and they never lecture, compare
+staff, or add any tracking. They rotate once per day, appear only in the app's own screens, and
+never enter a note, stamp, email, or audit report.
+
 ### Accessibility
 
 Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by color alone,

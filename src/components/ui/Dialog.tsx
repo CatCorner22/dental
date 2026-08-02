@@ -2,6 +2,14 @@
 
 import { useEffect, useRef } from "react";
 
+function focusables(node: HTMLElement | null): HTMLElement[] {
+  return Array.from(
+    node?.querySelectorAll<HTMLElement>(
+      'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
+    ) ?? []
+  );
+}
+
 // Accessible modal: focus trap, ESC to close, focus return, labelled title.
 export function Dialog({
   title,
@@ -15,22 +23,22 @@ export function Dialog({
   const ref = useRef<HTMLDivElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
 
+  // Mount-only: remember the opener and move focus in ONCE. Keyed on nothing,
+  // so parent re-renders (which recreate inline onClose handlers) can neither
+  // yank focus mid-typing nor corrupt the focus-return target.
   useEffect(() => {
     returnTo.current = document.activeElement as HTMLElement | null;
-    const node = ref.current;
-    const focusables = () =>
-      Array.from(
-        node?.querySelectorAll<HTMLElement>(
-          'a[href],button:not([disabled]),input:not([disabled]),select:not([disabled]),textarea:not([disabled]),[tabindex]:not([tabindex="-1"])'
-        ) ?? []
-      );
-    focusables()[0]?.focus();
+    focusables(ref.current)[0]?.focus();
+    return () => returnTo.current?.focus?.();
+  }, []);
+
+  useEffect(() => {
     const onKey = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         e.preventDefault();
         onClose();
       } else if (e.key === "Tab") {
-        const items = focusables();
+        const items = focusables(ref.current);
         if (items.length === 0) return;
         const first = items[0];
         const last = items[items.length - 1];
@@ -44,10 +52,7 @@ export function Dialog({
       }
     };
     document.addEventListener("keydown", onKey);
-    return () => {
-      document.removeEventListener("keydown", onKey);
-      returnTo.current?.focus?.();
-    };
+    return () => document.removeEventListener("keydown", onKey);
   }, [onClose]);
 
   return (

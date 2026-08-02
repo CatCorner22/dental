@@ -71,8 +71,10 @@ export function UserAdmin({ users, selfId }: { users: Row[]; selfId: string }) {
                   <select
                     className="rounded border border-slate-300 px-1 py-0.5 text-xs"
                     value={u.role}
+                    disabled={u.id === selfId}
                     onChange={(e) => patch(u.id, { role: e.target.value })}
                     aria-label={`Role for ${u.username}`}
+                    title={u.id === selfId ? "You cannot change your own role" : undefined}
                   >
                     {(Object.keys(ROLE_LABEL) as Role[]).map((r) => (
                       <option key={r} value={r}>{ROLE_LABEL[r]}</option>
@@ -86,13 +88,16 @@ export function UserAdmin({ users, selfId }: { users: Row[]; selfId: string }) {
                 </td>
                 <td className="px-3 py-2">
                   <div className="flex flex-wrap gap-2 text-xs">
-                    <button className="text-blue-700 hover:underline" onClick={() => patch(u.id, { active: !u.active })}>
-                      {u.active ? "Deactivate" : "Reactivate"}
-                    </button>
+                    {u.id !== selfId && (
+                      <button className="text-blue-700 hover:underline" onClick={() => patch(u.id, { active: !u.active })}>
+                        {u.active ? "Deactivate" : "Reactivate"}
+                      </button>
+                    )}
                     <button className="text-blue-700 hover:underline" onClick={() => setResetFor(u)}>Reset password</button>
                     {u.id !== selfId && (
                       <button className="text-rose-700 hover:underline" onClick={() => remove(u)}>Delete</button>
                     )}
+                    {u.id === selfId && <span className="text-slate-400">(you)</span>}
                   </div>
                 </td>
               </tr>
@@ -155,8 +160,10 @@ function ResetDialog({ row, onClose }: { row: Row; onClose: () => void }) {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [done, setDone] = useState(false);
+  const [busy, setBusy] = useState(false);
   const submit = async () => {
     setError("");
+    setBusy(true);
     const res = await fetch(`/api/admin/users/${row.id}/reset-password`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -164,6 +171,7 @@ function ResetDialog({ row, onClose }: { row: Row; onClose: () => void }) {
     });
     if (res.ok) return setDone(true);
     setError(((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Reset failed.");
+    setBusy(false);
   };
   return (
     <Dialog title={`Reset password — ${row.username}`} onClose={onClose}>
@@ -178,7 +186,7 @@ function ResetDialog({ row, onClose }: { row: Row; onClose: () => void }) {
           {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" onClick={onClose}>Cancel</button>
-            <button className="btn-primary" disabled={password.length < 10} onClick={submit}>Reset</button>
+            <button className="btn-primary" disabled={busy || password.length < 10} onClick={submit}>{busy ? "Resetting…" : "Reset"}</button>
           </div>
         </div>
       )}

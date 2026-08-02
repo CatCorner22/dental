@@ -16,12 +16,14 @@ export const metadata: Metadata = {
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
   const session = await auth();
-  // Read the acknowledgment fresh from the DB: it is set after login, so the
-  // JWT's copy is stale and would otherwise re-show the notice every navigation.
+  // The ack flag only ever goes false -> true, so we only need the fresh DB
+  // read when the (possibly stale) token still says "not acked". A deleted
+  // user is treated as acked so the gate can never get stuck open.
   let noticeAcked = session?.user?.noticeAcked ?? true;
-  if (session?.user) {
+  if (session?.user && !noticeAcked) {
     const db = await getDb();
-    noticeAcked = (await getUserById(db, session.user.id))?.noticeAckAt != null;
+    const row = await getUserById(db, session.user.id);
+    noticeAcked = !row || row.noticeAckAt != null;
   }
   return (
     <html lang="en">

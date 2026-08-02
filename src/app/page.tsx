@@ -5,6 +5,7 @@ import { listAllDrafts, listDraftsByOwner } from "@/lib/db/repo/drafts";
 import { statRowsForUser } from "@/lib/db/repo/submissions";
 import { listUsers } from "@/lib/db/repo/users";
 import { computeStats } from "@/lib/stats/computeStats";
+import { formatEasternTime } from "@/lib/tickets/etTime";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 
@@ -37,7 +38,11 @@ export default async function DashboardPage() {
         status: d.status as DraftStatus,
         ownerName: ownerNames[d.ownerId],
         mine: d.ownerId === user.id,
-        updatedAt: d.updatedAt.toISOString(),
+        // Pre-formatted on the server (Eastern time, like every other
+        // timestamp in the app) so SSR and hydration render identical text —
+        // toLocaleString() in the client would use the SERVER's zone during
+        // SSR and the browser's after, a hydration mismatch on every row.
+        updatedAtLabel: formatEasternTime(d.updatedAt),
         moduleIds: d.noteState.selectedModuleIds
       }))}
       stats={stats}

@@ -34,6 +34,18 @@ export async function requireRole(
       response: Response.json({ error: "This account is not active." }, { status: 403 })
     };
   }
+  // Session revocation: a token minted before the last password change or
+  // admin reset is dead NOW — otherwise a stolen cookie survives the very
+  // remediation (resetting the password) meant to cut it off.
+  if ((row.passwordChangedAt?.getTime() ?? 0) > (sessionUser.pwAt ?? 0)) {
+    return {
+      ok: false,
+      response: Response.json(
+        { error: "The password for this account changed. Sign in again." },
+        { status: 401 }
+      )
+    };
+  }
   if (!meetsRole(row.role, min)) {
     return {
       ok: false,

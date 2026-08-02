@@ -50,9 +50,20 @@ async function build(): Promise<Db> {
 }
 
 async function seedAdmin(db: Db): Promise<void> {
-  const username = process.env.ADMIN_USERNAME?.trim();
+  // Same invariants as /api/setup: usernames are stored lowercase (so "Admin"
+  // and "admin" can never be two people in the audit log) and the password
+  // policy is not bypassable via env. A weak seed password skips the seed
+  // loudly rather than creating an admin no API path would ever accept —
+  // /api/setup remains available to create the first admin properly.
+  const username = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!username || !password) return;
+  if (password.length < 10) {
+    console.error(
+      "[db] ADMIN_PASSWORD must be at least 10 characters; skipping first-admin seed. Use /setup or fix the env."
+    );
+    return;
+  }
   const { countUsers, insertUser } = await import("./repo/users");
   if ((await countUsers(db)) > 0) return;
   const { hashPassword } = await import("@/lib/auth/password");
@@ -69,7 +80,17 @@ async function seedAdmin(db: Db): Promise<void> {
 }
 
 export function getDb(): Promise<Db> {
-  if (!bootstrap) bootstrap = build();
+  if (!bootstrap) {
+    // A transient bootstrap failure (db briefly unreachable on a cold start)
+    // must not be memoized forever — that would pin every future request,
+    // including /setup and login, to the original error until the process
+    // restarts. Clear the slot on rejection so the next request retries.
+    const attempt = build();
+    bootstrap = attempt;
+    attempt.catch(() => {
+      if (bootstrap === attempt) bootstrap = null;
+    });
+  }
   return bootstrap;
 }
 

@@ -1,0 +1,114 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" width="512" height="512" role="img" aria-label="Jayla the Blue Jay, dental hygienist mascot (female)">
+  <defs>
+    <linearGradient id="jayBody" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#93BCE9"/>
+      <stop offset="1" stop-color="#6E9BD6"/>
+    </linearGradient>
+    <linearGradient id="jayCrest" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#AECDF2"/>
+      <stop offset="1" stop-color="#7FA9E0"/>
+    </linearGradient>
+    <linearGradient id="jayScrub" x1="0" y1="0" x2="0" y2="1">
+      <stop offset="0" stop-color="#F9CBDC"/>
+      <stop offset="1" stop-color="#F0A6C3"/>
+    </linearGradient>
+  </defs>
+
+  <!-- ground shadow -->
+  <ellipse cx="256" cy="482" rx="118" ry="14" fill="#1B2A4A" opacity="0.08"/>
+
+  <!-- tail feathers (behind) -->
+  <g transform="rotate(38 300 400)">
+    <rect x="286" y="380" width="30" height="118" rx="15" fill="#5F8CC9"/>
+    <rect x="286" y="452" width="30" height="14" fill="#33507E"/>
+    <rect x="286" y="424" width="30" height="14" fill="#33507E"/>
+    <rect x="286" y="480" width="30" height="18" rx="9" fill="#EAF2FB"/>
+  </g>
+
+  <!-- legs and feet -->
+  <g stroke="#8B8B99" stroke-width="11" stroke-linecap="round">
+    <line x1="228" y1="428" x2="228" y2="464"/>
+    <line x1="284" y1="428" x2="284" y2="464"/>
+  </g>
+  <g stroke="#8B8B99" stroke-width="9" stroke-linecap="round">
+    <line x1="228" y1="464" x2="208" y2="476"/><line x1="228" y1="464" x2="228" y2="478"/><line x1="228" y1="464" x2="246" y2="476"/>
+    <line x1="284" y1="464" x2="264" y2="476"/><line x1="284" y1="464" x2="284" y2="478"/><line x1="284" y1="464" x2="302" y2="476"/>
+  </g>
+
+  <!-- body -->
+  <path d="M 256 262 C 332 262 350 330 346 380 C 342 424 312 446 256 446 C 200 446 170 424 166 380 C 162 330 180 262 256 262 Z" fill="url(#jayBody)"/>
+
+  <!-- scrub top -->
+  <path d="M 196 292 C 220 282 292 282 316 292 L 336 424 C 300 440 212 440 176 424 Z" fill="url(#jayScrub)"/>
+  <path d="M 176 424 C 212 438 300 438 336 424 L 338 434 C 300 449 212 449 174 434 Z" fill="#E890B2"/>
+  <!-- sleeves -->
+  <path d="M 196 292 C 176 298 164 314 162 334 L 196 344 Z" fill="#F0A6C3"/>
+  <path d="M 316 292 C 336 298 348 314 350 334 L 316 344 Z" fill="#F0A6C3"/>
+  <!-- v-neck -->
+  <path d="M 230 288 L 256 316 L 282 288" fill="none" stroke="#E184A8" stroke-width="8" stroke-linecap="round" stroke-linejoin="round"/>
+  <!-- pocket with tooth -->
+  <rect x="272" y="346" width="52" height="46" rx="9" fill="#F6BAD1"/>
+  <path d="M 272 354 h 52" stroke="#E890B2" stroke-width="4"/>
+  <path d="M 291 364 c -6 0 -8 6 -6 11 c 2 5 3 9 4 13 c 1 3 5 3 5 -1 c 0 -3 1 -5 4 -5 c 3 0 4 2 4 5 c 0 4 4 4 5 1 c 1 -4 2 -8 4 -13 c 2 -5 0 -11 -6 -11 c -3 0 -4 1 -7 1 c -3 0 -4 -1 -7 -1 Z" fill="#FFFFFF"/>
+  <!-- stitch hem -->
+  <path d="M 190 410 C 220 420 292 420 322 410" fill="none" stroke="#E890B2" stroke-width="3" stroke-dasharray="7 6"/>
+
+  <!-- right wing holding mouth mirror -->
+  <g>
+    <rect x="356" y="236" width="14" height="64" rx="7" fill="#F0A6C3" transform="rotate(8 363 268)"/>
+    <circle cx="366" cy="228" r="25" fill="#8FA5B8"/>
+    <circle cx="366" cy="228" r="19" fill="#DDEBF4"/>
+    <path d="M 355 220 a 14 14 0 0 1 14 -6" fill="none" stroke="#FFFFFF" stroke-width="5" stroke-linecap="round" opacity="0.85"/>
+    <path d="M 318 306 C 344 312 362 300 368 288 C 352 282 336 284 322 292 Z" fill="#7FA9E0"/>
+    <ellipse cx="362" cy="292" rx="17" ry="14" fill="#93BCE9"/>
+  </g>
+
+  <!-- left wing holding toothbrush -->
+  <g>
+    <g transform="rotate(-24 146 260)">
+      <rect x="138" y="212" width="16" height="96" rx="8" fill="#F0A6C3"/>
+      <rect x="132" y="172" width="28" height="44" rx="10" fill="#FADCE8"/>
+      <g fill="#FFFFFF">
+        <rect x="135" y="150" width="6.4" height="26" rx="3"/>
+        <rect x="143" y="150" width="6.4" height="26" rx="3"/>
+        <rect x="151" y="150" width="6.4" height="26" rx="3"/>
+      </g>
+    </g>
+    <path d="M 196 306 C 170 314 152 300 144 284 C 160 276 178 280 192 290 Z" fill="#7FA9E0"/>
+    <ellipse cx="152" cy="286" rx="17" ry="14" fill="#93BCE9"/>
+  </g>
+
+  <!-- head -->
+  <circle cx="256" cy="178" r="98" fill="url(#jayCrest)"/>
+  <!-- crest -->
+  <path d="M 226 92 C 226 62 240 40 262 26 C 258 46 258 58 256 68 C 268 50 282 42 298 38 C 290 56 286 68 282 80 C 294 72 306 70 318 72 C 306 84 298 94 292 104 Z" fill="url(#jayCrest)"/>
+  <!-- white face -->
+  <path d="M 256 118 C 306 118 336 156 336 196 C 336 240 302 272 256 272 C 210 272 176 240 176 196 C 176 156 206 118 256 118 Z" fill="#FDFEFF"/>
+  <!-- black necklace band -->
+  <path d="M 172 232 C 208 274 304 274 340 232 C 344 244 340 254 330 260 C 292 284 220 284 182 260 C 172 254 168 244 172 232 Z" fill="#2E3140"/>
+
+  <!-- eyes (female: lashes) -->
+  <g>
+    <circle cx="221" cy="188" r="24" fill="#2E3140"/>
+    <circle cx="221" cy="188" r="16" fill="#4A5A9E"/>
+    <circle cx="228" cy="181" r="7" fill="#FFFFFF"/>
+    <circle cx="214" cy="196" r="3.4" fill="#FFFFFF" opacity="0.9"/>
+    <circle cx="293" cy="188" r="24" fill="#2E3140"/>
+    <circle cx="293" cy="188" r="16" fill="#4A5A9E"/>
+    <circle cx="300" cy="181" r="7" fill="#FFFFFF"/>
+    <circle cx="286" cy="196" r="3.4" fill="#FFFFFF" opacity="0.9"/>
+    <g stroke="#2E3140" stroke-width="4" stroke-linecap="round" fill="none">
+      <path d="M 196 176 l -12 -7"/><path d="M 198 168 l -10 -9"/>
+      <path d="M 318 176 l 12 -7"/><path d="M 316 168 l 10 -9"/>
+    </g>
+  </g>
+  <!-- blush -->
+  <ellipse cx="198" cy="222" rx="14" ry="8" fill="#F59BB8" opacity="0.55"/>
+  <ellipse cx="314" cy="222" rx="14" ry="8" fill="#F59BB8" opacity="0.55"/>
+
+  <!-- open smiling beak -->
+  <g>
+    <path d="M 236 214 C 244 208 268 208 276 214 C 272 226 262 232 256 232 C 250 232 240 226 236 214 Z" fill="#6E7280"/>
+    <path d="M 240 226 C 248 238 264 238 272 226 C 268 240 260 246 256 246 C 252 246 244 240 240 226 Z" fill="#E88CA6"/>
+  </g>
+</svg>

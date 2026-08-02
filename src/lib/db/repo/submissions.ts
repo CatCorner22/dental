@@ -15,8 +15,8 @@ export interface SubmissionShellFields {
 }
 
 export type FileSubmissionResult =
-  | { filed: false } // the draft was already submitted (a concurrent/duplicate submit)
-  | { filed: true; submissionId: number; ticket: string };
+  | { filed: false } // already submitted, or the draft changed since the caller read it
+  | { filed: true; submissionId: number; ticket: string; version: number };
 
 // Reserve a ticket row first (empty frozen text), so the serial id is known
 // before the stamp is composed. Retained for tests and non-atomic callers;
@@ -49,17 +49,37 @@ export async function finalizeSubmission(
 // draft as falsely "submitted" with no ticket, and a phantom ticket left with
 // blank frozen text in the permanent record. The email is sent by the caller
 // AFTER this commits (a send failure is recoverable; a torn write is not).
+//
+// The claim is pinned to expectedVersion — the version whose noteState the
+// caller composed and audited. An autosave that lands between the caller's
+// read and this claim makes the claim miss, so a stale copy of the note can
+// never be frozen as the legal record. The claim also BUMPS the version, so
+// a queued autosave from before the submit gets a clean 409 instead of
+// silently flipping the just-submitted draft back to "ready" (which would
+// re-enable Submit and file a duplicate ticket for identical content).
 export async function fileSubmissionAtomic(
   db: Db,
   shell: SubmissionShellFields,
+  expectedVersion: number,
   now: Date,
   buildFrozen: (ticket: string) => { note: string; audit: string }
 ): Promise<FileSubmissionResult> {
   return db.transaction(async (tx) => {
     const claimed = await tx
       .update(drafts)
-      .set({ status: "submitted", lastSendFailed: false, updatedAt: now })
-      .where(and(eq(drafts.id, shell.draftId), ne(drafts.status, "submitted")))
+      .set({
+        status: "submitted",
+        lastSendFailed: false,
+        version: expectedVersion + 1,
+        updatedAt: now
+      })
+      .where(
+        and(
+          eq(drafts.id, shell.draftId),
+          ne(drafts.status, "submitted"),
+          eq(drafts.version, expectedVersion)
+        )
+      )
       .returning();
     if (claimed.length === 0) return { filed: false };
 
@@ -73,7 +93,7 @@ export async function fileSubmissionAtomic(
       .update(submissions)
       .set({ noteMarkdown: frozen.note, auditReport: frozen.audit })
       .where(eq(submissions.id, row.id));
-    return { filed: true, submissionId: row.id, ticket };
+    return { filed: true, submissionId: row.id, ticket, version: claimed[0].version };
   });
 }
 

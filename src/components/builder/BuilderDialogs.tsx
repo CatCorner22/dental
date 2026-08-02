@@ -7,8 +7,11 @@ import type { NoteState } from "@/lib/schema/types";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 export function ConflictDialog({ onReload, onClose }: { onReload: () => void; onClose: () => void }) {
+  // NOT dismissible: "Keep editing here" is a last-writer-wins overwrite of a
+  // teammate's saved version. That choice must be an explicit button press —
+  // never the reflexive ESC / backdrop-click / ✕ a user makes to dismiss.
   return (
-    <Dialog title="A newer version of this note exists" onClose={onClose}>
+    <Dialog title="A newer version of this note exists" onClose={onClose} dismissible={false}>
       <p className="mb-2 text-sm text-slate-700">
         A teammate (or another tab) saved a newer version after you opened this one. Reloading
         keeps you both in sync; the unsaved edits in this tab will be replaced.
@@ -83,6 +86,9 @@ export interface FiledResult {
   sparkle: string;
   emailed: boolean;
   emailConfigured: boolean;
+  // The server bumps the draft version when it claims the submit; the builder
+  // adopts this so its next autosave is not a false 409.
+  version?: number;
 }
 
 export function SubmitDialog({
@@ -129,12 +135,18 @@ export function SubmitDialog({
         })
       });
       if (res.ok) {
-        const data = (await res.json()) as { ticket: string; sparkle: string; emailed: boolean };
+        const data = (await res.json()) as {
+          ticket: string;
+          sparkle: string;
+          emailed: boolean;
+          version?: number;
+        };
         const result: FiledResult = {
           ticket: data.ticket,
           sparkle: data.sparkle,
           emailed: data.emailed,
-          emailConfigured: cap?.emailConfigured ?? false
+          emailConfigured: cap?.emailConfigured ?? false,
+          version: data.version
         };
         setFiled(result);
         onFiled(result);

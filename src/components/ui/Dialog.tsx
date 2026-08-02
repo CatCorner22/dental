@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useRef } from "react";
+import { useEffect, useId, useRef } from "react";
 
 function focusables(node: HTMLElement | null): HTMLElement[] {
   return Array.from(
@@ -31,6 +31,10 @@ export function Dialog({
   const ref = useRef<HTMLDivElement>(null);
   const returnTo = useRef<HTMLElement | null>(null);
   const id = useRef<symbol>(Symbol("dialog"));
+  // Unique per instance: dialogs can stack (conflict over PHI override), and
+  // a shared hardcoded id would make aria-labelledby resolve to whichever
+  // title appears first in the document — announcing the wrong dialog.
+  const titleId = useId();
 
   // Mount-only: remember the opener, register in the stack, and move focus in
   // ONCE. Keyed on nothing, so parent re-renders (which recreate inline
@@ -90,11 +94,11 @@ export function Dialog({
         ref={ref}
         role="dialog"
         aria-modal="true"
-        aria-labelledby="dialog-title"
+        aria-labelledby={titleId}
         className="w-full max-w-lg rounded-lg bg-white p-5 shadow-xl"
       >
         <div className="mb-3 flex items-center justify-between">
-          <h2 id="dialog-title" className="text-base font-semibold">
+          <h2 id={titleId} className="text-base font-semibold">
             {title}
           </h2>
           {dismissible && (

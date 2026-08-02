@@ -80,6 +80,10 @@ export function SelectInput({ field, value, onChange, describedBy, invalid, id }
         id={id}
         className="field-input"
         value={current}
+        // The stray-value fallback reaches here for a SEGMENTED field, whose
+        // visible label has no htmlFor (controlId returned undefined for it).
+        // Give the control its name directly so it is never unlabeled.
+        aria-label={id ? undefined : field.label}
         {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "select", value: e.target.value, otherText: value?.otherText })}
       >

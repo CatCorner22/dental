@@ -18,7 +18,7 @@ interface DraftRow {
   status: DraftStatus;
   ownerName?: string;
   mine: boolean;
-  updatedAt: string;
+  updatedAtLabel: string; // pre-formatted server-side (hydration-safe)
   moduleIds: string[];
 }
 
@@ -182,7 +182,11 @@ export function Dashboard({
             aria-label="Search drafts by title"
           />
         </div>
-        {statusCounts.length > 1 && (
+        {/* Keep this row mounted while a filter is active, even if the
+            filtered status just lost its last draft (e.g. it was deleted) —
+            otherwise "Clear filter" unmounts with the chips and the remaining
+            drafts are invisible with no way to recover short of a reload. */}
+        {(statusCounts.length > 1 || statusFilter !== null) && (
           <div className="mb-2 flex flex-wrap gap-1.5">
             {statusCounts.map(([s, n]) => (
               <button
@@ -222,7 +226,7 @@ export function Dashboard({
                   <span className="min-w-0">
                     <span className="block truncate font-medium text-slate-800">{d.title}</span>
                     <span className="block text-xs text-slate-500">
-                      Updated {new Date(d.updatedAt).toLocaleString()}
+                      Updated {d.updatedAtLabel}
                       {d.ownerName ? ` · ${d.ownerName}` : ""}
                     </span>
                   </span>

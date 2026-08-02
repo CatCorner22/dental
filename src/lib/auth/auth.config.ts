@@ -7,6 +7,7 @@ interface AppToken {
   displayName: string;
   role: Role;
   noticeAcked: boolean;
+  pwAt?: number;
 }
 
 // Edge-safe: imports NOTHING from the db, bcrypt, or node built-ins. This is
@@ -26,6 +27,7 @@ export const authConfig: NextAuthConfig = {
         t.displayName = user.displayName;
         t.role = user.role;
         t.noticeAcked = user.noticeAcked;
+        t.pwAt = user.pwAt;
       }
       return token;
     },
@@ -37,6 +39,7 @@ export const authConfig: NextAuthConfig = {
         session.user.displayName = t.displayName;
         session.user.role = t.role;
         session.user.noticeAcked = t.noticeAcked;
+        session.user.pwAt = t.pwAt;
       }
       return session;
     },

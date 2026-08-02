@@ -10,6 +10,21 @@ import { MEDICATION_WORDS, MISSPELLINGS } from "@/lib/vocab/misspellings";
 
 const MAX_UNKNOWN_WORD_FINDINGS = 15;
 
+// The close-match scan (Levenshtein against the dental lexicon) is the one
+// expensive step: ~55µs per unknown word. A shared budget bounds the total
+// work per audit run, so a note stuffed with unique junk words degrades to
+// "no close-match suggestions" instead of blocking the event loop. Set-based
+// lexicon lookups stay unbudgeted — they are O(1).
+export interface SpellingBudget {
+  closeChecks: number;
+}
+
+export const DEFAULT_CLOSE_CHECKS = 1500;
+
+export function newSpellingBudget(): SpellingBudget {
+  return { closeChecks: DEFAULT_CLOSE_CHECKS };
+}
+
 function inAnyLexicon(word: string): boolean {
   return DENTAL_LEXICON.has(word) || COMMON_LEXICON.has(word) || GENERATED_LEXICON.has(word);
 }
@@ -57,7 +72,8 @@ function closeDentalTerm(word: string): string | undefined {
 
 export function runSpellingRule(
   text: string,
-  fieldRef?: { moduleId: string; fieldId: string }
+  fieldRef?: { moduleId: string; fieldId: string },
+  budget: SpellingBudget = newSpellingBudget()
 ): AuditFinding[] {
   const findings: AuditFinding[] = [];
   const seen = new Set<string>();
@@ -90,7 +106,7 @@ export function runSpellingRule(
     }
     if (known(word)) continue;
 
-    const close = closeDentalTerm(word);
+    const close = budget.closeChecks > 0 ? (budget.closeChecks--, closeDentalTerm(word)) : undefined;
     if (close) {
       const medication = MEDICATION_WORDS.has(close);
       findings.push({

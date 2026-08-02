@@ -23,6 +23,9 @@ interface UseAutosave {
   markEdited: (note: NoteState, title: string) => void;
   flush: () => Promise<FlushOutcome>;
   resolveConflict: () => void;
+  // Adopt a version the server minted outside the save chain (the submit
+  // claim bumps it), so the next autosave is not a guaranteed 409.
+  adoptVersion: (version: number) => void;
 }
 
 // Wraps the pure autosave machine: debounces edits into a version-checked
@@ -112,6 +115,10 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
   // server version. Adopt the server's version counter so the next save is
   // an explicit last-writer-wins overwrite instead of an endless 409 loop,
   // then save the kept edits right away.
+  const adoptVersion = useCallback((version: number) => {
+    if (version > versionRef.current) versionRef.current = version;
+  }, []);
+
   const resolveConflict = useCallback(() => {
     const current = stateRef.current;
     if (current.status === "conflict") {
@@ -143,7 +150,7 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
 
   // Memoized so consumers can safely use this object in effect dependencies.
   return useMemo(
-    () => ({ state, version: versionRef.current, markEdited, flush, resolveConflict }),
-    [state, markEdited, flush, resolveConflict]
+    () => ({ state, version: versionRef.current, markEdited, flush, resolveConflict, adoptVersion }),
+    [state, markEdited, flush, resolveConflict, adoptVersion]
   );
 }

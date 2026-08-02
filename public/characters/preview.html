@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Dental Mascot Character Set — Preview</title>
+<style>
+  :root { --ink: #2f3a4f; --sub: #64748b; --card: #ffffff; }
+  * { box-sizing: border-box; }
+  body {
+    margin: 0; padding: 32px 24px 64px;
+    font-family: "Segoe UI", Verdana, system-ui, sans-serif;
+    background: #f1f5f9; color: var(--ink);
+  }
+  h1 { margin: 0 0 4px; font-size: 26px; }
+  .sub { color: var(--sub); margin: 0 0 28px; font-size: 14px; }
+  .grid {
+    display: grid; gap: 20px;
+    grid-template-columns: repeat(auto-fill, minmax(240px, 1fr));
+    max-width: 1200px;
+  }
+  .card {
+    background: var(--card); border-radius: 16px; overflow: hidden;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  }
+  /* checkerboard proves transparency */
+  .stage {
+    aspect-ratio: 1; display: grid; place-items: center; padding: 10px;
+    background:
+      repeating-conic-gradient(#e2e8f0 0 25%, #ffffff 0 50%) 0 0 / 24px 24px;
+  }
+  .stage.dark {
+    background:
+      repeating-conic-gradient(#334155 0 25%, #1e293b 0 50%) 0 0 / 24px 24px;
+  }
+  .stage img { width: 100%; height: 100%; object-fit: contain; }
+  .meta { padding: 12px 16px 16px; }
+  .meta h2 { margin: 0 0 2px; font-size: 16px; }
+  .meta p { margin: 0 0 8px; font-size: 12.5px; color: var(--sub); }
+  .chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .chip {
+    font-size: 11px; font-weight: 600; padding: 3px 9px; border-radius: 999px;
+  }
+  .f { background: #fce7f3; color: #be185d; }
+  .m { background: #dbeafe; color: #1d4ed8; }
+  .n { background: #dcfce7; color: #15803d; }
+  .rb {
+    color: #fff;
+    background: linear-gradient(90deg, #f26d6d, #f9a758, #d9b83a, #7fc97f, #6fa8dc, #9b7fd4);
+  }
+  .scale-demo {
+    margin-top: 40px; background: var(--card); border-radius: 16px;
+    padding: 20px 24px; max-width: 1200px;
+    box-shadow: 0 1px 3px rgba(15, 23, 42, .08);
+  }
+  .scale-demo h2 { margin: 0 0 4px; font-size: 18px; }
+  .scale-row { display: flex; align-items: flex-end; gap: 20px; flex-wrap: wrap; padding-top: 12px; }
+  .scale-row figure { margin: 0; text-align: center; }
+  .scale-row figcaption { font-size: 11px; color: var(--sub); margin-top: 4px; }
+</style>
+</head>
+<body>
+  <h1>Dental Mascot Character Set</h1>
+  <p class="sub">9 core characters &middot; SVG vector (infinitely scalable) &middot; transparent backgrounds (shown on checkerboard) &middot; G-rated &amp; child-friendly</p>
+
+  <div class="grid">
+    <div class="card">
+      <div class="stage"><img src="01-jayla-bluejay-hygienist.svg" alt="Jayla the Blue Jay, hygienist"></div>
+      <div class="meta"><h2>1 · Jayla the Blue Jay</h2><p>Dental hygienist — pink scrubs, toothbrush + mouth mirror</p>
+        <div class="chips"><span class="chip f">Female</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage dark"><img src="02-doc-otto-otter-dentist.svg" alt="Doc Otto the Otter, dentist"></div>
+      <div class="meta"><h2>2 · Doc Otto the Otter</h2><p>Dentist — lab coat, glasses, Tennessee cap, scaler + mirror</p>
+        <div class="chips"><span class="chip m">Male</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage"><img src="03-benny-bear-assistant.svg" alt="Benny the Black Bear, dental assistant"></div>
+      <div class="meta"><h2>3 · Benny the Black Bear</h2><p>Dental assistant — blue scrubs, name badge, instrument tray</p>
+        <div class="chips"><span class="chip m">Male</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage dark"><img src="04-sparkle-rainbow-tooth.svg" alt="Sparkle the Rainbow Tooth"></div>
+      <div class="meta"><h2>4 · Sparkle the Tooth</h2><p>Rounded, squat tooth — rainbow scarf, rainbow arc + toothbrush</p>
+        <div class="chips"><span class="chip n">Gender-neutral</span><span class="chip rb">Rainbow</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage"><img src="05-nova-astro-dino.svg" alt="Nova the Astronaut Dinosaur"></div>
+      <div class="meta"><h2>5 · Nova the Astro-Dino</h2><p>Astronaut — dome helmet, mission patch, glowing toothbrush</p>
+        <div class="chips"><span class="chip n">Gender-neutral</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage dark"><img src="06-callie-calico-cat.svg" alt="Callie the Calico Cat"></div>
+      <div class="meta"><h2>6 · Callie the Calico</h2><p>Dental staff — pink/white scrubs, floss jar + mirror</p>
+        <div class="chips"><span class="chip f">Female</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage"><img src="07-biscuit-retriever-puppy.svg" alt="Biscuit the Golden Retriever Puppy"></div>
+      <div class="meta"><h2>7 · Biscuit the Puppy</h2><p>Golden retriever — tooth bandana, big foamy toothbrush</p>
+        <div class="chips"><span class="chip n">Gender-neutral</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage dark"><img src="08-olive-barn-owl-professional.svg" alt="Olive the Barn Owl, office professional"></div>
+      <div class="meta"><h2>8 · Olive the Barn Owl</h2><p>Office professional — teal scrubs, glasses, smile chart clipboard</p>
+        <div class="chips"><span class="chip f">Female</span></div></div>
+    </div>
+    <div class="card">
+      <div class="stage"><img src="09-dr-bo-bobcat-labcoat.svg" alt="Dr. Bo the Bobcat, specialist"></div>
+      <div class="meta"><h2>9 · Dr. Bo the Bobcat</h2><p>Specialist — lab coat, stethoscope, mouth mirror</p>
+        <div class="chips"><span class="chip m">Male</span></div></div>
+    </div>
+  </div>
+
+  <div class="scale-demo">
+    <h2>Scalability check</h2>
+    <p class="sub">Same SVG file rendered at favicon size through hero size — no quality loss at any scale.</p>
+    <div class="scale-row">
+      <figure><img src="04-sparkle-rainbow-tooth.svg" width="24" height="24" alt=""><figcaption>24px</figcaption></figure>
+      <figure><img src="04-sparkle-rainbow-tooth.svg" width="48" height="48" alt=""><figcaption>48px</figcaption></figure>
+      <figure><img src="04-sparkle-rainbow-tooth.svg" width="96" height="96" alt=""><figcaption>96px</figcaption></figure>
+      <figure><img src="04-sparkle-rainbow-tooth.svg" width="192" height="192" alt=""><figcaption>192px</figcaption></figure>
+      <figure><img src="04-sparkle-rainbow-tooth.svg" width="320" height="320" alt=""><figcaption>320px</figcaption></figure>
+    </div>
+  </div>
+</body>
+</html>

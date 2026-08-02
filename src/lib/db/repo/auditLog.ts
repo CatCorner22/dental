@@ -4,10 +4,19 @@ import { auditLog, type AuditLogRow } from "../schema";
 
 export async function logAction(
   db: Db,
-  entry: { actorId: string | null; action: string; target?: string | null; detail?: string | null }
+  entry: {
+    actorId: string | null;
+    // Frozen "Display (username)" — survives the actor's later deletion, so
+    // the log never degrades to "unknown". Omit only for system actions.
+    actorName?: string | null;
+    action: string;
+    target?: string | null;
+    detail?: string | null;
+  }
 ): Promise<void> {
   await db.insert(auditLog).values({
     actorId: entry.actorId,
+    actorName: entry.actorName ?? null,
     action: entry.action,
     target: entry.target ?? null,
     detail: entry.detail ?? null

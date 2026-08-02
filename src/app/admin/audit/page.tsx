@@ -15,6 +15,7 @@ const ACTION_LABEL: Record<string, string> = {
   "user.reset-password": "Password reset (by admin)",
   "user.self-password": "Password changed (self)",
   "draft.transfer": "Draft transferred",
+  "draft.delete": "Draft deleted",
   "notice.ack": "Notice acknowledged",
   submit: "Note submitted",
   "submit.email-failed": "Note submitted (email failed)",
@@ -52,7 +53,11 @@ export default async function AuditLogPage() {
             {log.map((e) => (
               <tr key={e.id} className="border-b border-slate-100 last:border-0">
                 <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-500">{e.at.toISOString().replace("T", " ").slice(0, 16)}</td>
-                <td className="px-3 py-2">{e.actorId ? (nameById.get(e.actorId) ?? "unknown") : "system"}</td>
+                <td className="px-3 py-2">
+                  {e.actorId
+                    ? (nameById.get(e.actorId) ?? (e.actorName ? `${e.actorName} (deleted)` : "unknown"))
+                    : "system"}
+                </td>
                 <td className="px-3 py-2">{ACTION_LABEL[e.action] ?? e.action}</td>
                 <td className="px-3 py-2 font-mono text-xs">{e.target ?? "—"}</td>
                 <td className="px-3 py-2 text-xs text-slate-500">{e.detail ?? ""}</td>

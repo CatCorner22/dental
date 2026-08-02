@@ -179,30 +179,45 @@ describe("db layer (PGlite)", () => {
     };
     const build = (ticket: string) => ({ note: `# note ${ticket}`, audit: `# audit ${ticket}` });
 
-    const first = await fileSubmissionAtomic(db, shell, now, build);
+    const first = await fileSubmissionAtomic(db, shell, 1, now, build);
     expect(first.filed).toBe(true);
     // The frozen text is never blank — the shell insert and finalize commit together.
     if (first.filed) {
       const row = await getSubmission(db, first.submissionId);
       expect(row?.noteMarkdown).toContain(first.ticket);
       expect(row?.auditReport).toContain(first.ticket);
+      // The claim bumps the version, so a queued pre-submit autosave 409s
+      // instead of silently reopening the just-submitted draft.
+      expect(first.version).toBe(2);
     }
     // A concurrent/duplicate submit of the same unedited draft is refused with
     // no second ticket.
-    const second = await fileSubmissionAtomic(db, shell, now, build);
+    const second = await fileSubmissionAtomic(db, shell, 2, now, build);
     expect(second.filed).toBe(false);
     expect(await draftSubmissionCount(db, d.id)).toBe(1);
 
+    // A queued autosave from before the submit is a stale write now.
+    expect(await updateDraftChecked(db, d.id, 1, { status: "ready" }, now)).toBeUndefined();
+
+    // An edit at the CURRENT version reopens the draft…
+    await updateDraftChecked(db, d.id, 2, { status: "ready" }, now);
+    // …but a submit still pinned to a superseded version is refused: the
+    // note changed after that submit's copy was composed and audited.
+    const stale = await fileSubmissionAtomic(db, shell, 2, now, build);
+    expect(stale.filed).toBe(false);
+    expect(await draftSubmissionCount(db, d.id)).toBe(1);
+
     // A rolled-back attempt (the frozen builder throws) leaves no phantom row
-    // and the draft still reads submitted.
-    await updateDraftChecked(db, d.id, 1, { status: "ready" }, now); // simulate an edit re-opening it
+    // and the claim (status AND version bump) rolls back with it.
     await expect(
-      fileSubmissionAtomic(db, shell, now, () => {
+      fileSubmissionAtomic(db, shell, 3, now, () => {
         throw new Error("compose failed");
       })
     ).rejects.toBeTruthy();
     expect(await draftSubmissionCount(db, d.id)).toBe(1); // no blank ticket added
-    expect((await getDraft(db, d.id))?.status).toBe("ready"); // claim rolled back
+    const after = await getDraft(db, d.id);
+    expect(after?.status).toBe("ready"); // claim rolled back
+    expect(after?.version).toBe(3); // version bump rolled back too
   });
 
   it("claims a draft for submission exactly once until it is edited", async () => {

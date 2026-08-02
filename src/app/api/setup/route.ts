@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { countUsers, createFirstAdminGuarded } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword } from "@/lib/auth/password";
 
 export const runtime = "nodejs";
@@ -11,13 +12,11 @@ export async function POST(req: Request): Promise<Response> {
   if ((await countUsers(db)) > 0) {
     return Response.json({ error: "Setup is already complete." }, { status: 409 });
   }
-  let body: unknown;
-  try {
-    body = await req.json();
-  } catch {
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
-  const b = body as Record<string, unknown>;
+  const b = parsed.value;
   const username = typeof b.username === "string" ? b.username.trim() : "";
   const displayName = typeof b.displayName === "string" && b.displayName.trim() ? b.displayName.trim() : username;
   const password = typeof b.password === "string" ? b.password : "";

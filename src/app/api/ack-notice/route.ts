@@ -11,6 +11,10 @@ export async function POST(): Promise<Response> {
   if (!guard.ok) return guard.response;
   const db = await getDb();
   await ackNotice(db, guard.user.id, new Date());
-  await logAction(db, { actorId: guard.user.id, action: "notice.ack" });
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "notice.ack"
+  });
   return Response.json({ ok: true });
 }

@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { getDraft, transferDraft } from "@/lib/db/repo/drafts";
 import { getUserById } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { readJsonRecord } from "@/lib/http/readJson";
 
 export const runtime = "nodejs";
 
@@ -15,12 +16,11 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) return Response.json({ error: "Draft not found." }, { status: 404 });
-  let b: Record<string, unknown> = {};
-  try {
-    b = (await req.json()) as Record<string, unknown>;
-  } catch {
+  const parsed = await readJsonRecord(req);
+  if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
+  const b = parsed.value;
   const toUserId = typeof b.toUserId === "string" ? b.toUserId : "";
   const to = await getUserById(db, toUserId);
   if (!to || !to.active) {
@@ -35,6 +35,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   await transferDraft(db, id, toUserId, new Date());
   await logAction(db, {
     actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
     action: "draft.transfer",
     target: id,
     detail: `${draft.ownerId} -> ${toUserId}`

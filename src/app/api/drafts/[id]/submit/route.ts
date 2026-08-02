@@ -46,6 +46,18 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   } catch {
     /* format defaults below */
   }
+  // Poka-yoke: the corporate address is server configuration, never client
+  // input. A request that even TRIES to steer the recipient is refused loudly
+  // (the README promises this), not silently ignored.
+  for (const key of ["to", "cc", "bcc", "recipient", "recipients", "email", "address"]) {
+    if (key in body) {
+      return Response.json(
+        { error: "This endpoint never accepts a recipient. The corporate address is fixed on the server." },
+        { status: 400 }
+      );
+    }
+  }
+
   const format = body.format === "txt" ? "txt" : "md";
   const phiOverride =
     body.phiOverride &&

@@ -32,7 +32,16 @@
 // notice. Attributing a rise in refusals to the right cause is impossible without
 // recording what answered the call.
 
-export type DriftOutcome = "ok" | "verifier-rejected" | "phi-blocked" | "model-error";
+export type DriftOutcome =
+  | "ok"
+  | "verifier-rejected"
+  | "phi-blocked"
+  | "model-error"
+  // From main's schema-constrained list path: the model answered but the answer
+  // did not fit the contract. Distinct from model-error on purpose — a provider
+  // that is down is somebody else's problem, and a provider returning malformed
+  // structure is a signal about the model or the prompt.
+  | "invalid-shape";
 
 export interface DriftEvent {
   outcome: DriftOutcome;
@@ -41,6 +50,12 @@ export interface DriftEvent {
   model: string;
   /** Rejection codes, or PHI rule ids. Never text. */
   codes: string[];
+  /**
+   * Tokens the call consumed, from main's metering. Zero when the provider was
+   * never reached, which is most refusals — a PHI block costs nothing, and that
+   * asymmetry is itself worth seeing.
+   */
+  tokens: number;
   at: Date;
 }
 
@@ -57,20 +72,27 @@ export interface DriftEvent {
  */
 export function encodeDriftDetail(e: Omit<DriftEvent, "at">): string {
   const codes = e.codes.length > 0 ? ` codes=${e.codes.join("+")}` : "";
-  return `${e.outcome} cap=${e.capability} prompt=${e.promptVersion} model=${e.model}${codes}`;
+  return `${e.outcome} cap=${e.capability} prompt=${e.promptVersion} model=${e.model} tokens=${e.tokens}${codes}`;
 }
 
 export function decodeDriftDetail(detail: string): Omit<DriftEvent, "at"> | null {
-  const m = /^(\S+) cap=(\S+) prompt=(\S+) model=(\S+?)(?: codes=(\S+))?$/.exec(detail.trim());
+  const m = /^(\S+) cap=(\S+) prompt=(\S+) model=(\S+?)(?: tokens=(\d+))?(?: codes=(\S+))?$/.exec(
+    detail.trim()
+  );
   if (!m) return null;
   const outcome = m[1] as DriftOutcome;
-  if (!["ok", "verifier-rejected", "phi-blocked", "model-error"].includes(outcome)) return null;
+  if (
+    !["ok", "verifier-rejected", "phi-blocked", "model-error", "invalid-shape"].includes(outcome)
+  ) {
+    return null;
+  }
   return {
     outcome,
     capability: m[2],
     promptVersion: m[3],
     model: m[4],
-    codes: m[5] ? m[5].split("+").filter(Boolean) : []
+    tokens: m[5] ? Number(m[5]) : 0,
+    codes: m[6] ? m[6].split("+").filter(Boolean) : []
   };
 }
 
@@ -125,6 +147,15 @@ export function summarize(events: DriftEvent[]): DriftWindow {
         break;
       case "phi-blocked":
         phiBlocked++;
+        for (const c of e.codes) codes.set(c, (codes.get(c) ?? 0) + 1);
+        break;
+      case "invalid-shape":
+        // Counted with the refusals: the model DID answer, and the answer was
+        // rejected. Filing it under provider errors would hide a prompt or model
+        // regression behind a number nobody reads as a quality signal.
+        refused++;
+        model.answered++;
+        model.refused++;
         for (const c of e.codes) codes.set(c, (codes.get(c) ?? 0) + 1);
         break;
       case "model-error":

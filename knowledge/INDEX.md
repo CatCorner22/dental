@@ -20,6 +20,7 @@ sources below rather than repeating them, and carries the open questions and nex
 ## Assessments derived from the sources above
 
 - **[Benchmark: Smile Notes vs Curve Hero](benchmarks/smile-notes-vs-curve-hero.md)** — Capability-by-capability assessment against the Curve Hero baseline, assessed against the code rather than the README, and careful about the framing: Curve Hero is an all-in-one practice management system, so most of its surface is out of scope by design rather than a gap. Tags: dental, pms, benchmarking, clinical-notes. Ingested: 2026-08-03.
+- **[Assessment: UX, visual design, and performance review](benchmarks/ux-performance-review.md)** — Live-browser walkthrough at desktop and mobile widths plus a production-build audit; two real issues found and fixed (mobile audit panel buried below the form, unlazy note-page dialogs), one issue found and deliberately left for a dedicated pass (mobile nav wrapping), and an explicit distinction between what "promote use" should mean for an internal tool versus a storefront. Tags: ux, accessibility, performance, mobile, next.js, benchmarking. Ingested: 2026-08-03.
 
 ## The deployment target
 
@@ -36,4 +37,5 @@ sources below rather than repeating them, and carries the open questions and nex
 
 ## Development methodology
 
+- **[Building Reliable Transformer-Powered Input-to-Standard-Output Tools](sources/transformer-input-to-standard-output-guide.md)** — Architecture guide for input-transformation apps: deterministic cleanup first, typed contracts on both sides of the model, independent validation after, visible diffs, and pipeline-level evaluation. Confirms most of what this project already does and named the gaps that became the diff, preview-then-apply, schema-constrained capabilities, eval set and telemetry. Its provider-portability chapters are deliberately **not** adopted — one platform, by the owner's decision. Tags: architecture, transformer, ai-documentation, verification, prompt-engineering, process, security, evaluation. Ingested: 2026-08-03.
 - **[Cross-platform LLM Code Transformer Skills Suite — adoption digest](sources/llm-transformer-skills-suite.md)** — User-supplied agent-skill pack (16x-style transformer workflow, verification suite, SICA-style continuous improvement); the practices worth keeping were distilled into `.cursor/rules/transformer-development.mdc` rather than vendoring the generic files, and the suite's chain-of-verification idea exists in the product in stronger deterministic form as `verifyMeaning()`. Tags: agent-skills, verification, process, prompt-engineering. Ingested: 2026-08-03.

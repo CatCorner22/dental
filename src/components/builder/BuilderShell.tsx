@@ -11,6 +11,7 @@ import {
   useRef,
   useState
 } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
@@ -27,7 +28,24 @@ import { AuditPanel } from "./AuditPanel";
 import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
-import { ConflictDialog, PhiOverrideDialog, SubmitDialog } from "./BuilderDialogs";
+import { Dialog } from "@/components/ui/Dialog";
+
+// None of these three render on first paint — a conflict, a PHI override,
+// and a submit confirmation are all things that happen only after an edit
+// or a click. Splitting them out of the initial chunk keeps their weight
+// (and react-markdown-adjacent Sparkle copy) off the note page's first load,
+// which is the heaviest page in the app. `ssr: false` is safe: none of the
+// three is ever the FIRST thing rendered for a request — they only appear
+// after client-side state changes post-mount.
+const ConflictDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.ConflictDialog), {
+  ssr: false
+});
+const PhiOverrideDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.PhiOverrideDialog), {
+  ssr: false
+});
+const SubmitDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.SubmitDialog), {
+  ssr: false
+});
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -77,6 +95,13 @@ export function BuilderShell({
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  // Below `lg` the module rail, form, and Sidekick stack vertically (see the
+  // flex-col wrapper below), which buried live audit feedback under the
+  // entire form — a clinician charting on a phone or tablet had to scroll
+  // past everything just to see whether the note was blocked. This mirrors
+  // the Sidekick into a reachable sheet on those screens instead; the desktop
+  // sticky aside is untouched.
+  const [showMobileAudit, setShowMobileAudit] = useState(false);
 
   const autosave = useAutosave(draftId, initialVersion);
   const { markEdited, flush } = autosave;
@@ -92,37 +117,30 @@ export function BuilderShell({
   const [resentNow, setResentNow] = useState(false);
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
-  // Small screens only — the lg: classes keep the rail permanently open on a
-  // desktop, where it is a column beside the form rather than a lid on top of it.
-  const [railOpen, setRailOpen] = useState(false);
 
   // TYPING FIRST, GRADING A BEAT LATER.
   //
-  // composeNote + runAudit used to run on `state` directly, which put the whole
-  // audit stack between a key going down and the letter appearing: ~3 ms for a
-  // typical note and ~13 ms for a fully loaded one on a developer machine, on
-  // top of re-rendering every visible field. A clinician's tablet is several
-  // times slower than that machine, and holding ten keystrokes meant paying it
-  // ten times.
+  // composeNote + runAudit ran on `state` directly, which put the whole audit
+  // stack between a key going down and the letter appearing: ~3 ms for a typical
+  // note and ~13 ms fully loaded on a developer machine, and a burst of ten
+  // keystrokes paid it ten times. A clinician's tablet is several times slower.
   //
-  // Deferring the audited copy of the state costs a burst of typing ONE audit
-  // instead of one per character, and React can abandon a run that a newer
-  // keystroke has already invalidated. The input stays fully controlled, so no
-  // character is ever dropped or reordered.
+  // Deferring the audited copy costs a typing burst ONE audit instead of one per
+  // character, and React can abandon a run a newer keystroke already invalidated.
+  // The inputs stay fully controlled, so no character is dropped or reordered, and
+  // the autosave effect deliberately keeps using the FRESH state: what gets saved
+  // must never lag what was typed.
   //
-  // Safe because the client audit was never the gate. The submit route
-  // re-composes and re-audits server-side and refuses with 422 on any open
-  // STOP or REQUIRED finding, so the worst a momentarily stale panel can do is
-  // show the andon a frame late — which `auditing` below says out loud rather
-  // than hiding. The autosave effect deliberately keeps using the FRESH state:
-  // what gets saved must never lag behind what was typed.
+  // Safe because the client audit was never the gate — the submit route re-composes
+  // and re-audits server-side and refuses with 422 on any open STOP or REQUIRED
+  // finding. While the panel catches up it says so out loud rather than letting a
+  // settled-looking report describe a note that has moved on.
   const deferredState = useDeferredValue(state);
   const auditing = deferredState !== state;
 
-  // The form's module list stays FRESH. Ticking a module is a discrete choice
-  // and its section has to appear under the finger that ticked it; only the
-  // graded copy below is allowed to lag. activeModules is a filter over ~32
-  // definitions, so computing both is free.
+  // The FORM's module list stays fresh: ticking a module is a discrete choice and
+  // its section has to appear under the finger that ticked it. activeModules is a
+  // filter over ~32 definitions, so computing both is free.
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
   const auditModules = useMemo(
     () => activeModules(deferredState.selectedModuleIds),
@@ -181,12 +199,12 @@ export function BuilderShell({
     return changed;
   }, [phiFindings, state.values, dispatch]);
   const gates = computeGates(report, overrideActive);
-  // From the SAME snapshot the report came from, deliberately. Read from the
-  // fresh state instead, the first keystroke of a note would set hasContent
-  // true while the counts were still all zero — and deriveDraftStatus turns
-  // that pair into "Ready to submit", in green, on an empty note with every
-  // required field still open. An andon that flashes the wrong colour is worse
-  // than one that takes an extra frame to be right.
+  // From the SAME snapshot the report came from, deliberately. Read from the fresh
+  // state instead, the first keystroke of a note would set hasContent true while
+  // the counts were still all zero — and deriveDraftStatus turns that pair into
+  // "Ready to submit", in green, on an empty note with every required field still
+  // open. An andon that flashes the wrong colour is worse than one that takes an
+  // extra frame to be right.
   const hasContent = useMemo(
     () => Object.values(deferredState.values).some((v) => !isValueEmpty(v)),
     [deferredState.values]
@@ -325,18 +343,74 @@ export function BuilderShell({
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
 
+  // Shared between the desktop sticky aside and the mobile audit sheet, so
+  // the two never drift into two different implementations of the same
+  // panel. Closes over local state directly rather than taking props — it is
+  // rendered, not reused as a component, so there is no extra fiber or
+  // remount cost to doing it this way.
+  const sidekickBody = (
+    <>
+      <div className="mb-3 flex items-center gap-3">
+        <ProgressRing counts={report.counts} />
+        <div className="min-w-0">
+          <StatusChip status={liveStatus} />
+          <p className="mt-1 text-xs text-slate-500">
+            {auditing ? "Checking the latest edit…" : report.status}
+          </p>
+        </div>
+      </div>
+      <div className="mb-3 flex gap-1">
+        {([["audit", `Audit (${report.findings.length})`], ["preview", "Preview"]] as const).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            aria-pressed={tab === t}
+            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="pane-60">
+        {tab === "audit" ? (
+          <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+        ) : (
+          <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
+          Download .md
+        </button>
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}>
+          Download .txt
+        </button>
+        {report.phiStops.length > 0 && !overrideActive && (
+          <button
+            type="button"
+            className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
+            onClick={() => {
+              setShowMobileAudit(false);
+              setShowOverride(true);
+            }}
+          >
+            Review privacy stop
+          </button>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="pb-24">
       {/* Sticky patient-header-style bar */}
       <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
         <div className="flex flex-wrap items-center gap-3">
-          {/* Full width on its own row below lg. Sharing a wrapped flex row
-              with the office picker, the status chip, the save indicator and
-              three buttons squeezed `min-w-0 flex-1` down to about two
-              characters at 390px — the note's own name rendered as "Hy". It is
-              the one thing in this bar that identifies what you are editing. */}
           <input
-            className="tap-input w-full min-w-0 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent lg:w-auto lg:flex-1"
+            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent"
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
@@ -367,20 +441,6 @@ export function BuilderShell({
             </select>
           )}
           <StatusChip status={liveStatus} size="md" />
-          {/* Below lg the Sidekick is not a column beside the form, it is a
-              panel BELOW it — past a note that can run to hundreds of fields.
-              So on a phone the andon was, in practice, unreachable: the live
-              findings, the export buttons, and the only route to the privacy
-              dialog all sat somewhere off the bottom of the page. The chip in
-              this always-visible bar says WHAT the state is; this says where to
-              go and read why. Instant jump, not a smooth scroll — globals.css
-              explains why that matters for a tap. */}
-          <a
-            href="#sidekick"
-            className="tap rounded-full border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 lg:hidden"
-          >
-            {auditing ? "Checking…" : `Audit (${report.findings.length})`}
-          </a>
           {canEdit && <SaveIndicator state={autosave.state} />}
           {canEdit && liveStatus === "error" && (
             <button
@@ -420,62 +480,62 @@ export function BuilderShell({
         </p>
       )}
 
+      {/* Mobile/tablet audit bar. Below `lg` the module rail, form, and
+          Sidekick stack vertically (see the flex-col wrapper just below),
+          which buried live audit feedback under the entire form — reaching
+          it meant scrolling past every field first. Placed here, above that
+          stack, it is visible without scrolling and opens the same Sidekick
+          content in a dismissible sheet. */}
+      <button
+        type="button"
+        onClick={() => setShowMobileAudit(true)}
+        className="tap mb-4 flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm lg:hidden"
+      >
+        <ProgressRing counts={report.counts} />
+        <span className="min-w-0 flex-1">
+          <StatusChip status={liveStatus} />
+          <span className="mt-0.5 block truncate text-xs text-slate-500">
+            {report.findings.length === 0
+              ? "No findings — view audit & preview"
+              : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — view audit & preview`}
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-slate-400">▸</span>
+      </button>
+
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Module rail.
-            Collapsed below lg, and that is a fix rather than a preference. On a
-            phone or a held tablet this column is not beside the form, it is
-            ABOVE it — so a 55dvh scrolling list of 31 checkboxes was the entire
-            first screenful of every visit to a note, every time, including the
-            hundred visits where the modules were already right. The picker is a
-            once-per-note decision and now reads as one. Desktop is unchanged. */}
+        {/* Module rail */}
         <aside className="shrink-0 lg:w-60">
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
-            <button
-              type="button"
-              className="tap flex w-full items-center justify-between gap-2 text-left text-sm font-bold text-slate-800 lg:hidden"
-              aria-expanded={railOpen}
-              aria-controls="module-rail"
-              onClick={() => setRailOpen((v) => !v)}
-            >
-              <span>
-                Modules{" "}
-                <span className="font-normal text-slate-500">
-                  ({state.selectedModuleIds.length + 1} on)
-                </span>
-              </span>
-              <span aria-hidden>{railOpen ? "▲" : "▼"}</span>
-            </button>
-            <h2 className="mb-2 hidden text-sm font-bold text-slate-800 lg:block">Modules</h2>
-            <div id="module-rail" className={railOpen ? "mt-2 lg:mt-0" : "hidden lg:block"}>
-              <input
-                type="search"
-                className="field-input mb-1.5 py-1 text-xs"
-                placeholder="Filter modules…"
-                value={moduleQuery}
-                onChange={(e) => setModuleQuery(e.target.value)}
-                aria-label="Filter the module list"
-              />
-              <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
-                <input type="checkbox" checked disabled /> Universal Core
-              </label>
-              <div className="pane-55 space-y-0.5">
-                {ALL_MODULES.filter((m) => !m.alwaysOn && moduleMatches(m, moduleQuery)).map((m) => (
-                  <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
-                    <input
-                      type="checkbox"
-                      disabled={!canEdit}
-                      checked={state.selectedModuleIds.includes(m.id)}
-                      onChange={() => {
-                        const removing = state.selectedModuleIds.includes(m.id);
-                        const hasValues = Object.keys(state.values).some((k) => k.startsWith(`${m.id}.`));
-                        if (removing && hasValues && !window.confirm(`Discard the entered ${m.title} data?`)) return;
-                        dispatch({ type: "toggleModule", moduleId: m.id });
-                      }}
-                    />
-                    {m.title.replace(" Add-On", "")}
-                  </label>
-                ))}
-              </div>
+            <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
+            <input
+              type="search"
+              className="field-input mb-1.5 py-1 text-xs"
+              placeholder="Filter modules…"
+              value={moduleQuery}
+              onChange={(e) => setModuleQuery(e.target.value)}
+              aria-label="Filter the module list"
+            />
+            <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
+              <input type="checkbox" checked disabled /> Universal Core
+            </label>
+            <div className="pane-55 space-y-0.5">
+              {ALL_MODULES.filter((m) => !m.alwaysOn && moduleMatches(m, moduleQuery)).map((m) => (
+                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
+                  <input
+                    type="checkbox"
+                    disabled={!canEdit}
+                    checked={state.selectedModuleIds.includes(m.id)}
+                    onChange={() => {
+                      const removing = state.selectedModuleIds.includes(m.id);
+                      const hasValues = Object.keys(state.values).some((k) => k.startsWith(`${m.id}.`));
+                      if (removing && hasValues && !window.confirm(`Discard the entered ${m.title} data?`)) return;
+                      dispatch({ type: "toggleModule", moduleId: m.id });
+                    }}
+                  />
+                  {m.title.replace(" Add-On", "")}
+                </label>
+              ))}
             </div>
           </div>
         </aside>
@@ -493,66 +553,12 @@ export function BuilderShell({
           </fieldset>
         </section>
 
-        {/* Sidekick */}
-        <aside id="sidekick" className="scroll-mt-24 shrink-0 lg:w-[26rem]">
-          <div
-            className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20"
-            aria-busy={auditing}
-          >
-            <div className="mb-3 flex items-center gap-3">
-              <ProgressRing counts={report.counts} />
-              <div className="min-w-0">
-                <StatusChip status={liveStatus} />
-                {/* Says which of the two things is true rather than letting a
-                    settled-looking panel describe a note that has moved on. */}
-                <p className="mt-1 text-xs text-slate-500">
-                  {auditing ? "Checking the latest edit…" : report.status}
-                </p>
-              </div>
-            </div>
-            <div className="mb-3 flex gap-1">
-              {([["audit", `Audit (${report.findings.length})`], ["preview", "Preview"]] as const).map(([t, label]) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  aria-pressed={tab === t}
-                  className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="pane-60">
-              {tab === "audit" ? (
-                <AuditPanel report={report} />
-              ) : (
-                <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
-              )}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
-                {copied ? "Copied ✓" : "Copy"}
-              </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
-                Download .md
-              </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}>
-                Download .txt
-              </button>
-              {report.phiStops.length > 0 && !overrideActive && (
-                <button
-                  type="button"
-                  // Was an 18px text link sitting beside three 44px buttons —
-                  // and it is the ONLY route to the privacy dialog, i.e. the
-                  // single control between a flagged identifier and an
-                  // unblocked submit. It gets a real target and real weight.
-                  className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
-                  onClick={() => setShowOverride(true)}
-                >
-                  Review privacy stop
-                </button>
-              )}
-            </div>
+        {/* Sidekick — desktop only below `lg`; the mobile bar + sheet above
+            covers the same ground where this would otherwise sit below the
+            entire form. */}
+        <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
+          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
+            {sidekickBody}
           </div>
         </aside>
       </div>
@@ -570,6 +576,11 @@ export function BuilderShell({
         </div>
       )}
 
+      {showMobileAudit && (
+        <Dialog title="Audit & preview" onClose={() => setShowMobileAudit(false)}>
+          {sidekickBody}
+        </Dialog>
+      )}
       {showOverride && (
         <PhiOverrideDialog
           phiStops={report.phiStops}

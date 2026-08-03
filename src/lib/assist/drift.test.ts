@@ -22,15 +22,24 @@ const ev = (
   outcome: DriftEvent["outcome"],
   codes: string[] = [],
   model = "anthropic/claude-sonnet-4.5"
-): DriftEvent => ({ outcome, capability: "normalize", promptVersion: "1.1.0", model, codes, at });
+): DriftEvent => ({
+  outcome,
+  capability: "normalize",
+  promptVersion: "1.2.0",
+  model,
+  codes,
+  tokens: 0,
+  at
+});
 
 describe("the wire format survives a round trip", () => {
   it("encodes and decodes an outcome with codes", () => {
     const e = {
       outcome: "verifier-rejected" as const,
       capability: "normalize",
-      promptVersion: "1.1.0",
+      promptVersion: "1.2.0",
       model: "anthropic/claude-sonnet-4.5",
+      tokens: 412,
       codes: ["content-invented", "site-changed"]
     };
     expect(decodeDriftDetail(encodeDriftDetail(e))).toEqual(e);
@@ -40,8 +49,9 @@ describe("the wire format survives a round trip", () => {
     const e = {
       outcome: "ok" as const,
       capability: "soap",
-      promptVersion: "1.1.0",
+      promptVersion: "1.2.0",
       model: "openai/gpt-5",
+      tokens: 0,
       codes: []
     };
     expect(decodeDriftDetail(encodeDriftDetail(e))).toEqual(e);
@@ -184,8 +194,9 @@ describe("the privacy contract is not relaxed to get the signal", () => {
     const detail = encodeDriftDetail({
       outcome: out.code,
       capability: "normalize",
-      promptVersion: "1.1.0",
+      promptVersion: "1.2.0",
       model: "anthropic/claude-sonnet-4.5",
+      tokens: 0,
       codes: out.codes
     });
     // The codes ARE present — that is the signal, and rule ids are constants.
@@ -207,8 +218,9 @@ describe("the privacy contract is not relaxed to get the signal", () => {
     const detail = encodeDriftDetail({
       outcome: out.code,
       capability: "normalize",
-      promptVersion: "1.1.0",
+      promptVersion: "1.2.0",
       model: "m",
+      tokens: 0,
       codes: out.codes
     });
     expect(detail).not.toMatch(/consent|alternatives|extraction/i);

@@ -71,7 +71,7 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "edema",
     pattern: /\b(?:edema|oedema)\b/gi,
-    display: "edema",
+    display: "edema / oedema",
     replacement: "swelling"
   },
   {
@@ -89,20 +89,20 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "necrotic",
     pattern: /\bnecro(?:tic|sis)\b/gi,
-    display: "necrotic",
+    display: "necrotic / necrosis",
     replacement: "the nerve inside the tooth has died"
   },
   {
     id: "pulp",
     pattern: /\bpulp(?:al|itis)?\b/gi,
-    display: "pulp",
+    display: "pulp / pulpal / pulpitis",
     replacement: "the nerve and blood vessels inside the tooth"
   },
 
   // --- what the clinician did ---
   {
     id: "extraction",
-    pattern: /\bextraction?s?\b/gi,
+    pattern: /\bextractions?\b/gi,
     display: "extraction",
     replacement: "taking the tooth out"
   },
@@ -126,14 +126,14 @@ export const PLAIN_WORDS: PlainWord[] = [
   },
   {
     id: "endodontic",
-    pattern: /\bendodontics?\b|\bendodontic\b/gi,
+    pattern: /\bendodontics?\b/gi,
     display: "endodontic",
     replacement: "root canal treatment"
   },
   {
     id: "anesthetic",
     pattern: /\ban(?:a)?esthe(?:tic|sia)\b/gi,
-    display: "anesthetic",
+    display: "anesthetic / anesthesia",
     replacement: "numbing medicine"
   },
   {
@@ -151,7 +151,7 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "palpation",
     pattern: /\bpalpat(?:e|ed|ion)\b/gi,
-    display: "palpation",
+    display: "palpation / palpate",
     replacement: "pressing with the fingers to check"
   },
   {
@@ -189,7 +189,7 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "occlusion",
     pattern: /\bocclusion\b|\bocclusal\b/gi,
-    display: "occlusion",
+    display: "occlusion / occlusal",
     replacement: "the way the teeth meet when you bite"
   },
   {
@@ -203,13 +203,13 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "maxillary",
     pattern: /\bmaxillary\b|\bmaxilla\b/gi,
-    display: "maxillary",
+    display: "maxillary / maxilla",
     replacement: "upper jaw"
   },
   {
     id: "mandibular",
     pattern: /\bmandibular\b|\bmandible\b/gi,
-    display: "mandibular",
+    display: "mandibular / mandible",
     replacement: "lower jaw"
   },
   {
@@ -253,7 +253,7 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "etiology",
     pattern: /\b(?:etiology|aetiology)\b/gi,
-    display: "etiology",
+    display: "etiology / aetiology",
     replacement: "the cause"
   },
   {
@@ -309,7 +309,7 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "initiate",
     pattern: /\binitiat(?:e|ed|es|ing)\b|\bcommenc(?:e|ed|es|ing)\b/gi,
-    display: "initiate",
+    display: "initiate / commence",
     replacement: "start"
   },
   {
@@ -321,7 +321,7 @@ export const PLAIN_WORDS: PlainWord[] = [
   {
     id: "at-this-point-in-time",
     pattern: /\bat this (?:point in time|time)\b/gi,
-    display: "at this point in time",
+    display: "at this point in time / at this time",
     replacement: "now"
   }
 ];

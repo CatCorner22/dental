@@ -6,6 +6,13 @@ import {
   SYSTEM_PROMPTS,
   type AssistCapability
 } from "./prompts";
+import {
+  CONFLICTS_SCHEMA,
+  QUESTIONS_SCHEMA,
+  conflictsToLines,
+  validateConflicts,
+  validateQuestions
+} from "./schemas";
 
 // The assist service: one narrow doorway through which every AI call passes.
 //
@@ -42,6 +49,22 @@ export function getAssistConfig(
 
 export type GenerateFn = (args: { system: string; prompt: string }) => Promise<string>;
 
+/**
+ * The structured seam, for capabilities whose answer is a LIST.
+ *
+ * Separate from GenerateFn rather than folded into it, because the two return
+ * genuinely different things and a union return type would push the branch into
+ * every caller. Injected the same way, so the adversarial test double can lie in
+ * this direction too — returning the wrong shape, an assertion dressed as a
+ * question, or a conflict between a sentence and itself.
+ */
+export type GenerateListFn = (args: {
+  system: string;
+  prompt: string;
+  schemaName: string;
+  schema: Record<string, unknown>;
+}) => Promise<unknown>;
+
 export type AssistOutcome =
   | {
       ok: true;
@@ -50,10 +73,17 @@ export type AssistOutcome =
       promptVersion: string;
       /** Which practice-standards sections were retrieved into the prompt. */
       retrievedSources: string[];
+      /**
+       * Set for the list capabilities. `text` stays populated (one item per
+       * line) so the verifier and any plain-text consumer keep working, but the
+       * UI should render THIS — it is the validated structure rather than a
+       * string somebody has to split again.
+       */
+      items?: string[];
     }
   | {
       ok: false;
-      code: "phi-blocked" | "verifier-rejected" | "model-error";
+      code: "phi-blocked" | "verifier-rejected" | "model-error" | "invalid-shape";
       /** Cold logic for the user: what stopped the call and what to do. */
       message: string;
       rejections?: VerifyRejection[];
@@ -61,10 +91,10 @@ export type AssistOutcome =
        * Machine-readable reasons, uniform across every failure kind: verifier
        * rejection codes, or the PHI rule ids that blocked the call.
        *
-       * Exists so the drift log has one field to read instead of a switch. These
-       * are all constants from this codebase — rule names — and never anything
-       * derived from the text, which is what keeps the "no note content is ever
-       * logged" contract true while still making the signal legible.
+       * Exists so the drift monitor has ONE field to read instead of a switch on
+       * `code`. Every value is a constant from this codebase — a rule name — and
+       * never anything derived from the text, which is what keeps "no note content
+       * is ever logged" true while still making the signal legible.
        */
       codes: string[];
     };
@@ -74,29 +104,15 @@ const MAX_INPUT = 20000;
 export async function runAssist(
   capability: AssistCapability,
   text: string,
-  generate: GenerateFn
+  generate: GenerateFn,
+  generateList?: GenerateListFn
 ): Promise<AssistOutcome> {
   const input = text.slice(0, MAX_INPUT);
 
-  // PHI gate.
-  //
-  // EVERY PHI finding blocks this call, not only the S0 stops — and the
-  // difference between those two thresholds is the entire point.
-  //
-  // S2 REVIEW is the right severity for a name heuristic inside the tool,
-  // because "Grace Miller" is a patient and "Bradley County" is where the health
-  // department is, and blocking the line on that guess costs more than it gains.
-  // That reasoning depends completely on a human being about to look at it. On
-  // this path there is no human: the text is handed to a third-party provider the
-  // instant the call is made, and no later review can recall it.
-  //
-  // So the bar for LEAVING THE BUILDING is lower than the bar for stopping the
-  // line inside it. Filtering to S0 here meant "John Smith presented for recall"
-  // — flagged S2 by the bare-name rule, exactly as designed — was sent to the
-  // provider anyway, which is not a heuristic falling short. It is the sentence
-  // on the front of the README ("No patient identifier ever enters this tool or
-  // any AI platform") not being true.
-  const phi = runPhiRule(input);
+  // PHI gate. ANY phi finding blocks the call — not only S0. Bare-name hits
+  // are S2 for the in-app audit (review, not hard-stop on filing), but an AI
+  // provider is off-server: probable patient names must never leave either.
+  const phi = runPhiRule(input).filter((f) => f.category === "phi");
   if (phi.length > 0) {
     const stops = phi.filter((f) => f.severity === "S0").length;
     return {
@@ -107,6 +123,10 @@ export async function runAssist(
         `The AI was not called. ${phi.length} possible identifier${phi.length === 1 ? "" : "s"} ` +
         `must be removed or masked first — de-identified text is the condition for any AI ` +
         `assistance, with no exception and no override. ` +
+        // Says WHY the same finding is a review elsewhere and a stop here. Without
+        // it, a staff member who has just seen the audit call this an S2 REVIEW
+        // reads the block as the tool contradicting itself, and a rule that looks
+        // arbitrary is a rule that gets worked around.
         (stops < phi.length
           ? `Some of these are flagged for review rather than blocked elsewhere in the app; ` +
             `sending text to an outside provider cannot be reviewed afterwards, so here they stop the call.`
@@ -122,20 +142,85 @@ export async function runAssist(
     ? `${SYSTEM_PROMPTS[capability]}\n\n--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}`
     : SYSTEM_PROMPTS[capability];
 
-  let raw: string;
-  try {
-    raw = await generate({ system, prompt: input });
-  } catch {
-    return {
-      ok: false,
-      code: "model-error",
-      codes: [],
-      message: "The AI service did not answer. The deterministic tools still work — continue without it."
-    };
+  const isList = capability === "interrogate" || capability === "conflicts";
+
+  // The list capabilities go through a SCHEMA, not through prose.
+  //
+  // Constrained decoding fixes the shape; the validators below fix the rest,
+  // because a schema cannot tell a question from an assertion wearing a question
+  // mark's clothes. Both layers report the same way, so a malformed answer is a
+  // stated refusal rather than a UI that renders "Here are the questions:" as
+  // the first question.
+  let output: string;
+  let items: string[] | undefined;
+  if (isList) {
+    if (!generateList) {
+      return {
+        ok: false,
+        code: "model-error",
+        codes: [],
+        message:
+          "This capability needs the structured model binding, which this deployment did not provide. The deterministic tools still work."
+      };
+    }
+    let value: unknown;
+    try {
+      value = await generateList({
+        system,
+        prompt: input,
+        schemaName: capability === "interrogate" ? "OpenQuestions" : "Contradictions",
+        schema: capability === "interrogate" ? QUESTIONS_SCHEMA : CONFLICTS_SCHEMA
+      });
+    } catch {
+      return {
+        ok: false,
+        code: "model-error",
+        codes: [],
+        message:
+          "The AI service did not answer. The deterministic tools still work — continue without it."
+      };
+    }
+    if (capability === "interrogate") {
+      const parsed = validateQuestions(value);
+      if (!parsed.ok) {
+        return {
+          ok: false,
+          code: "invalid-shape",
+          codes: [],
+          message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
+        };
+      }
+      items = parsed.items;
+    } else {
+      const parsed = validateConflicts(value);
+      if (!parsed.ok) {
+        return {
+          ok: false,
+          code: "invalid-shape",
+          codes: [],
+          message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
+        };
+      }
+      items = conflictsToLines(parsed.items);
+    }
+    output = items.join("\n");
+  } else {
+    let raw: string;
+    try {
+      raw = await generate({ system, prompt: input });
+    } catch {
+      return {
+        ok: false,
+        code: "model-error",
+        codes: [],
+        message:
+          "The AI service did not answer. The deterministic tools still work — continue without it."
+      };
+    }
+    output = raw.trim();
   }
 
-  const output = raw.trim();
-  const mode = capability === "interrogate" || capability === "conflicts" ? "questions" : "rewrite";
+  const mode = isList ? "questions" : "rewrite";
   const verdict = verifyMeaning(input, output, { mode });
   if (!verdict.ok) {
     return {
@@ -155,6 +240,7 @@ export async function runAssist(
     text: output,
     capability,
     promptVersion: ASSIST_PROMPT_VERSION,
-    retrievedSources: retrieved.sources
+    retrievedSources: retrieved.sources,
+    ...(items ? { items } : {})
   };
 }

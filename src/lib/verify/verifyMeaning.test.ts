@@ -105,8 +105,38 @@ describe("questions mode", () => {
     expect(r.rejections.some((x) => x.code === "not-questions")).toBe(true);
   });
 
+  it("rejects a short declarative recommendation (length is not a loophole)", () => {
+    const r = verifyMeaning("Pain on tooth 19.", "Tooth 19 needs extraction.", questions);
+    expect(r.rejections.some((x) => x.code === "not-questions")).toBe(true);
+  });
+
+  it("accepts the empty-sentinel lines", () => {
+    const r = verifyMeaning("Tooth 19 restored.", "No open questions.", questions);
+    expect(r.ok).toBe(true);
+  });
+
   it("rejects a question that plants a number the note never had", () => {
     const r = verifyMeaning("Amoxicillin prescribed.", "- Was the dose 500 mg?", questions);
     expect(r.rejections.some((x) => x.code === "digits-changed")).toBe(true);
+  });
+});
+
+describe("invented clinical claims", () => {
+  it("rejects a rewrite that invents a procedure", () => {
+    const r = verifyMeaning(
+      "Tooth 19 examined today.",
+      "Tooth 19 had caries and was extracted today.",
+      rewrite
+    );
+    expect(r.rejections.some((x) => x.code === "claims-added")).toBe(true);
+  });
+
+  it("accepts a rewrite that keeps the same clinical claims", () => {
+    const r = verifyMeaning(
+      "Caries on tooth 19 restored with composite.",
+      "Composite restoration placed for caries on tooth 19.",
+      rewrite
+    );
+    expect(r.ok).toBe(true);
   });
 });

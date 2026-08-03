@@ -31,6 +31,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const result = await decideRedemption(db, {
     id: numericId,
     approve: parsed.value.approve,
+    decidedById: guard.user.id,
     decidedByName: `${guard.user.displayName} (${guard.user.username})`,
     note
   });

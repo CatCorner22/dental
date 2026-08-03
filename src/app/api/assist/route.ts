@@ -1,16 +1,13 @@
-import { generateText } from "ai";
+import { generateObject, generateText, jsonSchema } from "ai";
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 import { getAssistConfig, runAssist } from "@/lib/assist/service";
 import { logAction } from "@/lib/db/repo/auditLog";
-import {
-  ASSIST_CAPABILITIES,
-  ASSIST_PROMPT_VERSION,
-  type AssistCapability
-} from "@/lib/assist/prompts";
 import { encodeDriftDetail } from "@/lib/assist/drift";
+import { ASSIST_CAPABILITIES, ASSIST_PROMPT_VERSION, type AssistCapability } from "@/lib/assist/prompts";
+import { RULESET_VERSION } from "@/lib/version";
 
 export const runtime = "nodejs";
 
@@ -70,46 +67,85 @@ export async function POST(req: Request): Promise<Response> {
   }
   await recordFailure(db, key, now, FREE_RUNS);
 
-  const outcome = await runAssist(capability as AssistCapability, raw, async ({ system, prompt }) => {
-    const res = await generateText({ model: config.model, system, prompt });
-    return res.text;
-  });
+  // Real token usage, captured here rather than plumbed back through the
+  // injected seam — the seam's whole value is that a test can bind an adversary
+  // to it, and widening its return type to carry billing data would make every
+  // double carry billing data too.
+  //
+  // The run meter counts RUNS, which is a proxy: forty one-line questions and
+  // forty full notes cost very different money. Recording what was actually
+  // spent is the prerequisite for metering on it, and is useful on its own —
+  // "which capability costs the practice most" is not answerable today.
+  let usedTokens = 0;
+  const addUsage = (u: { inputTokens?: number; outputTokens?: number } | undefined) => {
+    usedTokens += (u?.inputTokens ?? 0) + (u?.outputTokens ?? 0);
+  };
 
-  // Provenance, when the caller is working a draft: one audit row per
-  // successful assist naming the capability, prompt version, and retrieved
-  // sources — identifiers only, never text. The submit route folds these
-  // into the frozen filing so a reviewer can see which AI touched what.
+  const outcome = await runAssist(
+    capability as AssistCapability,
+    raw,
+    async ({ system, prompt }) => {
+      const res = await generateText({ model: config.model, system, prompt });
+      addUsage(res.usage);
+      return res.text;
+    },
+    // The structured binding, for the capabilities that answer with a list.
+    // The schema constrains what the model may emit; the service validates the
+    // result again on its own terms, because a valid shape is not a valid
+    // answer.
+    async ({ system, prompt, schemaName, schema }) => {
+      const res = await generateObject({
+        model: config.model,
+        system,
+        prompt,
+        schemaName,
+        schema: jsonSchema(schema)
+      });
+      addUsage(res.usage);
+      return res.object;
+    }
+  );
+
+  // Provenance, when the caller owns a draft: one audit row per successful
+  // assist naming the capability, prompt version, and retrieved sources —
+  // identifiers only, never text. Ownership is checked so a caller cannot
+  // stamp assist.used onto a colleague's draft id.
   const draftId = typeof parsed.value.draftId === "string" ? parsed.value.draftId.slice(0, 64) : "";
+  const actor = {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`
+  };
   if (outcome.ok && draftId) {
     await logAction(db, {
-      actorId: guard.user.id,
-      actorName: `${guard.user.displayName} (${guard.user.username})`,
+      ...actor,
       action: "assist.used",
       target: draftId,
-      detail: `${outcome.capability} v${outcome.promptVersion}${outcome.retrievedSources.length ? ` [${outcome.retrievedSources.join(", ")}]` : ""}`
+      detail: `${outcome.capability} v${outcome.promptVersion} ruleset ${RULESET_VERSION} ${usedTokens} tokens${outcome.retrievedSources.length ? ` [${outcome.retrievedSources.join(", ")}]` : ""}`
     });
   }
-
-  // DRIFT ROW — every outcome, including the refusals.
+  // REFUSALS ARE THE MORE INFORMATIVE HALF, and they were not recorded at all.
   //
-  // Only successes were recorded before, which threw away the entire signal.
-  // Each refusal is a labelled example of the model misbehaving, produced free
-  // of charge by a deterministic judge at the moment it happened, and it is the
-  // only way to answer the one question that matters about a language model in
-  // production: is it getting worse? One fabricated sentence is an event and
-  // invisible. `content-invented` climbing from 2% to 30% across a thousand calls
-  // is a provider quietly changing the model behind a version name.
+  // Only successes were logged, so the one question worth asking of a live
+  // deployment — is this AI helping, and where does it fail? — had no data behind
+  // it. A verifier rejection rate that climbs after a model revision is the signal
+  // that the provider changed under you; a PHI-block rate that climbs is a
+  // training problem in the practice, not a software one. Neither is visible from
+  // a log of what worked.
   //
-  // Logged unconditionally, unlike the provenance row above, because a refusal
-  // from the standalone standardizer counts exactly as much as one from a draft.
+  // ONE row per call, in a PARSEABLE format, covering every outcome including the
+  // successes — because a refusal rate needs a denominator, and a prose row cannot
+  // supply one. encodeDriftDetail is read back by the drift monitor on the audit
+  // page, which is where the trend becomes visible; a count nobody aggregates is a
+  // count nobody uses.
   //
-  // NOT ONE CHARACTER OF NOTE TEXT. The capability, the prompt version, the model
-  // identity, and the rejection codes — all constants from this codebase, none
-  // derived from anything anyone typed. The model identity is the load-bearing
-  // field: "anthropic/claude-sonnet-4.5" is a pointer, not a version.
+  // Codes, versions, model identity and token count only. Never the note, never
+  // the prompt, never the model's draft — logging content to "improve quality" is
+  // how a log becomes the least protected copy of the clinical record. The model
+  // identity is the load-bearing field: "anthropic/claude-sonnet-4.5" is a pointer,
+  // not a version, and a rate that moves while nothing in the practice changed is
+  // unattributable without it.
   await logAction(db, {
-    actorId: guard.user.id,
-    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    ...actor,
     action: "assist.drift",
     target: draftId || null,
     detail: encodeDriftDetail({
@@ -117,9 +153,21 @@ export async function POST(req: Request): Promise<Response> {
       capability: capability as AssistCapability,
       promptVersion: ASSIST_PROMPT_VERSION,
       model: config.model,
+      tokens: usedTokens,
       codes: outcome.ok ? [] : outcome.codes
     })
   });
+
+  if (!outcome.ok) {
+    await logAction(db, {
+      ...actor,
+      action: "assist.refused",
+      target: draftId || "(no draft)",
+      detail: `${capability} ${outcome.code} v${ASSIST_PROMPT_VERSION} ruleset ${RULESET_VERSION} ${usedTokens} tokens${
+        outcome.rejections?.length ? ` [${outcome.rejections.map((r) => r.code).join(", ")}]` : ""
+      }`
+    });
+  }
 
   if (!outcome.ok) {
     // 422: the request was understood and refused for a stated reason. The
@@ -132,6 +180,9 @@ export async function POST(req: Request): Promise<Response> {
 
   return Response.json({
     text: outcome.text,
+    // Present for the list capabilities: the validated array, so the browser
+    // never has to re-derive structure by splitting the text back apart.
+    ...(outcome.items ? { items: outcome.items } : {}),
     capability: outcome.capability,
     promptVersion: outcome.promptVersion
   });

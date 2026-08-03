@@ -20,6 +20,11 @@ export interface TrainingScenario {
   text: string;
   /** Rule-id prefixes that MUST fire on the defective text (self-test + honest marketing). */
   plantedRules: string[];
+  /**
+   * Case-specific tokens the repaired text must still carry. Without these,
+   * any clean unrelated note would clear the generic audit and farm the bounty.
+   */
+  requiredEvidence: string[];
   bounty: number;
 }
 
@@ -37,6 +42,7 @@ export const TRAINING_SCENARIOS: TrainingScenario[] = [
       "Local anesthetic administered. Radiographs taken. " +
       "Will complete at the next visit.",
     plantedRules: ["vague.", "complete.anesthetic-no-amount", "complete.imaging-no-interpretation"],
+    requiredEvidence: ["tooth 19", "root canal", "carpule"],
     bounty: TRAINING_BOUNTY
   },
   {
@@ -49,6 +55,7 @@ export const TRAINING_SCENARIOS: TrainingScenario[] = [
       "Scaling and root planing completed, upper right and lower right quadrants. " +
       "Patient given oral hygiene instruction and dismissed in good condition.",
     plantedRules: ["justify.srp-periodontal-evidence"],
+    requiredEvidence: ["scaling", "root planing", "probing", "mm"],
     bounty: TRAINING_BOUNTY
   },
   {
@@ -62,6 +69,7 @@ export const TRAINING_SCENARIOS: TrainingScenario[] = [
       "Gave one teaspoon of oral suspension pre-operatively. " +
       "Procedure completed and patient dismissed with parent.",
     plantedRules: ["medsafe.lb-with-mg-per-kg", "medsafe.household-units"],
+    requiredEvidence: ["midazolam", "kg", "ml"],
     bounty: TRAINING_BOUNTY
   }
 ];
@@ -73,4 +81,13 @@ export const SCENARIO_BY_ID: ReadonlyMap<string, TrainingScenario> = new Map(
 /** A scenario is complete when the repaired text carries no blocking findings. */
 export function isScenarioComplete(findings: { severity: string }[]): boolean {
   return !findings.some((f) => f.severity === "S0" || f.severity === "S1" || f.severity === "S2");
+}
+
+/**
+ * Does the repaired text still look like THIS scenario — not an unrelated
+ * clean note pasted in for bounty farming?
+ */
+export function matchesScenarioEvidence(scenario: TrainingScenario, text: string): boolean {
+  const hay = text.toLowerCase();
+  return scenario.requiredEvidence.every((token) => hay.includes(token.toLowerCase()));
 }

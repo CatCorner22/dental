@@ -27,10 +27,14 @@ describe("no capability reads a patient record, because there is none", () => {
   });
 
   it("takes only note text — the signature has nowhere to put a patient", () => {
-    // runAssist(capability, text, generate). Three parameters and no patient
-    // context, which is the enforcement: a history cross-reference cannot be
-    // added without changing this signature, and changing it is visible.
-    expect(runAssist.length).toBe(3);
+    // runAssist(capability, text, generate, generateList?). Four parameters now,
+    // and still not one of them is patient context: the fourth is a MODEL binding
+    // for the structured-list path, not data about a person. That is the
+    // enforcement — a history cross-reference cannot be added without changing this
+    // signature, and changing it is visible in a diff.
+    expect(runAssist.length).toBe(4);
+    // Named so the assertion above cannot pass for the wrong reason.
+    expect(runAssist.toString().slice(0, 200)).toMatch(/capability|text|generate/);
   });
 
   it("prompts no model to infer a diagnosis or a finding", () => {
@@ -53,11 +57,19 @@ describe("no capability computes a dose", () => {
 
   it("refuses a model that answers a dose question with a number", async () => {
     // The rails, not the prompt. A model that computes anyway is refused: the
-    // number it invented is a digit the note never contained.
-    const model: GenerateFn = async () => "Was the maximum dose of 7 mg/kg exceeded?";
-    const out = await runAssist("interrogate", "Articaine administered for the lower left.", model);
+    // number it invented is a digit the note never contained. Goes through the
+    // structured-list binding, because that is how the question capabilities
+    // answer now — the guarantee has to hold on the path actually taken.
+    const model: GenerateFn = async ({ prompt }) => prompt;
+    const listModel = async () => ({ questions: ["Was the maximum dose of 7 mg/kg exceeded?"] });
+    const out = await runAssist(
+      "interrogate",
+      "Articaine administered for the lower left.",
+      model,
+      listModel
+    );
     expect(out.ok).toBe(false);
-    if (!out.ok) expect(out.rejections?.some((r) => r.code === "digits-changed")).toBe(true);
+    if (!out.ok) expect(out.codes).toContain("digits-changed");
   });
 });
 

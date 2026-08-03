@@ -70,4 +70,22 @@ describe("plural first-use expansion preserves the count", () => {
       expect(twice).not.toMatch(/\([^()]*\([^()]*\)/);
     }
   });
+  it("reports a normalisation it could not expand, instead of editing silently", () => {
+    // "cbcts" comes out "CBCTs" — a real edit to clinical text. The plural
+    // guard correctly declines to EXPAND it (CBCT has no plural in the table,
+    // and inventing one could change a count), but the early return also
+    // skipped the reporting, so `applied` came back empty and the panel said
+    // "tidied". The list of changes a human accepts has to contain the changes.
+    const r = standardize("cbcts reviewed");
+    expect(r.text).toContain("CBCTs");
+    const real = r.applied.filter((a) => a.kind !== "formatting");
+    expect(real.map((a) => `${a.from} -> ${a.to}`)).toContain("cbcts -> CBCTs");
+    expect(real[0].why).toMatch(/normalised only/i);
+  });
+
+  it("reports nothing when the token was already canonical", () => {
+    // The guard must not manufacture a change entry for text it left alone.
+    const r = standardize("CBCTs reviewed.");
+    expect(r.applied.filter((a) => a.kind !== "formatting")).toEqual([]);
+  });
 });

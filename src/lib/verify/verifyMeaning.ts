@@ -42,7 +42,15 @@ export interface VerifyRejection {
     // The fabrication guard: the model added a claim rather than altering one.
     | "content-invented"
     // Empty output, a markdown fence, or a chat preamble wrapped round the note.
-    | "output-degenerate";
+    | "output-degenerate"
+    // From main, and kept alongside content-invented rather than merged into it.
+    // The two guards catch different shapes of the same harm: mine asks whether a
+    // CLAUSE is grounded, which misses a single procedure noun swapped inside an
+    // otherwise faithful sentence ("crown" becoming "bridge"); this diffs a fixed
+    // list of diagnoses, procedures and outcome verbs, which catches exactly that
+    // and nothing about clause structure. Belt and braces on the one property that
+    // matters most, at the cost of one extra rejection code.
+    | "claims-added";
   detail: string;
 }
 
@@ -128,11 +136,27 @@ function negationScopes(text: string, noise: ReadonlySet<string>): string[] {
     // licenses. Expanding "NKA" to "no known allergies" genuinely changes what
     // the word "no" sits beside, and without that allowance this check would
     // report the transformer's own correct output as an inverted negation.
+    //
+    // BOUNDED TO THE NEGATED HEAD, not the whole clause, and main's evaluation set
+    // is why. Comparing whole-clause content refused "No bleeding was observed."
+    // becoming "No bleeding was observed at the site." — a locative added inside a
+    // negated clause, which is tightening wording rather than inverting anything.
+    // A negation attaches to what it negates, so a two-word window is both more
+    // principled and less brittle. Every attack this check exists for still fails:
+    // moving "no" from swelling onto tenderness changes the window, and shortening
+    // a list of denials changes it too (and is caught by the shrink guard besides).
     const content = words(clause)
       .map(stem)
-      .filter((s) => !noise.has(s))
-      .sort();
-    for (const n of negs) out.push(`${n.toLowerCase()}:${content.join(",")}`);
+      .filter((s) => !noise.has(s));
+    const NEGATED_HEAD_WINDOW = 2;
+    for (const n of negs) {
+      const at = content.indexOf(stem(n.toLowerCase()));
+      const scope = content
+        .slice(at + 1, at + 1 + NEGATED_HEAD_WINDOW)
+        .sort()
+        .join(",");
+      out.push(`${n.toLowerCase()}:${scope}`);
+    }
   }
   return out;
 }
@@ -261,9 +285,16 @@ function attributedContent(
  * as the note, and a guess about the content of a legal record is not a thing
  * this codebase does.
  */
-function degenerate(output: string): string | null {
+function degenerate(output: string, mode: "rewrite" | "questions"): string | null {
   const text = canonical(output).trim();
-  if (text.length === 0) return "The model returned nothing.";
+  // An EMPTY answer is the honest one for a complete note: the interrogator has
+  // nothing to ask, and main's structured list path expresses that as an empty
+  // array. Refusing it turned "this note is fine" into an error, which is both
+  // wrong and the most discouraging possible response to good work. Caught by
+  // main's evaluation set, which is exactly what an eval set is for.
+  if (text.length === 0) {
+    return mode === "questions" ? null : "The model returned nothing.";
+  }
   if (/```|~~~/.test(text)) return "The model wrapped the note in a code fence.";
   if (
     /^(?:here(?:'s| is)\b|sure\b|certainly\b|of course\b|i(?:'ve| have)\b|below is\b|the (?:rewritten|revised|updated|following)\b)/i.test(
@@ -273,6 +304,17 @@ function degenerate(output: string): string | null {
     return "The model added conversational preamble instead of returning only the note.";
   }
   return null;
+}
+
+// Clinical claim tokens: diagnoses, procedures, and outcome verbs a rewrite must
+// not invent. From main. Digits and drugs catch numeric and prescription
+// hallucinations; this catches "examined" becoming "extracted" with no number
+// changing anywhere.
+const CLINICAL_CLAIM =
+  /\b(?:caries|decay|pulpitis|abscess|periodontitis|gingivitis|periapical|radiolucency|fracture|fractured|extracted|extraction|extirpation|obturation|pulpotomy|pulpectomy|crown|bridge|implant|veneer|onlay|inlay|sealant|scaling|planing|curettage|osteotomy|biopsy|sutured|suture|incision|drainage|referral|referred|diagnosis|diagnosed|irreversible|necrosis|perforat(?:ed|ion)|separated\s+instrument|file\s+separation)\b/gi;
+
+function clinicalClaims(text: string): string[] {
+  return canonical(text).match(CLINICAL_CLAIM) ?? [];
 }
 
 export interface VerifyOptions {
@@ -291,12 +333,17 @@ export interface VerifyOptions {
  * ask. Without an explicit exemption, tightening the declarative check below
  * would refuse the model's own correct "nothing to report" answer.
  */
-const QUESTION_SENTINELS = ["no open questions.", "no contradictions found."];
+const QUESTION_SENTINELS = new Set([
+  "no open questions.",
+  "no contradictions found.",
+  "no conflicts found.",
+  "none."
+]);
 
 export function verifyMeaning(input: string, output: string, opts: VerifyOptions): VerifyResult {
   const rejections: VerifyRejection[] = [];
 
-  const degeneracy = degenerate(output);
+  const degeneracy = degenerate(output, opts.mode);
   if (degeneracy) {
     // Returned immediately: every check below compares two notes, and there is
     // no second note to compare.
@@ -319,9 +366,12 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     const declarative = lines.filter(
       (l) =>
         !/\?$/.test(l) &&
-        !QUESTION_SENTINELS.includes(l.toLowerCase()) &&
-        /\s/.test(l.trim()) &&
-        l.replace(/[^a-z]/gi, "").length > 6
+        // Main's form, which is STRICTER than the one this replaced: any
+        // non-question line fails, with no whitespace or letter-count heuristic
+        // to slip a short recommendation through. A question engine's output ends
+        // in a question mark or it is a sentinel; there is no third case, and the
+        // heuristic was a loophole waiting to be found.
+        !QUESTION_SENTINELS.has(l.toLowerCase())
     );
     if (declarative.length > 0) {
       rejections.push({
@@ -485,6 +535,33 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     rejections.push({
       code: "content-invented",
       detail: `The draft added a statement that is not in your note: "${grounding.inventedClauses[0].slice(0, 100)}"`
+    });
+  }
+
+  // Main's claim diff, routed through the STANDARDIZATION LICENCE, which is the
+  // whole reason the two guards can coexist without one wrecking the other.
+  //
+  // As a raw set difference it refuses legitimate work: "SSC" expands to
+  // "stainless steel crown", which introduces the claim token "crown" that the
+  // input never literally contained, and the first-use convention does that on
+  // purpose. Measured acceptance on realistic rewrites was 5 of 5 before this
+  // check existed, and a raw diff would have cost some of that — which is the
+  // failure mode this branch spent a long time climbing out of.
+  //
+  // Licence-aware, it keeps the coverage it was written for (a procedure noun
+  // swapped inside an otherwise faithful sentence) and drops the false alarms.
+  const inClaims = new Set(clinicalClaims(input).map((c) => c.toLowerCase()));
+  const addedClaims = [
+    ...new Set(
+      clinicalClaims(output)
+        .map((c) => c.toLowerCase())
+        .filter((c) => !inClaims.has(c) && !noise.has(stem(c)))
+    )
+  ];
+  if (addedClaims.length > 0) {
+    rejections.push({
+      code: "claims-added",
+      detail: `The draft names a diagnosis or procedure your note does not: ${addedClaims.join(", ")}.`
     });
   }
 

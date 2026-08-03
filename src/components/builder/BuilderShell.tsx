@@ -92,6 +92,9 @@ export function BuilderShell({
   const [resentNow, setResentNow] = useState(false);
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
+  // Small screens only — the lg: classes keep the rail permanently open on a
+  // desktop, where it is a column beside the form rather than a lid on top of it.
+  const [railOpen, setRailOpen] = useState(false);
 
   // TYPING FIRST, GRADING A BEAT LATER.
   //
@@ -327,8 +330,13 @@ export function BuilderShell({
       {/* Sticky patient-header-style bar */}
       <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
         <div className="flex flex-wrap items-center gap-3">
+          {/* Full width on its own row below lg. Sharing a wrapped flex row
+              with the office picker, the status chip, the save indicator and
+              three buttons squeezed `min-w-0 flex-1` down to about two
+              characters at 390px — the note's own name rendered as "Hy". It is
+              the one thing in this bar that identifies what you are editing. */}
           <input
-            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent"
+            className="tap-input w-full min-w-0 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent lg:w-auto lg:flex-1"
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
@@ -359,6 +367,20 @@ export function BuilderShell({
             </select>
           )}
           <StatusChip status={liveStatus} size="md" />
+          {/* Below lg the Sidekick is not a column beside the form, it is a
+              panel BELOW it — past a note that can run to hundreds of fields.
+              So on a phone the andon was, in practice, unreachable: the live
+              findings, the export buttons, and the only route to the privacy
+              dialog all sat somewhere off the bottom of the page. The chip in
+              this always-visible bar says WHAT the state is; this says where to
+              go and read why. Instant jump, not a smooth scroll — globals.css
+              explains why that matters for a tap. */}
+          <a
+            href="#sidekick"
+            className="tap rounded-full border border-slate-300 bg-white px-3 text-sm font-medium text-slate-700 hover:bg-slate-50 lg:hidden"
+          >
+            {auditing ? "Checking…" : `Audit (${report.findings.length})`}
+          </a>
           {canEdit && <SaveIndicator state={autosave.state} />}
           {canEdit && liveStatus === "error" && (
             <button
@@ -399,38 +421,61 @@ export function BuilderShell({
       )}
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Module rail */}
+        {/* Module rail.
+            Collapsed below lg, and that is a fix rather than a preference. On a
+            phone or a held tablet this column is not beside the form, it is
+            ABOVE it — so a 55dvh scrolling list of 31 checkboxes was the entire
+            first screenful of every visit to a note, every time, including the
+            hundred visits where the modules were already right. The picker is a
+            once-per-note decision and now reads as one. Desktop is unchanged. */}
         <aside className="shrink-0 lg:w-60">
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
-            <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
-            <input
-              type="search"
-              className="field-input mb-1.5 py-1 text-xs"
-              placeholder="Filter modules…"
-              value={moduleQuery}
-              onChange={(e) => setModuleQuery(e.target.value)}
-              aria-label="Filter the module list"
-            />
-            <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
-              <input type="checkbox" checked disabled /> Universal Core
-            </label>
-            <div className="pane-55 space-y-0.5">
-              {ALL_MODULES.filter((m) => !m.alwaysOn && moduleMatches(m, moduleQuery)).map((m) => (
-                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
-                  <input
-                    type="checkbox"
-                    disabled={!canEdit}
-                    checked={state.selectedModuleIds.includes(m.id)}
-                    onChange={() => {
-                      const removing = state.selectedModuleIds.includes(m.id);
-                      const hasValues = Object.keys(state.values).some((k) => k.startsWith(`${m.id}.`));
-                      if (removing && hasValues && !window.confirm(`Discard the entered ${m.title} data?`)) return;
-                      dispatch({ type: "toggleModule", moduleId: m.id });
-                    }}
-                  />
-                  {m.title.replace(" Add-On", "")}
-                </label>
-              ))}
+            <button
+              type="button"
+              className="tap flex w-full items-center justify-between gap-2 text-left text-sm font-bold text-slate-800 lg:hidden"
+              aria-expanded={railOpen}
+              aria-controls="module-rail"
+              onClick={() => setRailOpen((v) => !v)}
+            >
+              <span>
+                Modules{" "}
+                <span className="font-normal text-slate-500">
+                  ({state.selectedModuleIds.length + 1} on)
+                </span>
+              </span>
+              <span aria-hidden>{railOpen ? "▲" : "▼"}</span>
+            </button>
+            <h2 className="mb-2 hidden text-sm font-bold text-slate-800 lg:block">Modules</h2>
+            <div id="module-rail" className={railOpen ? "mt-2 lg:mt-0" : "hidden lg:block"}>
+              <input
+                type="search"
+                className="field-input mb-1.5 py-1 text-xs"
+                placeholder="Filter modules…"
+                value={moduleQuery}
+                onChange={(e) => setModuleQuery(e.target.value)}
+                aria-label="Filter the module list"
+              />
+              <label className="mb-1 flex items-center gap-2 rounded bg-slate-100 px-2 py-1 text-xs font-semibold text-slate-500">
+                <input type="checkbox" checked disabled /> Universal Core
+              </label>
+              <div className="pane-55 space-y-0.5">
+                {ALL_MODULES.filter((m) => !m.alwaysOn && moduleMatches(m, moduleQuery)).map((m) => (
+                  <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
+                    <input
+                      type="checkbox"
+                      disabled={!canEdit}
+                      checked={state.selectedModuleIds.includes(m.id)}
+                      onChange={() => {
+                        const removing = state.selectedModuleIds.includes(m.id);
+                        const hasValues = Object.keys(state.values).some((k) => k.startsWith(`${m.id}.`));
+                        if (removing && hasValues && !window.confirm(`Discard the entered ${m.title} data?`)) return;
+                        dispatch({ type: "toggleModule", moduleId: m.id });
+                      }}
+                    />
+                    {m.title.replace(" Add-On", "")}
+                  </label>
+                ))}
+              </div>
             </div>
           </div>
         </aside>
@@ -449,7 +494,7 @@ export function BuilderShell({
         </section>
 
         {/* Sidekick */}
-        <aside className="shrink-0 lg:w-[26rem]">
+        <aside id="sidekick" className="scroll-mt-24 shrink-0 lg:w-[26rem]">
           <div
             className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20"
             aria-busy={auditing}

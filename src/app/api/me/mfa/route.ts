@@ -43,7 +43,21 @@ export async function POST(req: Request): Promise<Response> {
   const now = new Date();
 
   if (action === "start") {
+    // CRITICAL: never clear mfaEnabled during enrollment start. An active
+    // session that could call "start" used to flip MFA off without a code,
+    // which is a complete second-factor bypass for any stolen cookie. Rotate
+    // by disabling first (which itself requires a current code), then start.
+    if (user.mfaEnabled) {
+      return Response.json(
+        {
+          error:
+            "Two-factor authentication is already on. Turn it off with a current code first, then set up a new authenticator."
+        },
+        { status: 409 }
+      );
+    }
     const secret = generateMfaSecret();
+    // MFA stays disabled until confirm; start only proposes a secret.
     await updateUser(db, user.id, { mfaSecret: secret, mfaEnabled: false });
     return Response.json({
       secret,

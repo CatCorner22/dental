@@ -5,6 +5,7 @@ import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 import { getAssistConfig, runAssist } from "@/lib/assist/service";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { getDraft } from "@/lib/db/repo/drafts";
 import { ASSIST_CAPABILITIES, type AssistCapability } from "@/lib/assist/prompts";
 
 export const runtime = "nodejs";
@@ -70,19 +71,22 @@ export async function POST(req: Request): Promise<Response> {
     return res.text;
   });
 
-  // Provenance, when the caller is working a draft: one audit row per
-  // successful assist naming the capability, prompt version, and retrieved
-  // sources — identifiers only, never text. The submit route folds these
-  // into the frozen filing so a reviewer can see which AI touched what.
+  // Provenance, when the caller owns a draft: one audit row per successful
+  // assist naming the capability, prompt version, and retrieved sources —
+  // identifiers only, never text. Ownership is checked so a caller cannot
+  // stamp assist.used onto a colleague's draft id.
   const draftId = typeof parsed.value.draftId === "string" ? parsed.value.draftId.slice(0, 64) : "";
   if (outcome.ok && draftId) {
-    await logAction(db, {
-      actorId: guard.user.id,
-      actorName: `${guard.user.displayName} (${guard.user.username})`,
-      action: "assist.used",
-      target: draftId,
-      detail: `${outcome.capability} v${outcome.promptVersion}${outcome.retrievedSources.length ? ` [${outcome.retrievedSources.join(", ")}]` : ""}`
-    });
+    const draft = await getDraft(db, draftId);
+    if (draft && draft.ownerId === guard.user.id) {
+      await logAction(db, {
+        actorId: guard.user.id,
+        actorName: `${guard.user.displayName} (${guard.user.username})`,
+        action: "assist.used",
+        target: draftId,
+        detail: `${outcome.capability} v${outcome.promptVersion}${outcome.retrievedSources.length ? ` [${outcome.retrievedSources.join(", ")}]` : ""}`
+      });
+    }
   }
 
   if (!outcome.ok) {

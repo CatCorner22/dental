@@ -7,7 +7,7 @@ import { statRowsForUser } from "@/lib/db/repo/submissions";
 import { listRedemptions, seedStoreIfEmpty } from "@/lib/db/repo/gamify";
 import { STARTER_STORE } from "@/lib/gamify/economy";
 import { computeStats, rollingGpa } from "@/lib/stats/computeStats";
-import { deriveInsights } from "@/lib/gamify/insights";
+import { deriveLeadCoachingTip } from "@/lib/gamify/insights";
 import { TeamDashboard, type TeamView } from "@/components/admin/TeamDashboard";
 
 export const runtime = "nodejs";
@@ -59,7 +59,7 @@ export default async function TeamPage() {
     ).length;
     if (rolling === null || graded30 < 3) continue;
     const band = rolling >= 3.8 ? "thriving" : rolling >= 3.0 ? "stable" : "support";
-    const opportunity = deriveInsights(rows).find((line) => line.startsWith("Most room"));
+    const opportunity = deriveLeadCoachingTip(rows);
     members.push({
       displayName: u.displayName,
       band,

@@ -3,6 +3,7 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import type { AuditFinding } from "@/lib/audit/types";
+import { isValidPhiAttestation, PHI_ATTESTATION_RULE } from "@/lib/audit/engine";
 import type { NoteState } from "@/lib/schema/types";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { Character } from "@/components/mascot/Sparkle";
@@ -34,10 +35,14 @@ export function ConflictDialog({ onReload, onClose }: { onReload: () => void; on
 
 export function PhiOverrideDialog({
   phiStops,
+  maskableCount,
+  onMask,
   onConfirm,
   onClose
 }: {
   phiStops: AuditFinding[];
+  maskableCount: number;
+  onMask: () => void;
   onConfirm: (reason: string) => void;
   onClose: () => void;
 }) {
@@ -56,21 +61,43 @@ export function PhiOverrideDialog({
           </li>
         ))}
       </ul>
+      {/* Masking is offered FIRST and as the primary action. Before it existed
+          the only ways forward were retype by hand or waive the stop, and
+          between patients the waiver wins — a bad default for the one gate the
+          PII-free premise rests on. */}
+      {maskableCount > 0 && (
+        <div className="mb-4 rounded border border-green-300 bg-green-50 p-3">
+          <p className="mb-2 text-sm text-green-900">
+            <strong>If any of these IS an identifier, redact it instead.</strong> Each one is
+            replaced in place with a random token like <code>[PERSON-A7K2]</code>. The token is not
+            derived from the text, so nothing can be recovered from it, and repeats of the same
+            identifier become the same token so the note still reads.
+          </p>
+          <button type="button" className="btn-primary" onClick={onMask}>
+            Mask {maskableCount} flagged item{maskableCount === 1 ? "" : "s"}
+          </button>
+        </div>
+      )}
+      <p className="mb-2 text-sm font-medium text-slate-700">Or attest that none of them is an identifier:</p>
       <label className="mb-2 flex items-start gap-2 text-sm">
         <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5" />
         <span>I reviewed every flagged item. None is a patient identifier, exact date, contact detail, or record number.</span>
       </label>
       <input
         type="text"
-        className="field-input mb-3"
-        placeholder="Why these are clinical values (required)"
-        aria-label="Why these are clinical values (required)"
+        className="field-input mb-1"
+        placeholder="What the flagged text actually is (required)"
+        aria-label="What the flagged text actually is (required)"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
+      {/* The server enforces the same validator; this mirror exists so nobody
+          types a reason the submit will refuse. The old five-character floor
+          was browser-only, which made the whole gate client-side theater. */}
+      <p className="mb-3 text-xs text-slate-500">{PHI_ATTESTATION_RULE} Your name and this reason become part of the filed record.</p>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn-primary" disabled={!checked || reason.trim().length < 5} onClick={() => onConfirm(reason.trim())}>
+        <button type="button" className="btn-primary" disabled={!checked || !isValidPhiAttestation(reason)} onClick={() => onConfirm(reason.trim())}>
           Override this privacy stop
         </button>
       </div>

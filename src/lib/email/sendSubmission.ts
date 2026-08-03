@@ -1,5 +1,6 @@
 import { Resend } from "resend";
 import { getEmailConfig } from "./config";
+import { submissionSubject, threadHeaders } from "./threading";
 
 export interface SubmissionMail {
   ticket: string;
@@ -10,6 +11,10 @@ export interface SubmissionMail {
   submittedAtEt: string;
   frozenNote: string;
   frozenAudit: string;
+  /** 0 for the original send, incrementing for each resend. Drives the
+   *  threading headers so a resend joins the original conversation instead of
+   *  starting a second one about the same ticket. */
+  attempt?: number;
 }
 
 export type SendOutcome =
@@ -32,7 +37,12 @@ export async function sendSubmissionEmail(mail: SubmissionMail): Promise<SendOut
     const { error } = await resend.emails.send({
       from: config.from as string,
       to: [config.corporateEmail as string],
-      subject: `Smile Note ${mail.ticket} — ${mail.auditStatus}`,
+      // Every message about one ticket lands in one conversation: the ticket in
+      // the subject for clients that thread on subject, and RFC 5322
+      // References/In-Reply-To for the ones that do it properly. The token
+      // carries no patient data — see threading.ts for why it must not.
+      headers: threadHeaders(mail.ticket, mail.attempt ?? 0, config.from),
+      subject: submissionSubject(mail.ticket, mail.auditStatus),
       text: `De-identified Smile Note ${mail.ticket} attached, with its audit report. Submitted by ${mail.submittedByName} at ${mail.submittedAtEt}. Complete identifiers only in the EDR.`,
       attachments: [
         {

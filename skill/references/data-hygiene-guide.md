@@ -86,3 +86,28 @@ A Team Lead or Hierarchy Manager submits a request at **Requests**, which walks 
 The gate checks that an answer is *specific*: long enough to be an argument, not a phrase from the contaminated list, not the same text pasted into two cycles, not a restatement of the question. Cycle 3 must contain a real number with a unit, Cycle 2 must name what was actually checked, and Cycle 4 must name the workflow choke point. The same check runs again on the server, so the gauntlet cannot be skipped by calling the API directly.
 
 What it cannot do is judge whether an argument is *true*. A well-written request for a bad idea will still reach the Smile Notes Team — the gate raises the floor and stops lazy submissions, and the person reading the ticket remains the real filter.
+
+## What autosave means for identifiers
+
+Smile Notes saves a draft to the practice database as you type. That is what makes the tool safe against a browser crash — and it has one honest consequence that staff must understand: **text is saved before any check has finished, and before any human has decided anything.** If a patient's name or number is typed into a draft, it exists in the database from that moment.
+
+What the tool does about it:
+
+- The privacy screen runs on every save, and a draft holding a possible identifier shows a **Privacy stop** chip on the dashboard — its own state, distinct from an ordinary blocked note, because the remediation is different: fix the field, versus get the identifier out of the tool.
+- Export and email stay blocked while a privacy stop is open. Overriding the stop requires a written attestation of at least four words stating what the flagged text actually is; the attester's name and reason become part of the filed record, and the override is written to the audit log.
+- **Masking is offered before the waiver.** When the screen flags something, the dialog's first action replaces each flagged item in place with a random token like `[PERSON-A7K2]`. The token is *not* derived from the text it replaces, so nothing can be recovered from it; repeats of the same identifier become the same token so the note still reads; and the tokens differ between notes, so they cannot be joined up across records into a patient key. A masked note files normally, with no attestation.
+- **Editing the identifier out of the draft overwrites the stored copy.** That is the remediation: remove it, and the next autosave replaces what the database holds. Database backups and storage-level artifacts are outside the app's control, which is one of the reasons the rule is *never type an identifier in the first place* rather than *the tool will clean up after one*.
+
+The screen is a heuristic and says so. It catches formats (numbers, dates, contacts) reliably and names only heuristically — a bare name the dictionary does not know will pass. The screen raises the floor; the person typing remains the real control.
+
+## The email threading token
+
+Every filed note is emailed with its ticket in the subject, in brackets — `Smile Note [DN-000123] — AUDIT PASS`. That bracketed ticket is the threading token. A resend after a delivery failure carries the same subject and points its `References` header back at the original message, so the original and every resend sit in one conversation in the corporate mailbox instead of scattering into separate threads.
+
+The token is the ticket and nothing else, deliberately.
+
+A token built from a patient's initials and year of birth would be a patient identifier: HIPAA's Safe Harbor method requires removing dates connected to an individual and any "unique identifying number, characteristic, or code," and initials plus a birth year is exactly that. In a practice this size it is also usually unique on its own — there is generally only one `JRB-1974`. A subject line is the worst place to carry it: subject lines travel between mail servers in the clear, are copied verbatim into bounce messages and out-of-office replies, are indexed by mail search, and appear in phone notification previews on a locked screen.
+
+Hiding such a token as white text would not help. Subject lines carry no formatting at all — they are plain text, so there is nothing to render the colour and the value simply shows. And even where text *can* be styled, invisible-but-present data is still fully present: it is copied, searched, logged, and read by every automated system along the way, while the people who might have noticed the mistake are the only ones who cannot see it.
+
+Threading never needed to know who the patient is. It needs a stable unique string per note, which the ticket already is.

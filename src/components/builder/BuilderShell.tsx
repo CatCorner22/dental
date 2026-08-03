@@ -9,6 +9,7 @@ import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { computeGates, runAudit } from "@/lib/audit/engine";
 import { findingsByField } from "@/lib/audit/byField";
+import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { useAutosave } from "@/lib/client/useAutosave";
@@ -106,11 +107,43 @@ export function BuilderShell({
     [report.phiStops]
   );
   const overrideActive = override !== null && override.signature === phiSignature;
+
+  // Everything the privacy screen flagged that has literal text to replace —
+  // the S0 stops AND the S2 name heuristics, because if a clinician has
+  // decided to redact, they want the identifiers gone, not just the ones that
+  // happen to block the line.
+  const phiFindings = useMemo(
+    () => report.findings.filter((f) => f.category === "phi" && f.matchedText),
+    [report.findings]
+  );
+
+  // Replace every flagged identifier with a random opaque token, in place,
+  // across the fields the clinician actually typed into.
+  //
+  // This is the third option the dialog was missing. Before it, a privacy stop
+  // offered retype-by-hand or waive-the-stop, and between patients the waiver
+  // wins — a bad default for the one gate the PII-free premise rests on. One
+  // click now leaves the note MORE de-identified than it was, and the audit
+  // re-runs on the result like any other edit.
+  const maskIdentifiers = useCallback(() => {
+    const plan = buildMaskPlan(phiFindings);
+    if (plan.length === 0) return 0;
+    let changed = 0;
+    for (const [key, value] of Object.entries(state.values)) {
+      if (value.kind !== "text") continue;
+      const masked = applyMaskPlan(value.value, plan);
+      if (masked === value.value) continue;
+      changed++;
+      dispatch({ type: "setValue", key, value: { kind: "text", value: masked } });
+    }
+    return changed;
+  }, [phiFindings, state.values, dispatch]);
   const gates = computeGates(report, overrideActive);
   const hasContent = useMemo(() => Object.values(state.values).some((v) => !isValueEmpty(v)), [state.values]);
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
+    phiStops: report.phiStops.length,
     submitted: resentNow || (initialSubmitted && !editedSinceLoad) || submittedNow,
     // A successful resend clears the failure — it wins over the stored flag.
     lastSendFailed: !resentNow && ((initialSendFailed && !editedSinceLoad) || sendFailedNow)
@@ -426,6 +459,18 @@ export function BuilderShell({
       {showOverride && (
         <PhiOverrideDialog
           phiStops={report.phiStops}
+          maskableCount={phiFindings.length}
+          onMask={() => {
+            const changed = maskIdentifiers();
+            setShowOverride(false);
+            setToast({
+              text:
+                changed > 0
+                  ? "Flagged identifiers replaced with masked tokens."
+                  : "Nothing to mask in the editable fields.",
+              tone: changed > 0 ? "success" : "error"
+            });
+          }}
           onClose={() => setShowOverride(false)}
           onConfirm={(reason) => {
             setOverride({ signature: phiSignature, reason });

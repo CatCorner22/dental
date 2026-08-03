@@ -9,7 +9,13 @@ import { activeModules } from "@/lib/modules";
 import { composeNote, composeNoteText } from "@/lib/compose/composeNote";
 import { officeNameFor } from "@/lib/db/repo/offices";
 import { composeAuditReport } from "@/lib/compose/composeAuditReport";
-import { computeGates, runAudit } from "@/lib/audit/engine";
+import {
+  computeGates,
+  isValidPhiAttestation,
+  PHI_ATTESTATION_RULE,
+  runAudit,
+  visibleText
+} from "@/lib/audit/engine";
 import { sendSubmissionEmail } from "@/lib/email/sendSubmission";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { slugifyTitle } from "@/lib/tickets/slug";
@@ -79,6 +85,12 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     (body.phiOverride as { confirmed?: unknown }).confirmed === true
       ? true
       : false;
+  // Normalized at the boundary — the audit log gets the same readable text the
+  // frozen record and the validator do, never a string of invisible characters.
+  const phiReason =
+    phiOverride && typeof (body.phiOverride as { reason?: unknown }).reason === "string"
+      ? visibleText((body.phiOverride as { reason: string }).reason).replace(/\s+/g, " ").trim().slice(0, 500)
+      : "";
 
   // Server composes and runs the FULL audit — the client is never trusted.
   const note = draft.noteState;
@@ -89,6 +101,19 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const officeName = await officeNameFor(db, draft.officeId);
   const markdown = composeNote(note, modules, { officeName });
   const report = runAudit({ note, modules, composedText: markdown });
+  // The reason is validated HERE, not just in the dialog. The browser-side
+  // minimum was the only check before, so a tampered client could waive every
+  // privacy stop with `{confirmed:true}` and no reason, and the note filed
+  // with "(no reason given)" in the log. An attestation with no content is
+  // not an attestation; the request is refused before any gate opens.
+  if (phiOverride && report.phiStops.length > 0 && !isValidPhiAttestation(phiReason)) {
+    return Response.json(
+      {
+        error: `Overriding a privacy stop needs a real attestation. ${PHI_ATTESTATION_RULE}`
+      },
+      { status: 422 }
+    );
+  }
   const gates = computeGates(report, phiOverride);
   if (!gates.emailAllowed) {
     return Response.json(
@@ -148,7 +173,17 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
           (format === "txt" ? composeNoteText(note, modules, { officeName }) : markdown) +
           "\n" +
           stamp;
-        frozenAudit = composeAuditReport(report, modules, markdown) + "\n" + stamp;
+        frozenAudit =
+          composeAuditReport(
+            report,
+            modules,
+            markdown,
+            phiOverride && report.phiStops.length > 0
+              ? { stops: report.phiStops.length, reason: phiReason, attestedBy: submittedByName }
+              : undefined
+          ) +
+          "\n" +
+          stamp;
         return { note: frozenNote, audit: frozenAudit };
       }
     );
@@ -210,17 +245,17 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
 
   // A PHI override is the one safety gate a person can waive. Record who
   // attested and why, keyed to the ticket, so the legal record shows it.
-  if (phiOverride) {
-    const reason =
-      typeof (body.phiOverride as { reason?: unknown }).reason === "string"
-        ? ((body.phiOverride as { reason: string }).reason).slice(0, 500)
-        : "(no reason given)";
+  // The rule ids name WHAT was waived; the matched text is deliberately NOT
+  // copied here — writing the flagged string into the audit log would spread
+  // the very content the screen exists to contain into a second table.
+  if (phiOverride && report.phiStops.length > 0) {
+    const waived = [...new Set(report.phiStops.map((f) => f.ruleId))].join(", ");
     await logAction(db, {
       actorId: guard.user.id,
       actorName: submittedByName,
       action: "submit.phi-override",
       target: ticket,
-      detail: `${report.phiStops.length} PHI stop(s) attested: ${reason}`
+      detail: `${report.phiStops.length} PHI stop(s) [${waived}] attested: ${phiReason}`
     });
   }
 

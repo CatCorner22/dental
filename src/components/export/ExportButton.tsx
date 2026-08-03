@@ -9,14 +9,19 @@ import { APP_NAME } from "@/lib/brand";
 // client-side would be more code doing a worse job.
 export function ExportButton({
   table,
-  label = "Export to Excel (CSV)"
+  label = "Export to Excel (CSV)",
+  query
 }: {
-  table: "users" | "audit-log" | "submissions";
+  table: "users" | "audit-log" | "submissions" | "wishes";
   label?: string;
+  // Carries the screen's active filter through to the export, so the file is
+  // the rows being looked at rather than a superset of them.
+  query?: Record<string, string>;
 }) {
+  const qs = query ? new URLSearchParams(query).toString() : "";
   return (
     <a
-      href={`/api/export/${table}`}
+      href={`/api/export/${table}${qs ? `?${qs}` : ""}`}
       className="btn-secondary print:hidden"
       // `download` is a hint; the server's Content-Disposition is what actually
       // names the file, so the two cannot disagree.

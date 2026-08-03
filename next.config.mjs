@@ -35,8 +35,13 @@ const csp = [
   // export, which builds a Blob URL to download the frozen record.
   "img-src 'self' data: blob:",
   "font-src 'self' data:",
+  // No blob: here on purpose. Downloading an exported note DOES create a blob:
+  // URL, but it is only ever assigned to an <a download> href — it is never
+  // fetched — and connect-src governs fetch/XHR/WebSocket, not a download
+  // navigation. Granting blob: would widen the policy for a request the app
+  // does not make. (This comment used to sit two lines lower, under object-src,
+  // where it read as a justification for a directive it had nothing to do with.)
   "connect-src 'self'",
-  // Downloading an exported note creates a blob: URL.
   "object-src 'none'",
   "base-uri 'self'",
   // The app posts only to itself; mailto: is the feedback link.
@@ -85,12 +90,21 @@ const securityHeaders = [
       "interest-cohort=()"
     ].join(", ")
   },
-  // Two years, subdomains included, preload-eligible. Only meaningful over
-  // HTTPS; a browser ignores it on a plain-HTTP origin, so it is safe to send
+  // Two years, subdomains included. Only meaningful over HTTPS; a browser
+  // ignores it on a plain-HTTP origin, so the header itself is safe to send
   // unconditionally.
+  //
+  // `preload` is NOT sent by default, because it is the one part of this that
+  // is not reversible. Advertising it invites submission to the browsers'
+  // built-in preload list, and an entry there is compiled into shipped browser
+  // binaries: with includeSubDomains, EVERY subdomain becomes HTTPS-only for
+  // everyone, and removal takes months to propagate. That is a fine commitment
+  // for a finished public domain and a trap for a practice that later needs
+  // http://intranet.example.com, or for anyone forking this. An operator who
+  // has read that sentence and means it sets HSTS_PRELOAD=1.
   {
     key: "Strict-Transport-Security",
-    value: "max-age=63072000; includeSubDomains; preload"
+    value: `max-age=63072000; includeSubDomains${process.env.HSTS_PRELOAD === "1" ? "; preload" : ""}`
   },
   // Cross-origin isolation primitives. These stop another origin from reading
   // this one's resources or holding a reference to its window.

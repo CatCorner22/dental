@@ -8,6 +8,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { FEATURED_PICK_IDS, QUICK_PICKS } from "@/lib/presets/quickPicks";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
+import { Character } from "@/components/mascot/Sparkle";
 import { BADGES } from "@/lib/stats/badges";
 import { STATUS_META } from "@/lib/status/draftStatus";
 import type { UserStats } from "@/lib/stats/computeStats";
@@ -107,9 +108,12 @@ export function Dashboard({
   return (
     <div className="space-y-6">
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div>
-          <h1 className="text-2xl font-bold">Hi {displayName} 👋</h1>
-          <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
+        <div className="flex items-center gap-3">
+          <Character id="sparkle" size="lg" />
+          <div>
+            <h1 className="text-2xl font-bold">Hi {displayName} 👋</h1>
+            <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
+          </div>
         </div>
         {canEdit && (
           <div className="relative">

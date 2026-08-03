@@ -38,6 +38,8 @@ import {
 import { listAuditLog, logAction } from "./repo/auditLog";
 import {
   FREE_ATTEMPTS,
+  IP_FREE_ATTEMPTS,
+  IP_MAX_LOCK_MS,
   MAX_LOCK_MS,
   WINDOW_MS,
   checkThrottle,
@@ -192,6 +194,106 @@ describe("db layer (PGlite)", () => {
       // tipping straight into a lock.
       const muchLater = new Date(now.getTime() + WINDOW_MS + 60_000);
       expect((await recordFailure(db, key, muchLater)).locked).toBe(false);
+    });
+
+    // THE REGRESSION THIS SUITE EXISTS FOR.
+    //
+    // recordFailure used to count refused requests as failures and re-apply the
+    // backoff from `now` on every call. A caller who simply kept retrying
+    // therefore held their own lock open indefinitely and drove it to the
+    // ceiling — and since login is keyed by IP, one script could take a whole
+    // practice sharing a NAT address offline permanently, with no credentials
+    // and no account. A lock has to decay while it is being hammered, or it is
+    // a denial-of-service tool rather than a throttle.
+    it("does not extend a live lock, however many times it is hit", async () => {
+      const key = "login:hammered";
+      for (let i = 0; i <= FREE_ATTEMPTS; i++) await recordFailure(db, key, now);
+      const first = await checkThrottle(db, key, now);
+      expect(first.locked).toBe(true);
+
+      // 50 more attempts, spread across the lock's lifetime.
+      for (let i = 1; i <= 50; i++) {
+        await recordFailure(db, key, new Date(now.getTime() + i * 100));
+      }
+
+      // The deadline must not have moved: the time left is the original lock
+      // minus the 5s of hammering, not a fresh (or longer) sentence.
+      const after = await checkThrottle(db, key, new Date(now.getTime() + 5000));
+      expect(after.retryAfterSec).toBeLessThanOrEqual(first.retryAfterSec);
+
+      // And it genuinely ends. Past the original deadline the source is free
+      // again, despite never having stopped trying.
+      const past = new Date(now.getTime() + first.retryAfterSec * 1000 + 1000);
+      expect((await checkThrottle(db, key, past)).locked).toBe(false);
+    });
+
+    // Anything a caller can trigger by retrying — an audit row, an email — must
+    // be gated on this flag, or refusing an attempt costs us more than it costs
+    // them. This is the flag that stopped the audit log being writable by
+    // anyone who could reach the login form.
+    it("reports justLocked only on the transition into the lock", async () => {
+      const key = "login:transition";
+      for (let i = 0; i < FREE_ATTEMPTS; i++) {
+        expect((await recordFailure(db, key, now)).justLocked).toBe(false);
+      }
+      expect((await recordFailure(db, key, now)).justLocked).toBe(true);
+      // Every subsequent bounce is locked, but not newly so.
+      for (let i = 0; i < 5; i++) {
+        const again = await recordFailure(db, key, now);
+        expect(again.locked).toBe(true);
+        expect(again.justLocked).toBe(false);
+      }
+    });
+
+    // The IP key locks a building, not an account, so its ceiling is minutes
+    // short rather than a quarter of an hour. Pinned because the constant is
+    // the whole mitigation for "one temp fumbles a password and the front desk
+    // cannot sign in".
+    it("caps an IP lock far below the per-account ceiling", async () => {
+      const key = "loginip:203.0.113.9";
+      for (let i = 0; i <= IP_FREE_ATTEMPTS; i++) {
+        await recordFailure(db, key, now, IP_FREE_ATTEMPTS, IP_MAX_LOCK_MS);
+      }
+      const state = await checkThrottle(db, key, now);
+      expect(state.locked).toBe(true);
+      expect(state.retryAfterSec).toBeLessThanOrEqual(IP_MAX_LOCK_MS / 1000);
+    });
+  });
+
+  // Every audit column is Postgres `text` — up to a gigabyte. Some of the
+  // values reaching them originate with an unauthenticated caller, and the log
+  // is both rendered on a page and exported to CSV, so an unbounded row costs
+  // twice. The bound lives at the single write rather than at ~30 call sites.
+  describe("audit log input bounds", () => {
+    it("truncates oversized values and MARKS that it did", async () => {
+      await logAction(db, {
+        actorId: null,
+        action: "a".repeat(500),
+        target: "t".repeat(5000),
+        detail: "d".repeat(50_000)
+      });
+      const [row] = await listAuditLog(db, 1);
+      expect(row.target!.length).toBeLessThan(300);
+      expect(row.detail!.length).toBeLessThan(1100);
+      expect(row.action.length).toBeLessThan(100);
+      // A truncated value must never read as a complete fact in a record whose
+      // entire purpose is being trusted later.
+      expect(row.target).toContain("…[truncated]");
+      expect(row.detail).toContain("…[truncated]");
+    });
+
+    it("leaves ordinary values exactly as written", async () => {
+      await logAction(db, {
+        actorId: "u1",
+        actorName: "Dana Reyes (dreyes)",
+        action: "user.role_changed",
+        target: "jsmith",
+        detail: "user → lead"
+      });
+      const [row] = await listAuditLog(db, 1);
+      expect(row.actorName).toBe("Dana Reyes (dreyes)");
+      expect(row.target).toBe("jsmith");
+      expect(row.detail).toBe("user → lead");
     });
   });
 

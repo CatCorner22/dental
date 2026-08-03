@@ -72,7 +72,17 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     severityClass: "review"
   },
   { id: "tx", pattern: /\btx\b/gi, display: "tx", replacement: "treatment", severityClass: "style" },
-  { id: "pt", pattern: /\bpt\b/gi, display: "pt", replacement: "patient", severityClass: "style" },
+  {
+    id: "pt",
+    // Lowercase and Title case only — NOT all-caps. "PT" is physical therapy or
+    // prothrombin time, and "Pt" is platinum; expanding those invented a
+    // clinical statement ("PT referral placed" became "PATIENT referral
+    // placed"). The shorthand a clinician means by "patient" is written "pt".
+    pattern: /\b[Pp]t\b/g,
+    display: "pt",
+    replacement: "patient",
+    severityClass: "style"
+  },
   { id: "hx", pattern: /\bhx\b/gi, display: "hx", replacement: "history", severityClass: "style" },
   { id: "dx", pattern: /\bdx\b/gi, display: "dx", replacement: "diagnosis", severityClass: "style" },
   {

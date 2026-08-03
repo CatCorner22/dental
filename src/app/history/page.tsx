@@ -11,6 +11,7 @@ import {
 import { formatTicket } from "@/lib/tickets/ticket";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { HistoryTable } from "@/components/history/HistoryTable";
+import { ExportButton } from "@/components/export/ExportButton";
 
 export const runtime = "nodejs";
 export const metadata = { title: "History" };
@@ -29,7 +30,10 @@ export default async function HistoryPage() {
 
   return (
     <div>
-      <h1 className="mb-4 text-2xl font-bold">Submission history</h1>
+      <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
+        <h1 className="text-2xl font-bold">Submission history</h1>
+        <ExportButton table="submissions" />
+      </div>
       {rows.length === 0 ? (
         <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
           No submissions yet. {sparkleLine("empty", daySeed(new Date()))}

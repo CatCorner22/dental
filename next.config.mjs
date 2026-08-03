@@ -1,4 +1,92 @@
 /** @type {import('next').NextConfig} */
+
+// Security headers.
+//
+// These are the browser-enforced half of the app's defences: the server can
+// refuse a bad request, but only the browser can stop a page being framed,
+// stop a MIME sniff turning an upload into a script, or stop a token leaking
+// into a third-party Referer. Set once, here, so no route can forget them.
+//
+// The CSP is deliberately strict about where code and data may come from, and
+// deliberately honest about what Next.js needs:
+//
+//   'unsafe-inline' on script-src — Next's App Router inlines its hydration
+//   bootstrap and flight data as inline <script> tags. Removing it requires a
+//   per-request nonce threaded through the framework's own script tags, which
+//   Next does not expose on a static header. Documented rather than hidden:
+//   the app renders no user-supplied HTML anywhere, so the XSS surface this
+//   would defend is not currently reachable.
+//
+//   'unsafe-eval' is NOT granted in production. PGlite's WASM loader wants it
+//   in development only; a production deployment uses node-postgres.
+//
+//   connect-src 'self' — the app makes no third-party requests at all. Email
+//   goes out server-side. If that ever changes, this line must change with it,
+//   which is the point.
+const isDev = process.env.NODE_ENV === "development";
+
+const csp = [
+  "default-src 'self'",
+  `script-src 'self' 'unsafe-inline'${isDev ? " 'unsafe-eval'" : ""}`,
+  // Tailwind emits a stylesheet, but styled-jsx and inline style attributes
+  // still need this. No external stylesheet host is allowed.
+  "style-src 'self' 'unsafe-inline'",
+  // data: covers the inline SVG favicon; blob: covers the client-side note
+  // export, which builds a Blob URL to download the frozen record.
+  "img-src 'self' data: blob:",
+  "font-src 'self' data:",
+  "connect-src 'self'",
+  // Downloading an exported note creates a blob: URL.
+  "object-src 'none'",
+  "base-uri 'self'",
+  // The app posts only to itself; mailto: is the feedback link.
+  "form-action 'self'",
+  // Clickjacking: nothing here should ever be framed.
+  "frame-ancestors 'none'",
+  "frame-src 'none'",
+  "worker-src 'self' blob:",
+  "manifest-src 'self'",
+  ...(isDev ? [] : ["upgrade-insecure-requests"])
+].join("; ");
+
+const securityHeaders = [
+  { key: "Content-Security-Policy", value: csp },
+  // Belt and braces with frame-ancestors, for anything that predates CSP 2.
+  { key: "X-Frame-Options", value: "DENY" },
+  { key: "X-Content-Type-Options", value: "nosniff" },
+  // A password-reset token lives in a URL path. Sending a full URL to another
+  // origin as a Referer would leak it; this sends nothing cross-origin.
+  { key: "Referrer-Policy", value: "no-referrer" },
+  // The app needs none of these. Denying them means a compromised dependency
+  // cannot quietly ask for a microphone in a dental operatory.
+  {
+    key: "Permissions-Policy",
+    value: [
+      "accelerometer=()",
+      "camera=()",
+      "geolocation=()",
+      "gyroscope=()",
+      "magnetometer=()",
+      "microphone=()",
+      "payment=()",
+      "usb=()",
+      "interest-cohort=()"
+    ].join(", ")
+  },
+  // Two years, subdomains included, preload-eligible. Only meaningful over
+  // HTTPS; a browser ignores it on a plain-HTTP origin, so it is safe to send
+  // unconditionally.
+  {
+    key: "Strict-Transport-Security",
+    value: "max-age=63072000; includeSubDomains; preload"
+  },
+  // Cross-origin isolation primitives. These stop another origin from reading
+  // this one's resources or holding a reference to its window.
+  { key: "Cross-Origin-Opener-Policy", value: "same-origin" },
+  { key: "Cross-Origin-Resource-Policy", value: "same-origin" },
+  { key: "X-DNS-Prefetch-Control", value: "off" }
+];
+
 const nextConfig = {
   // PGlite ships a WASM bundle whose loader resolves data files via import.meta
   // URLs; webpack bundling breaks that. Keep the DB drivers external so they
@@ -6,6 +94,27 @@ const nextConfig = {
   serverExternalPackages: ["@electric-sql/pglite", "pg"],
   outputFileTracingIncludes: {
     "/reference/**": ["./skill/**"]
+  },
+  // Next advertises its version in a response header. It tells an attacker
+  // which CVEs to try and tells a legitimate user nothing.
+  poweredByHeader: false,
+  async headers() {
+    return [
+      {
+        // Everything, including API routes and static assets.
+        source: "/:path*",
+        headers: securityHeaders
+      },
+      {
+        // A password-reset link must never be cached — not by the browser, not
+        // by a proxy, not in a shared-workstation back button.
+        source: "/reset/:path*",
+        headers: [
+          { key: "Cache-Control", value: "no-store, max-age=0" },
+          ...securityHeaders
+        ]
+      }
+    ];
   }
 };
 

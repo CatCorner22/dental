@@ -3,6 +3,7 @@ import { canReadAuditLog } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listAuditLog, type AuditFilter } from "@/lib/db/repo/auditLog";
+import { ExportButton } from "@/components/export/ExportButton";
 import { listUsers } from "@/lib/db/repo/users";
 
 export const runtime = "nodejs";
@@ -60,7 +61,7 @@ export default async function AuditLogPage({
         Sign-ins, user-management, and submission events, newest first. This log supports
         traceability; it contains no patient data.
       </p>
-      <div className="mb-4 flex flex-wrap gap-1.5">
+      <div className="mb-4 flex flex-wrap items-center gap-1.5">
         {FILTERS.map((f) => (
           <a
             key={f.key}
@@ -74,6 +75,9 @@ export default async function AuditLogPage({
             {f.label}
           </a>
         ))}
+        <span className="ml-auto">
+          <ExportButton table="audit-log" />
+        </span>
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">

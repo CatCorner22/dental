@@ -11,6 +11,7 @@ import type {
   TextareaField
 } from "@/lib/schema/types";
 import { standardize } from "@/lib/standardize/standardize";
+import { TextDiff } from "@/components/diff/TextDiff";
 
 interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
@@ -181,6 +182,10 @@ function StandardizeField({
   // produced. Both, because Undo is only offered while the field still holds
   // exactly what was produced — see below.
   const [prior, setPrior] = useState<{ before: string; after: string } | null>(null);
+  // The diff is opt-in per run rather than always-on: it is the answer to "what
+  // did you just do", and pinning it open would push the next field off screen
+  // on a busy note.
+  const [showDiff, setShowDiff] = useState(false);
   if (!text.trim()) return null;
 
   // The writer has typed since the rewrite, so their newer words are what is in
@@ -201,6 +206,7 @@ function StandardizeField({
     }
     if (r.text !== text) {
       setPrior({ before: text, after: r.text });
+      setShowDiff(false);
       onApply(r.text);
     }
     const parts: string[] = [];
@@ -252,11 +258,27 @@ function StandardizeField({
           onClick={() => {
             onApply(prior.before);
             setPrior(null);
+            setShowDiff(false);
             setNote("your wording is back");
             setTimeout(() => setNote(null), 6000);
           }}
         >
           ↩ Undo
+        </button>
+      )}
+      {/*
+        Undo answers "put it back". This answers "what did you do?" — and it is
+        the one a clinician needs BEFORE deciding, because the alternative is
+        accepting a rewrite of a legal record on the strength of a word count.
+      */}
+      {canUndo && (
+        <button
+          type="button"
+          className="chip"
+          aria-expanded={showDiff}
+          onClick={() => setShowDiff((v) => !v)}
+        >
+          {showDiff ? "Hide changes" : "See changes"}
         </button>
       )}
       {note && (
@@ -281,6 +303,11 @@ function StandardizeField({
       */}
       {caution && (
         <span className="basis-full text-xs text-amber-700">{caution}</span>
+      )}
+      {showDiff && prior && (
+        <div className="basis-full">
+          <TextDiff before={prior.before} after={prior.after} />
+        </div>
       )}
     </div>
   );

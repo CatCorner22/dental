@@ -45,6 +45,17 @@ interface BaseField {
   requiredIf?: Condition; // evaluated only when visible
   visibleIf?: Condition; // hidden fields are never required, rendered, or composed
   helpText?: string;
+  // Who the words in this field are written FOR. Undefined (every existing
+  // field) means the clinical record — precise, technical, read by clinicians
+  // and lawyers. "patient" means the person in the chair reads it.
+  //
+  // This is load-bearing rather than descriptive. The record voice and the
+  // patient voice want OPPOSITE edits from the same machinery: the standardizer
+  // rewrites "x-ray" to "radiograph" and the abbreviation rule enforces it at
+  // STYLE severity, which on a patient-facing field would turn plain English
+  // into jargon automatically. So the marker both switches the plain-language
+  // rule ON and switches the jargon machinery OFF for that field.
+  audience?: "patient";
 }
 
 export interface SelectField extends BaseField {

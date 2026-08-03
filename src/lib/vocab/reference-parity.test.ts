@@ -3,6 +3,7 @@ import path from "node:path";
 import { describe, expect, it } from "vitest";
 import { BANNED_ABBREVIATIONS } from "./abbreviations";
 import { STALE_PHRASES, STIGMATIZING_PHRASES, VAGUE_PHRASES } from "./vague-phrases";
+import { PLAIN_WORDS } from "./plain-language";
 
 // Smile Notes tells staff the same rules in two places, and they were kept in
 // step by hand:
@@ -88,6 +89,11 @@ const TABLES: Array<{ heading: string; list: ReadonlyArray<{ display: string }>;
     heading: "## Words that label the patient",
     list: STIGMATIZING_PHRASES,
     name: "STIGMATIZING_PHRASES"
+  },
+  {
+    heading: "## Plain words for patient-facing text",
+    list: PLAIN_WORDS,
+    name: "PLAIN_WORDS"
   }
 ];
 

@@ -66,9 +66,17 @@ export const VAGUE_PHRASES: VaguePhrase[] = [
   },
   {
     id: "moderate",
-    pattern: /\bmoderate\b(?!\s+sedation)/gi,
+    // "anxiety" joins "sedation" in the carve-out for the same reason the
+    // carve-out exists at all: both are named points on a defined scale rather
+    // than a floating adjective. This rule asks a writer to "give a measurement
+    // or defined scale", and a three-point self-report question IS the scale —
+    // there is no more objective measure of how anxious someone feels. Bare
+    // "moderate swelling" still flags, which is the case the rule was written
+    // for.
+    pattern: /\bmoderate\b(?!\s+(?:sedation|anxiety))/gi,
     display: "moderate",
-    replacement: "give a measurement or defined scale; keep formal anesthesia-depth terms"
+    replacement:
+      "give a measurement or defined scale; formal anesthesia-depth terms and named anxiety scale points are fine"
   },
   {
     // The staff-facing table has listed "minimal, moderate, or large" since the

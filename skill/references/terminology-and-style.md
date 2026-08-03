@@ -181,6 +181,65 @@ Do not convert between cartridges, milliliters, milligrams, or micrograms unless
 - Do not weaken the clinical meaning to reach a target grade level.
 - Aim for about fifth-grade language for patient-facing text when possible; keep clinical notes technically precise.
 
+## Plain words for patient-facing text
+
+Only the fields marked as written for the patient are checked against this list — the summary the patient reads, not the clinical record. Patients have routine access to their notes under the 21st Century Cures Act, and a summary written for a colleague is not one the patient can act on.
+
+This table runs the opposite way to the shorthand table above, on purpose. The record wants "radiograph"; the patient wants "x-ray". Both are right for their own reader, and the audit only applies each list where it belongs. Nothing here is ever rewritten automatically, and the Standardize button is switched off on these fields: a plainer word can carry a different clinical claim, and choosing the wording that stays true is the clinician’s call.
+
+Keeping the term and explaining it once clears the finding — write *periodontitis (gum disease that has reached the bone)* and the rule stays quiet.
+
+| Avoid | Write instead |
+|---|---|
+| radiograph | x-ray |
+| caries | tooth decay, or a cavity |
+| periodontitis | gum disease that has reached the bone |
+| gingivitis | swollen, bleeding gums |
+| calculus | tartar — the hard deposit on the teeth |
+| lesion | say what it is and where — a sore, a patch, an area of decay |
+| abscess | a pocket of infection |
+| edema | swelling |
+| erythema | redness |
+| exudate | fluid or pus |
+| necrotic | the nerve inside the tooth has died |
+| pulp | the nerve and blood vessels inside the tooth |
+| extraction | taking the tooth out |
+| restoration | a filling |
+| prophylaxis | a cleaning |
+| scaling and root planing | a deep cleaning below the gumline |
+| endodontic | root canal treatment |
+| anesthetic | numbing medicine |
+| analgesic | pain medicine |
+| suture | stitches |
+| palpation | pressing with the fingers to check |
+| percussion | tapping the tooth to check it |
+| pontic | the replacement tooth in a bridge |
+| abutment | the tooth or implant that holds the bridge |
+| prosthesis | a replacement for missing teeth — say denture, bridge, or implant |
+| edentulous | no natural teeth left in that area |
+| occlusion | the way the teeth meet when you bite |
+| dentition | your teeth |
+| maxillary | upper jaw |
+| mandibular | lower jaw |
+| anterior | front |
+| posterior | back |
+| bilateral | both sides |
+| unilateral | one side — say which |
+| interproximal | between the teeth |
+| asymptomatic | nothing you would feel |
+| etiology | the cause |
+| sequelae | what can happen next |
+| contraindicated | not safe for you — and say why |
+| exacerbate | make worse |
+| utilize | use |
+| prior to | before |
+| subsequent to | after |
+| administer | give, or gave |
+| discontinue | stop |
+| initiate | start |
+| in the event that | if |
+| at this point in time | now |
+
 ## Adams-style ambiguity controls
 
 - Give each defined term one meaning.

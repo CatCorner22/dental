@@ -246,10 +246,21 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
-      <StandardizeField
-        text={value?.value ?? ""}
-        onApply={(next) => onChange({ kind: "text", value: next })}
-      />
+      {/*
+        No Standardize on patient-facing text. The standardizer's whole job is
+        to move prose TOWARD the clinical register — "x-ray" becomes
+        "radiograph", "tx" becomes "treatment" — and on a paragraph written for
+        the person in the chair that is a one-click jargon generator. The plain
+        rule flags the same field in the opposite direction, so offering the
+        button here would let one press of it manufacture the findings the other
+        rule then reports.
+      */}
+      {field.audience !== "patient" && (
+        <StandardizeField
+          text={value?.value ?? ""}
+          onApply={(next) => onChange({ kind: "text", value: next })}
+        />
+      )}
     </div>
   );
 }
@@ -276,10 +287,21 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
-      <StandardizeField
-        text={value?.value ?? ""}
-        onApply={(next) => onChange({ kind: "text", value: next })}
-      />
+      {/*
+        No Standardize on patient-facing text. The standardizer's whole job is
+        to move prose TOWARD the clinical register — "x-ray" becomes
+        "radiograph", "tx" becomes "treatment" — and on a paragraph written for
+        the person in the chair that is a one-click jargon generator. The plain
+        rule flags the same field in the opposite direction, so offering the
+        button here would let one press of it manufacture the findings the other
+        rule then reports.
+      */}
+      {field.audience !== "patient" && (
+        <StandardizeField
+          text={value?.value ?? ""}
+          onApply={(next) => onChange({ kind: "text", value: next })}
+        />
+      )}
     </div>
   );
 }

@@ -77,6 +77,7 @@ export function ToothChart() {
         <div className="mt-4 rounded bg-slate-50 p-3 text-sm">
           <p className="font-semibold">
             Tooth {tooth.id}: {tooth.name}
+            {tooth.fdi && <span className="ml-1 font-normal text-slate-500">(FDI {tooth.fdi})</span>}
           </p>
           <p className="text-slate-600">
             Quadrant {tooth.quadrant} · {tooth.isAnterior ? "anterior" : "posterior"} · surfaces:{" "}

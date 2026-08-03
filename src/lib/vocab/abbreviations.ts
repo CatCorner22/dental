@@ -221,5 +221,200 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     display: "F/U",
     replacement: "follow-up",
     severityClass: "style"
+  },
+
+  // -------------------------------------------------------------------------
+  // The shorthand staff actually type
+  // -------------------------------------------------------------------------
+  //
+  // Added after MEASURING the transformer against notes written the way a
+  // hygienist types them between patients. The result was that it made about two
+  // substantive changes per note and walked straight past c/o, w/, mh, bp, epi,
+  // lido, ant, iso, ext, perc, imp, temp, mod, cal, tp and cx. A transformer that
+  // does not know the practice's own vocabulary is not a transformer.
+  //
+  // The same gap disabled the AI layer completely. The meaning verifier licenses
+  // a rewrite to introduce a word only when a table entry it triggers produces
+  // that word — so with these missing, a model correctly expanding "w/ epi" to
+  // "with epinephrine" was refused for changing the drug list, and correctly
+  // expanding "mh" to "medical history" was refused for moving a negation. Zero
+  // of five realistic rewrites survived. One table, both transformers.
+  //
+  // The split below is the file's existing rule, applied honestly: "style" means
+  // the expansion is fixed and adds no clinical claim, "review" means the real
+  // expansion needs a fact the shorthand is hiding, so the tool asks instead of
+  // guessing. Several of these are genuinely ambiguous in a dental chart and the
+  // ambiguity is not academic — "mod" is both "moderate" and the MOD surfaces,
+  // and a measured note used it in both senses two lines apart.
+
+  {
+    // BEFORE the "w/" entry, and the lookahead in that pattern is the real
+    // protection: "w/o" is a NEGATION, and turning it into "with o" would invert
+    // a clinical statement. Belt and braces, because the cost of getting this
+    // one wrong is a note that says the opposite of what happened.
+    id: "wo",
+    pattern: /\bw\/o\b/gi,
+    display: "w/o",
+    replacement: "without",
+    severityClass: "style"
+  },
+  {
+    id: "w-with",
+    // Only when a space follows, so "w/o" can never be reached by this rule
+    // whatever order the table is walked in.
+    pattern: /\bw\/(?=\s)/gi,
+    display: "w/",
+    replacement: "with",
+    severityClass: "style"
+  },
+  {
+    id: "co",
+    pattern: /\bc\/o\b/gi,
+    display: "c/o",
+    replacement: "complains of",
+    severityClass: "style"
+  },
+  {
+    id: "mh",
+    pattern: /\bMH\b/gi,
+    display: "MH",
+    replacement: "medical history",
+    severityClass: "style"
+  },
+  {
+    id: "bp",
+    pattern: /\bBP\b/gi,
+    display: "BP",
+    replacement: "blood pressure",
+    severityClass: "style"
+  },
+  {
+    id: "ant-anterior",
+    pattern: /\bant\b/gi,
+    display: "ant",
+    replacement: "anterior",
+    severityClass: "style"
+  },
+  {
+    id: "iso",
+    pattern: /\biso\b/gi,
+    display: "iso",
+    replacement: "isolation",
+    severityClass: "style"
+  },
+  {
+    // Expanded rather than flagged, and that is a dose-safety judgement rather
+    // than a wording one: in a dental operatory "epi" is the vasoconstrictor,
+    // and spelling it out makes the agent explicit to anyone later reading the
+    // anesthetic record. Leaving it as three letters hides a drug.
+    id: "epi",
+    pattern: /\bepi\b/gi,
+    display: "epi",
+    replacement: "epinephrine",
+    severityClass: "style"
+  },
+  {
+    id: "lido",
+    pattern: /\blido\b/gi,
+    display: "lido",
+    replacement: "lidocaine",
+    severityClass: "style"
+  },
+  {
+    id: "fl-fluoride",
+    pattern: /\bfl\b/gi,
+    display: "fl",
+    replacement: "fluoride",
+    severityClass: "style"
+  },
+
+  {
+    // "pt tol well" is the writer asserting an outcome in three letters. Spelling
+    // it out is a vocabulary change, and it hands the sentence to the vague-phrase
+    // rule, which then asks for the response actually observed — the behaviour the
+    // practice wants.
+    //
+    // Note the distinction this preserves, which is the whole design of the
+    // grounding check: expanding "tol" is licensed because the NOTE SAYS IT,
+    // while a model adding "tolerated the procedure well" to a note that never
+    // said it is still refused as a fabricated outcome claim. Same word, opposite
+    // verdicts, decided by whether the writer wrote it.
+    id: "tol",
+    pattern: /\btol\b/gi,
+    display: "tol",
+    replacement: "tolerated",
+    severityClass: "style"
+  },
+  {
+    id: "mo-months",
+    pattern: /\bmo\b/gi,
+    display: "mo",
+    replacement: "months",
+    severityClass: "style"
+  },
+
+  // ---- Ambiguous: the tool asks, because the reading changes the record.
+  {
+    id: "perc",
+    // "perc + on #14" is percussion. "perc 5/325" is a controlled substance.
+    // Guessing between a diagnostic test and an opioid is not a wording call.
+    pattern: /\bperc\b/gi,
+    display: "perc",
+    replacement: "percussion, or Percocet — write the full word (a drug name is never abbreviated)",
+    severityClass: "review"
+  },
+  {
+    id: "endo",
+    pattern: /\bendo\b/gi,
+    display: "endo",
+    replacement:
+      "endodontics or the endodontist, or endocarditis (as in antibiotic prophylaxis) — write which",
+    severityClass: "review"
+  },
+  {
+    id: "imp",
+    pattern: /\bimp\b/gi,
+    display: "imp",
+    replacement: "impression, or implant — write which one this was",
+    severityClass: "review"
+  },
+  {
+    id: "temp",
+    pattern: /\btemp\b/gi,
+    display: "temp",
+    replacement: "temporary restoration, or temperature — write which",
+    severityClass: "review"
+  },
+  {
+    // The measured note that proved this needed to be a flag used "mod" for
+    // "moderate calculus" and for a "mod composite" — the MOD surfaces — within
+    // eight lines. One is an observation, the other is a billable site.
+    id: "mod",
+    pattern: /\bmod\b/gi,
+    display: "mod",
+    replacement:
+      "moderate, or the mesial-occlusal-distal (MOD) surfaces — write which (the surfaces are a billed site)",
+    severityClass: "review"
+  },
+  {
+    id: "cal",
+    pattern: /\bcal\b/gi,
+    display: "cal",
+    replacement: "calculus, or clinical attachment loss (CAL) — write which",
+    severityClass: "review"
+  },
+  {
+    id: "tp",
+    pattern: /\btp\b/gi,
+    display: "tp",
+    replacement: "treatment plan, or toothpaste — write which",
+    severityClass: "review"
+  },
+  {
+    id: "cx",
+    pattern: /\bcx\b/gi,
+    display: "cx",
+    replacement: "continuing care, cancelled, or complications — write which",
+    severityClass: "review"
   }
 ];

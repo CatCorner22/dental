@@ -21,4 +21,13 @@
 //         zero-width character, was invisible to every \d-based PHI pattern
 //         while reading normally to a human. The obfuscation is now the finding,
 //         so no pattern has to be taught about Unicode individually.
-export const RULESET_VERSION = "2.5.0";
+// 2.6.0 — the vocabulary staff actually type: w/, w/o, c/o, MH, BP, ant, iso,
+//         epi, lido, fl, tol, mo expand deterministically; perc, endo, imp,
+//         temp, mod, cal, tp, cx are flagged as ambiguous rather than guessed;
+//         EXT and NKA extend their existing ASK to lower case; PFM and PVS join
+//         the first-use terms of art. Measured cause: on notes typed the way
+//         staff type them the transformer made ~2 changes each and the AI
+//         verifier accepted 0 of 5 faithful rewrites, because the tables are
+//         both what the deterministic pass applies AND what licenses a model's
+//         expansions.
+export const RULESET_VERSION = "2.6.0";

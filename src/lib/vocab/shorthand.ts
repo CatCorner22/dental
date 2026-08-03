@@ -132,7 +132,11 @@ export const SHORTHAND: Shorthand[] = [
   { id: "loe", pattern: /\bLOE\b/gi, display: "LOE", expansion: "limited oral evaluation", domain: "dental" },
   {
     id: "ext",
-    pattern: /\bEXT\b/g,
+    // Case-INSENSITIVE, unlike the quadrant entries below. "ext" is not an
+    // English word, so there is no typo for it to fire on, and staff type it in
+    // lower case — measured on real notes, where an uppercase-only pattern meant
+    // a surgical note's most important abbreviation went unflagged entirely.
+    pattern: /\bEXT\b/gi,
     display: "EXT",
     expansion: "extraction",
     alternatives: ["extraction", "extension"],
@@ -140,6 +144,9 @@ export const SHORTHAND: Shorthand[] = [
   },
   { id: "ssc", pattern: /\bSSCs?\b/gi, display: "SSC", expansion: "stainless steel crown", pluralExpansion: "stainless steel crowns", domain: "dental" },
   { id: "sdf", pattern: /\bSDF\b/gi, display: "SDF", expansion: "silver diamine fluoride", domain: "dental" },
+
+  { id: "pfm", pattern: /\bPFM\b/gi, display: "PFM", expansion: "porcelain-fused-to-metal", domain: "dental" },
+  { id: "pvs", pattern: /\bPVS\b/gi, display: "PVS", expansion: "polyvinyl siloxane", domain: "dental" },
 
   // ---- Materials
   { id: "mta", pattern: /\bMTA\b/gi, display: "MTA", expansion: "mineral trioxide aggregate", domain: "dental" },
@@ -317,7 +324,12 @@ export const SHORTHAND: Shorthand[] = [
     // Never expanded. Charted "NKA" is used for both readings in the wild, and
     // only the person who examined the patient knows which they meant. The
     // banned-abbreviation rule says the same thing — "only when verified".
-    pattern: /\bNKA\b/g,
+    //
+    // Case-INSENSITIVE: "nka" is not an English word, so there is no typo for
+    // this to fire on, and an uppercase-only pattern meant a lower-case "nka" —
+    // which is how it gets typed between patients — was not even flagged. An
+    // unflagged NKA is an unverified allergy statement sitting in the record.
+    pattern: /\bNKA\b/gi,
     display: "NKA",
     expansion: "no known allergies",
     alternatives: ["no known allergies", "no known drug allergies"],

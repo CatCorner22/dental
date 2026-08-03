@@ -29,7 +29,63 @@ import { foldDigits } from "@/lib/text/foldDigits";
  * characters — they are different digits that mean the same number.
  */
 export function canonical(text: string): string {
-  return foldDigits(visibleText(text.normalize("NFKC")));
+  return foldToothHash(foldNumberWords(spaceUnits(foldDigits(visibleText(text.normalize("NFKC"))))));
+}
+
+/**
+ * Separate a measurement from its unit: "400mg" becomes "400 mg".
+ *
+ * The unit check is `\b(?:mg|mL|mm|…)\b`, and there is no word boundary between
+ * "0" and "m" — so a glued unit is invisible to it. That produced a refusal on
+ * every rewrite that did the RIGHT thing: the note said "ibuprofen 400mg", the
+ * model returned "ibuprofen 400 mg", the verifier saw units go from [] to [mg]
+ * and called it a changed measurement. Un-gluing is precisely what the
+ * standardizer's own spaceUnits() does, so the verifier was refusing the house
+ * style.
+ *
+ * Deliberately the same bounded unit list the standardizer uses, so a tooth
+ * designation or a date is never split.
+ */
+function spaceUnits(text: string): string {
+  return text.replace(/\b(\d+(?:\.\d+)?)(mg|mcg|kg|mL|ml|mm|cm|g)\b/g, "$1 $2");
+}
+
+/**
+ * "#17" and "tooth 17" are the same designator written two ways.
+ *
+ * Writing the word out is one of the most valuable things the transformer does —
+ * "#17" means nothing to a reader outside dentistry, and a records request goes
+ * to exactly such a reader. But it introduces the word "tooth", which the
+ * grounding check then could not trace to anything in the note, so a correct
+ * rewrite was refused for inventing content. Folding both notations to one makes
+ * them comparable without licensing anything new.
+ */
+function foldToothHash(text: string): string {
+  return text.replace(/#\s?(\d{1,2}\b)/g, "tooth $1");
+}
+
+// Small integers written as words. A quantity is a quantity however it is
+// notated, which is the same principle that folds ٥ onto 5.
+const NUMBER_WORDS: Record<string, string> = {
+  zero: "0", one: "1", two: "2", three: "3", four: "4", five: "5", six: "6",
+  seven: "7", eight: "8", nine: "9", ten: "10", eleven: "11", twelve: "12"
+};
+
+/**
+ * Fold a spelled-out small integer onto its digit.
+ *
+ * "1 carpule" becoming "One carpule" at the start of a sentence is one of the
+ * most natural things a language model does, and it refused the whole rewrite
+ * for `digits-changed` — a false alarm about a number that had not changed.
+ *
+ * Bounded at twelve, and single words only, which is what keeps it safe: a model
+ * turning "500 mg" into "five hundred mg" still fails, because "hundred" is not
+ * in this table and the digits then genuinely disagree. Folding is applied to
+ * both sides of every comparison, so it can never manufacture a match that the
+ * quantities do not support.
+ */
+function foldNumberWords(text: string): string {
+  return text.replace(/\b[A-Za-z]+\b/g, (w) => NUMBER_WORDS[w.toLowerCase()] ?? w);
 }
 
 /**
@@ -41,9 +97,17 @@ export function canonical(text: string): string {
  * block, and codePointAt arithmetic recovers that without a lookup table.
  */
 
-/** Lowercased alphabetic tokens. Digits are compared separately and exactly. */
+/**
+ * Lowercased alphabetic tokens. Digits are compared separately and exactly.
+ *
+ * Hyphens and apostrophes are SEPARATORS, not part of a token. They used to be
+ * included, which meant "follow-up" tokenized as one word while the model's
+ * "follow up" tokenized as two — so the licensed expansion of "f/u" could not
+ * ground the output, and a correct rewrite was refused for inventing content.
+ * Splitting both sides the same way is what makes the comparison mean anything.
+ */
 export function words(text: string): string[] {
-  return canonical(text).toLowerCase().match(/[a-z][a-z'-]*/g) ?? [];
+  return canonical(text).toLowerCase().match(/[a-z]+/g) ?? [];
 }
 
 /**

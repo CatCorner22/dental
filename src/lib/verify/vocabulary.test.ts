@@ -28,15 +28,44 @@ describe("nothing clinical is permitted UNCONDITIONALLY", () => {
   // Only grammar is. Every clinical word has to be earned, either by appearing in
   // the note or by being the consequence of a standardization the note triggers.
 
-  it("licenses no medication name, under any input", () => {
-    // Not "under this input" — under any. A drug name is never introducible by a
-    // rewrite. If the writer misspelled one, the spelling rule raises it at S2
-    // for a clinician to verify against the source record; the transformer does
-    // not perform that correction, and the verifier must agree with that rule.
-    const leaked = [...MEDICATION_WORDS].filter(
-      (drug) => EVER_LICENSABLE_STEMS.has(stem(drug)) || SYNTACTIC_STEMS.has(stem(drug))
-    );
-    expect(leaked).toEqual([]);
+  it("licenses a drug name ONLY from a curated abbreviation of that same drug", () => {
+    // The rule this replaced was "no rule may ever license a drug name", and it
+    // was too blunt in one direction and exactly right in the other.
+    //
+    // Wrong: "epi" IS epinephrine, abbreviated by the writer. Spelling it out is
+    // what a documentation standardizer is for, and it is safer than leaving
+    // three letters where a vasoconstrictor should be named — an anaesthetic
+    // record that hides its agent is the problem, not the fix.
+    //
+    // Right: a SPELLING CORRECTION licensing a drug name is a guess about which
+    // drug was meant, and the practice's rule is that such a guess waits for a
+    // clinician. That half is asserted separately below.
+    //
+    // So the enforceable invariant is that the licensing list is CURATED: adding
+    // a drug to it fails this test, which makes it a deliberate act a reviewer
+    // sees rather than a side effect of editing a vocabulary table.
+    const licensable = [...MEDICATION_WORDS]
+      .filter((drug) => EVER_LICENSABLE_STEMS.has(stem(drug)))
+      .sort();
+    expect(licensable).toEqual(["epinephrine", "fluoride", "lidocaine"]);
+  });
+
+  it("never licenses a drug name from a spelling correction", () => {
+    // "amoxicilin" is almost certainly amoxicillin, and "almost certainly" is not
+    // a standard a drug name may be corrected on.
+    expect(licenseFor("Prescribed amoxicilin 500 mg.").licensed.has(stem("amoxicillin"))).toBe(false);
+  });
+
+  it("expanding one drug abbreviation does not license a SECOND drug", () => {
+    // The attack the loosened rule could have opened: the note abbreviates one
+    // agent, and the model quietly adds another alongside it.
+    const license = licenseFor("2 carpules lido used.");
+    expect(license.licensed.has(stem("lidocaine"))).toBe(true);
+    expect(license.licensed.has(stem("epinephrine"))).toBe(false);
+  });
+
+  it("permits no medication name unconditionally", () => {
+    expect([...MEDICATION_WORDS].filter((d) => SYNTACTIC_STEMS.has(stem(d)))).toEqual([]);
   });
 
   it("never unconditionally permits something a question may not plant", () => {

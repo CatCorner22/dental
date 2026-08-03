@@ -82,6 +82,26 @@ Do not collapse these states.
 | F/U | follow-up |
 
 Keep an abbreviation only if the practice has one approved meaning, defines it at first use, and state law or facility policy permits it.
+| w/ | with |
+| w/o | without |
+| c/o | complains of |
+| MH | medical history |
+| BP | blood pressure |
+| ant | anterior |
+| iso | isolation |
+| epi | epinephrine |
+| lido | lidocaine |
+| fl | fluoride |
+| tol | tolerated (then state the response actually observed) |
+| mo | months |
+| perc | percussion, or Percocet — write the full word (a drug name is never abbreviated) |
+| endo | endodontics or the endodontist, or endocarditis (as in antibiotic prophylaxis) — write which |
+| imp | impression, or implant — write which one this was |
+| temp | temporary restoration, or temperature — write which |
+| mod | moderate, or the mesial-occlusal-distal (MOD) surfaces — write which (the surfaces are a billed site) |
+| cal | calculus, or clinical attachment loss (CAL) — write which |
+| tp | treatment plan, or toothpaste — write which |
+| cx | continuing care, cancelled, or complications — write which |
 
 ## Replace vague or unsafe phrases
 

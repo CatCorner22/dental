@@ -137,13 +137,39 @@ function isDrugStem(s: string): boolean {
  */
 const STANDARDIZATIONS: readonly Standardization[] = (() => {
   const rules: Standardization[] = [];
-  const add = (pattern: RegExp, replacement: string, trigger: string) => {
-    const introduces = stemsOf(replacement).filter((s) => !isDrugStem(s));
+  const add = (
+    pattern: RegExp,
+    replacement: string,
+    trigger: string,
+    opts: { allowDrugNames: boolean } = { allowDrugNames: true }
+  ) => {
+    const introduces = opts.allowDrugNames
+      ? stemsOf(replacement)
+      : stemsOf(replacement).filter((s) => !isDrugStem(s));
     if (introduces.length === 0) return;
-    rules.push({ pattern, introduces, consumes: stemsOf(trigger) });
+    // Case-insensitive, always. The deterministic pass keeps its own casing
+    // rules — quadrant shorthand is uppercase-only there, deliberately, because
+    // auto-replacing a lowercase "ul" could rewrite a typo into an anatomical
+    // site. That caution is about APPLYING a change unasked. A license is a
+    // different question: a model expanding "ul quad" to "upper left quadrant"
+    // for a human to read is grounded in something the note actually says, and
+    // refusing it made four of five realistic rewrites fail on site-changed.
+    const insensitive = new RegExp(
+      pattern.source,
+      pattern.flags.includes("i") ? pattern.flags : `${pattern.flags}i`
+    );
+    rules.push({ pattern: insensitive, introduces, consumes: stemsOf(trigger) });
   };
 
-  for (const a of BANNED_ABBREVIATIONS) add(a.pattern, a.replacement, a.display);
+  for (const a of BANNED_ABBREVIATIONS) {
+    // A "review" entry's `replacement` is GUIDANCE, not a replacement — "mod"
+    // reads "moderate, or the mesial-occlusal-distal (MOD) surfaces — write
+    // which". Licensing its words would license both readings of an ambiguity
+    // the tool exists to refuse to guess at, plus every word of the advice
+    // prose. The deterministic pass never applies these, so neither may a model.
+    if (a.severityClass !== "style") continue;
+    add(a.pattern, a.replacement, a.display);
+  }
   for (const s of SHORTHAND) {
     // First-use convention writes the full term with the initialism after it in
     // parentheses, so the display form is part of the standard output too.
@@ -151,7 +177,16 @@ const STANDARDIZATIONS: readonly Standardization[] = (() => {
     if (s.pluralExpansion) add(s.pattern, s.pluralExpansion, s.display);
   }
   for (const [wrong, correction] of Object.entries(MISSPELLINGS)) {
-    add(new RegExp(`\\b${wrong.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi"), correction, wrong);
+    // The ONE source that may not license a drug name. An explicit shorthand
+    // ("epi" -> "epinephrine") names a drug the writer already wrote; a spelling
+    // correction GUESSES which drug they meant, and the practice's rule is that
+    // a medication typo waits for a clinician to check the source record.
+    add(
+      new RegExp(`\\b${wrong.replace(/[.*+?^${}()|[\]\\]/g, "\\$&")}\\b`, "gi"),
+      correction,
+      wrong,
+      { allowDrugNames: false }
+    );
   }
   for (const p of PLAIN_WORDS) add(p.pattern, p.replacement, p.display);
   // Surface names, so "MOD" may be written out as mesial/occlusal/distal.
@@ -192,13 +227,21 @@ export function licenseFor(input: string): VocabularyLicense {
   const noise = new Set<string>(SYNTACTIC_STEMS);
   for (const rule of STANDARDIZATIONS) {
     rule.pattern.lastIndex = 0;
-    if (!rule.pattern.test(input)) continue;
+    const matched = input.match(rule.pattern);
     rule.pattern.lastIndex = 0;
+    if (!matched) continue;
     for (const s of rule.introduces) {
       licensed.add(s);
       noise.add(s);
     }
     for (const s of rule.consumes) noise.add(s);
+    // The trigger AS ACTUALLY WRITTEN, not only in its canonical form. Several
+    // patterns match variants their `display` does not name — /\bBWX?\b/ matches
+    // "BWX" while the display is "BW", /\bFM[XS]\b/ matches "FMS" — so a note
+    // saying "bwx" kept "bwx" in every comparison while the expanded output did
+    // not, and the negation-scope check read that as a negation covering
+    // something different. Matching gives the real token for free.
+    for (const m of matched) for (const w of words(m)) noise.add(stem(w));
   }
   return { licensed, noise };
 }

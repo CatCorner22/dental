@@ -60,6 +60,26 @@ function multiset(tokens: string[]): string {
     .join("|");
 }
 
+/**
+ * Drop tokens a licensed standardization could have introduced or consumed.
+ *
+ * The reason every one of these comparisons needs it, stated once: they compare
+ * the input's tokens against the output's, and expanding shorthand legitimately
+ * changes both sides. "UL" carries no site token; "upper left quadrant" carries
+ * three. "epi" is not a drug to the drug regex; "epinephrine" is. A raw multiset
+ * compare therefore reported the transformer's own correct output as a changed
+ * site and a changed drug — and it did so on FOUR of five realistic rewrites,
+ * which is how a safety feature turns into a feature nobody can use.
+ *
+ * `noise` is per-input and covers both halves of every standardization the note
+ * actually triggers, so nothing is forgiven that the note did not license. An
+ * unlicensed change still fails: "lower left" to "lower right" survives this
+ * filter intact, because no shorthand in the note licenses either word.
+ */
+function neutralize(tokens: string[], noise: ReadonlySet<string>): string[] {
+  return tokens.filter((t) => !noise.has(stem(t.toLowerCase())));
+}
+
 // EVERY extractor below reads canonical() text, never the raw string.
 //
 // Before that was true, three red-team attacks walked through on Unicode alone:
@@ -163,8 +183,11 @@ function toothLetters(text: string): string[] {
 
 const UNIT = /\b(?:mg|mcg|µg|kg|g|mL|ml|L|mm|cm|carpules?|units?|%)\b|%/gi;
 
+// canonical(), like every other extractor here. Reading raw text meant a glued
+// "400mg" carried no unit at all, so a rewrite that correctly separated it to
+// "400 mg" looked like a measurement appearing out of nowhere.
 function units(text: string): string[] {
-  return text.match(UNIT) ?? [];
+  return canonical(text).match(UNIT) ?? [];
 }
 
 // Drug tokens: the same lexicon family the interaction screens watch, plus
@@ -174,7 +197,7 @@ const DRUG =
   /\b(?:amoxicillin|penicillin|clindamycin|azithromycin|metronidazole|flagyl|doxycycline|clarithromycin|erythromycin|fluconazole|miconazole|ketoconazole|itraconazole|nystatin|chlorhexidine|ibuprofen|advil|motrin|naproxen|aleve|diclofenac|ketorolac|toradol|acetaminophen|tylenol|hydrocodone|oxycodone|codeine|tramadol|warfarin|coumadin|dabigatran|rivaroxaban|apixaban|lithium|methotrexate|propranolol|nadolol|timolol|simvastatin|atorvastatin|lovastatin|prednisone|dexamethasone|epinephrine|lidocaine|articaine|septocaine|mepivacaine|bupivacaine|marcaine|midazolam|diazepam|valium|triazolam|halcion|fentanyl|ketamine|propofol|nitrous)\b/gi;
 
 function drugs(text: string): string[] {
-  return text.match(DRUG) ?? [];
+  return canonical(text).match(DRUG) ?? [];
 }
 
 // Attribution markers: "patient reports/states/denies", "per patient",
@@ -186,7 +209,7 @@ function drugs(text: string): string[] {
 // pain" to "The patient states pain" read as an attribution appearing out of
 // nowhere, because the input's attribution was invisible to this regex.
 const ATTRIBUTION =
-  /\b(?:pt|patient|parent|guardian|caregiver)\s+(?:reports?|states?|stated|denies|denied|describes?|says?|complains?\s+of)\b|\bper\s+(?:the\s+)?(?:pt|patient|parent|guardian)\b|\bexternal\s+record\s+states?\b/gi;
+  /\b(?:pt|patient|parent|guardian|caregiver)\s+(?:reports?|states?|stated|denies|denied|describes?|says?|complains?\s+of|c\/o)\b|\bper\s+(?:the\s+)?(?:pt|patient|parent|guardian)\b|\bexternal\s+record\s+states?\b/gi;
 
 function attributions(text: string): string[] {
   return canonical(text).match(ATTRIBUTION) ?? [];
@@ -329,6 +352,8 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     return { ok: rejections.length === 0, rejections };
   }
 
+  const { noise } = licenseFor(input);
+
   if (multiset(digits(input)) !== multiset(digits(output))) {
     rejections.push({
       code: "digits-changed",
@@ -350,35 +375,37 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     });
   }
 
-  if (multiset(units(input)) !== multiset(units(output))) {
+  if (multiset(neutralize(units(input), noise)) !== multiset(neutralize(units(output), noise))) {
     rejections.push({
       code: "units-changed",
       detail: `Measurement units changed: [${units(input).join(", ")}] -> [${units(output).join(", ")}]`
     });
   }
 
-  if (multiset(drugs(input)) !== multiset(drugs(output))) {
+  // A drug may be introduced ONLY by an explicit shorthand the note contains —
+  // "epi" licenses "epinephrine". It is never licensed by a spelling correction,
+  // because the practice's own rule is that a medication typo waits for a
+  // clinician; vocabulary.test.ts asserts that separation holds.
+  if (multiset(neutralize(drugs(input), noise)) !== multiset(neutralize(drugs(output), noise))) {
     rejections.push({
       code: "drugs-changed",
       detail: `Drug mentions changed: [${drugs(input).join(", ")}] -> [${drugs(output).join(", ")}]`
     });
   }
 
-  if (multiset(sites(input)) !== multiset(sites(output))) {
+  if (multiset(neutralize(sites(input), noise)) !== multiset(neutralize(sites(output), noise))) {
     rejections.push({
       code: "site-changed",
       detail: `Laterality or anatomical site changed: [${sites(input).join(", ")}] -> [${sites(output).join(", ")}]`
     });
   }
 
-  if (multiset(surfaceCodes(input)) !== multiset(surfaceCodes(output))) {
+  if (multiset(neutralize(surfaceCodes(input), noise)) !== multiset(neutralize(surfaceCodes(output), noise))) {
     rejections.push({
       code: "surfaces-changed",
       detail: "Surface designators changed — the documented restoration is not the one performed."
     });
   }
-
-  const { noise } = licenseFor(input);
 
   if (multiset(negationScopes(input, noise)) !== multiset(negationScopes(output, noise))) {
     rejections.push({

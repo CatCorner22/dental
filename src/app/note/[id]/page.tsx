@@ -48,6 +48,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       draftId={draft.id}
       initialTitle={draft.title}
       initialOfficeId={initialOfficeId}
+      clinicalRole={user.clinicalRole}
       offices={offices.map((o) => ({ id: o.id, name: o.name }))}
       initialNote={draft.noteState}
       initialVersion={draft.version}

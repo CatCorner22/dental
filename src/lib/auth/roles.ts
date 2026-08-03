@@ -1,3 +1,4 @@
+import type { ClinicalRole } from "./clinicalRoles";
 // Role definitions live in their own edge-safe module (no db, no bcrypt) so
 // both the middleware/edge config and the node runtime can import them.
 //
@@ -44,6 +45,14 @@ export interface SessionUser {
   displayName: string;
   role: Role;
   noticeAcked: boolean;
+  /**
+   * Scope of practice — assistant, hygienist, dentist, or not yet recorded.
+   *
+   * Read fresh from the database by requireRole, never from the token, for the
+   * same reason `role` is: a scope corrected after someone signed in must take
+   * effect on their next request, not in thirty days.
+   */
+  clinicalRole: ClinicalRole;
 }
 
 export function meetsRole(role: Role | undefined, min: Role): boolean {

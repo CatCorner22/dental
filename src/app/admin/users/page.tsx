@@ -1,3 +1,4 @@
+import { isClinicalRole } from "@/lib/auth/clinicalRoles";
 import { redirect } from "next/navigation";
 import { canManageUsers, canSendResetLink } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
@@ -35,6 +36,7 @@ export default async function AdminUsersPage() {
         role: u.role,
         active: u.active,
         officeIds: assignments.get(u.id) ?? [],
+        clinicalRole: isClinicalRole(u.clinicalRole) ? u.clinicalRole : "unset",
         // Mirrors the rule in GET /api/admin/users: an address is the delivery
         // target for an account takeover, so it is only sent to a viewer who is
         // allowed to mail a reset link there anyway.

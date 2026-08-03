@@ -1,5 +1,12 @@
 "use client";
 
+import {
+  canRecordClinicalJudgement,
+  isDentistOwnedSection,
+  scopeExplanation,
+  type ClinicalRole
+} from "@/lib/auth/clinicalRoles";
+
 import type { Field, FieldValue, ModuleDef, NoteState } from "@/lib/schema/types";
 import { fieldKey } from "@/lib/schema/types";
 import { isFieldRequired, isFieldVisible } from "@/lib/schema/conditions";
@@ -82,12 +89,15 @@ export function NoteForm({
   modules,
   state,
   onChange,
-  findingsByField = {}
+  findingsByField = {},
+  clinicalRole = "unset"
 }: {
   modules: ModuleDef[];
   state: NoteState;
   onChange: (key: string, value: FieldValue) => void;
   findingsByField?: FieldFindings;
+  /** Defaults to "unset", which restricts nothing. */
+  clinicalRole?: ClinicalRole;
 }) {
   return (
     <div className="space-y-4">
@@ -100,11 +110,29 @@ export function NoteForm({
             <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">{mod.description}</p>
           )}
           <div className="space-y-5 px-4 py-4">
-            {mod.sections.map((section) => (
-              <fieldset key={section.id}>
+            {mod.sections.map((section) => {
+              // Diagnosis and treatment planning are the dentist's, by law, not
+              // by seniority. Locked rather than hidden: a hygienist needs to
+              // SEE what the dentist assessed to do their own work, and a
+              // section that vanishes reads as a bug rather than as a rule.
+              const outOfScope =
+                !canRecordClinicalJudgement(clinicalRole) &&
+                isDentistOwnedSection(mod.id, section.id);
+              return (
+              <fieldset key={section.id} disabled={outOfScope}>
                 <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
                   {section.title}
+                  {outOfScope && (
+                    <span className="ml-2 font-normal normal-case tracking-normal text-amber-800">
+                      — dentist records this
+                    </span>
+                  )}
                 </legend>
+                {outOfScope && (
+                  <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                    {scopeExplanation(clinicalRole)}
+                  </p>
+                )}
                 <div className="space-y-3">
                   {section.fields.map((field) => {
                     if (!isFieldVisible(field, mod.id, state)) return null;
@@ -147,7 +175,8 @@ export function NoteForm({
                   })}
                 </div>
               </fieldset>
-            ))}
+              );
+            })}
           </div>
         </details>
       ))}

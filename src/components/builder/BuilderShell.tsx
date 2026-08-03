@@ -1,8 +1,10 @@
 "use client";
 
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
-import { ALL_MODULES, activeModules } from "@/lib/modules";
+import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { computeGates, runAudit } from "@/lib/audit/engine";
@@ -32,6 +34,7 @@ export function BuilderShell({
   draftId,
   initialTitle,
   initialOfficeId,
+  clinicalRole,
   offices,
   initialNote,
   initialVersion,
@@ -42,6 +45,7 @@ export function BuilderShell({
   draftId: string;
   initialTitle: string;
   initialOfficeId: string | null;
+  clinicalRole: ClinicalRole;
   offices: { id: string; name: string }[];
   initialNote: NoteState;
   initialVersion: number;
@@ -330,9 +334,7 @@ export function BuilderShell({
               <input type="checkbox" checked disabled /> Universal Core
             </label>
             <div className="pane-55 space-y-0.5">
-              {ALL_MODULES.filter(
-                (m) => !m.alwaysOn && m.title.toLowerCase().includes(moduleQuery.toLowerCase())
-              ).map((m) => (
+              {ALL_MODULES.filter((m) => !m.alwaysOn && moduleMatches(m, moduleQuery)).map((m) => (
                 <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
                   <input
                     type="checkbox"

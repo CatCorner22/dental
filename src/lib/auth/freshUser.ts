@@ -1,3 +1,4 @@
+import { isClinicalRole } from "./clinicalRoles";
 import { cache } from "react";
 import { auth } from "./auth";
 import { getDb } from "@/lib/db/client";
@@ -22,6 +23,9 @@ export const freshSessionUser = cache(async (): Promise<SessionUser | null> => {
   if (isTokenRevoked(row, session.user.pwAt)) return null;
   return {
     id: row.id,
+    // Mirrors requireRole exactly: the two must agree, or a page and its API
+    // would disagree about what someone is allowed to write.
+    clinicalRole: isClinicalRole(row.clinicalRole) ? row.clinicalRole : "unset",
     username: row.username,
     displayName: row.displayName,
     role: row.role,

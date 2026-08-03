@@ -102,6 +102,10 @@ export const SCHEMA_STATEMENTS: string[] = [
      "sort_order" integer DEFAULT 0 NOT NULL,
      "created_at" timestamp with time zone DEFAULT now() NOT NULL
    );`,
+  // Scope of practice, separate from the system role. Defaults to 'unset',
+  // which restricts nothing — every existing account lands there, so enabling
+  // this feature locks nobody out until the practice records who is who.
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "clinical_role" text DEFAULT 'unset' NOT NULL;`,
   // Which offices a person works at — MANY, not one. A lone "default office"
   // was the wrong shape: staff rotate, so most people belong to several.
   //

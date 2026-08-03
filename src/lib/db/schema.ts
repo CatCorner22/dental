@@ -52,6 +52,18 @@ export const users = pgTable("users", {
   // Who created this account. Used to stop an actor handing another
   // clinician's work to an account they themselves minted and control.
   createdById: text("created_by_id"),
+  // Scope of practice — assistant, hygienist, dentist, or not yet recorded.
+  //
+  // A SEPARATE axis from `role` above. That one governs what an account may do
+  // to the system; this governs what the person may write in a clinical record,
+  // which in Tennessee is decided by licence rather than by seniority. A
+  // practice manager may hold no licence; a dentist may hold the lowest system
+  // role. See clinicalRoles.ts.
+  //
+  // Plain text with a default rather than an enum: the set may grow (expanded
+  // -function assistant, therapist) and ALTER TYPE ... ADD VALUE has caused
+  // enough trouble in this schema already.
+  clinicalRole: text("clinical_role").notNull().default("unset"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 

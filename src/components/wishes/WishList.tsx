@@ -188,9 +188,14 @@ function WishCard({
         <p className="mt-2 whitespace-pre-wrap text-sm text-slate-700">{wish.detail}</p>
       )}
 
-      {wish.decidedNote && (
+      {/* Rendered whenever there is a DECIDER, not only when there is a note.
+          Nesting the name inside the note meant a note-less close showed no
+          name at all: the card just turned green with nobody attached to the
+          decision. Who closed it is the part that must never be missing. */}
+      {wish.decidedByName && (
         <p className="mt-2 rounded border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm">
-          <span className="text-slate-500">{wish.decidedByName}:</span> {wish.decidedNote}
+          <span className="text-slate-500">{wish.decidedByName}:</span>{" "}
+          {wish.decidedNote || <span className="italic text-slate-500">no reply given</span>}
         </p>
       )}
 
@@ -217,7 +222,12 @@ function WishCard({
               </div>
               <div>
                 <label className="field-label" htmlFor={`nt-${wish.id}`}>
-                  Reply {status === "declined" && <span className="text-red-700">(required)</span>}
+                  Reply{" "}
+                  {/* Declining always needs a reason; CLOSING one needs it too
+                      when the report is about something below standard. */}
+                  {(status === "declined" || (isStandards && status === "done")) && (
+                    <span className="text-red-700">(required)</span>
+                  )}
                 </label>
                 <textarea
                   id={`nt-${wish.id}`}

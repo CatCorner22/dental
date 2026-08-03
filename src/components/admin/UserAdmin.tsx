@@ -22,6 +22,12 @@ import {
   ROLE_LABEL,
   type Role
 } from "@/lib/auth/roles";
+import {
+  CLINICAL_ROLES,
+  CLINICAL_ROLE_HINT,
+  CLINICAL_ROLE_LABEL,
+  type ClinicalRole
+} from "@/lib/auth/clinicalRoles";
 
 interface Row {
   id: string;
@@ -38,6 +44,7 @@ interface Row {
   // account — unlike an email address, an assignment grants nothing and is
   // simply a fact about the rota.
   officeIds: string[];
+  clinicalRole: ClinicalRole;
 }
 
 const ROLES: Role[] = ["readonly", "user", "lead", "manager", "admin"];
@@ -58,6 +65,7 @@ interface Perms {
   showSetPassword: boolean;
   showContact: boolean;
   showOffices: boolean;
+  showClinicalRole: boolean;
   showMerge: boolean;
   showDelete: boolean;
 }
@@ -83,6 +91,10 @@ function permsFor(u: Row, selfId: string, selfRole: Role): Perms {
     // it grants no access, and it decides only what order the note picker
     // shows locations in.
     showOffices: canManageUsers(selfRole) && canActOn(selfRole, u.role),
+    // Scope of practice is a statement about what someone may write in a
+    // clinical record, so unlike an office assignment it is NOT self-service —
+    // same ceiling as every other account field.
+    showClinicalRole: !isSelf && canActOn(selfRole, u.role),
     showMerge: !isSelf && u.active && canMergeUsers(selfRole, u.role),
     showDelete: !isSelf && canDeleteUser(selfRole, u.role)
   };
@@ -107,6 +119,7 @@ interface RowHandlers {
   onSetPassword: (row: Row) => void;
   onContact: (row: Row) => void;
   onOffices: (row: Row) => void;
+  onClinicalRole: (row: Row, role: ClinicalRole) => void;
   onMerge: (row: Row) => void;
 }
 
@@ -214,6 +227,21 @@ function RowActions({
           Offices
         </button>
       )}
+      {perms.showClinicalRole && (
+        <select
+          className="tap rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
+          value={user.clinicalRole}
+          aria-label={`Clinical role for ${user.username}`}
+          title={CLINICAL_ROLE_HINT[user.clinicalRole]}
+          onChange={(e) => handlers.onClinicalRole(user, e.target.value as ClinicalRole)}
+        >
+          {CLINICAL_ROLES.map((r) => (
+            <option key={r} value={r}>
+              {CLINICAL_ROLE_LABEL[r]}
+            </option>
+          ))}
+        </select>
+      )}
       {perms.showMerge && (
         <button
           className="tap rounded px-2 text-blue-700 hover:underline"
@@ -307,6 +335,8 @@ export function UserAdmin({
     onSetPassword: setSetPasswordFor,
     onContact: setContactFor,
     onOffices: setOfficesFor,
+    onClinicalRole: (row: Row, clinicalRole: ClinicalRole) =>
+      void patch(row.id, { clinicalRole }),
     onMerge: setMergeFrom
   };
 

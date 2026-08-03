@@ -4,6 +4,7 @@ import {
   jsonb,
   pgEnum,
   pgTable,
+  primaryKey,
   serial,
   text,
   timestamp
@@ -39,12 +40,6 @@ export const users = pgTable("users", {
   // WITHOUT having to change their password. Compared together with
   // passwordChangedAt — see sessionWatermark().
   sessionsRevokedAt: timestamp("sessions_revoked_at", { withTimezone: true }),
-  // The office this person usually works from. A STARTING VALUE for the note
-  // picker and nothing else — never an access boundary, never a filter on what
-  // they can see or write. Staff rotate between locations, so anything that
-  // treated this as "where this person works" would lock a hygienist out of
-  // the note they are writing at the office they are standing in today.
-  defaultOfficeId: text("default_office_id"),
   // Who last repointed the reset-link destination, and when.
   //
   // Changing an address and then mailing yourself the reset link is a complete
@@ -78,6 +73,25 @@ export const offices = pgTable("offices", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+// Which offices a person works at — MANY, not one.
+//
+// A single "default office" was the wrong shape: staff rotate, so most people
+// genuinely belong to several, and a lone default also created a way for the
+// screen to show an office the record did not have. A set has neither problem.
+//
+// This is NOT a permission boundary. Every office remains selectable by
+// everyone on every note, because a patient may be seen anywhere and cover is
+// arranged at short notice. The assignment orders the picker and answers "who
+// works where"; it never decides what anyone may write.
+export const userOffices = pgTable(
+  "user_offices",
+  {
+    userId: text("user_id").notNull(),
+    officeId: text("office_id").notNull()
+  },
+  (t) => [primaryKey({ columns: [t.userId, t.officeId] })]
+);
+
 export const drafts = pgTable("drafts", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id")
@@ -87,9 +101,8 @@ export const drafts = pgTable("drafts", {
   // WHICH OFFICE THIS ENCOUNTER HAPPENED AT — a property of the visit, not of
   // the person writing it up. Staff rotate between locations and a patient may
   // be seen at one office for an emergency and another for recall, so this is
-  // picked per note and defaults to the author's usual office without ever
-  // being constrained by it. No FK: an office can be retired while the notes
-  // written at it must still load.
+  // picked per note and never constrained by who is writing it. No FK: an
+  // office can be retired while the notes written at it must still load.
   officeId: text("office_id"),
   noteState: jsonb("note_state").$type<NoteState>().notNull(),
   status: text("status").notNull().default("unfinished"),
@@ -156,6 +169,7 @@ export const authThrottle = pgTable("auth_throttle", {
 export type UserRow = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
 export type OfficeRow = typeof offices.$inferSelect;
+export type UserOfficeRow = typeof userOffices.$inferSelect;
 export type DraftRow = typeof drafts.$inferSelect;
 export type NewDraft = typeof drafts.$inferInsert;
 export type SubmissionRow = typeof submissions.$inferSelect;

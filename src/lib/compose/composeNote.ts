@@ -80,7 +80,15 @@ export function composeNote(
   // unknown, rather than printed as "Unknown" — a placeholder reads like a
   // finding about the visit instead of a gap in the record.
   if (context.officeName) {
-    lines.push(`**Office:** ${context.officeName}`, "");
+    // Sanitized and bounded like every other string that reaches this document.
+    // The office name is DB-supplied rather than typed into the note, which is
+    // why this is precaution rather than a live hole — but an office called
+    // "X\n\n## Submission record" would otherwise forge the frozen stamp's own
+    // heading, and a name field with no admin UI today will have one tomorrow.
+    // Collapsed to one line first: a heading forged on line two is still a
+    // forged heading.
+    const office = sanitizeUserText(context.officeName.replace(/\s+/g, " ").trim()).slice(0, 120);
+    if (office) lines.push(`**Office:** ${office}`, "");
   }
   const ordered = [...modules].sort((a, b) => a.order - b.order);
 

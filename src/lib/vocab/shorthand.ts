@@ -171,7 +171,21 @@ export const SHORTHAND: Shorthand[] = [
     // the real combinations: a case-insensitive /\bmod\b/ would swallow the
     // ordinary English word, and /\b[MODBFLI]+\b/ would swallow "I", "B", and
     // every other stray capital.
-    pattern: /\b(?:MOD|MO|DO|MID|DI|MI|OD|OL|OB|MODB?L?|DOL?|MODP)\b/g,
+    // THREE letters or more, and no two-letter combinations.
+    //
+    // The first version of this accepted MO, DO, OD, DI, MI, OL and OB, and
+    // every one of those collides with something in a medical history:
+    //   MI  myocardial infarction        OD  overdose (or right eye)
+    //   DI  diabetes insipidus           OB  obstetrician
+    //   DO  Doctor of Osteopathy         — and "DO NOT" in a capitalised line
+    // So "History of MI in 2019." was flagged as a dental surface combination.
+    // Mislabelling a cardiac history as tooth anatomy is the cries-wolf failure
+    // the plausibility module warns about, arriving from the other direction.
+    //
+    // Dropping them costs almost nothing: this entry never expands anything,
+    // it only recognises. Under-recognising "MO composite" is invisible;
+    // over-recognising "MI" teaches staff to dismiss the flags.
+    pattern: /\bMOD[BLP]?\b|\bMODBL\b/g,
     display: "MOD",
     expansion: "surface combination (mesial, occlusal, distal, and so on)",
     // Never expanded: which surfaces a restoration touches is a clinical fact

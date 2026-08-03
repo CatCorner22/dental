@@ -150,7 +150,13 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     // both directions. There is no safe expansion, only the full drug name.
     pattern: /\bMSO4\b|\bMgSO4\b|\bMS\b(?!\s*(?:Word|Office))/g,
     display: "MS / MSO4 / MgSO4",
-    replacement: "write the full drug name — MS is read as both morphine sulfate and magnesium sulfate",
+    // The guidance has to cover all three readings, because the flag fires on
+    // all three. "Write the full drug name" is right for a prescription and
+    // simply wrong for "History of MS" — and guidance that does not match what
+    // the reader is looking at is how a rule gets dismissed. Being ambiguous
+    // across a drug AND a diagnosis is exactly why the term is on the list.
+    replacement:
+      "write the term out in full — MS is read as morphine sulfate, as magnesium sulfate, and as multiple sclerosis",
     severityClass: "review"
   },
   {

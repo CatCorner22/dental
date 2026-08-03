@@ -276,14 +276,23 @@ export function SubmitDialog({
           in History, but not emailed. Ask your administrator to configure email.
         </p>
       )}
-      <div className="mb-3 flex items-center gap-3 text-sm">
-        <span className="font-medium">Attachment format:</span>
+      {/* A shared `name` is what makes these one radio group: without it both
+          are separate tab stops and the arrow keys do nothing. */}
+      <fieldset className="mb-3 flex items-center gap-3 text-sm">
+        <legend className="float-left mr-3 font-medium">Attachment format:</legend>
         {(["md", "txt"] as const).map((f) => (
-          <label key={f} className="flex items-center gap-1">
-            <input type="radio" checked={format === f} onChange={() => setFormat(f)} />.{f}
+          <label key={f} className="tap flex items-center gap-1">
+            <input
+              type="radio"
+              name="attachment-format"
+              value={f}
+              checked={format === f}
+              onChange={() => setFormat(f)}
+            />
+            .{f}
           </label>
         ))}
-      </div>
+      </fieldset>
       {status === "error" && <p className="mb-3 text-sm text-red-700" role="alert">{error}</p>}
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>

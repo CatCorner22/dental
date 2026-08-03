@@ -1,7 +1,7 @@
 "use client";
 
 import { useRef, useState } from "react";
-import { SEVERITY_LABELS } from "@/lib/audit/types";
+import { SEVERITY_CLASS, SEVERITY_LABELS } from "@/lib/audit/types";
 import type { Severity } from "@/lib/audit/types";
 
 interface Applied {
@@ -33,13 +33,6 @@ interface Result {
   findings: Finding[];
 }
 
-const SEV_CLASS: Record<string, string> = {
-  S0: "border-red-300 bg-red-50 text-red-900",
-  S1: "border-orange-300 bg-orange-50 text-orange-900",
-  S2: "border-amber-300 bg-amber-50 text-amber-900",
-  S3: "border-slate-300 bg-slate-50 text-slate-700",
-  S4: "border-slate-200 bg-white text-slate-600"
-};
 
 export function Standardizer() {
   const [input, setInput] = useState("");
@@ -229,7 +222,7 @@ export function Standardizer() {
                   {result.findings.map((f, i) => (
                     <li
                       key={i}
-                      className={`rounded border px-3 py-1.5 ${SEV_CLASS[f.severity] ?? SEV_CLASS.S4}`}
+                      className={`rounded border px-3 py-1.5 ${SEVERITY_CLASS[f.severity] ?? SEVERITY_CLASS.S4}`}
                     >
                       <span className="text-xs font-semibold uppercase">
                         {f.severity} {SEVERITY_LABELS[f.severity] ?? ""}

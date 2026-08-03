@@ -69,8 +69,13 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // Poka-yoke: the corporate address is server configuration, never client
   // input. A request that even TRIES to steer the recipient is refused loudly
   // (the README promises this), not silently ignored.
-  for (const key of ["to", "cc", "bcc", "recipient", "recipients", "email", "address"]) {
-    if (key in body) {
+  // Case-INSENSITIVE: the lowercase-only list refused {"to":…} loudly but let
+  // {"To":…} through with a 200. Nothing downstream reads those keys, so no
+  // recipient was ever steerable — but the README promises a loud refusal, and
+  // a guarantee that only holds for one letter case is not the guarantee.
+  const RECIPIENT_KEYS = new Set(["to", "cc", "bcc", "recipient", "recipients", "email", "address"]);
+  for (const key of Object.keys(body)) {
+    if (RECIPIENT_KEYS.has(key.toLowerCase())) {
       return Response.json(
         { error: "This endpoint never accepts a recipient. The corporate address is fixed on the server." },
         { status: 400 }

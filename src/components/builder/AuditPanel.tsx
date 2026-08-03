@@ -1,36 +1,28 @@
 "use client";
 
 import type { AuditFinding, AuditReport } from "@/lib/audit/types";
-import { SEVERITY_LABELS, SEVERITY_ORDER } from "@/lib/audit/types";
+import { SEVERITY_CLASS, SEVERITY_LABELS, SEVERITY_ORDER, STATUS_CLASS } from "@/lib/audit/types";
 
-const SEVERITY_STYLES: Record<string, string> = {
-  S0: "border-red-300 bg-red-50 text-red-900",
-  S1: "border-orange-300 bg-orange-50 text-orange-900",
-  S2: "border-amber-300 bg-amber-50 text-amber-900",
-  S3: "border-blue-200 bg-blue-50 text-blue-900",
-  S4: "border-slate-200 bg-slate-50 text-slate-700"
-};
-
-const STATUS_STYLES: Record<string, string> = {
-  BLOCKED: "bg-red-100 text-red-900 border-red-300",
-  "NEEDS CLINICIAN ACTION": "bg-orange-100 text-orange-900 border-orange-300",
-  "READY FOR CLINICIAN REVIEW": "bg-amber-100 text-amber-900 border-amber-300",
-  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "bg-green-100 text-green-900 border-green-300"
-};
 
 function FindingRow({ finding }: { finding: AuditFinding }) {
   const jump = () => {
     if (!finding.fieldRef) return;
     const el = document.getElementById(`field-${finding.fieldRef.moduleId}-${finding.fieldRef.fieldId}`);
     if (!el) return;
-    el.scrollIntoView({ behavior: "smooth", block: "center" });
+    // The CSS reduced-motion block cannot reach a JS smooth scroll, and this
+    // file was reintroducing in JS exactly the animated scrolling globals.css
+    // argues against — a control still gliding when a tap lands takes the tap.
+    const reduce =
+      typeof window !== "undefined" &&
+      window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+    el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "center" });
     // Land the cursor in the field, not just the viewport on it — one click
     // instead of scroll-then-click for every finding fixed.
     el.querySelector<HTMLElement>("input, select, textarea, button")?.focus({ preventScroll: true });
   };
   return (
     <li
-      className={`rounded border px-2.5 py-2 text-xs ${SEVERITY_STYLES[finding.severity]} ${finding.fieldRef ? "cursor-pointer" : ""}`}
+      className={`rounded border px-2.5 py-2 text-xs ${SEVERITY_CLASS[finding.severity]} ${finding.fieldRef ? "cursor-pointer" : ""}`}
       onClick={finding.fieldRef ? jump : undefined}
     >
       <div className="flex items-start justify-between gap-2">
@@ -64,7 +56,7 @@ function FindingRow({ finding }: { finding: AuditFinding }) {
 export function AuditPanel({ report }: { report: AuditReport }) {
   return (
     <div>
-      <div className={`mb-3 rounded border px-3 py-2 text-sm font-semibold ${STATUS_STYLES[report.status]}`}>
+      <div className={`mb-3 rounded border px-3 py-2 text-sm font-semibold ${STATUS_CLASS[report.status]}`}>
         {report.status}
       </div>
       <p className="mb-3 text-xs text-slate-500">

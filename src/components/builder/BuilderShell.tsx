@@ -2,7 +2,15 @@
 
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState
+} from "react";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
@@ -85,7 +93,38 @@ export function BuilderShell({
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
 
+  // TYPING FIRST, GRADING A BEAT LATER.
+  //
+  // composeNote + runAudit used to run on `state` directly, which put the whole
+  // audit stack between a key going down and the letter appearing: ~3 ms for a
+  // typical note and ~13 ms for a fully loaded one on a developer machine, on
+  // top of re-rendering every visible field. A clinician's tablet is several
+  // times slower than that machine, and holding ten keystrokes meant paying it
+  // ten times.
+  //
+  // Deferring the audited copy of the state costs a burst of typing ONE audit
+  // instead of one per character, and React can abandon a run that a newer
+  // keystroke has already invalidated. The input stays fully controlled, so no
+  // character is ever dropped or reordered.
+  //
+  // Safe because the client audit was never the gate. The submit route
+  // re-composes and re-audits server-side and refuses with 422 on any open
+  // STOP or REQUIRED finding, so the worst a momentarily stale panel can do is
+  // show the andon a frame late — which `auditing` below says out loud rather
+  // than hiding. The autosave effect deliberately keeps using the FRESH state:
+  // what gets saved must never lag behind what was typed.
+  const deferredState = useDeferredValue(state);
+  const auditing = deferredState !== state;
+
+  // The form's module list stays FRESH. Ticking a module is a discrete choice
+  // and its section has to appear under the finger that ticked it; only the
+  // graded copy below is allowed to lag. activeModules is a filter over ~32
+  // definitions, so computing both is free.
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
+  const auditModules = useMemo(
+    () => activeModules(deferredState.selectedModuleIds),
+    [deferredState.selectedModuleIds]
+  );
   // The office name the CLIENT composes with must be the one the SERVER
   // freezes, or the preview is not the artifact and the two audits disagree.
   const officeName = useMemo(
@@ -93,12 +132,12 @@ export function BuilderShell({
     [offices, officeId]
   );
   const markdown = useMemo(
-    () => composeNote(state, modules, { officeName }),
-    [state, modules, officeName]
+    () => composeNote(deferredState, auditModules, { officeName }),
+    [deferredState, auditModules, officeName]
   );
   const report = useMemo(
-    () => runAudit({ note: state, modules, composedText: markdown }),
-    [state, modules, markdown]
+    () => runAudit({ note: deferredState, modules: auditModules, composedText: markdown }),
+    [deferredState, auditModules, markdown]
   );
   const fieldFindings = useMemo(() => findingsByField(report.findings), [report.findings]);
 
@@ -139,7 +178,16 @@ export function BuilderShell({
     return changed;
   }, [phiFindings, state.values, dispatch]);
   const gates = computeGates(report, overrideActive);
-  const hasContent = useMemo(() => Object.values(state.values).some((v) => !isValueEmpty(v)), [state.values]);
+  // From the SAME snapshot the report came from, deliberately. Read from the
+  // fresh state instead, the first keystroke of a note would set hasContent
+  // true while the counts were still all zero — and deriveDraftStatus turns
+  // that pair into "Ready to submit", in green, on an empty note with every
+  // required field still open. An andon that flashes the wrong colour is worse
+  // than one that takes an extra frame to be right.
+  const hasContent = useMemo(
+    () => Object.values(deferredState.values).some((v) => !isValueEmpty(v)),
+    [deferredState.values]
+  );
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
@@ -402,12 +450,19 @@ export function BuilderShell({
 
         {/* Sidekick */}
         <aside className="shrink-0 lg:w-[26rem]">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
+          <div
+            className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20"
+            aria-busy={auditing}
+          >
             <div className="mb-3 flex items-center gap-3">
               <ProgressRing counts={report.counts} />
               <div className="min-w-0">
                 <StatusChip status={liveStatus} />
-                <p className="mt-1 text-xs text-slate-500">{report.status}</p>
+                {/* Says which of the two things is true rather than letting a
+                    settled-looking panel describe a note that has moved on. */}
+                <p className="mt-1 text-xs text-slate-500">
+                  {auditing ? "Checking the latest edit…" : report.status}
+                </p>
               </div>
             </div>
             <div className="mb-3 flex gap-1">
@@ -436,7 +491,7 @@ export function BuilderShell({
               <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
                 Download .md
               </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(state, modules, { officeName }))}>
+              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}>
                 Download .txt
               </button>
               {report.phiStops.length > 0 && !overrideActive && (

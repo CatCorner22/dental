@@ -90,6 +90,8 @@ export async function updateUser(
       | "groupEmail"
       | "emailChangedAt"
       | "emailChangedBy"
+      | "mfaSecret"
+      | "mfaEnabled"
     >
   >
 ): Promise<UserRow | undefined> {

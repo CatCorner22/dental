@@ -163,6 +163,20 @@ describe("end-to-end IV sedation extraction draft", () => {
           value: "The clinician assigned ASA II and completed a focused airway examination"
         },
         "sedation-anesthesia.consent-reaffirmed": { kind: "select", value: "linked in the EDR" },
+        "sedation-anesthesia.emergency-prep": {
+          kind: "select",
+          value: "confirmed for the depth intended and one level deeper"
+        },
+        "sedation-anesthesia.monitors-used": {
+          kind: "multiselect",
+          values: [
+            "pulse oximetry (SpO2)",
+            "blood pressure",
+            "heart rate",
+            "capnography (ETCO2)",
+            "direct observation of consciousness"
+          ]
+        },
         "sedation-anesthesia.drugs": {
           kind: "select",
           value: "recorded in the time-oriented anesthesia record only"

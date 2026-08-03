@@ -20,6 +20,12 @@ export interface SubmissionShellFields {
   // be renamed or retired, and neither may rewrite where a filed note says
   // the care happened.
   officeName?: string | null;
+  // The note GPA and its axis subscores, frozen at filing (see deriveGpa).
+  gpa?: string | null;
+  gpaSubscores?: Record<string, number> | null;
+  // AI-assist provenance: capabilities, prompt versions, retrieved sources —
+  // identifiers only, never text.
+  assistProvenance?: Record<string, unknown> | null;
 }
 
 export type FileSubmissionResult =
@@ -181,6 +187,25 @@ export async function countAllSubmissions(db: Db): Promise<number> {
 }
 
 
+// The viewer's own most recent graded filings, for the dashboard ledger.
+export async function recentGradedForUser(
+  db: Db,
+  userId: string,
+  limit = 10
+): Promise<{ id: number; gpa: string | null; submittedAtEt: string; submittedAtUtc: Date }[]> {
+  return db
+    .select({
+      id: submissions.id,
+      gpa: submissions.gpa,
+      submittedAtEt: submissions.submittedAtEt,
+      submittedAtUtc: submissions.submittedAtUtc
+    })
+    .from(submissions)
+    .where(eq(submissions.submittedById, userId))
+    .orderBy(desc(submissions.submittedAtUtc), desc(submissions.id))
+    .limit(limit);
+}
+
 // A user with submission history is part of the legal record and must not
 // be deletable — the DELETE route checks this before touching the FK.
 export async function submissionCountByUser(db: Db, userId: string): Promise<number> {
@@ -194,9 +219,26 @@ export async function submissionCountByUser(db: Db, userId: string): Promise<num
 export async function statRowsForUser(
   db: Db,
   userId: string
-): Promise<{ auditStatus: string; submittedAtUtc: Date }[]> {
+): Promise<
+  {
+    auditStatus: string;
+    submittedAtUtc: Date;
+    draftCreatedAtUtc: Date | null;
+    gpa: string | null;
+    gpaSubscores: Record<string, number> | null;
+  }[]
+> {
+  // Left join: a purged or merged draft must not delete its filing from the
+  // stats — the ROI timing fields just go null for that row.
   return db
-    .select({ auditStatus: submissions.auditStatus, submittedAtUtc: submissions.submittedAtUtc })
+    .select({
+      auditStatus: submissions.auditStatus,
+      submittedAtUtc: submissions.submittedAtUtc,
+      draftCreatedAtUtc: drafts.createdAt,
+      gpa: submissions.gpa,
+      gpaSubscores: submissions.gpaSubscores
+    })
     .from(submissions)
+    .leftJoin(drafts, eq(submissions.draftId, drafts.id))
     .where(eq(submissions.submittedById, userId));
 }

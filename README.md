@@ -1,17 +1,22 @@
 # Smile Notes
 
-A standardized, de-identified dental-note platform for a Tennessee dental office, plus a
-companion ChatGPT Skill. Every team member composes notes from the same modular templates, with
-the same controlled vocabulary, in the same order — and a deterministic audit pass stops the
-line before a defective or identifying draft leaves the tool.
+A standardized, de-identified dental-note platform for a Tennessee dental office. Every team
+member composes notes from the same modular templates, with the same controlled vocabulary, in
+the same order — and a deterministic audit pass stops the line before a defective or
+identifying draft leaves the tool. The web app is the only runtime: the previous companion
+ChatGPT Skill is retired (see `skill/CHATGPT_SETUP.md`).
 
 **No patient identifier ever enters this tool or any AI platform.** Drafts are de-identified by
 construction; identities, exact dates, signatures, permits, and codes are completed only in the
 electronic dental record (EDR).
 
-> **This system may form part of a legal and medical record.** It is **deterministic — it makes
-> no AI calls** and stores only de-identified drafts and staff usernames. Every user acknowledges
-> this once before use.
+> **This system may form part of a legal and medical record.** The core is **deterministic** and
+> stores only de-identified drafts and staff usernames. An **optional, opt-in AI assist** exists
+> (`ASSIST_ENABLED=1`): it runs server-side only, is blocked by the same PHI gate that guards
+> export, and every AI draft is refused by a deterministic verifier if it differs from the input
+> in clinical substance — changed numbers, negations, drugs, teeth, or attributions. With AI
+> disabled (the default), the app makes no AI calls at all. Every user acknowledges the
+> legal-record notice once before use.
 
 ## Multi-user platform (V2)
 
@@ -60,6 +65,11 @@ Two things a deploying practice should know before handing out roles:
 
 Hierarchy Managers must have two different email addresses on file, one of them a management
 group address, so the practice's escalation path is never a single unread mailbox.
+
+Accounts can enable **TOTP two-factor authentication** (any authenticator app) from
+`/account`: a live code is required at sign-in, checked only after the password verifies and at
+the same throttle cost, so the second factor never becomes a free oracle. A lost device is
+reset by a Smile Notes Developer as a named, logged event.
 
 The first developer account is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`).
 The `admin` value is kept in the database for backward compatibility; its label is
@@ -113,10 +123,21 @@ so a later change to the templates or rules never rewrites what a past note said
 `RULESET_VERSION` constant is stamped everywhere, and CI (`.github/workflows/ci.yml`) runs
 typecheck + tests + build on every push and PR.
 
-### Encouragement (personal only)
+### Encouragement, progression, and the store (privacy stated exactly)
 
-Each user sees their own submission count, first-pass rate, clean-note streak, a few badges, and
-Sparkle the tooth mascot's (deterministic, non-AI) micro-copy — no cross-staff comparison.
+Each user sees their own submission count, first-pass rate, clean-note streak, badges, lifetime
+rank with XP, a points balance, a 30-day GPA trend, and Sparkle the tooth mascot's
+(deterministic, non-AI) micro-copy. Every filed note carries a frozen **GPA** (Completeness /
+Specificity / Consistency / billing-narrative Justification) derived from the audit report —
+never a second filing gate. Points from clean notes spend in the **clinic store** (`/store`,
+practice-fulfilled rewards, lead-approved), and the **training arena** (`/training`) pays double
+bounties on planted-defect practice cases checked by the real audit engine.
+
+The visibility contract, stated exactly because "no cross-staff comparison" stopped being the
+whole truth when coaching arrived: **peers never see each other's numbers**. A Team Lead's
+dashboard (`/admin/team`) shows practice-wide aggregates and, per person, a coaching **band**
+(thriving / cruising / support offered) with one tip — never per-note scores, never a ranked
+list. The personal dashboard prints this rule where every user can read it.
 
 ### Team-spirit lines
 
@@ -136,39 +157,41 @@ Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by 
 
 | Path | What it is |
 |---|---|
-| `src/` | Next.js 15 web app: note builder, audit engine, email export, reference pages |
-| `skill/` | Complete ChatGPT Custom GPT package (instructions + knowledge files) — see `skill/CHATGPT_SETUP.md` |
-| `skill/assets/dental-note-templates.md` | The full template set: Universal Core + 27 add-on modules, the guided staff process, and the formal audit pass |
-| `skill/references/` | Terminology and style, tooth/surface notation, sedation and imaging rules, Tennessee law summary, benchmark and source ledger, deployment recommendation |
+| `src/` | Next.js 15 web app: note builder, standardizer with resolution queue, audit engine, AI assist, email export, reference pages |
+| `skill/` | **Retired** ChatGPT Custom GPT package, kept as historical reference — the reference pages and vocab tables in `src/` are the single terminology truth |
+| `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 31 add-ons), the guided staff process, and the formal audit pass |
+| `knowledge/` | Research digests: Curve Hero benchmark, TN law, industry standards and medication safety, litigation patterns |
+| `public/brand/` | Original Smile Notes logomark and lockup (see `docs/brand.md`) |
 | `scripts/build-lexicon.mjs` | Regenerates the spelling lexicon from the skill documents |
 
-## The platform decision (Vercel vs. a Claude Project / Custom GPT)
+## The platform decision
 
-The office asked which is best. The answer is **both, staged** — matching
-`skill/references/deployment-recommendation.md`:
+**The web app is the only runtime.** The staged plan (ChatGPT project first, web app second)
+served its purpose during template development and is retired: chat instructions cannot enforce
+anything, and every capability the skill provided now exists in the app with enforcement —
+plus AI assist that is actually safe to use on clinical text:
 
-1. **ChatGPT Project / Claude Project first** (days): load `skill/` as a Custom GPT or Claude
-   Project to freeze templates, terminology, audit rules, and training examples on synthetic or
-   practice-approved de-identified content. Zero infrastructure.
-2. **This web app second** (the multi-user tool): when several team members must submit
-   standardized notes, chat instructions cannot enforce anything. This app can:
-   - **One shared URL.** No per-seat AI accounts, no prompt discipline required.
-   - **Poka-yoke by construction.** Dropdowns limited to controlled vocabulary; the surface
-     picker physically disables occlusal on anterior teeth; required fields gate the email.
-   - **Deterministic, identical output** for every user — standard work, not generative variation.
-   - **No AI in the loop.** The primary workflow never sends a word to any AI platform, which
-     makes the "no PII into AI" rule structural instead of behavioral.
-   - **Email export** needs a server; chat tools cannot attach files to corporate email.
+- **One shared URL.** No per-seat AI accounts, no prompt discipline required.
+- **Poka-yoke by construction.** Dropdowns limited to controlled vocabulary; the surface
+  picker physically disables occlusal on anterior teeth; required fields gate the email;
+  verified blocks carry placeholders the audit blocks until they are replaced.
+- **Deterministic, identical output** for every user — standard work, not generative variation.
+- **AI with rails, not vibes.** The optional assist layer (tighten wording, structure as SOAP,
+  completeness interrogation, contradiction check) runs server-side after the PHI gate, and a
+  deterministic verifier refuses any AI draft that changes clinical substance. A chat tool can
+  promise that; this app enforces it.
+- **Email export** needs a server; chat tools cannot attach files to corporate email.
 
 ## Toyota Production System mapping
 
 | TPS idea | Where it lives here |
 |---|---|
-| Standard work | One Universal Core + modular add-ons compose in one canonical order for every user |
-| Poka-yoke (error-proofing) | Controlled dropdowns, tooth/surface pickers that disable invalid anatomy, recipient-less email API |
-| Jidoka (stop the line) | Any S0 STOP blocks export (copy/download) and email; S1 additionally blocks email; submission files atomically (claim + ticket + frozen copies in one transaction) so a partial failure never strands a note or writes a blank ticket; the server re-audits so a tampered client cannot bypass the gate |
-| Andon (visible signal) | Live audit panel with S0–S4 severity chips and overall status, always visible while typing |
-| Kaizen | Terminology lives in one data file (`src/lib/vocab/`); the reference page and the audit both read it, so improvement happens in one place |
+| Standard work | One Universal Core + modular add-ons compose in one canonical order for every user; verified blocks are the standard wording for the fact patterns audits ask about |
+| Poka-yoke (error-proofing) | Controlled dropdowns, tooth/surface pickers that disable invalid anatomy, recipient-less email API, verified blocks whose placeholders block filing until replaced with this visit's facts |
+| Jidoka (stop the line) | Any S0 STOP blocks export (copy/download) and email; S1 additionally blocks email; the standardizer's fix-or-attest queue locks Copy until every concern is fixed, attested with a named reason, or escalated to a Team Lead; submission files atomically; the server re-audits so a tampered client cannot bypass the gate |
+| Andon (visible signal) | Live audit panel with S0–S4 severity chips; the standardizer's red/amber/green queue strip with progress count |
+| Kaizen | Terminology lives in one data file (`src/lib/vocab/`); rule disagreements escalate as named, reasoned entries and surface as drift stats to the people who can tune the rule — the tool's own error signal, human-reviewed, never self-adjusting |
+| Respect for people | No override theater: the tool never auto-corrects, attestations put the author's judgment on the record, and a genuine disagreement gets a decision from a human with authority, not a dead end |
 
 ## The audit pass
 
@@ -185,7 +208,14 @@ Checks include: PHI heuristics (SSN, phone, exact dates, email, record numbers, 
 name); ADA Universal tooth validation across permanent (1–32), primary (A–T), and supernumerary
 (51–82, AS–TS) dentitions; surface-anatomy validation (I vs. O, B vs. F); FDI-notation leakage;
 banned abbreviations and vague phrases from the terminology standard; misspelling detection with
-a dental lexicon and medication-name protection; duplicate-sentence and stale-text signals.
+a dental lexicon and medication-name protection; duplicate-sentence and stale-text signals;
+**medication-safety gates** (pounds-beside-mg/kg, dose arithmetic that cannot reconcile,
+household spoon units, mixed unit systems, and a curated dental drug-interaction screen —
+flag-only, never a computed or suggested dose); **effort gates** (keyboard-mash filler and
+wording that characterizes the patient instead of documenting the visit); and **anticipatory
+completeness** (images with no interpretation, anesthetic with no amount, extractions with no
+outcome, prescriptions with no duration, consent discussions with no decision — the questions a
+later reader will ask).
 
 ## Safety boundaries (enforced in code and tests)
 
@@ -222,6 +252,11 @@ Open `/setup` to create the first admin, or set `ADMIN_USERNAME` / `ADMIN_PASSWO
    The schema is applied automatically on first boot.
 3. Optional — enable email export: `RESEND_API_KEY`, `EMAIL_FROM`, `CORPORATE_EMAIL`. Without
    them, submissions still file with a ticket and appear in History; they just are not emailed.
+   Optional — enable AI assist: `ASSIST_ENABLED=1` + `AI_GATEWAY_API_KEY` (and optionally
+   `ASSIST_MODEL`). Calls run server-side after the PHI gate; every output is verified against
+   the input before a human sees it. Confirm the provider/gateway configuration fits the
+   practice's HIPAA posture — input is de-identified by construction, but that diligence is the
+   practice's, not the tool's.
 4. Optionally set `ADMIN_USERNAME` / `ADMIN_PASSWORD` to seed the first admin; otherwise use
    `/setup`. Enable Vercel Deployment Protection so only the team can reach the app, and treat the
    corporate inbox as inside the practice's HIPAA boundary.

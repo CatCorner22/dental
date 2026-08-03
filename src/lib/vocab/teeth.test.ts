@@ -127,3 +127,45 @@ describe("formatting helpers", () => {
     expect(superPrimary[0].id).toBe("AS");
   });
 });
+
+describe("FDI secondary notation", () => {
+  it("maps the permanent landmarks correctly", () => {
+    // Universal 1 = UR third molar = FDI 18; 8 = UR central = 11;
+    // 9 = UL central = 21; 16 = UL third molar = 28; 17 = LL third = 38;
+    // 24 = LL central = 31; 25 = LR central = 41; 32 = LR third = 48.
+    const landmarks: Array<[string, string]> = [
+      ["1", "18"], ["8", "11"], ["9", "21"], ["16", "28"],
+      ["17", "38"], ["24", "31"], ["25", "41"], ["32", "48"],
+      ["3", "16"], ["19", "36"], ["30", "46"], ["14", "26"]
+    ];
+    for (const [universal, fdi] of landmarks) {
+      expect(getTooth(universal)?.fdi, `Universal ${universal}`).toBe(fdi);
+    }
+  });
+
+  it("maps the primary landmarks correctly", () => {
+    const landmarks: Array<[string, string]> = [
+      ["A", "55"], ["E", "51"], ["F", "61"], ["J", "65"],
+      ["K", "75"], ["O", "71"], ["P", "81"], ["T", "85"]
+    ];
+    for (const [universal, fdi] of landmarks) {
+      expect(getTooth(universal)?.fdi, `Universal ${universal}`).toBe(fdi);
+    }
+  });
+
+  it("supernumerary designations carry no FDI", () => {
+    expect(getTooth("51")?.fdi).toBeUndefined();
+    expect(getTooth("AS")?.fdi).toBeUndefined();
+  });
+
+  it("every non-supernumerary tooth has a unique valid FDI", () => {
+    const seen = new Set<string>();
+    for (const tooth of TOOTH_TABLE.values()) {
+      if (tooth.dentition.startsWith("supernumerary")) continue;
+      expect(tooth.fdi, tooth.id).toMatch(/^[1-8][1-8]$/);
+      expect(seen.has(tooth.fdi!), `duplicate FDI ${tooth.fdi}`).toBe(false);
+      seen.add(tooth.fdi!);
+    }
+    expect(seen.size).toBe(52); // 32 permanent + 20 primary
+  });
+});

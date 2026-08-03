@@ -1,0 +1,64 @@
+---
+description: Development discipline for the Smile Notes transformer subsystem — storm testing, meaning invariants, versioning, and the verification loop every change must pass
+alwaysApply: true
+---
+
+# Transformer development discipline
+
+Adapted for this repository from the cross-platform "LLM Code Transformer Skills Suite"
+(transformer-core, verification-suite, continuous-improver — see
+`knowledge/sources/llm-transformer-skills-suite.md`). Only the parts that earn their
+keep here are kept.
+
+## The invariant that outranks every other
+
+**The transformer must never change what a note says.** A rewrite is either
+deterministic-language-only or it is a judgment call handed back to a human. Before
+touching `src/lib/standardize/`, `src/lib/vocab/`, `src/lib/audit/`, or
+`src/lib/assist/`, read the header comment of `standardize.ts` and the tests in
+`meaning.test.ts` and `property.test.ts` — they are the contract.
+
+## Verification loop (non-negotiable, in this order)
+
+1. **Storm first.** For any new vocab entry or rule, write the adversarial case before
+   the implementation: casing variants, plurals, sentence boundaries, medical-history
+   collisions (the NKA/FMS/Coe-Pak class), idempotency ×3.
+2. `npx tsc --noEmit` clean.
+3. `npm test` — the full suite, not just the touched files. The property suites in
+   `src/lib/standardize/property.test.ts` exist to catch you.
+4. `npm run build` before any PR update.
+5. Commit per logical change with a message that states the harm the change prevents,
+   not just what it does.
+
+## Versioning discipline
+
+- Any change to audit rules, module definitions, or controlled vocabulary bumps
+  `RULESET_VERSION` in `src/lib/version.ts`, with a one-line note.
+- Any change to an AI system prompt bumps `ASSIST_PROMPT_VERSION` in
+  `src/lib/assist/prompts.ts`.
+- Frozen historical submissions are immutable. Never write a migration that rewrites
+  filed note or audit text.
+
+## AI layer rules
+
+- Every model output passes `verifyMeaning()` before a human sees it. If you add an AI
+  capability, decide its verifier mode ("rewrite" or "questions") first and add
+  adversarial-model tests in `src/lib/assist/service.test.ts` that prove refusal.
+- The PHI gate runs before any provider call. No exceptions, no override paths.
+- The model is injected (`GenerateFn`) — tests bind adversaries, never live providers.
+
+## Continuous improvement memory
+
+Durable insights go where the repo already keeps them:
+
+- Research and source digests → `knowledge/sources/` (with the INDEX.md entry).
+- Defect post-mortems worth remembering → comments at the fix site plus a pinned
+  regression test. This codebase's convention is that the comment tells the story of
+  the bug; keep doing that.
+- Recurring staff-facing wording decisions → `skill/references/` is DEPRECATED as a
+  source of truth; the vocab tables and `/reference` pages are the single truth.
+
+## Tone in user-facing text
+
+Cold logic, zero condescension: state WHAT was found, WHY the line stops, HOW to move.
+Never scold, never hype. Encouragement is earned (first-pass clean) and specific.

@@ -11,7 +11,10 @@
 
 export const APP_NAME = "Smile Notes";
 
-// The whole mark, for places that render name + glyph together.
+// The emoji stand-in the header used before the practice had its own mark.
+// The real logomark lives in public/brand/ (see docs/brand.md) and is inlined
+// by BrandMark.tsx; this constant remains for plain-text surfaces (email
+// subjects, exports) where an SVG cannot travel.
 export const APP_MARK = "🦷";
 
 export const APP_TAGLINE = "Standardized dental documentation";

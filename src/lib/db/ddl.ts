@@ -106,6 +106,8 @@ export const SCHEMA_STATEMENTS: string[] = [
   // which restricts nothing — every existing account lands there, so enabling
   // this feature locks nobody out until the practice records who is who.
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "clinical_role" text DEFAULT 'unset' NOT NULL;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_secret" text;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" boolean DEFAULT false NOT NULL;`,
   // Which offices a person works at — MANY, not one. A lone "default office"
   // was the wrong shape: staff rotate, so most people belong to several.
   //
@@ -129,6 +131,44 @@ export const SCHEMA_STATEMENTS: string[] = [
   // happened. No FK anywhere on office_id, so a retired office never orphans
   // the notes written at it.
   `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "office_name" text;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "gpa" text;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "gpa_subscores" jsonb;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "assist_provenance" jsonb;`,
+  `CREATE TABLE IF NOT EXISTS "points_ledger" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "user_id" text NOT NULL,
+     "delta" integer NOT NULL,
+     "reason" text NOT NULL,
+     "ref_type" text,
+     "ref_id" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   );`,
+  `CREATE INDEX IF NOT EXISTS "points_ledger_user_idx" ON "points_ledger" ("user_id", "created_at" DESC);`,
+  // One award per submission, enforced by the database rather than by the
+  // route remembering to check: a retried request cannot double-pay.
+  `CREATE UNIQUE INDEX IF NOT EXISTS "points_ledger_ref_unique" ON "points_ledger" ("user_id", "ref_type", "ref_id") WHERE "ref_type" IS NOT NULL AND "ref_id" IS NOT NULL AND "delta" > 0;`,
+  `CREATE TABLE IF NOT EXISTS "store_items" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "title" text NOT NULL,
+     "detail" text DEFAULT '' NOT NULL,
+     "cost" integer NOT NULL,
+     "tier" integer DEFAULT 1 NOT NULL,
+     "active" boolean DEFAULT true NOT NULL,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   );`,
+  `CREATE TABLE IF NOT EXISTS "redemptions" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "user_id" text NOT NULL,
+     "user_name" text NOT NULL,
+     "item_id" integer NOT NULL,
+     "item_title" text NOT NULL,
+     "cost" integer NOT NULL,
+     "status" text DEFAULT 'requested' NOT NULL,
+     "decided_by_name" text,
+     "decided_note" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL,
+     "decided_at" timestamp with time zone
+   );`,
   `CREATE INDEX IF NOT EXISTS "submissions_office_idx" ON "submissions" ("office_id", "submitted_at_utc" DESC);`,
   `CREATE TABLE IF NOT EXISTS "wishes" (
      "id" serial PRIMARY KEY NOT NULL,

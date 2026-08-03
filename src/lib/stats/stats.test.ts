@@ -154,3 +154,40 @@ describe("sparkle copy quality (ethics guard)", () => {
     }
   });
 });
+
+describe("ROI metrics", () => {
+  const at = (iso: string) => new Date(iso);
+  const row = (submitted: string, created: string | null, status = FIRST_PASS_STATUS) => ({
+    auditStatus: status,
+    submittedAtUtc: at(submitted),
+    draftCreatedAtUtc: created ? at(created) : null
+  });
+
+  it("median time-to-file counts same-ET-day filings only", () => {
+    const s = computeStats([
+      // 30 minutes, same day (ET afternoon)
+      row("2026-08-03T18:30:00Z", "2026-08-03T18:00:00Z"),
+      // 90 minutes, same day
+      row("2026-08-03T19:30:00Z", "2026-08-03T18:00:00Z"),
+      // multi-day draft: excluded, would otherwise swamp the median
+      row("2026-08-03T18:00:00Z", "2026-07-28T18:00:00Z"),
+      // no draft timestamp: excluded
+      row("2026-08-03T18:00:00Z", null)
+    ]);
+    expect(s.medianMinutesToFile).toBe(60);
+  });
+
+  it("is null with no measurable rows", () => {
+    expect(computeStats([row("2026-08-03T18:00:00Z", null)]).medianMinutesToFile).toBeNull();
+  });
+
+  it("counts after-hours filings on the Eastern clock, not the server's", () => {
+    const s = computeStats([
+      row("2026-08-03T18:00:00Z", null), // 2:00 pm ET — business hours
+      row("2026-08-04T00:30:00Z", null), // 8:30 pm ET — after hours
+      row("2026-08-03T10:30:00Z", null) // 6:30 am ET — before hours
+    ]);
+    expect(s.afterHoursCount).toBe(2);
+    expect(s.afterHoursRate).toBeCloseTo(2 / 3);
+  });
+});

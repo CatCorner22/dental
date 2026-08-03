@@ -13,7 +13,13 @@
 // So this validates only what makes a wish USABLE (is there a real sentence in
 // it?), never whether it is a good idea. Judging that is the reader's job.
 
-export type WishCategory = "standards" | "supply" | "feature" | "performance" | "other";
+export type WishCategory =
+  | "standards"
+  | "rule-disagreement"
+  | "supply"
+  | "feature"
+  | "performance"
+  | "other";
 
 export interface CategoryDef {
   id: WishCategory;
@@ -29,6 +35,17 @@ export const WISH_CATEGORIES: CategoryDef[] = [
     label: "Something is below standard",
     hint: "A condition, a process, or equipment that is not where it should be. Say what you saw and where — you do not need to be certain, and you do not need to have a solution.",
     urgent: true
+  },
+  // The escape valve that keeps "no override" honest. The tool never lets a
+  // user force a note past a rule they merely dislike — but a rule can be
+  // wrong, and the person who sees that first is the person it just blocked.
+  // Their disagreement goes here, named and reasoned, for a Team Lead to
+  // settle. The rule stays in force until someone with authority says
+  // otherwise; the disagreement is never silently swallowed.
+  {
+    id: "rule-disagreement",
+    label: "I disagree with a Smile Notes rule",
+    hint: "A rule flagged something you believe is correct as written. Name the rule, quote nothing from the patient note, and say why the rule is wrong or too broad. A Team Lead settles it."
   },
   {
     id: "supply",
@@ -116,6 +133,39 @@ export function wishError(input: WishInput): string | null {
     return `The detail is over ${WISH_DETAIL_MAX.toLocaleString()} characters. Trim it or attach the rest another way.`;
   }
   return null;
+}
+
+/**
+ * Drift signal for the people who decide: which rules are being disputed, and
+ * how the disputes were settled. A rule with many open disagreements is either
+ * a rule that needs tuning or a team that needs the rule explained — either
+ * way, the person with authority should see the pattern, not just the pile.
+ * This is the calibration half of "no override": escalations are not noise to
+ * clear, they are the tool's own error signal.
+ */
+export interface RuleDisagreementStat {
+  rule: string;
+  open: number;
+  settled: number;
+}
+
+const RULE_TITLE_PREFIX = /^rule disagreement:\s*/i;
+
+export function ruleDisagreementStats<
+  T extends { category: string; status: string; title: string }
+>(rows: T[]): RuleDisagreementStat[] {
+  const byRule = new Map<string, { open: number; settled: number }>();
+  for (const row of rows) {
+    if (row.category !== "rule-disagreement") continue;
+    const rule = row.title.replace(RULE_TITLE_PREFIX, "").trim() || "(unnamed rule)";
+    const bucket = byRule.get(rule) ?? { open: 0, settled: 0 };
+    if (row.status === "done" || row.status === "declined") bucket.settled++;
+    else bucket.open++;
+    byRule.set(rule, bucket);
+  }
+  return [...byRule.entries()]
+    .map(([rule, counts]) => ({ rule, ...counts }))
+    .sort((a, b) => b.open - a.open || b.settled - a.settled || a.rule.localeCompare(b.rule));
 }
 
 /**

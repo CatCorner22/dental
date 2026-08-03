@@ -5,15 +5,28 @@
 // module definitions, or controlled vocabulary.
 // 2.1.0 — plural-preserving first-use shorthand expansion (pluralExpansion):
 //         "SSCs" no longer expands to a singular; counts survive.
-// 2.2.0 — the patient-experience layer. All three triggers above fired at once
-//         and the bump was missed at merge time, which is worth recording
-//         because it is the exact failure this constant exists to prevent: two
-//         notes stamped 2.1.0 could have been audited by different rules.
-//         Audit rules: the plain-language rule set, the "plain-language"
-//         category, and the suppression of STYLE abbreviation findings inside
-//         patient-facing text. Module definitions: the anxiety-comfort module,
-//         the "Written for the patient" and "Open items" sections, and the
-//         telephone and portal encounter types. Vocabulary: PLAIN_WORDS, the
-//         quadrant and s/s shorthand, four lexicon words, and a widened
+// 2.2.0 — Mockingbird medication-safety gates (kg rule, dose reconciliation,
+//         household units, dental interaction screens), effort gates
+//         (gibberish, unprofessional tone), and anticipatory completeness
+//         rules (imaging interpretation, anesthetic amount, extraction
+//         outcome, prescription duration, consent decision).
+// 2.3.0 — robotic-assisted surgery module; sedation module gains the
+//         monitors-in-use list and emergency-preparedness confirmation;
+//         opioid prescriptions require a documented CSMD/PMP check.
+// 2.4.0 — billing-narrative justification rules (SRP periodontal evidence,
+//         core-buildup retention, crown necessity) and the note GPA stamp
+//         (deriveGpa v1) frozen onto filings.
+// 2.5.0 — the patient-experience layer and its review pass. The plain-language
+//         rule set and the "plain-language" category; suppression of STYLE
+//         abbreviation findings inside patient-facing text; the anxiety-comfort
+//         module; the "Written for the patient" and "Open items" sections of
+//         universal-core; telephone and portal encounter types; PLAIN_WORDS,
+//         the quadrant and s/s shorthand, four lexicon words, and a widened
 //         vague.moderate carve-out.
-export const RULESET_VERSION = "2.2.0";
+//
+//         Recorded rather than tidied away: this layer merged under 2.1.0 and
+//         went unstamped until now, so notes filed in that window carry a
+//         version that does not describe the rules that ran. That is the exact
+//         failure this constant exists to prevent, and the CI guard added in
+//         2.4.0 is what stops it happening again.
+export const RULESET_VERSION = "2.5.0";

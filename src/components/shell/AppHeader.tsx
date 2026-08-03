@@ -33,7 +33,11 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                     ? [{ href: "/standardize", label: "Standardize" }]
                     : []),
                   { href: "/history", label: "History" },
+                  ...(meetsRole(user.role, "user") ? [{ href: "/store", label: "Store" }] : []),
                   { href: "/wishes", label: "Wish list" },
+                  ...(canManageUsers(user.role)
+                    ? [{ href: "/admin/team", label: "Team", activePrefix: "/admin/team" }]
+                    : []),
                   { href: "/reference/templates", label: "References", activePrefix: "/reference" },
                   ...(canSubmitChangeRequest(user.role)
                     ? [{ href: "/requests", label: "Requests" }]

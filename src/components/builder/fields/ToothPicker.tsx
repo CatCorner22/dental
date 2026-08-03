@@ -83,8 +83,11 @@ export function ToothPicker({
             <button
               key={tooth.id}
               type="button"
-              title={tooth.name}
-              aria-label={tooth.name}
+              // FDI shown in the tooltip as a SECONDARY translation aid for
+              // staff trained on ISO 3950 — Universal remains what enters the
+              // record, and the FDI-leakage audit rule stays in force.
+              title={tooth.fdi ? `${tooth.name} — FDI ${tooth.fdi}` : tooth.name}
+              aria-label={tooth.fdi ? `${tooth.name}, FDI ${tooth.fdi}` : tooth.name}
               aria-pressed={selected.includes(tooth.id)}
               onClick={() => toggle(tooth.id)}
               // Grows under a finger via .tap-sq. Tapping the tooth next to

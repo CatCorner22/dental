@@ -1,6 +1,7 @@
 import { redirect } from "next/navigation";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { meetsRole } from "@/lib/auth/roles";
+import { getAssistConfig } from "@/lib/assist/service";
 import { Standardizer } from "@/components/standardize/Standardizer";
 
 export const runtime = "nodejs";
@@ -14,13 +15,18 @@ export default async function StandardizePage() {
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold">Standardize a note</h1>
-      <p className="mb-4 max-w-3xl text-sm text-slate-600">
-        Paste what you would normally type, press one button, and get it back in the
-        practice&rsquo;s standard wording — ready to paste into Curve Hero. Every change is listed
-        so you can see exactly what happened, and anything that needs a clinical judgement is handed
-        back to you rather than guessed.
+      <p className="mb-1 max-w-3xl text-sm text-slate-600">
+        Paste what you would normally type and work the queue: the tool proposes, you decide.
+        Every change is accepted by you item by item, everything it catches is fixed or explained
+        on the record, and the note unlocks when the queue is clear — ready to paste into Curve
+        Hero.
       </p>
-      <Standardizer />
+      <p className="mb-4 max-w-3xl text-xs text-slate-500">
+        Why the queue exists: this note is the legal record of the visit. A reader three years
+        from now — a colleague, an insurer, an attorney — gets only what you write today. The
+        minute you spend here is the cheapest that minute will ever be.
+      </p>
+      <Standardizer assistEnabled={getAssistConfig().enabled} />
     </div>
   );
 }

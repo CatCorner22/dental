@@ -64,6 +64,11 @@ export const users = pgTable("users", {
   // -function assistant, therapist) and ALTER TYPE ... ADD VALUE has caused
   // enough trouble in this schema already.
   clinicalRole: text("clinical_role").notNull().default("unset"),
+  // TOTP multi-factor authentication. The secret is stored only while MFA is
+  // pending or enabled; disabling clears it. Base32, never logged, never
+  // returned by any API after enrollment confirms.
+  mfaSecret: text("mfa_secret"),
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
@@ -151,8 +156,63 @@ export const submissions = pgTable("submissions", {
   ruleVersion: text("rule_version").notNull(),
   auditStatus: text("audit_status").notNull(),
   noteMarkdown: text("note_markdown").notNull(), // frozen, with stamp
-  auditReport: text("audit_report").notNull() // frozen, with stamp
+  auditReport: text("audit_report").notNull(), // frozen, with stamp
+  // The note GPA, frozen at filing like the audit it derives from. Text
+  // rather than a float column so "3.70" is stored exactly as stamped —
+  // this is a grade on a record, not a quantity to sum.
+  gpa: text("gpa"),
+  gpaSubscores: jsonb("gpa_subscores").$type<Record<string, number>>(),
+  // AI-assist provenance for this filing: which capabilities touched the
+  // draft's text, under which prompt version, with which retrieved sources.
+  // Hashes and identifiers only — never note text.
+  assistProvenance: jsonb("assist_provenance").$type<Record<string, unknown>>()
 });
+
+// ---------------------------------------------------------------------------
+// The points economy. APPEND-ONLY: a balance is the sum of a person's rows,
+// never a column somebody's bug can overwrite. XP (lifetime rank progress) is
+// the sum of POSITIVE rows only — spending points at the store must never
+// demote anyone.
+
+export const pointsLedger = pgTable("points_ledger", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  delta: integer("delta").notNull(), // positive: award; negative: redemption
+  reason: text("reason").notNull(), // "note-gpa" | "badge:<id>" | "bounty:<scenario>" | "redeem:<item>"
+  refType: text("ref_type"), // "submission" | "redemption" | "badge" | "training"
+  refId: text("ref_id"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const storeItems = pgTable("store_items", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  detail: text("detail").notNull().default(""),
+  cost: integer("cost").notNull(),
+  tier: integer("tier").notNull().default(1),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const redemptions = pgTable("redemptions", {
+  id: serial("id").primaryKey(),
+  userId: text("user_id").notNull(),
+  // Frozen like every attribution in this app: a rename must not rewrite who
+  // asked for what.
+  userName: text("user_name").notNull(),
+  itemId: integer("item_id").notNull(),
+  itemTitle: text("item_title").notNull(),
+  cost: integer("cost").notNull(),
+  status: text("status").notNull().default("requested"), // requested | approved | declined
+  decidedByName: text("decided_by_name"),
+  decidedNote: text("decided_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  decidedAt: timestamp("decided_at", { withTimezone: true })
+});
+
+export type PointsLedgerRow = typeof pointsLedger.$inferSelect;
+export type StoreItemRow = typeof storeItems.$inferSelect;
+export type RedemptionRow = typeof redemptions.$inferSelect;
 
 export const auditLog = pgTable("audit_log", {
   id: serial("id").primaryKey(),

@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the version-stamp guard below diffs against the PR
+          # base, and a shallow clone has no merge base to diff from
+          # ("fatal: origin/main...HEAD: no merge base" on every PR).
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -17,6 +22,28 @@ jobs:
       - run: npm ci
       - run: npx tsc --noEmit
       - run: npm test
+      # The versioning discipline, enforced rather than hoped for: a change to
+      # the rules, vocabulary, or modules that ships under an unchanged
+      # RULESET_VERSION makes every stamped audit report a lie about which
+      # rules actually ran. Same for AI prompts and ASSIST_PROMPT_VERSION.
+      - name: Rule changes must bump their version stamp
+        if: github.event_name == 'pull_request'
+        run: |
+          git fetch --no-tags origin ${{ github.base_ref }}
+          BASE="origin/${{ github.base_ref }}"
+          CHANGED=$(git diff --name-only "$BASE"...HEAD)
+          rules_changed=$(echo "$CHANGED" | grep -E '^src/lib/(vocab|modules)/|^src/lib/audit/(rules/|maskPhi)' | grep -v '\.test\.ts$' || true)
+          version_changed=$(echo "$CHANGED" | grep -c '^src/lib/version\.ts$' || true)
+          if [ -n "$rules_changed" ] && [ "$version_changed" = "0" ]; then
+            echo "::error::Rules/vocab/modules changed without bumping RULESET_VERSION in src/lib/version.ts:"
+            echo "$rules_changed"
+            exit 1
+          fi
+          prompts_changed=$(echo "$CHANGED" | grep -c '^src/lib/assist/prompts\.ts$' || true)
+          if [ "$prompts_changed" != "0" ] && ! git diff "$BASE"...HEAD -- src/lib/assist/prompts.ts | grep -q 'ASSIST_PROMPT_VERSION'; then
+            echo "::error::AI prompts changed without touching ASSIST_PROMPT_VERSION in src/lib/assist/prompts.ts"
+            exit 1
+          fi
       - run: npm run build
         env:
           AUTH_SECRET: ci-build-only-secret

@@ -8,11 +8,16 @@ import {
   listDraftsByOwner,
   ownerDraftCount
 } from "@/lib/db/repo/drafts";
-import { statRowsForUser } from "@/lib/db/repo/submissions";
+import { recentGradedForUser, statRowsForUser } from "@/lib/db/repo/submissions";
 import { listUsers } from "@/lib/db/repo/users";
-import { computeStats } from "@/lib/stats/computeStats";
+import { computeStats, rollingGpa } from "@/lib/stats/computeStats";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { Dashboard } from "@/components/dashboard/Dashboard";
+import { GamifyPanel, type GamifyView } from "@/components/dashboard/GamifyPanel";
+import { balanceFor, xpFor } from "@/lib/db/repo/gamify";
+import { rankFor } from "@/lib/gamify/ranks";
+import { deriveInsights } from "@/lib/gamify/insights";
+import { formatTicket } from "@/lib/tickets/ticket";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 import { WordMap } from "@/components/standardize/WordMap";
 import { buildWordMap, wordMapCounts } from "@/lib/standardize/wordMap";
@@ -37,7 +42,47 @@ export default async function DashboardPage() {
     for (const u of await listUsers(db)) ownerNames[u.id] = u.displayName;
   }
 
-  const stats = computeStats(await statRowsForUser(db, user.id));
+  const statRows = await statRowsForUser(db, user.id);
+  const stats = computeStats(statRows);
+
+  // The progression panel's numbers — the viewer's own, nobody else's.
+  let gamify: GamifyView | null = null;
+  if (meetsRole(user.role, "user")) {
+    const [xp, balance, recent] = await Promise.all([
+      xpFor(db, user.id),
+      balanceFor(db, user.id),
+      recentGradedForUser(db, user.id, 10)
+    ]);
+    // Daily GPA averages over the last 30 days, oldest first, Eastern days.
+    const dayFmt = new Intl.DateTimeFormat("en-CA", { timeZone: "America/New_York" });
+    const cutoff = Date.now() - 30 * 86_400_000;
+    const byDay = new Map<string, number[]>();
+    for (const r of statRows) {
+      if (!r.gpa || r.submittedAtUtc.getTime() < cutoff) continue;
+      const day = dayFmt.format(r.submittedAtUtc);
+      byDay.set(day, [...(byDay.get(day) ?? []), parseFloat(r.gpa)]);
+    }
+    const trend = [...byDay.entries()]
+      .sort(([a], [b]) => a.localeCompare(b))
+      .map(([day, gpas]) => ({
+        day,
+        gpa: Math.round((gpas.reduce((a, b) => a + b, 0) / gpas.length) * 100) / 100
+      }));
+    gamify = {
+      rankProgress: rankFor(xp),
+      xp,
+      balance,
+      rollingGpa: rollingGpa(statRows),
+      trend,
+      recent: recent.map((r) => ({
+        id: r.id,
+        ticket: formatTicket(r.id),
+        gpa: r.gpa,
+        whenEt: r.submittedAtEt
+      })),
+      insights: deriveInsights(statRows)
+    };
+  }
 
   const wordMapGroups = buildWordMap();
   const counts = wordMapCounts(wordMapGroups);
@@ -64,6 +109,11 @@ export default async function DashboardPage() {
       stats={stats}
       totalDrafts={total}
     />
+      {gamify && (
+        <section className="mt-6">
+          <GamifyPanel view={gamify} />
+        </section>
+      )}
       {/* The practice's standard wording, on the dashboard where everyone who
           writes a note will see it. Built from the same tables the audit
           enforces, so this reference can never drift from the rule. Read-only

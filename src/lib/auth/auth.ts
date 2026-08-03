@@ -18,6 +18,7 @@ import { clientIp } from "./clientIp";
 import { withHashSlot } from "./hashGate";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { sessionWatermark } from "./sessionWatermark";
+import { verifyMfaCode } from "./totp";
 
 // A real (never-matching) hash so unknown-username logins burn the same
 // bcrypt time as wrong-password logins — otherwise response latency tells
@@ -59,10 +60,11 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
   ...authConfig,
   providers: [
     Credentials({
-      credentials: { username: {}, password: {} },
+      credentials: { username: {}, password: {}, totp: {} },
       async authorize(creds, request) {
         const username = typeof creds?.username === "string" ? creds.username.trim() : "";
         const password = typeof creds?.password === "string" ? creds.password : "";
+        const totpCode = typeof creds?.totp === "string" ? creds.totp.trim() : "";
         if (!username || !password) return null;
         const db = await getDb();
         const now = new Date();
@@ -179,6 +181,19 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           // signal a practice manager needs to see. Bounded by the pair budget.
           await logAuth(db, "auth.failed", user.username, ip, user.id, user.displayName);
           return null;
+        }
+        // Second factor, checked ONLY after the password verified. Order
+        // matters twice over: checking TOTP first would let an attacker probe
+        // whether an account has MFA without knowing the password, and a
+        // wrong code must cost the same throttle budget as a wrong password —
+        // otherwise the second factor becomes a free oracle. The code check is
+        // constant-cost (HMAC, no bcrypt), so it sits outside the hash gate.
+        if (user.mfaEnabled && user.mfaSecret) {
+          if (!verifyMfaCode(user.username, user.mfaSecret, totpCode)) {
+            await chargeFailure();
+            await logAuth(db, "auth.failed-mfa", user.username, ip, user.id, user.displayName);
+            return null;
+          }
         }
         // The right password ends the streak outright, so a clinician who
         // finally remembers it is not still serving a sentence — and, because

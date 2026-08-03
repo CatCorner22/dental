@@ -1,0 +1,28 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Smile Notes logomark, single color">
+  <!--
+    Smile Notes logomark, single-color variant for print, engraving, favicons
+    on colored surfaces, and anywhere the full palette cannot travel. Uses
+    currentColor so it inherits its surroundings.
+    (c) 2026 Blake Reagan. All rights reserved.
+  -->
+  <rect x="40" y="40" width="432" height="432" rx="104" fill="currentColor"/>
+  <rect x="118" y="120" width="150" height="18" rx="9" fill="#FFFFFF" opacity="0.4"/>
+  <rect x="118" y="158" width="96" height="18" rx="9" fill="#FFFFFF" opacity="0.25"/>
+  <path
+    fill="#FFFFFF"
+    d="M256 196
+       c-16 -14 -42 -14 -56 4
+       c-13 16 -12 40 -4 58
+       c7 15 10 30 12 58
+       c1 16 22 16 25 1
+       c3 -17 6 -29 23 -29
+       c17 0 20 12 23 29
+       c3 15 24 15 25 -1
+       c2 -28 5 -43 12 -58
+       c8 -18 9 -42 -4 -58
+       c-14 -18 -40 -18 -56 -4
+       z"/>
+  <path d="M226 254 q30 24 60 0" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
+  <circle cx="376" cy="376" r="84" fill="#FFFFFF"/>
+  <path d="M338 378 l26 26 l50 -56" fill="none" stroke="currentColor" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

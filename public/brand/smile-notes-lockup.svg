@@ -1,0 +1,33 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1120 320" role="img" aria-label="Smile Notes">
+  <!--
+    Smile Notes horizontal lockup: logomark + wordmark.
+    The wordmark uses a system font stack for on-screen use; for print or a
+    copyright/trademark deposit, convert the text to outlines in any vector
+    editor (the mark itself is already pure paths).
+    (c) 2026 Blake Reagan. All rights reserved.
+  -->
+  <g transform="translate(20,20) scale(0.55)">
+    <rect x="40" y="40" width="432" height="432" rx="104" fill="#2B6CB8"/>
+    <rect x="118" y="120" width="150" height="18" rx="9" fill="#FFFFFF" opacity="0.35"/>
+    <rect x="118" y="158" width="96" height="18" rx="9" fill="#FFFFFF" opacity="0.22"/>
+    <path
+      fill="#FFFFFF"
+      d="M256 196
+         c-16 -14 -42 -14 -56 4
+         c-13 16 -12 40 -4 58
+         c7 15 10 30 12 58
+         c1 16 22 16 25 1
+         c3 -17 6 -29 23 -29
+         c17 0 20 12 23 29
+         c3 15 24 15 25 -1
+         c2 -28 5 -43 12 -58
+         c8 -18 9 -42 -4 -58
+         c-14 -18 -40 -18 -56 -4
+         z"/>
+    <path d="M226 254 q30 24 60 0" fill="none" stroke="#2B6CB8" stroke-width="14" stroke-linecap="round"/>
+    <circle cx="376" cy="376" r="84" fill="#5FB3A8" stroke="#FFFFFF" stroke-width="14"/>
+    <path d="M338 378 l26 26 l50 -56" fill="none" stroke="#FFFFFF" stroke-width="26" stroke-linecap="round" stroke-linejoin="round"/>
+  </g>
+  <text x="330" y="205" font-family="ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif" font-size="128" font-weight="700" letter-spacing="-2" fill="#1F2937">Smile<tspan fill="#2B6CB8"> Notes</tspan></text>
+  <text x="334" y="262" font-family="ui-rounded, 'SF Pro Rounded', 'Segoe UI', system-ui, sans-serif" font-size="42" font-weight="500" letter-spacing="6" fill="#5FB3A8">STANDARDIZED DENTAL DOCUMENTATION</text>
+</svg>

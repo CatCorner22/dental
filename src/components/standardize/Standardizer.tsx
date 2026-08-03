@@ -48,11 +48,13 @@ const ANDON_CLASS: Record<string, string> = {
   green: "border-green-300 bg-green-50 text-green-900"
 };
 
-export function Standardizer() {
+export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolean }) {
   const [input, setInput] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
   const [busy, setBusy] = useState(false);
+  const [aiBusy, setAiBusy] = useState<string | null>(null);
+  const [aiQuestions, setAiQuestions] = useState<{ title: string; lines: string[] } | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
@@ -83,6 +85,43 @@ export function Standardizer() {
       setError("Could not reach the server — check the connection and try again.");
     }
     setBusy(false);
+  };
+
+  // AI assist. The model NEVER bypasses the rails: a rewrite lands back in
+  // the input box and goes through the same deterministic check and the same
+  // resolution queue as hand-typed text. Question capabilities return
+  // questions only — the verifier refuses anything that asserts.
+  const runAssist = async (capability: "normalize" | "soap" | "interrogate" | "conflicts") => {
+    setAiBusy(capability);
+    setError("");
+    setNotice("");
+    try {
+      const res = await fetch("/api/assist", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ capability, text: input })
+      });
+      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      if (!res.ok || !data.text) {
+        setError(data.error ?? "The AI service did not answer. Everything else still works.");
+      } else if (capability === "interrogate" || capability === "conflicts") {
+        setAiQuestions({
+          title: capability === "interrogate" ? "What this note leaves open" : "Possible contradictions",
+          lines: data.text.split("\n").map((l) => l.trim()).filter(Boolean)
+        });
+      } else {
+        setInput(data.text);
+        setNotice(
+          "The AI rewrote the wording. Nothing is accepted yet — press Standardize and work the queue like any other text."
+        );
+        setResult(null);
+        setItems([]);
+        setTimeout(() => inputRef.current?.focus(), 50);
+      }
+    } catch {
+      setError("Could not reach the server — check the connection and try again.");
+    }
+    setAiBusy(null);
   };
 
   const rejectChanges = () => {
@@ -145,12 +184,73 @@ export function Standardizer() {
               setItems([]);
               setError("");
               setNotice("");
+              setAiQuestions(null);
             }}
             disabled={busy || (!input && !result)}
           >
             Clear
           </button>
         </div>
+
+        {assistEnabled && (
+          <div className="mt-3 rounded border border-violet-200 bg-violet-50 p-3">
+            <p className="mb-2 text-xs font-semibold text-violet-900">
+              AI assist — every AI draft is checked against your text for changed numbers,
+              negations, drugs, and attributions before you see it, and still goes through the
+              queue. It rewrites wording, never facts.
+            </p>
+            <div className="flex flex-wrap gap-2">
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => runAssist("normalize")}
+                disabled={!input.trim() || aiBusy !== null}
+              >
+                {aiBusy === "normalize" ? "Working…" : "Tighten the wording"}
+              </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => runAssist("soap")}
+                disabled={!input.trim() || aiBusy !== null}
+              >
+                {aiBusy === "soap" ? "Working…" : "Structure as SOAP"}
+              </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => runAssist("interrogate")}
+                disabled={!input.trim() || aiBusy !== null}
+              >
+                {aiBusy === "interrogate" ? "Working…" : "What is this note missing?"}
+              </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => runAssist("conflicts")}
+                disabled={!input.trim() || aiBusy !== null}
+              >
+                {aiBusy === "conflicts" ? "Working…" : "Check for contradictions"}
+              </button>
+            </div>
+          </div>
+        )}
+
+        {aiQuestions && (
+          <div className="mt-3 rounded border border-violet-300 bg-white p-3" role="region" aria-label={aiQuestions.title}>
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-violet-900">{aiQuestions.title}</h2>
+              <button className="text-xs text-slate-500 underline" onClick={() => setAiQuestions(null)}>
+                Dismiss
+              </button>
+            </div>
+            <ul className="list-disc space-y-1 pl-5 text-sm text-slate-800">
+              {aiQuestions.lines.map((line, i) => (
+                <li key={i}>{line}</li>
+              ))}
+            </ul>
+            <p className="mt-2 text-xs text-slate-500">
+              Questions only — the AI is not allowed to answer them. If one applies, add the fact
+              to your note and re-check.
+            </p>
+          </div>
+        )}
         {error && (
           <p className="mt-3 text-sm text-red-700" role="alert">
             {error}
@@ -209,7 +309,7 @@ export function Standardizer() {
               <span>
                 {light.state === "green"
                   ? totalBlocking === 0
-                    ? "Already standard — nothing needed your judgment."
+                    ? "Clean on the first pass. That is the standard, and you hit it — the next reader of this record will not have a single question."
                     : "Queue clear. The note is unlocked."
                   : `${openItems.length} of ${totalBlocking} item${totalBlocking === 1 ? "" : "s"} still need${openItems.length === 1 ? "s" : ""} you.`}
               </span>

@@ -2,6 +2,29 @@ import { desc, like, not, or } from "drizzle-orm";
 import type { Db } from "../client";
 import { auditLog, type AuditLogRow } from "../schema";
 
+// Every column here is `text`, which in Postgres means "up to a gigabyte".
+// That is fine for the fields we compose ourselves and wrong for the ones that
+// can carry caller-supplied input — a login target, a filename, an error
+// message echoed from a third-party API. One route logging an unbounded value
+// turns the audit log into a place an attacker can store data, and the log is
+// read on a page and exported to CSV, so the cost lands twice.
+//
+// So the bound lives HERE, at the single write, rather than being re-derived
+// at each of the ~30 call sites where forgetting it is silent. These limits sit
+// far above any legitimate value: the longest real target is a username (32),
+// the longest real detail a merge summary (~200).
+const MAX_ACTION = 64;
+const MAX_NAME = 200;
+const MAX_TARGET = 200;
+const MAX_DETAIL = 1000;
+
+// Truncation is marked, never silent: a value that was cut must not read as a
+// complete fact later, in a record whose whole purpose is being trusted.
+function cap(v: string | null | undefined, max: number): string | null {
+  if (v == null) return null;
+  return v.length <= max ? v : `${v.slice(0, max)}…[truncated]`;
+}
+
 export async function logAction(
   db: Db,
   entry: {
@@ -15,11 +38,11 @@ export async function logAction(
   }
 ): Promise<void> {
   await db.insert(auditLog).values({
-    actorId: entry.actorId,
-    actorName: entry.actorName ?? null,
-    action: entry.action,
-    target: entry.target ?? null,
-    detail: entry.detail ?? null
+    actorId: cap(entry.actorId, MAX_TARGET),
+    actorName: cap(entry.actorName, MAX_NAME),
+    action: cap(entry.action, MAX_ACTION) ?? "unknown",
+    target: cap(entry.target, MAX_TARGET),
+    detail: cap(entry.detail, MAX_DETAIL)
   });
 }
 

@@ -34,4 +34,27 @@ describe("clientIp", () => {
     expect(a).toBe(b);
     expect(a).toBe("203.0.113.5");
   });
+
+  // Whatever comes back becomes a throttle key, and that table is pruned on the
+  // same path that grows it. A header carrying arbitrary text is a way to spray
+  // unbounded distinct keys, and to park attacker-chosen strings somewhere they
+  // will later be rendered on a page. Not an address → not believed.
+  it("ignores header values that are not shaped like an address", () => {
+    expect(clientIp(req({ "x-real-ip": "not-an-ip" }))).toBeNull();
+    expect(clientIp(req({ "x-real-ip": "<script>alert(1)</script>" }))).toBeNull();
+    expect(clientIp(req({ "x-real-ip": "a".repeat(5000) }))).toBeNull();
+    expect(clientIp(req({ "x-forwarded-for": "junk, also-junk" }))).toBeNull();
+  });
+
+  it("falls through to a header it can trust rather than failing closed", () => {
+    // A junk x-real-ip must not shadow a usable x-forwarded-for.
+    expect(clientIp(req({ "x-real-ip": "nonsense", "x-forwarded-for": "203.0.113.7" }))).toBe(
+      "203.0.113.7"
+    );
+  });
+
+  it("accepts IPv6", () => {
+    expect(clientIp(req({ "x-real-ip": "2001:db8::1" }))).toBe("2001:db8::1");
+    expect(clientIp(req({ "x-real-ip": "::1" }))).toBe("::1");
+  });
 });

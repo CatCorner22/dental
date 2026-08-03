@@ -76,7 +76,11 @@ export default async function AuditLogPage({
           </a>
         ))}
         <span className="ml-auto">
-          <ExportButton table="audit-log" />
+          <ExportButton
+            table="audit-log"
+            query={filter === "all" ? undefined : { filter }}
+            label={filter === "all" ? "Export to Excel (CSV)" : "Export this view (CSV)"}
+          />
         </span>
       </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">

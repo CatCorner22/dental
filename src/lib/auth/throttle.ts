@@ -23,20 +23,47 @@ export const MAX_LOCK_MS = 15 * 60 * 1000;
 // account lock, and must not trip on a busy Monday morning of fumbled logins.
 export const IP_FREE_ATTEMPTS = 30;
 
+// ...and for the same reason its LOCK is short. Every other key in this file
+// locks one account or one action; an IP key locks a building. A practice all
+// sharing one NAT address means an outsider's spray, or one temp staffer
+// fumbling a password, takes the whole office offline for the duration — so
+// the duration has to be something a front desk can absorb.
+//
+// A minute still does the job it exists to do. The point of the gate is to
+// stop an anonymous caller burning cost-12 bcrypt in a loop; after the first
+// burst this caps a source at roughly one hash a minute, which is ~60 guesses
+// an hour against a password policy that makes that meaningless. Fifteen
+// minutes buys almost no additional protection and costs a working morning.
+export const IP_MAX_LOCK_MS = 60 * 1000;
+
 // Doubling backoff, capped. Locks start small so a fumbling clinician waits
 // seconds, not minutes, while a script hits the ceiling almost immediately.
-export function lockMsFor(failCount: number, freeAttempts: number = FREE_ATTEMPTS): number {
+export function lockMsFor(
+  failCount: number,
+  freeAttempts: number = FREE_ATTEMPTS,
+  maxLockMs: number = MAX_LOCK_MS
+): number {
   const over = failCount - freeAttempts;
   if (over <= 0) return 0;
-  return Math.min(MAX_LOCK_MS, 1000 * 2 ** (over - 1) * 15);
+  return Math.min(maxLockMs, 1000 * 2 ** (over - 1) * 15);
 }
 
 export interface ThrottleState {
   locked: boolean;
   retryAfterSec: number;
+  /**
+   * True only on the call that APPLIED the lock — never on the calls that
+   * merely bounce off one already in force.
+   *
+   * Callers use this to decide whether an event is worth recording. Anything
+   * a locked-out caller can trigger by retrying (an audit row, an email, a
+   * metric) must be gated on this, or the refusal becomes cheaper for the
+   * attacker than for us and the throttle turns into an amplifier.
+   */
+  justLocked: boolean;
 }
 
-const UNLOCKED: ThrottleState = { locked: false, retryAfterSec: 0 };
+const UNLOCKED: ThrottleState = { locked: false, retryAfterSec: 0, justLocked: false };
 
 // Read-only check. Callers MUST call this before doing the expensive work.
 export async function checkThrottle(db: Db, key: string, now: Date): Promise<ThrottleState> {
@@ -44,7 +71,7 @@ export async function checkThrottle(db: Db, key: string, now: Date): Promise<Thr
   if (!row?.lockedUntil) return UNLOCKED;
   const remainingMs = row.lockedUntil.getTime() - now.getTime();
   if (remainingMs <= 0) return UNLOCKED;
-  return { locked: true, retryAfterSec: Math.ceil(remainingMs / 1000) };
+  return { locked: true, retryAfterSec: Math.ceil(remainingMs / 1000), justLocked: false };
 }
 
 // Record a failure and return the state the NEXT attempt will see. The whole
@@ -55,7 +82,8 @@ export async function recordFailure(
   db: Db,
   key: string,
   now: Date,
-  freeAttempts: number = FREE_ATTEMPTS
+  freeAttempts: number = FREE_ATTEMPTS,
+  maxLockMs: number = MAX_LOCK_MS
 ): Promise<ThrottleState> {
   const windowStart = new Date(now.getTime() - WINDOW_MS);
   // Failures are recorded for unknown usernames too — otherwise spraying
@@ -79,10 +107,21 @@ export async function recordFailure(
       set: {
         // A stale streak (first failure older than the window, and no live
         // lock) restarts at 1 instead of compounding forever.
+        //
+        // While a lock IS live the count FREEZES. Counting refusals as
+        // failures made the lock self-renewing: each bounced request pushed
+        // the count higher, the higher count computed a longer backoff, and
+        // the backoff was re-applied from now — so a caller who simply kept
+        // retrying held their own lock open forever and pinned it at the
+        // ceiling. A lock has to decay on its own, or it is not a throttle,
+        // it is a permanent ban anyone can trigger against a shared address.
         failCount: sql`CASE
           WHEN ${authThrottle.firstFailAt} < ${windowStart}
            AND (${authThrottle.lockedUntil} IS NULL OR ${authThrottle.lockedUntil} < ${now})
-          THEN 1 ELSE ${authThrottle.failCount} + 1 END`,
+          THEN 1
+          WHEN ${authThrottle.lockedUntil} IS NOT NULL AND ${authThrottle.lockedUntil} > ${now}
+          THEN ${authThrottle.failCount}
+          ELSE ${authThrottle.failCount} + 1 END`,
         firstFailAt: sql`CASE
           WHEN ${authThrottle.firstFailAt} < ${windowStart}
            AND (${authThrottle.lockedUntil} IS NULL OR ${authThrottle.lockedUntil} < ${now})
@@ -91,11 +130,19 @@ export async function recordFailure(
     })
     .returning();
 
-  const lockMs = lockMsFor(row.failCount, freeAttempts);
+  // Already serving a lock this call did not apply. Return the time still to
+  // run — never a freshly computed one, which would extend it — and report
+  // justLocked: false so the caller does no work on this path.
+  const remainingMs = row.lockedUntil ? row.lockedUntil.getTime() - now.getTime() : 0;
+  if (remainingMs > 0) {
+    return { locked: true, retryAfterSec: Math.ceil(remainingMs / 1000), justLocked: false };
+  }
+
+  const lockMs = lockMsFor(row.failCount, freeAttempts, maxLockMs);
   if (lockMs <= 0) return UNLOCKED;
   const lockedUntil = new Date(now.getTime() + lockMs);
   await db.update(authThrottle).set({ lockedUntil }).where(eq(authThrottle.key, key));
-  return { locked: true, retryAfterSec: Math.ceil(lockMs / 1000) };
+  return { locked: true, retryAfterSec: Math.ceil(lockMs / 1000), justLocked: true };
 }
 
 // A correct credential clears the streak, so a user who finally remembers
@@ -150,4 +197,14 @@ export function resetLinkKey(userId: string): string {
 // each of which sends mail and adds a row.
 export function inviteKey(actorId: string): string {
   return `invite:${actorId}`;
+}
+
+// Keyed by the actor. An export is the most expensive read in the app — up to
+// 5,000 rows assembled into a string in memory — AND it writes an audit row,
+// which is itself exportable. Left unmetered that is a loop that feeds itself:
+// each export makes the next export's audit table bigger. Metering the actor
+// (not the table) is what closes it, since the amplification comes from one
+// person repeating the request, whichever table they aim at.
+export function exportKey(actorId: string): string {
+  return `export:${actorId}`;
 }

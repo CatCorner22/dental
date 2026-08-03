@@ -1,11 +1,12 @@
 import { redirect } from "next/navigation";
+import { canReadAuditLog } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { listAuditLog } from "@/lib/db/repo/auditLog";
 import { listUsers } from "@/lib/db/repo/users";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Audit log — Dental Note Builder" };
+export const metadata = { title: "Audit log" };
 
 const ACTION_LABEL: Record<string, string> = {
   "setup.first-admin": "First admin created",
@@ -26,7 +27,7 @@ const ACTION_LABEL: Record<string, string> = {
 export default async function AuditLogPage() {
   const user = await freshSessionUser(); // fresh role — a demoted admin loses this page NOW
   if (!user) redirect("/login");
-  if (user.role !== "admin") redirect("/");
+  if (!canReadAuditLog(user.role)) redirect("/");
   const db = await getDb();
   const [log, users] = await Promise.all([listAuditLog(db, 300), listUsers(db)]);
   const nameById = new Map(users.map((u) => [u.id, `${u.displayName} (${u.username})`]));
@@ -53,10 +54,26 @@ export default async function AuditLogPage() {
             {log.map((e) => (
               <tr key={e.id} className="border-b border-slate-100 last:border-0">
                 <td className="whitespace-nowrap px-3 py-2 text-xs text-slate-500">{e.at.toISOString().replace("T", " ").slice(0, 16)}</td>
+                {/* The FROZEN name wins. Rendering the live account name meant
+                    renaming an account rewrote how its entire history read —
+                    an audit log that changes retroactively is not an audit
+                    log. The current name is shown underneath only when it
+                    differs, so a reader can still tell who that is today. */}
                 <td className="px-3 py-2">
-                  {e.actorId
-                    ? (nameById.get(e.actorId) ?? (e.actorName ? `${e.actorName} (deleted)` : "unknown"))
-                    : "system"}
+                  {e.actorId ? (
+                    <>
+                      <span>{e.actorName ?? nameById.get(e.actorId) ?? "unknown"}</span>
+                      {e.actorName && nameById.get(e.actorId) !== e.actorName && (
+                        <span className="block text-xs text-slate-400">
+                          {nameById.has(e.actorId)
+                            ? `now ${nameById.get(e.actorId)}`
+                            : "account deleted"}
+                        </span>
+                      )}
+                    </>
+                  ) : (
+                    "system"
+                  )}
                 </td>
                 <td className="px-3 py-2">{ACTION_LABEL[e.action] ?? e.action}</td>
                 <td className="px-3 py-2 font-mono text-xs">{e.target ?? "—"}</td>

@@ -218,7 +218,7 @@ export function SubmitDialog({
             type="button"
             className="btn-primary"
             disabled={busyNext}
-            title="Start a new note with the same modules — no values are copied"
+            title="Start a new Smile Note with the same modules — no values are copied"
             onClick={() => {
               setBusyNext(true);
               onStartAnother();
@@ -232,7 +232,7 @@ export function SubmitDialog({
   }
 
   return (
-    <Dialog title="Submit note to the office" onClose={onClose}>
+    <Dialog title="Submit Smile Note to the office" onClose={onClose}>
       <p className="mb-3 text-sm text-slate-700">
         This files the note with a ticket number and emails it (with its audit report) to the
         corporate address. Identifiers are completed later in the EDR.

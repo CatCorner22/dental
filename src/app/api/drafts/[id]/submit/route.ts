@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/guards";
+import { canWriteNote } from "@/lib/auth/roles";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { getDb } from "@/lib/db/client";
 import { getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
@@ -27,7 +28,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
-  if (guard.user.role !== "admin" && draft.ownerId !== guard.user.id) {
+  if (!canWriteNote(guard.user.role, draft.ownerId, guard.user.id)) {
     return Response.json({ error: "You cannot submit this draft." }, { status: 403 });
   }
   // A note that has not changed since its last submission must not file a

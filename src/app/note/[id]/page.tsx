@@ -1,11 +1,12 @@
 import { notFound, redirect } from "next/navigation";
+import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getDraft } from "@/lib/db/repo/drafts";
 import { BuilderShell } from "@/components/builder/BuilderShell";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Note — Dental Note Builder" };
+export const metadata = { title: "Note" };
 
 export default async function NotePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -14,9 +15,9 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) notFound();
-  if (user.role === "user" && draft.ownerId !== user.id) notFound();
+  if (!seesAllNotes(user.role) && draft.ownerId !== user.id) notFound();
 
-  const canEdit = user.role !== "readonly" && (user.role === "admin" || draft.ownerId === user.id);
+  const canEdit = canWriteNote(user.role, draft.ownerId, user.id);
 
   return (
     <BuilderShell

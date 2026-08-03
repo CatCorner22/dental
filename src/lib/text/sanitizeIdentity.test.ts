@@ -53,3 +53,11 @@ describe("sanitizeIdentity", () => {
     expect(safe).not.toMatch(/^- Ticket: DN-999999/m);
   });
 });
+
+// Attribution is stamped as "Display Name (username)" into filed submissions
+// and the audit log. A display name carrying its own parentheses freezes a
+// string that reads as though a different person signed the note.
+it("strips parentheses so a display name cannot fake an attribution stamp", () => {
+  expect(sanitizeIdentity("Dr Jane Smith (jsmith)")).toBe("Dr Jane Smith jsmith");
+  expect(sanitizeIdentity("Ann ((())) Lee")).toBe("Ann Lee");
+});

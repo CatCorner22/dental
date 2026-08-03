@@ -22,9 +22,16 @@ function isControl(code: number): boolean {
 export function sanitizeIdentity(raw: string): string {
   let out = "";
   for (const ch of raw) {
+    const code = ch.codePointAt(0) ?? 0;
+    // Parentheses are structural here, not decorative. Attribution is stamped
+    // as "Display Name (username)" into submissions and the audit log, so a
+    // display name of "Dr Jane Smith (jsmith)" freezes a string that reads like
+    // a different person signed the note. The real username is still appended,
+    // making the forgery detectable — but only to someone reading closely.
+    if (ch === "(" || ch === ")") continue;
     // Replaced with a space rather than dropped, so "Ann\nLee" reads
     // "Ann Lee" instead of silently becoming "AnnLee".
-    out += isControl(ch.codePointAt(0) ?? 0) ? " " : ch;
+    out += isControl(code) ? " " : ch;
   }
   return out.replace(/\s+/g, " ").trim().slice(0, MAX_IDENTITY_CHARS);
 }

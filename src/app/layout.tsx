@@ -4,7 +4,8 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AppHeader } from "@/components/shell/AppHeader";
 import { SignOutButton } from "@/components/shell/SignOutButton";
 import { SessionNotices } from "@/components/notice/SessionNotices";
-import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
+import { BrandFooter } from "@/components/shell/BrandFooter";
+import { APP_DESCRIPTION, APP_NAME, COPYRIGHT } from "@/lib/brand";
 import "./globals.css";
 
 export const runtime = "nodejs";
@@ -23,9 +24,15 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: "Dental Note Builder",
-  description:
-    "Standardized, de-identified dental note drafts with a deterministic audit pass. No patient identifiers ever enter this tool."
+  // `template` gives every child route the "<page> — Smile Notes" suffix
+  // automatically, so a new page cannot ship with a bare, unbranded title.
+  title: { default: APP_NAME, template: `%s — ${APP_NAME}` },
+  description: APP_DESCRIPTION,
+  applicationName: APP_NAME,
+  authors: [{ name: "Blake Reagan" }],
+  // Surfaces the ownership claim to anything that reads the document head —
+  // a saved page, a scraper, a print-to-PDF.
+  other: { copyright: COPYRIGHT }
 };
 
 export default async function RootLayout({ children }: { children: React.ReactNode }) {
@@ -73,27 +80,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
         <main id="main" className="mx-auto max-w-7xl px-4 py-6">
           {children}
         </main>
-        <footer className="mx-auto max-w-7xl px-4 pb-8 pt-4 text-xs leading-relaxed text-slate-500">
-          <p>
-            This tool standardizes documentation wording and order. It is deterministic — it makes
-            no AI calls and stores no patient data. It does not diagnose, select treatment,
-            calculate doses, assign billing codes, or determine discharge readiness. A licensed
-            clinician must compare every fact with the source record, resolve every audit finding,
-            and sign in the EDR. Reference summaries are internal training aids, not legal advice.
-          </p>
-          {/* The reminder is dismissible, so the route to the developer has to
-              survive it being dismissed. */}
-          <p className="mt-3">
-            Support, upgrade requests, ideas and suggestions, or a bug to report?{" "}
-            <a
-              href={feedbackMailto()}
-              className="tap rounded font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
-            >
-              Send feedback
-            </a>{" "}
-            <span className="text-slate-400">({FEEDBACK_EMAIL})</span>
-          </p>
-        </footer>
+        <BrandFooter />
       </body>
     </html>
   );

@@ -61,7 +61,44 @@ export const SCHEMA_STATEMENTS: string[] = [
    );`,
   // Additive columns for databases created before these existed. IF NOT
   // EXISTS keeps every statement idempotent across restarts.
+  // New roles for databases created before the hierarchy existed. ALTER TYPE
+  // ... ADD VALUE is not itself idempotent, so each is guarded by a pg_enum
+  // lookup. Each runs as its own statement (never batched with a use of the new
+  // value) because Postgres forbids using an enum value in the same transaction
+  // that adds it.
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+                    WHERE t.typname = 'role' AND e.enumlabel = 'lead') THEN
+       ALTER TYPE "role" ADD VALUE 'lead';
+     END IF;
+   END $$;`,
+  `DO $$ BEGIN
+     IF NOT EXISTS (SELECT 1 FROM pg_enum e JOIN pg_type t ON t.oid = e.enumtypid
+                    WHERE t.typname = 'role' AND e.enumlabel = 'manager') THEN
+       ALTER TYPE "role" ADD VALUE 'manager';
+     END IF;
+   END $$;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_changed_at" timestamp with time zone;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email" text;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "group_email" text;`,
+  // Provenance columns behind the separation-of-duties rules. No FK: these must
+  // survive the referenced account being deleted, since the whole point is to
+  // remember who did something after the fact.
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_at" timestamp with time zone;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_by" text;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_by_id" text;`,
+  `CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
+     "id" text PRIMARY KEY NOT NULL,
+     "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+     "token_hash" text NOT NULL UNIQUE,
+     "expires_at" timestamp with time zone NOT NULL,
+     "used_at" timestamp with time zone,
+     "created_by_id" text,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   );`,
+  // Redeeming a link looks the token up by hash; expiry sweeps scan by date.
+  `CREATE INDEX IF NOT EXISTS "reset_tokens_user_idx" ON "password_reset_tokens" ("user_id");`,
+  `CREATE INDEX IF NOT EXISTS "reset_tokens_expires_idx" ON "password_reset_tokens" ("expires_at");`,
   `ALTER TABLE "audit_log" ADD COLUMN IF NOT EXISTS "actor_name" text;`,
   `ALTER TABLE "drafts" ADD COLUMN IF NOT EXISTS "last_submission_id" integer;`,
   // Backfill for drafts filed BEFORE this column existed. Without it every

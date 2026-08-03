@@ -1,4 +1,5 @@
 import { requireRole } from "@/lib/auth/guards";
+import { canWriteNote } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import { claimResend, getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
 import { getSubmission } from "@/lib/db/repo/submissions";
@@ -25,7 +26,7 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
   const db = await getDb();
   const draft = await getDraft(db, id);
   if (!draft) return Response.json({ error: "Not found." }, { status: 404 });
-  if (guard.user.role !== "admin" && draft.ownerId !== guard.user.id) {
+  if (!canWriteNote(guard.user.role, draft.ownerId, guard.user.id)) {
     return Response.json({ error: "You cannot resend this draft." }, { status: 403 });
   }
   if (draft.lastSubmissionId === null) {

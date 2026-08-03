@@ -2,7 +2,7 @@ import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
 import { STALE_PHRASES, VAGUE_PHRASES } from "@/lib/vocab/vague-phrases";
 import { SEVERITY_LABELS } from "@/lib/audit/types";
 
-export const metadata = { title: "Abbreviation rules — Dental Note Builder" };
+export const metadata = { title: "Abbreviation rules" };
 
 // Generated straight from the audit's own data, so this page can never
 // drift from what the audit enforces.

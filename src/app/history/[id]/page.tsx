@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getSubmission } from "@/lib/db/repo/submissions";
@@ -6,7 +7,7 @@ import { formatTicket } from "@/lib/tickets/ticket";
 import { parseRowId } from "@/lib/db/int4";
 
 export const runtime = "nodejs";
-export const metadata = { title: "Submission — Dental Note Builder" };
+export const metadata = { title: "Submission" };
 
 export default async function SubmissionPage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = await params;
@@ -18,7 +19,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
   const db = await getDb();
   const s = numId === null ? undefined : await getSubmission(db, numId);
   if (!s) notFound();
-  if (user.role === "user" && s.submittedById !== user.id) notFound();
+  if (!seesAllNotes(user.role) && s.submittedById !== user.id) notFound();
 
   return (
     <div className="max-w-3xl">

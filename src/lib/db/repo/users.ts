@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
-import { users, type NewUser, type UserRow } from "../schema";
+import { drafts, submissions, users, type NewUser, type UserRow } from "../schema";
+import { canMergeUsers, type Role } from "@/lib/auth/roles";
 
 export async function countUsers(db: Db): Promise<number> {
   const rows = await db.select({ n: sql<number>`count(*)::int` }).from(users);
@@ -29,7 +30,20 @@ export async function listUsers(db: Db): Promise<UserRow[]> {
 export async function updateUser(
   db: Db,
   id: string,
-  patch: Partial<Pick<UserRow, "displayName" | "role" | "active" | "passHash" | "passwordChangedAt">>
+  patch: Partial<
+    Pick<
+      UserRow,
+      | "displayName"
+      | "role"
+      | "active"
+      | "passHash"
+      | "passwordChangedAt"
+      | "email"
+      | "groupEmail"
+      | "emailChangedAt"
+      | "emailChangedBy"
+    >
+  >
 ): Promise<UserRow | undefined> {
   const [row] = await db.update(users).set(patch).where(eq(users.id, id)).returning();
   return row;
@@ -76,6 +90,86 @@ export async function createFirstAdminGuarded(db: Db, user: NewUser): Promise<"c
     if ((rows[0]?.n ?? 0) > 0) return "exists";
     await tx.insert(users).values(user);
     return "created";
+  });
+}
+
+export type MergeResult =
+  | { ok: true; draftsMoved: number; submissionsKept: number }
+  | { ok: false; reason: "same-user" | "missing" | "last-admin" | "bad-target" | "not-allowed" };
+
+// Merge a duplicate account into the one the person actually uses.
+//
+// The governing rule: FROZEN SUBMISSION ATTRIBUTION IS NEVER REWRITTEN.
+// `submissions.submittedByName` is a snapshot of who signed a filed Smile Note,
+// and those notes are a legal and medical record. Retroactively re-attributing
+// them to a different account would forge history — so submissions keep their
+// original submittedById and submittedByName, and only the LIVE work (drafts)
+// moves. The duplicate is deactivated rather than deleted for the same reason:
+// its id is still referenced by the record it signed.
+export async function mergeUsers(
+  db: Db,
+  sourceId: string,
+  targetId: string,
+  now: Date,
+  // The caller's authority, re-asserted INSIDE the lock. The route checks the
+  // ceilings first, but it reads both rows outside this transaction, so a role
+  // change landing in between would widen what the merge may touch. Optional so
+  // existing callers and tests keep working; when supplied it is authoritative.
+  actor?: { id: string; role: Role }
+): Promise<MergeResult> {
+  if (sourceId === targetId) return { ok: false, reason: "same-user" };
+  return db.transaction(async (tx) => {
+    // Serialized on the same key as the other privilege-losing mutations, so a
+    // merge cannot race a demotion into leaving no admin behind.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${ADMIN_GUARD_LOCK})`);
+    const [source] = await tx.select().from(users).where(eq(users.id, sourceId)).limit(1);
+    const [target] = await tx.select().from(users).where(eq(users.id, targetId)).limit(1);
+    if (!source || !target) return { ok: false, reason: "missing" as const };
+
+    if (actor && actor.role !== "admin") {
+      const allowed =
+        canMergeUsers(actor.role, source.role) &&
+        canMergeUsers(actor.role, target.role) &&
+        target.createdById !== actor.id &&
+        target.id !== actor.id &&
+        source.id !== actor.id;
+      if (!allowed) return { ok: false, reason: "not-allowed" as const };
+    }
+    // The target inherits live work, so it must be able to do that work: an
+    // inactive or read-only target would strand every moved draft with an owner
+    // who can never edit or file it, recoverable only by a Developer.
+    if (!target.active || target.role === "readonly") {
+      return { ok: false, reason: "bad-target" as const };
+    }
+
+    // Merging away an admin must not close the last door in.
+    if (source.role === "admin" && source.active) {
+      const [{ n }] = await tx
+        .select({ n: sql<number>`count(*)::int` })
+        .from(users)
+        .where(and(eq(users.role, "admin"), eq(users.active, true), ne(users.id, sourceId)));
+      if ((n ?? 0) === 0) return { ok: false, reason: "last-admin" as const };
+    }
+
+    const moved = await tx
+      .update(drafts)
+      // Bump the version like transferDraft does, so the source owner's
+      // in-flight autosave loses its optimistic check and 409s instead of
+      // silently writing into the merged draft.
+      .set({ ownerId: targetId, version: sql`${drafts.version} + 1`, updatedAt: now })
+      .where(eq(drafts.ownerId, sourceId))
+      .returning();
+
+    const [{ n: kept }] = await tx
+      .select({ n: sql<number>`count(*)::int` })
+      .from(submissions)
+      .where(eq(submissions.submittedById, sourceId));
+
+    // Deactivated, not deleted: filed submissions still point at this id, and
+    // the account must not be able to sign in afterwards.
+    await tx.update(users).set({ active: false }).where(eq(users.id, sourceId));
+
+    return { ok: true as const, draftsMoved: moved.length, submissionsKept: kept ?? 0 };
   });
 }
 

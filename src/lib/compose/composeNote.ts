@@ -63,7 +63,7 @@ function formatValue(field: Field, value: FieldValue): string {
 }
 
 export function composeNote(state: NoteState, modules: ModuleDef[]): string {
-  const lines: string[] = ["# De-identified dental note draft", ""];
+  const lines: string[] = ["# De-identified Smile Note draft", ""];
   const ordered = [...modules].sort((a, b) => a.order - b.order);
 
   for (const mod of ordered) {

@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
+import { canTransferNotes, seesAllNotes, type Role } from "@/lib/auth/roles";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/Dialog";
@@ -114,7 +115,7 @@ export function Dashboard({
           <div className="relative">
             <div className="flex gap-2">
               <button className="btn-primary" disabled={busy} onClick={() => createDraft([], "Untitled note")}>
-                + New note
+                + New Smile Note
               </button>
               <button className="btn-secondary" disabled={busy} onClick={() => setShowPicks((s) => !s)} aria-expanded={showPicks}>
                 Quick picks ▾
@@ -182,7 +183,7 @@ export function Dashboard({
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
           <h2 className="text-lg font-semibold">
-            {role === "user" ? "My drafts" : "All drafts"} ({filtered.length})
+            {seesAllNotes(role as Role) ? "All Smile Notes" : "My Smile Notes"} ({filtered.length})
           </h2>
           <input
             type="search"
@@ -234,7 +235,7 @@ export function Dashboard({
           <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
             {drafts.length === 0
               ? canEdit
-                ? `No drafts yet. Start one with New note or a Quick pick. ${sparkleLine("empty", daySeed(new Date()))}`
+                ? `No Smile Notes yet. Start one with New Smile Note or a Quick pick. ${sparkleLine("empty", daySeed(new Date()))}`
                 : "No drafts to view yet."
               : "No drafts match your search."}
           </p>
@@ -255,7 +256,7 @@ export function Dashboard({
                   </span>
                   <StatusChip status={d.status} />
                 </Link>
-                {role === "admin" && (
+                {canTransferNotes(role as Role) && (
                   <button
                     className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
                     onClick={() => setTransferFor(d)}
@@ -269,7 +270,7 @@ export function Dashboard({
                     className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50"
                     disabled={busy}
                     onClick={() => createDraft(d.moduleIds, d.title)}
-                    title="Start a new note with the same modules — no values are copied"
+                    title="Start a new Smile Note with the same modules — no values are copied"
                     aria-label={`Start a new note like ${d.title}`}
                   >
                     New like this

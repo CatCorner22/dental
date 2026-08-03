@@ -40,27 +40,34 @@ export interface Shorthand {
 
 export const SHORTHAND: Shorthand[] = [
   // ---- Radiographs and imaging
-  { id: "bw", pattern: /\bBWX?\b/g, display: "BW", expansion: "bitewing radiograph", domain: "dental" },
-  { id: "pan", pattern: /\b(?:PAN|pano)\b/g, display: "PAN", expansion: "panoramic radiograph", domain: "dental" },
-  { id: "fmx", pattern: /\bFM[XS]\b/g, display: "FMX", expansion: "full-mouth radiographic series", domain: "dental" },
-  { id: "cbct", pattern: /\bCBCT\b/g, display: "CBCT", expansion: "cone-beam computed tomography", domain: "dental" },
-  { id: "parl", pattern: /\bPARL\b/g, display: "PARL", expansion: "periapical radiolucency", domain: "dental" },
+  { id: "bw", pattern: /\bBWX?s?\b/gi, display: "BW", expansion: "bitewing radiograph", domain: "dental" },
+  { id: "pan", pattern: /\b(?:panos?|pans?)\b/gi, display: "PAN", expansion: "panoramic radiograph", domain: "dental" },
+  { id: "fmx", pattern: /\bFM[XS]\b/gi, display: "FMX", expansion: "full-mouth radiographic series", domain: "dental" },
+  { id: "cbct", pattern: /\bCBCTs?\b/gi, display: "CBCT", expansion: "cone-beam computed tomography", domain: "dental" },
+  { id: "parl", pattern: /\bPARLs?\b/gi, display: "PARL", expansion: "periapical radiolucency", domain: "dental" },
 
   // ---- Procedures
-  { id: "rct", pattern: /\bRCT\b/g, display: "RCT", expansion: "root canal therapy", domain: "dental" },
-  { id: "srp", pattern: /\bSRP\b/g, display: "SRP", expansion: "scaling and root planing", domain: "dental" },
-  { id: "ohi", pattern: /\bOHI\b/g, display: "OHI", expansion: "oral hygiene instruction", domain: "dental" },
-  { id: "coe", pattern: /\bCOE\b/g, display: "COE", expansion: "comprehensive oral evaluation", domain: "dental" },
-  { id: "loe", pattern: /\bLOE\b/g, display: "LOE", expansion: "limited oral evaluation", domain: "dental" },
-  { id: "ext", pattern: /\bEXT\b/g, display: "EXT", expansion: "extraction", domain: "dental" },
-  { id: "ssc", pattern: /\bSSC\b/g, display: "SSC", expansion: "stainless steel crown", domain: "dental" },
-  { id: "sdf", pattern: /\bSDF\b/g, display: "SDF", expansion: "silver diamine fluoride", domain: "dental" },
+  { id: "rct", pattern: /\bRCTs?\b/gi, display: "RCT", expansion: "root canal therapy", domain: "dental" },
+  { id: "srp", pattern: /\bSRP\b/gi, display: "SRP", expansion: "scaling and root planing", domain: "dental" },
+  { id: "ohi", pattern: /\bOHI\b/gi, display: "OHI", expansion: "oral hygiene instruction", domain: "dental" },
+  { id: "coe", pattern: /\bCOE\b/gi, display: "COE", expansion: "comprehensive oral evaluation", domain: "dental" },
+  { id: "loe", pattern: /\bLOE\b/gi, display: "LOE", expansion: "limited oral evaluation", domain: "dental" },
+  {
+    id: "ext",
+    pattern: /\bEXT\b/g,
+    display: "EXT",
+    expansion: "extraction",
+    alternatives: ["extraction", "extension"],
+    domain: "dental"
+  },
+  { id: "ssc", pattern: /\bSSCs?\b/gi, display: "SSC", expansion: "stainless steel crown", domain: "dental" },
+  { id: "sdf", pattern: /\bSDF\b/gi, display: "SDF", expansion: "silver diamine fluoride", domain: "dental" },
 
   // ---- Materials
-  { id: "mta", pattern: /\bMTA\b/g, display: "MTA", expansion: "mineral trioxide aggregate", domain: "dental" },
-  { id: "irm", pattern: /\bIRM\b/g, display: "IRM", expansion: "intermediate restorative material", domain: "dental" },
-  { id: "zoe", pattern: /\bZOE\b/g, display: "ZOE", expansion: "zinc oxide eugenol", domain: "dental" },
-  { id: "rmgi", pattern: /\bRMGI\b/g, display: "RMGI", expansion: "resin-modified glass ionomer", domain: "dental" },
+  { id: "mta", pattern: /\bMTA\b/gi, display: "MTA", expansion: "mineral trioxide aggregate", domain: "dental" },
+  { id: "irm", pattern: /\bIRM\b/gi, display: "IRM", expansion: "intermediate restorative material", domain: "dental" },
+  { id: "zoe", pattern: /\bZOE\b/gi, display: "ZOE", expansion: "zinc oxide eugenol", domain: "dental" },
+  { id: "rmgi", pattern: /\bRMGI\b/gi, display: "RMGI", expansion: "resin-modified glass ionomer", domain: "dental" },
   {
     id: "gi",
     pattern: /\bGI\b/g,
@@ -87,11 +94,18 @@ export const SHORTHAND: Shorthand[] = [
   },
 
   // ---- Periodontal and anatomy
-  { id: "bop", pattern: /\bBOP\b/g, display: "BOP", expansion: "bleeding on probing", domain: "dental" },
-  { id: "cal", pattern: /\bCAL\b/g, display: "CAL", expansion: "clinical attachment level", domain: "dental" },
-  { id: "tmj", pattern: /\bTMJ\b/g, display: "TMJ", expansion: "temporomandibular joint", domain: "dental" },
-  { id: "tmd", pattern: /\bTMD\b/g, display: "TMD", expansion: "temporomandibular disorder", domain: "dental" },
-  { id: "cej", pattern: /\bCEJ\b/g, display: "CEJ", expansion: "cementoenamel junction", domain: "dental" },
+  { id: "bop", pattern: /\bBOP\b/gi, display: "BOP", expansion: "bleeding on probing", domain: "dental" },
+  {
+    id: "cal",
+    pattern: /\bCAL\b/g,
+    display: "CAL",
+    expansion: "clinical attachment level",
+    alternatives: ["clinical attachment level", "calcium"],
+    domain: "dental"
+  },
+  { id: "tmj", pattern: /\bTMJs?\b/gi, display: "TMJ", expansion: "temporomandibular joint", domain: "dental" },
+  { id: "tmd", pattern: /\bTMD\b/gi, display: "TMD", expansion: "temporomandibular disorder", domain: "dental" },
+  { id: "cej", pattern: /\bCEJ\b/gi, display: "CEJ", expansion: "cementoenamel junction", domain: "dental" },
   {
     id: "pd",
     pattern: /\bPD\b/g,
@@ -102,13 +116,22 @@ export const SHORTHAND: Shorthand[] = [
   },
 
   // ---- Prosthodontics
-  { id: "fpd", pattern: /\bFPD\b/g, display: "FPD", expansion: "fixed partial denture", domain: "dental" },
-  { id: "rpd", pattern: /\bRPD\b/g, display: "RPD", expansion: "removable partial denture", domain: "dental" },
-  { id: "ovd", pattern: /\b(?:OVD|VDO)\b/g, display: "OVD", expansion: "occlusal vertical dimension", domain: "dental" },
+  { id: "fpd", pattern: /\bFPDs?\b/gi, display: "FPD", expansion: "fixed partial denture", domain: "dental" },
+  { id: "rpd", pattern: /\bRPDs?\b/gi, display: "RPD", expansion: "removable partial denture", domain: "dental" },
+  { id: "ovd", pattern: /\b(?:OVD|VDO)\b/gi, display: "OVD", expansion: "occlusal vertical dimension", domain: "dental" },
 
   // ---- Anesthesia
-  { id: "ianb", pattern: /\bIANB\b/g, display: "IANB", expansion: "inferior alveolar nerve block", domain: "dental" },
-  { id: "psa", pattern: /\bPSA\b/g, display: "PSA", expansion: "posterior superior alveolar nerve block", domain: "dental" },
+  { id: "ianb", pattern: /\bIANBs?\b/gi, display: "IANB", expansion: "inferior alveolar nerve block", domain: "dental" },
+  {
+    id: "psa",
+    pattern: /\bPSA\b/g,
+    display: "PSA",
+    expansion: "posterior superior alveolar nerve block",
+    // In a medical history PSA is prostate-specific antigen. Expanding it turns
+    // a lab value into a nerve block that was never performed.
+    alternatives: ["posterior superior alveolar nerve block", "prostate-specific antigen (a lab value)"],
+    domain: "dental"
+  },
   { id: "n2o", pattern: /\bN2O\b/gi, display: "N2O", expansion: "nitrous oxide", domain: "dental" },
   {
     id: "asa",
@@ -132,24 +155,34 @@ export const SHORTHAND: Shorthand[] = [
   },
 
   // ---- Chart structure and history
-  { id: "cc", pattern: /\bCC\b/g, display: "CC", expansion: "chief complaint", domain: "medical" },
-  { id: "hpi", pattern: /\bHPI\b/g, display: "HPI", expansion: "history of present illness", domain: "medical" },
-  { id: "ros", pattern: /\bROS\b/g, display: "ROS", expansion: "review of systems", domain: "medical" },
-  { id: "nkda", pattern: /\bNKDA\b/g, display: "NKDA", expansion: "no known drug allergies", domain: "medical" },
+  {
+    id: "cc",
+    pattern: /\bCC\b/g,
+    display: "CC",
+    expansion: "chief complaint",
+    // CC is a VOLUME (cubic centimetre) at least as often as "chief complaint",
+    // and is itself on the ISMP do-not-use list. "2 CC of lidocaine" must never
+    // become "2 chief complaint of lidocaine".
+    alternatives: ["chief complaint", "cubic centimetres (use mL instead)"],
+    domain: "medical"
+  },
+  { id: "hpi", pattern: /\bHPI\b/gi, display: "HPI", expansion: "history of present illness", domain: "medical" },
+  { id: "ros", pattern: /\bROS\b/gi, display: "ROS", expansion: "review of systems", domain: "medical" },
+  { id: "nkda", pattern: /\bNKD?A\b/gi, display: "NKDA", expansion: "no known drug allergies", domain: "medical" },
   { id: "fu", pattern: /\bf\/u\b/gi, display: "f/u", expansion: "follow-up", domain: "medical" },
   { id: "bp", pattern: /\bBP\b/g, display: "BP", expansion: "blood pressure", domain: "medical" },
-  { id: "npo", pattern: /\bNPO\b/g, display: "NPO", expansion: "nothing by mouth", domain: "medical" },
+  { id: "npo", pattern: /\bNPO\b/gi, display: "NPO", expansion: "nothing by mouth", domain: "medical" },
 
   // ---- Dosing. ISMP error-prone list governs which are expanded.
-  { id: "bid", pattern: /\bb\.?i\.?d\.?\b/gi, display: "bid", expansion: "twice daily", domain: "dosing" },
-  { id: "tid", pattern: /\bt\.?i\.?d\.?\b/gi, display: "tid", expansion: "three times daily", domain: "dosing" },
-  { id: "qid", pattern: /\bq\.?i\.?d\.?\b/gi, display: "qid", expansion: "four times daily", domain: "dosing" },
-  { id: "prn", pattern: /\bp\.?r\.?n\.?\b/gi, display: "prn", expansion: "as needed", domain: "dosing" },
+  { id: "bid", pattern: /\bb\.?i\.?d\.(?!\w)|\bbid\b/gi, display: "bid", expansion: "twice daily", domain: "dosing" },
+  { id: "tid", pattern: /\bt\.?i\.?d\.(?!\w)|\btid\b/gi, display: "tid", expansion: "three times daily", domain: "dosing" },
+  { id: "qid", pattern: /\bq\.?i\.?d\.(?!\w)|\bqid\b/gi, display: "qid", expansion: "four times daily", domain: "dosing" },
+  { id: "prn", pattern: /\bp\.?r\.?n\.(?!\w)|\bprn\b/gi, display: "prn", expansion: "as needed", domain: "dosing" },
   {
     // On the ISMP DO-NOT-USE list: "qd" is misread as "qid" and as "qod".
     // Expanding it would be asserting a dosing frequency nobody wrote.
     id: "qd",
-    pattern: /\bq\.?d\.?\b/gi,
+    pattern: /\bq\.?d\.(?!\w)|\bqd\b/gi,
     display: "qd",
     expansion: "daily",
     alternatives: ["daily", "four times daily (if qid was intended)", "every other day (if qod was intended)"],
@@ -157,7 +190,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "qod",
-    pattern: /\bq\.?o\.?d\.?\b/gi,
+    pattern: /\bq\.?o\.?d\.(?!\w)|\bqod\b/gi,
     display: "qod",
     expansion: "every other day",
     alternatives: ["every other day", "daily (if qd was intended)"],

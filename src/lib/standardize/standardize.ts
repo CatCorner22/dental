@@ -2,6 +2,7 @@ import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
 import { MISSPELLINGS, MEDICATION_WORDS } from "@/lib/vocab/misspellings";
 import { VAGUE_PHRASES, STALE_PHRASES } from "@/lib/vocab/vague-phrases";
 import { SHORTHAND, SHORTHAND_OWNS } from "@/lib/vocab/shorthand";
+import { findImplausibleQuantities } from "./plausibility";
 
 // Paste-to-standard: the "writing on rails" pass, moved out of the companion
 // skill and into the app.
@@ -47,6 +48,7 @@ export interface RaisedFlag {
     | "vague-phrase"
     | "stale-text"
     | "medication-spelling"
+    | "implausible-quantity"
     | "truncated";
   display: string;
   guidance: string;
@@ -82,7 +84,17 @@ function normalizeWhitespace(input: string): string {
     // Invisible characters that survive a copy-paste out of a PDF or an EDR and
     // then defeat every downstream match. Written as escapes, not literals:
     // a source file holding real zero-width bytes is unreviewable in a diff.
-    .replace(/[\u00AD\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2064\uFEFF]/g, "")
+    .replace(
+      // \u2066-\u2069 are the LRI/RLI/FSI/PDI isolates — the modern
+      // replacements for the \u202A-\u202E overrides already listed, and
+      // able to reorder how digits and punctuation DISPLAY in a document
+      // that is a legal record.
+      /[\u00AD\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2069\uFEFF]/g,
+      ""
+    )
+    // Non-breaking and thin spaces are spaces to a reader but not to \s in
+    // a character class of [ \t], so they defeated every downstream match.
+    .replace(/[\u00A0\u2007\u2009\u202F]/g, " ")
     // Smart punctuation to ASCII: an em-dash or curly quote pasted from Word
     // renders inconsistently and breaks naive matching later.
     .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
@@ -94,7 +106,9 @@ function normalizeWhitespace(input: string): string {
     .replace(/\n{3,}/g, "\n\n")
     // A space before terminal punctuation, and a missing one after.
     .replace(/ +([,.;:!?])/g, "$1")
-    .replace(/([,;:])(?=[A-Za-z])/g, "$1 ")
+    // Colon excluded: "MOD:B" and ratios like "1:100,000" are notation,
+    // not prose punctuation.
+    .replace(/([,;])(?=[A-Za-z])/g, "$1 ")
     .trim();
 }
 
@@ -124,7 +138,10 @@ function sentenceCase(input: string): string {
 // A measurement and its unit are separate tokens: "500mg" is one word to a
 // reader skimming for a dose. Bounded to the units the practice actually
 // writes, so a tooth designation or a date is never split.
-const UNIT_GLUE = /\b(\d+(?:\.\d+)?)(mg|mcg|g|kg|ml|mm|cm|mL|%)\b/g;
+// No "%": a percent sign is a non-word character, so the trailing \b matched
+// only when a LETTER followed — i.e. exactly the case ("40%oxygen") where
+// inserting a space is wrong, and never the ordinary "30%".
+const UNIT_GLUE = /\b(\d+(?:\.\d+)?)(mg|mcg|kg|mL|ml|mm|cm|g)\b/g;
 
 function spaceUnits(input: string): string {
   return input.replace(UNIT_GLUE, "$1 $2");
@@ -140,27 +157,60 @@ function ensureTerminalPeriod(input: string): string {
       if (!t) return t;
       // Leave list markers and headings alone; they are not sentences.
       if (/^[-*#|>]/.test(t)) return t;
-      if (/[.!?:;]$/.test(t)) return t;
+      // A trailing comma or dash means the writer is mid-thought or mid-list;
+      // appending a period there produced ",." and "-.".
+      if (/[.!?:;,\-\u2013\u2014]$/.test(t)) return t;
       return `${t}.`;
     })
     .join("\n");
 }
 
-// Case-preserving replacement: "X-ray" → "Radiograph" at the start of a
-// sentence, "radiograph" mid-sentence. Replacing blind would produce
-// "The radiograph shows" and "radiograph shows" inconsistently.
-function matchCase(sample: string, replacement: string): string {
+// Case- and number-preserving replacement.
+//
+// Three bugs lived here, all of the same species: the replacement was fitted to
+// the SHAPE of the match without looking at its CONTEXT.
+//
+//  - "4 x-rays" became "4 radiograph". The pattern matches the plural; the
+//    replacement was singular. The count of images is a billing and legal fact,
+//    so losing the plural changes the record.
+//  - "required I&D at the buccal space" became "required Incision and drainage
+//    at". Title case was applied whenever the match happened to start with a
+//    capital, with no idea whether it sat at the start of a sentence.
+//  - "PT referral" became "PATIENT referral": all-caps propagated onto a
+//    single-word replacement. (The PT pattern itself is fixed separately —
+//    all-caps PT is physical therapy, not a patient.)
+function isSentenceStart(text: string, offset: number): boolean {
+  const before = text.slice(0, offset);
+  // Start of input, start of a line, or after a sentence terminator.
+  return /(?:^|[.!?]["')\]]?\s+|\n\s*)$/.test(before);
+}
+
+function applyPlural(sample: string, replacement: string): string {
+  // Only when the replacement is a single word — pluralising the last word of a
+  // phrase ("scaling and root planings") would be worse than leaving it.
+  const plural = /s$/i.test(sample) && !/s$/i.test(replacement) && !replacement.includes(" ");
+  return plural ? `${replacement}s` : replacement;
+}
+
+function matchCase(
+  sample: string,
+  replacement: string,
+  opts: { sentenceStart: boolean }
+): string {
+  const withNumber = applyPlural(sample, replacement);
+  const oneWord = !withNumber.includes(" ");
   // All-caps propagates only to a single-word replacement. An initialism like
-  // "RCT" expanding to a phrase must not become "ROOT CANAL THERAPY" — the
-  // source being capitals says it was an abbreviation, not that it was shouted.
-  const oneWord = !replacement.includes(" ");
-  if (oneWord && sample === sample.toUpperCase() && sample.length > 1) {
-    return replacement.toUpperCase();
+  // "RCT" expanding to a phrase must not become "ROOT CANAL THERAPY" — capitals
+  // there say "this was an abbreviation", not "this was shouted".
+  if (oneWord && sample === sample.toUpperCase() && sample.length > 1 && /[A-Z]/.test(sample)) {
+    return withNumber.toUpperCase();
   }
-  if (sample[0] === sample[0]?.toUpperCase()) {
-    return replacement[0].toUpperCase() + replacement.slice(1);
+  // Capitalise ONLY at a real sentence boundary. Mid-sentence, the replacement
+  // keeps its natural lowercase however the abbreviation was written.
+  if (opts.sentenceStart) {
+    return withNumber[0].toUpperCase() + withNumber.slice(1);
   }
-  return replacement;
+  return withNumber;
 }
 
 // Escape a literal for use inside a RegExp. Written out rather than inlined
@@ -211,7 +261,10 @@ export function standardize(raw: string): StandardizeResult {
       });
       continue;
     }
-    text = text.replace(re, (m) => matchCase(m, right));
+    text = text.replace(re, (m: string, ...rest: unknown[]) => {
+      const offset = rest[rest.length - 2] as number;
+      return matchCase(m, right, { sentenceStart: isSentenceStart(text, offset) });
+    });
     bump(applied, (a) => `${a.kind}:${a.from}`, {
       kind: "spelling",
       from: hits[0],
@@ -249,7 +302,7 @@ export function standardize(raw: string): StandardizeResult {
     // Already defined somewhere in this text? Then the convention is satisfied
     // and re-expanding would produce "root canal therapy (RCT) (RCT)".
     const defined = new RegExp(
-      `${escapeRegExp(sh.expansion)}\\s*\\(${escapeRegExp(sh.display)}\\)`,
+      `${escapeRegExp(sh.expansion)}[\\s.,;:]*\\(${escapeRegExp(sh.display)}\\)`,
       "i"
     );
     if (defined.test(text)) continue;
@@ -295,7 +348,10 @@ export function standardize(raw: string): StandardizeResult {
     const hits = text.match(re);
     if (!hits) continue;
     if (abbr.severityClass === "style") {
-      text = text.replace(re, (m) => matchCase(m, abbr.replacement));
+      text = text.replace(re, (m: string, ...rest: unknown[]) => {
+        const offset = rest[rest.length - 2] as number;
+        return matchCase(m, abbr.replacement, { sentenceStart: isSentenceStart(text, offset) });
+      });
       bump(applied, (a) => `${a.kind}:${a.from}`, {
         kind: "abbreviation",
         from: abbr.display,
@@ -344,6 +400,19 @@ export function standardize(raw: string): StandardizeResult {
       to: "normalized",
       count: 1,
       why: "Capitalized sentences, separated units from their numbers, and closed the final sentence."
+    });
+  }
+
+  // Implausible quantities. Flagged, never corrected: the tool can tell that a
+  // number cannot be right, and must not pretend to know what it should be.
+  // Run on the FINAL text so the unit spacing above ("500mg" -> "500 mg") has
+  // already happened and the numbers are in their standard form.
+  for (const q of findImplausibleQuantities(text)) {
+    flags.push({
+      kind: "implausible-quantity",
+      display: q.matched,
+      guidance: q.reason,
+      count: q.count
     });
   }
 

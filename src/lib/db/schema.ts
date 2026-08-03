@@ -142,6 +142,43 @@ export const passwordResetTokens = pgTable("password_reset_tokens", {
 export type AuthThrottleRow = typeof authThrottle.$inferSelect;
 export type PasswordResetTokenRow = typeof passwordResetTokens.$inferSelect;
 
+
+
+// The wish list: staff suggestions, supply requests, and — the one that
+// matters most — observations that something has fallen below standard.
+//
+// DELIBERATELY LOW FRICTION, and deliberately the opposite of the Data Hygiene
+// Gauntlet. The Gauntlet is hard on purpose because a schema change is
+// expensive and permanent. A wish is cheap: the cost of a bad suggestion is
+// that somebody reads a sentence and moves on, while the cost of a suppressed
+// safety observation is unbounded. So there is no gate here beyond "say what
+// you mean", and the standards category is one click away.
+//
+// NON-ANONYMOUS by design, at the owner's request. The author's name is frozen
+// at write time like every other attribution in this app, so a later rename or
+// deletion cannot rewrite who raised something. Attribution here is a feature,
+// not surveillance: a supply request needs a person to ask follow-up questions
+// of, and a standards concern needs someone who can describe what they saw.
+export const wishes = pgTable("wishes", {
+  id: serial("id").primaryKey(),
+  // No FK: a wish outlives the account that raised it, exactly like the audit
+  // log. The frozen name below is what keeps it readable afterwards.
+  authorId: text("author_id"),
+  authorName: text("author_name").notNull(), // frozen "Display (username)"
+  category: text("category").notNull(),
+  title: text("title").notNull(),
+  detail: text("detail").notNull().default(""),
+  status: text("status").notNull().default("new"),
+  // Who last moved it, so "declined" is never anonymous either.
+  decidedByName: text("decided_by_name"),
+  decidedNote: text("decided_note"),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export type WishRow = typeof wishes.$inferSelect;
+export type NewWish = typeof wishes.$inferInsert;
+
 export const schema = {
   roleEnum,
   users,
@@ -149,5 +186,6 @@ export const schema = {
   submissions,
   auditLog,
   authThrottle,
-  passwordResetTokens
+  passwordResetTokens,
+  wishes
 };

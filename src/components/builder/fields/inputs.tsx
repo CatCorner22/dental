@@ -178,10 +178,18 @@ function StandardizeField({
 
   const run = () => {
     const r = standardize(text);
+    // NEVER write back a truncated result. The transform only read the first
+    // 20,000 characters, so applying it would silently delete everything past
+    // that — and ensureTerminalPeriod would put a full stop on the cut, so the
+    // note would even LOOK finished. A six-second toast is not consent to
+    // destroy the end of a clinical note.
+    if (r.truncated) {
+      setNote("⚠ too long to standardize — nothing was changed. Shorten the field or standardize it in sections.");
+      return;
+    }
     if (r.text !== text) onApply(r.text);
     const parts: string[] = [];
     // Loudest first: something was LOST, which matters more than what changed.
-    if (r.truncated) parts.push("⚠ too long — the end was not standardized");
     const changes = r.applied.filter((a) => a.kind !== "formatting").length;
     if (r.text !== text) {
       parts.push(changes > 0 ? `${changes} change${changes === 1 ? "" : "s"} applied` : "tidied");
@@ -192,6 +200,8 @@ function StandardizeField({
       parts.push(`your call: ${r.flags.map((f) => f.display).join(", ")}`);
     }
     setNote(parts.length ? parts.join(" · ") : "already standard");
+    // Cleared on a timer only for the ordinary "here is what changed"
+    // message. The truncation refusal above returns early and stays put.
     setTimeout(() => setNote(null), 6000);
   };
 

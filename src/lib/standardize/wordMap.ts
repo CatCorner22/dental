@@ -1,7 +1,7 @@
 import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
 import { VAGUE_PHRASES, STALE_PHRASES } from "@/lib/vocab/vague-phrases";
 import { MISSPELLINGS, MEDICATION_WORDS } from "@/lib/vocab/misspellings";
-import { SHORTHAND } from "@/lib/vocab/shorthand";
+import { SHORTHAND, SHORTHAND_OWNS } from "@/lib/vocab/shorthand";
 
 // The word map: the practice's standard vocabulary, in one place, derived from
 // the SAME tables the standardizer and the audit engine enforce.
@@ -35,6 +35,12 @@ export function buildWordMap(): WordMapGroup[] {
   const autoAbbr: WordMapEntry[] = [];
   const askAbbr: WordMapEntry[] = [];
   for (const a of BANNED_ABBREVIATIONS) {
+    // Skip anything the shorthand table has taken over. Listing it here would
+    // advertise a replacement the transformer never performs — and this file's
+    // whole premise is that a reference disagreeing with the rule enforcing it
+    // is worse than no reference. Those entries appear under the first-use
+    // section instead, with the behaviour they actually have.
+    if (SHORTHAND_OWNS.has(a.id)) continue;
     const entry = { avoid: a.display, use: a.replacement, auto: a.severityClass === "style" };
     (entry.auto ? autoAbbr : askAbbr).push(entry);
   }

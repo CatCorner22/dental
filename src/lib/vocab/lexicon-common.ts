@@ -98,6 +98,7 @@ what when where whether which while white who whole why wide wife will window wi
 with within without woke woman word words wore work worked working works worse worsened
 worst would wrap wrist write written wrong year years yellow yes yesterday yet you young
 your zero
+awareness daytime instructed intolerance morning outstanding phases physician referring transient
 `;
 
 export const COMMON_LEXICON: ReadonlySet<string> = new Set(

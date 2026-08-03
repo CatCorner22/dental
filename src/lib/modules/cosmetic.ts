@@ -56,7 +56,7 @@ export const cosmetic: ModuleDef = {
           required: true,
           placeholderHint: "<what was discussed>",
           standardPhrases: [
-            "Discussed that existing restorations do not change colour with whitening and may need replacing to match.",
+            "Discussed that existing restorations do not change color with whitening and may need replacing to match.",
             "Discussed that results vary between patients and that a specific shade cannot be guaranteed."
           ],
           helpText:

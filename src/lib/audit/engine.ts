@@ -105,19 +105,50 @@ export const PHI_ATTESTATION_RULE =
 //
 // Stripped rather than rejected, and stripped in the SAME helper the frozen
 // record uses, so what gets validated is what gets read.
-const INVISIBLE =
-  /[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g;
+const INVISIBLE = new RegExp(
+  "[" +
+    "\\u00AD\\u180B-\\u180E\\u200B-\\u200F\\u202A-\\u202E" +
+    "\\u2060-\\u2064\\u3164\\u115F\\u1160\\uFFA0" +
+    "\\uFE00-\\uFE0F\\uFEFF" +
+  "]|[\\u{E0000}-\\u{E007F}]",
+  "gu"
+);
 
 export function visibleText(text: string): string {
   return text.replace(INVISIBLE, "");
 }
 
+// A DENYLIST of invisible characters is unwinnable, and this one lost: the
+// list above did not know about BRAILLE PATTERN BLANK, the HANGUL FILLERs,
+// variation selectors, or tag characters, and a reason built from those scored
+// 23 characters / 4 words / 5 distinct and returned true while rendering as
+// empty space on the frozen legal record. Unicode will always have one more.
+//
+// So the test is inverted: rather than naming what does not count, require a
+// floor of characters that certainly DO render. Latin letters and digits,
+// because that is what this practice writes in. That is a deliberate limit and
+// the one real cost of the approach - a reason written wholly in another
+// script would be refused - and it is better stated here than discovered later.
+const RENDERING_CHAR = /[\p{Script=Latin}\p{Nd}]/gu;
+
 export function isValidPhiAttestation(reason: string): boolean {
   const trimmed = visibleText(reason).trim();
   if (trimmed.length < 20) return false;
-  if (trimmed.split(/\s+/).filter(Boolean).length < 4) return false;
-  // "aaaaaaaaaaaaaaaaaaaa a a a" — length and word games with no content.
-  return new Set(trimmed.replace(/\s/g, "").toLowerCase()).size >= 5;
+  const words = trimmed.split(/\s+/).filter(Boolean);
+  if (words.length < 4) return false;
+
+  const rendering = trimmed.match(RENDERING_CHAR) ?? [];
+  if (rendering.length < 15) return false;
+  if (new Set(rendering.map((c) => c.toLowerCase())).size < 5) return false;
+
+  // Three DISTINCT words. "asdfg asdfg asdfg asdfg" is four words and one
+  // idea, and it cleared every other check here.
+  const distinct = new Set(
+    words
+      .map((w) => w.toLowerCase().replace(/[^\p{Script=Latin}\p{Nd}]/gu, ""))
+      .filter(Boolean)
+  );
+  return distinct.size >= 3;
 }
 
 // phiOverridden: the user completed the explicit override dialog and attested

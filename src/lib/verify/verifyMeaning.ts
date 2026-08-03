@@ -13,16 +13,36 @@
 // the AI "sometimes does nothing"; a stated rejection teaches them the tool
 // checks its own work — which is the entire reason to trust it.
 
+import { canonical, clauses, stem, words } from "./normalize";
+import { checkGrounding, checkQuestionGrounding } from "./grounding";
+import { licenseFor } from "./vocabulary";
+
 export interface VerifyRejection {
   code:
     | "digits-changed"
     | "negation-changed"
+    // The negation MULTISET can match while the meaning inverts: "No swelling;
+    // tenderness present" and "Swelling present; no tenderness" both contain
+    // exactly one "no". This is what each negation actually applies to.
+    | "negation-scope-changed"
     | "teeth-changed"
     | "units-changed"
     | "drugs-changed"
     | "attribution-dropped"
+    // The opposite direction, and not symmetric with dropping: adding an
+    // attribution demotes a clinician's own finding to something the patient
+    // merely said.
+    | "attribution-added"
     | "content-shrunk"
-    | "not-questions";
+    | "not-questions"
+    // Laterality and anatomical direction. Wrong-site is an S0 STOP everywhere
+    // else in this application and the verifier could not see it at all.
+    | "site-changed"
+    | "surfaces-changed"
+    // The fabrication guard: the model added a claim rather than altering one.
+    | "content-invented"
+    // Empty output, a markdown fence, or a chat preamble wrapped round the note.
+    | "output-degenerate";
   detail: string;
 }
 
@@ -40,14 +60,94 @@ function multiset(tokens: string[]): string {
     .join("|");
 }
 
+// EVERY extractor below reads canonical() text, never the raw string.
+//
+// Before that was true, three red-team attacks walked through on Unicode alone:
+// a dose fabricated as "٥٠٠ mg" and a tooth number as "１９" both left the digit
+// check comparing an empty list against an empty list, because \d is ASCII-only.
+// Folding once, here, is what stops every check needing its own opinion about
+// Unicode — see normalize.ts.
 function digits(text: string): string[] {
-  return text.match(/\d+(?:\.\d+)?/g) ?? [];
+  return canonical(text).match(/\d+(?:\.\d+)?/g) ?? [];
 }
 
-const NEGATION = /\b(?:no|not|never|denies|denied|without|non|none|nothing)\b/gi;
+const NEGATION = /\b(?:no|not|never|denies|denied|without|non|none|nothing|negative|absent|free\s+of|unable)\b/gi;
 
 function negations(text: string): string[] {
-  return text.match(NEGATION) ?? [];
+  return canonical(text).match(NEGATION) ?? [];
+}
+
+/**
+ * What each negation actually applies to.
+ *
+ * The multiset check above compares HOW MANY negations there are, which a model
+ * can preserve while inverting the note: "No swelling; tenderness present"
+ * becomes "Swelling present; no tenderness" with the same single "no" and the
+ * same zero digits. Both statements cannot be true and the verifier had no
+ * opinion.
+ *
+ * So pair each negation with the content of the clause it sits in, as a sorted
+ * set. A set rather than a sequence because reordering inside a clause is
+ * legitimate — "no pain or swelling" and "no swelling or pain" say the same
+ * thing — while moving the negation onto a different finding is not.
+ *
+ * This also closes the short-note hole in the shrink guard for free: dropping
+ * three items from "denies pain, swelling, numbness and fever" changes what
+ * "denies" covers, whatever the word count does.
+ */
+function negationScopes(text: string, noise: ReadonlySet<string>): string[] {
+  const out: string[] = [];
+  for (const clause of clauses(text)) {
+    if (!NEGATION.test(clause)) {
+      NEGATION.lastIndex = 0;
+      continue;
+    }
+    NEGATION.lastIndex = 0;
+    const negs = clause.match(NEGATION) ?? [];
+    // `noise` covers grammar AND both sides of every standardization the input
+    // licenses. Expanding "NKA" to "no known allergies" genuinely changes what
+    // the word "no" sits beside, and without that allowance this check would
+    // report the transformer's own correct output as an inverted negation.
+    const content = words(clause)
+      .map(stem)
+      .filter((s) => !noise.has(s))
+      .sort();
+    for (const n of negs) out.push(`${n.toLowerCase()}:${content.join(",")}`);
+  }
+  return out;
+}
+
+/**
+ * Laterality and anatomical direction.
+ *
+ * The verifier could not see a wrong-site rewrite at all: "lower left first
+ * molar" to "lower right first molar" changed no digit, no drug, no negation and
+ * no tooth letter. Wrong-site is an S0 STOP everywhere else in this application,
+ * which made this the largest single inconsistency between what the audit
+ * enforces on a human and what the verifier enforced on a model.
+ */
+const SITE =
+  /\b(?:left|right|upper|lower|maxillary|mandibular|mesial|distal|buccal|lingual|facial|labial|palatal|occlusal|incisal|apical|coronal|cervical|anterior|posterior|superior|inferior|proximal|midline|bilateral|unilateral|ipsilateral|contralateral|quadrant|sextant|arch)\b/gi;
+
+function sites(text: string): string[] {
+  return canonical(text).match(SITE) ?? [];
+}
+
+/**
+ * Surface designators in a tooth or restoration context.
+ *
+ * "MOD composite on tooth 3" to "MO composite on tooth 3" documents a smaller
+ * restoration on the same tooth — a billing fact and a treatment fact, invisible
+ * to every other check here. Matched only as an all-caps run of surface letters
+ * so ordinary words are not mistaken for codes.
+ */
+function surfaceCodes(text: string): string[] {
+  const out: string[] = [];
+  for (const m of canonical(text).matchAll(/\b([MODBFLIP]{2,5})\b/g)) {
+    // Sorted, because MOD and DOM name the same surfaces.
+    out.push([...m[1]].sort().join(""));
+  }
+  return out;
 }
 
 // Tooth designators: "#19", "tooth 19", "teeth 1, 16", and primary letters in
@@ -80,11 +180,76 @@ function drugs(text: string): string[] {
 // Attribution markers: "patient reports/states/denies", "per patient",
 // "parent reports". Dropping one converts a reported statement into an
 // asserted clinical fact — the exact promotion the TN scope rules forbid.
+// `pt` is in the alternation because it is what staff actually type — the
+// shorthand table's own entry for "patient" — and leaving it out made the
+// verifier reject its own transformer's correct output: expanding "Pt states
+// pain" to "The patient states pain" read as an attribution appearing out of
+// nowhere, because the input's attribution was invisible to this regex.
 const ATTRIBUTION =
-  /\b(?:patient|parent|guardian|caregiver)\s+(?:reports?|states?|stated|denies|denied|describes?|says?)\b|\bper\s+(?:the\s+)?(?:patient|parent|guardian)\b|\bexternal\s+record\s+states?\b/gi;
+  /\b(?:pt|patient|parent|guardian|caregiver)\s+(?:reports?|states?|stated|denies|denied|describes?|says?|complains?\s+of)\b|\bper\s+(?:the\s+)?(?:pt|patient|parent|guardian)\b|\bexternal\s+record\s+states?\b/gi;
 
 function attributions(text: string): string[] {
-  return text.match(ATTRIBUTION) ?? [];
+  return canonical(text).match(ATTRIBUTION) ?? [];
+}
+
+/**
+ * The content that sits inside an attributed clause.
+ *
+ * A plain count cannot express the rule. "Patient reports pain and swelling"
+ * legitimately becomes "The patient reports pain. The patient reports swelling."
+ * — the VOICE prompt asks for one idea per sentence — and that doubles the count
+ * while attributing exactly the same two findings. Meanwhile the harm being
+ * guarded is not arithmetic at all: it is a clause that nobody attributed
+ * ACQUIRING an attribution, which moves professional accountability for a
+ * finding off the examiner and onto the person in the chair.
+ *
+ * So compare WHAT is attributed, not how often.
+ */
+function attributedContent(
+  text: string,
+  attributed: boolean,
+  noise: ReadonlySet<string>
+): Set<string> {
+  const out = new Set<string>();
+  for (const clause of clauses(text)) {
+    ATTRIBUTION.lastIndex = 0;
+    const hasAttribution = ATTRIBUTION.test(clause);
+    ATTRIBUTION.lastIndex = 0;
+    if (hasAttribution !== attributed) continue;
+    for (const w of words(clause)) {
+      const s = stem(w);
+      if (!noise.has(s)) out.add(s);
+    }
+  }
+  return out;
+}
+
+/**
+ * Output that is not a note at all.
+ *
+ * Three separate red-team results collapse into one check. An empty string
+ * passed every value comparison, because an empty note changes no digit and
+ * names no drug — and on a short input the shrink guard did not run, so the
+ * service would have handed a staff member a successful, blank result. A
+ * markdown fence and a "Here is the rewritten note:" preamble passed for the
+ * same reason, and both end up pasted into a clinical record.
+ *
+ * Refused rather than stripped. Stripping guesses at which part the model meant
+ * as the note, and a guess about the content of a legal record is not a thing
+ * this codebase does.
+ */
+function degenerate(output: string): string | null {
+  const text = canonical(output).trim();
+  if (text.length === 0) return "The model returned nothing.";
+  if (/```|~~~/.test(text)) return "The model wrapped the note in a code fence.";
+  if (
+    /^(?:here(?:'s| is)\b|sure\b|certainly\b|of course\b|i(?:'ve| have)\b|below is\b|the (?:rewritten|revised|updated|following)\b)/i.test(
+      text
+    )
+  ) {
+    return "The model added conversational preamble instead of returning only the note.";
+  }
+  return null;
 }
 
 export interface VerifyOptions {
@@ -96,18 +261,45 @@ export interface VerifyOptions {
   mode: "rewrite" | "questions";
 }
 
+/**
+ * Lines a question capability is allowed to emit that are not questions.
+ *
+ * The prompts instruct the model to return exactly these when it has nothing to
+ * ask. Without an explicit exemption, tightening the declarative check below
+ * would refuse the model's own correct "nothing to report" answer.
+ */
+const QUESTION_SENTINELS = ["no open questions.", "no contradictions found."];
+
 export function verifyMeaning(input: string, output: string, opts: VerifyOptions): VerifyResult {
   const rejections: VerifyRejection[] = [];
 
+  const degeneracy = degenerate(output);
+  if (degeneracy) {
+    // Returned immediately: every check below compares two notes, and there is
+    // no second note to compare.
+    return { ok: false, rejections: [{ code: "output-degenerate", detail: degeneracy }] };
+  }
+
   if (opts.mode === "questions") {
-    // A question engine must never assert. Lines are either empty, a short
-    // heading, or a question. One declarative clinical sentence and the
-    // output is refused wholesale.
-    const lines = output
+    // A question engine must never assert.
+    const lines = canonical(output)
       .split("\n")
       .map((l) => l.replace(/^[\s\-*\d.)]+/, "").trim())
       .filter((l) => l.length > 0);
-    const declarative = lines.filter((l) => !/\?$/.test(l) && l.length > 60);
+    // NO LENGTH THRESHOLD. This used to exempt anything under 60 characters,
+    // which meant "Tooth 19 is abscessed." — twenty-two characters, a diagnosis
+    // the note never contained, asserted by a model — was accepted as a
+    // question. A short assertion is not a lesser assertion. Headings are the
+    // one thing genuinely allowed to be short and declarative, so the test is
+    // now "does it contain a verb-bearing clause", approximated by requiring
+    // whitespace and no question mark.
+    const declarative = lines.filter(
+      (l) =>
+        !/\?$/.test(l) &&
+        !QUESTION_SENTINELS.includes(l.toLowerCase()) &&
+        /\s/.test(l.trim()) &&
+        l.replace(/[^a-z]/gi, "").length > 6
+    );
     if (declarative.length > 0) {
       rejections.push({
         code: "not-questions",
@@ -122,6 +314,16 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
       rejections.push({
         code: "digits-changed",
         detail: `A question introduced a number the note never contained: ${newDigits[0]}`
+      });
+    }
+    // Nor a drug, material, or named diagnosis. Asking "Was the amoxicillin
+    // course completed?" about a note that never mentioned amoxicillin is the
+    // model deciding a clinical fact and dressing it as a query.
+    const planted = checkQuestionGrounding(input, output);
+    if (planted.length > 0) {
+      rejections.push({
+        code: "content-invented",
+        detail: `A question named something the note never contained: ${planted.join(", ")}`
       });
     }
     return { ok: rejections.length === 0, rejections };
@@ -162,6 +364,30 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     });
   }
 
+  if (multiset(sites(input)) !== multiset(sites(output))) {
+    rejections.push({
+      code: "site-changed",
+      detail: `Laterality or anatomical site changed: [${sites(input).join(", ")}] -> [${sites(output).join(", ")}]`
+    });
+  }
+
+  if (multiset(surfaceCodes(input)) !== multiset(surfaceCodes(output))) {
+    rejections.push({
+      code: "surfaces-changed",
+      detail: "Surface designators changed — the documented restoration is not the one performed."
+    });
+  }
+
+  const { noise } = licenseFor(input);
+
+  if (multiset(negationScopes(input, noise)) !== multiset(negationScopes(output, noise))) {
+    rejections.push({
+      code: "negation-scope-changed",
+      detail:
+        "A negation moved onto a different finding — the note now denies something else, or denies less."
+    });
+  }
+
   // Attributions may be REWORDED but not reduced in count: "pt states" may
   // become "patient states", never disappear.
   if (attributions(output).length < attributions(input).length) {
@@ -172,14 +398,66 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     });
   }
 
+  // And nothing UNATTRIBUTED may acquire an attribution, which is not the same
+  // rule in reverse. Dropping an attribution promotes hearsay to a clinical
+  // finding; adding one demotes a clinician's own finding to something the
+  // patient merely said. A radiolucency the dentist read off a radiograph must
+  // not become "patient reports a periapical radiolucency" — that rewrites who
+  // is professionally accountable for the finding, and it is the direction that
+  // quietly empties a note of its evidence.
+  // The test is narrow on purpose: content the input stated in an UNATTRIBUTED
+  // clause, now sitting inside an attributed one. Comparing attributed word sets
+  // wholesale was too literal — expanding "pain x3 days" to "pain lasting 3
+  // days" adds "lasting" inside an already-attributed clause and asserts nothing
+  // — and subtracting what was already attributed is what keeps a note that
+  // legitimately mentions the same finding in both voices from tripping it.
+  const wasAttributed = attributedContent(input, true, noise);
+  const wasAsserted = attributedContent(input, false, noise);
+  const nowAttributed = [...attributedContent(output, true, noise)].filter(
+    (s) => wasAsserted.has(s) && !wasAttributed.has(s)
+  );
+  if (nowAttributed.length > 0) {
+    rejections.push({
+      code: "attribution-added",
+      detail:
+        `A finding your note asserted directly is now written as something the patient said ` +
+        `(${nowAttributed.slice(0, 4).join(", ")}). An examiner's own finding must stay the examiner's.`
+    });
+  }
+
   // Content-shrink guard: a rewrite that returns much less text has dropped
   // clauses, and a dropped clause in a clinical note is a dropped fact.
-  const inWords = input.split(/\s+/).filter(Boolean).length;
-  const outWords = output.split(/\s+/).filter(Boolean).length;
-  if (inWords >= 10 && outWords < inWords * 0.6) {
+  //
+  // The floor used to be `inWords >= 10`, which exempted every short note from
+  // the check entirely — and short notes are where a dropped clause hides best.
+  // Now the check always runs; the fraction is simply more forgiving for very
+  // short inputs, where one added connective moves the ratio a long way.
+  const inWords = words(input).length;
+  const outWords = words(output).length;
+  const floor = inWords >= 10 ? 0.6 : 0.5;
+  if (inWords > 0 && outWords < inWords * floor) {
     rejections.push({
       code: "content-shrunk",
       detail: `Output has ${outWords} words for ${inWords} input words — content was dropped, not standardized.`
+    });
+  }
+
+  // THE FABRICATION GUARD. Everything above asks whether a value was altered;
+  // this asks whether a claim was invented, which is the failure mode that
+  // actually makes a language model dangerous on a clinical record.
+  const grounding = checkGrounding(input, output);
+  if (grounding.fabricatedAssertions.length > 0) {
+    rejections.push({
+      code: "content-invented",
+      detail:
+        `The draft asserts something your note does not say: ` +
+        `${grounding.fabricatedAssertions.join(", ")}. A missing fact is asked about, never supplied.`
+    });
+  }
+  if (grounding.inventedClauses.length > 0) {
+    rejections.push({
+      code: "content-invented",
+      detail: `The draft added a statement that is not in your note: "${grounding.inventedClauses[0].slice(0, 100)}"`
     });
   }
 

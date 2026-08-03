@@ -152,7 +152,7 @@ export function Dialog({
                 onClick={onClose}
                 // -m-1 p-2 keeps the visual size but gives the finger a real
                 // target; a bare ✕ glyph is well under any usable tap size.
-                className="-m-1 shrink-0 rounded p-2 text-slate-400 hover:text-slate-700"
+                className="-m-1 shrink-0 rounded p-2 text-slate-600 hover:text-slate-900"
                 aria-label="Close dialog"
               >
                 ✕

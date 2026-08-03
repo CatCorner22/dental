@@ -36,7 +36,30 @@
     overflow-wrap: break-word;
   }
 
-  /* Honour the OS "reduce motion" setting rather than animating regardless. */
+  /* Windows High Contrast / forced-colors drops box-shadow, and the focus ring
+   above IS a box-shadow while `outline: none` is applied unconditionally — so
+   without this block keyboard focus is invisible across the entire app for the
+   users most likely to be relying on a keyboard. Restore a real outline. */
+@media (forced-colors: active) {
+  a:focus-visible,
+  button:focus-visible,
+  input:focus-visible,
+  select:focus-visible,
+  textarea:focus-visible,
+  [tabindex]:focus-visible,
+  .field-input:focus-visible {
+    outline: 3px solid Highlight;
+    outline-offset: 2px;
+  }
+  /* Selected chips/teeth carry state as background colour, which forced-colors
+     also overrides; keep the state visible with a border the mode preserves. */
+  [aria-pressed="true"],
+  [aria-current="page"] {
+    border: 2px solid Highlight;
+  }
+}
+
+/* Honour the OS "reduce motion" setting rather than animating regardless. */
   @media (prefers-reduced-motion: reduce) {
     *,
     *::before,
@@ -140,7 +163,16 @@
    equal specificity, and every such override is silently discarded. */
 @layer components {
 .field-input {
-  @apply w-full rounded border border-slate-300 bg-white px-2.5 py-1.5 text-sm shadow-sm focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500;
+  /* border-slate-500, not -300. A control's boundary must reach 3:1 against
+     its background (WCAG 1.4.11) and slate-300 on white is 1.5:1 — the border
+     was decorative, not an affordance. This is the only thing distinguishing
+     an input from the white card it sits on, and the room it is used in is a
+     bright operatory.
+     focus-visible + the same 2px ring-blue-600 as the global rule: the old
+     `focus:ring-1 ring-blue-500` was 1px, fired on mouse clicks too, and beat
+     the global ring on specificity, so every labelled field in the app had a
+     thinner, lower-contrast focus ring than every other control. */
+  @apply w-full rounded border border-slate-500 bg-white px-2.5 py-1.5 text-sm shadow-sm focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600;
   /* Date/select controls inherit a different face on iOS unless told not to. */
   font-family: inherit;
 }

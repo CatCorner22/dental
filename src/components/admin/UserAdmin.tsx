@@ -403,11 +403,11 @@ export function UserAdmin({
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">
-              <th className="px-3 py-2">Username</th>
-              <th className="px-3 py-2">Display name</th>
-              <th className="px-3 py-2">Role</th>
-              <th className="px-3 py-2">Status</th>
-              <th className="px-3 py-2">Actions</th>
+              <th scope="col" className="px-3 py-2">Username</th>
+              <th scope="col" className="px-3 py-2">Display name</th>
+              <th scope="col" className="px-3 py-2">Role</th>
+              <th scope="col" className="px-3 py-2">Status</th>
+              <th scope="col" className="px-3 py-2">Actions</th>
             </tr>
           </thead>
           <tbody>

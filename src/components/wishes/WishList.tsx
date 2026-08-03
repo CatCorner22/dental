@@ -98,7 +98,7 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
             onClick={() => setFilter(key as typeof filter)}
             className={`tap rounded-full border px-3 text-sm ${
               filter === key
-                ? "border-blue-600 bg-blue-600 text-white"
+                ? "border-blue-700 bg-blue-700 text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
             }`}
           >
@@ -318,7 +318,7 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
                 onClick={() => setCategory(c.id)}
                 className={`tap rounded-full border px-3 text-sm ${
                   category === c.id
-                    ? "border-blue-600 bg-blue-600 text-white"
+                    ? "border-blue-700 bg-blue-700 text-white"
                     : c.urgent
                       ? "border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100"
                       : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"

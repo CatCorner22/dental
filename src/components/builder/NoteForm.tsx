@@ -67,7 +67,7 @@ function FieldRenderer({
     case "textarea":
       return <TextareaField_ field={field} value={value?.kind === "text" ? value : undefined} onChange={set} {...a} />;
     case "toothPicker":
-      return <ToothPicker field={field} value={value?.kind === "teeth" ? value : undefined} onChange={set} />;
+      return <ToothPicker field={field} value={value?.kind === "teeth" ? value : undefined} onChange={set} {...a} />;
     case "surfacePicker": {
       const linked = state.values[fieldKey(moduleId, field.linkedToothFieldId)];
       const linkedTeeth = linked?.kind === "teeth" ? linked.teeth : [];
@@ -77,6 +77,7 @@ function FieldRenderer({
           linkedTeeth={linkedTeeth}
           value={value?.kind === "surfaces" ? value : undefined}
           onChange={set}
+          {...a}
         />
       );
     }

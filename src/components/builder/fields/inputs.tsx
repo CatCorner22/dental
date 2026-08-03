@@ -298,8 +298,7 @@ export function MeasurementInput({ field, value, onChange, describedBy, invalid,
         step={field.decimals ? 10 ** -field.decimals : "any"}
         value={value?.value ?? ""}
         {...aria(describedBy, invalid)}
-        aria-label={`${field.label} value`}
-        onChange={(e) =>
+                onChange={(e) =>
           onChange({
             kind: "measurement",
             value: e.target.value === "" ? null : Number(e.target.value),

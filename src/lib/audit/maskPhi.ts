@@ -109,10 +109,74 @@ export function buildMaskPlan(findings: AuditFinding[]): MaskPlanEntry[] {
   return [...byText.values()].sort((a, b) => b.matchedText.length - a.matchedText.length);
 }
 
-/** Apply a plan to one string. Plain substring replacement — never a regex
- *  built from user text, which would be an injection surface. */
+// A hyphen counts as part of a word here, matching the `(?<![-\w])` guard the
+// name patterns in rules/phi.ts already use. Without it "Ray" replaces inside
+// "X-Ray" and the radiograph becomes a person.
+function isWordChar(c: string | undefined): boolean {
+  return c !== undefined && /[A-Za-z0-9_-]/.test(c);
+}
+
+interface MaskSpan {
+  start: number;
+  end: number;
+  token: string;
+}
+
+/**
+ * Apply a plan to one string.
+ *
+ * INDEX-BASED AND SINGLE-PASS, and both properties are load-bearing.
+ *
+ * This was `split(matchedText).join(token)` per entry, applied in sequence to
+ * the output of the previous entry. Two failures followed, and both ended with
+ * an identifier still in the note while the re-audit reported AUDIT PASS:
+ *
+ *  1. OVERLAPPING matches annihilated each other. "John Smith, Mary Jones"
+ *     yields `John Smith`, `Mary Jones`, and — spuriously, across the comma —
+ *     `Smith, Mary`. Replacing the longest first destroyed the anchors of the
+ *     other two, whose replacements then silently no-opped, leaving
+ *     "John [PERSON-x] Jones": both real names half-masked. Which text
+ *     survived was decided by an accidental string-length tie.
+ *  2. A one-word match replaced INSIDE other words, so "Ray" rewrote "X-Ray",
+ *     and the same person picked up two different tokens — breaking the
+ *     documented property that repeats collapse to one token.
+ *
+ * Now every occurrence is located against the ORIGINAL text, overlaps are
+ * resolved once (leftmost, then longest), and the result is assembled in a
+ * single pass — so no replacement can eat another's anchor.
+ *
+ * Still never a regex built from user text: `indexOf` only.
+ */
 export function applyMaskPlan(text: string, plan: MaskPlanEntry[]): string {
-  let out = text;
-  for (const entry of plan) out = out.split(entry.matchedText).join(entry.token);
-  return out;
+  const spans: MaskSpan[] = [];
+  for (const entry of plan) {
+    const needle = entry.matchedText;
+    if (!needle) continue;
+    const guardStart = /^[A-Za-z0-9_]/.test(needle);
+    const guardEnd = /[A-Za-z0-9_]$/.test(needle);
+    let from = 0;
+    for (;;) {
+      const i = text.indexOf(needle, from);
+      if (i === -1) break;
+      const okStart = !guardStart || !isWordChar(text[i - 1]);
+      const okEnd = !guardEnd || !isWordChar(text[i + needle.length]);
+      if (okStart && okEnd) spans.push({ start: i, end: i + needle.length, token: entry.token });
+      // +1, not +needle.length: overlapping candidates must all be DISCOVERED
+      // so the resolution below can pick between them deliberately.
+      from = i + 1;
+    }
+  }
+  if (spans.length === 0) return text;
+
+  // Leftmost wins; at the same start the longer span wins. A span that starts
+  // inside one already kept is dropped rather than applied on top of it.
+  spans.sort((a, b) => a.start - b.start || b.end - b.start - (a.end - a.start));
+  let out = "";
+  let cursor = 0;
+  for (const span of spans) {
+    if (span.start < cursor) continue;
+    out += text.slice(cursor, span.start) + span.token;
+    cursor = span.end;
+  }
+  return out + text.slice(cursor);
 }

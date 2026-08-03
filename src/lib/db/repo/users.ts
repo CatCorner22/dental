@@ -23,6 +23,53 @@ export async function getUserById(db: Db, id: string): Promise<UserRow | undefin
   return row;
 }
 
+/**
+ * Was `candidateId` minted by `ancestorId`, directly or through a chain of
+ * accounts that person created?
+ *
+ * The one-level `createdById === actor.id` check that transfer and merge used
+ * is defeated by a sock puppet at one remove. A manager may create Team Leads;
+ * a Team Lead may create Team Members. So: mint lead B and lead C, have B mint
+ * member P, and now C may transfer another clinician's live note into P —
+ * because P was created by B, not by C — while one human holds the invite
+ * mailbox for all three. That hands a single person write access to a
+ * colleague's clinical record and the ability to file it under a name they
+ * control, which is exactly what `canWriteNote` and frozen attribution exist
+ * to prevent.
+ *
+ * The reset-link route already reasons transitively (`actorIsCreatureOfChanger`).
+ * This is that idea, generalized and walked to the root.
+ *
+ * The walk is bounded and cycle-guarded: `createdById` is set once at creation
+ * and cannot normally form a loop, but a legal record is not the place to
+ * discover otherwise by hanging a request.
+ */
+export async function isCreatureOf(
+  // Accepts a transaction handle as well as the pool: called from INSIDE
+  // mergeUsers' transaction, and PGlite has one connection, so reaching for the
+  // outer `db` there deadlocks until the test timeout. Caught by the db suite.
+  db: Db | { select: Db["select"] },
+  candidateId: string,
+  ancestorId: string
+): Promise<boolean> {
+  const seen = new Set<string>();
+  let cursor: string | null | undefined = candidateId;
+  for (let hop = 0; hop < 16 && cursor; hop++) {
+    if (seen.has(cursor)) return false;
+    seen.add(cursor);
+    const [row]: UserRow[] = await db
+      .select()
+      .from(users)
+      .where(eq(users.id, cursor))
+      .limit(1);
+    const creator: string | null | undefined = row?.createdById;
+    if (!creator) return false;
+    if (creator === ancestorId) return true;
+    cursor = creator;
+  }
+  return false;
+}
+
 export async function listUsers(db: Db): Promise<UserRow[]> {
   return db.select().from(users).orderBy(users.createdAt);
 }
@@ -128,9 +175,13 @@ export async function mergeUsers(
     if (!source || !target) return { ok: false, reason: "missing" as const };
 
     if (actor && actor.role !== "admin") {
+      // Transitive, not one level: see isCreatureOf. A one-level check let a
+      // manager route a colleague's drafts into a puppet minted by a puppet.
+      const targetIsPuppet = await isCreatureOf(tx, target.id, actor.id);
       const allowed =
         canMergeUsers(actor.role, source.role) &&
         canMergeUsers(actor.role, target.role) &&
+        !targetIsPuppet &&
         target.createdById !== actor.id &&
         target.id !== actor.id &&
         source.id !== actor.id;

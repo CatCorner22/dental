@@ -74,17 +74,22 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
           </span>
         )}
       </div>
-      <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
+      <div
+        className="overflow-x-auto rounded-lg border border-slate-200 bg-white"
+        tabIndex={0}
+        role="region"
+        aria-label="Filed Smile Notes — scrolls sideways for more columns"
+      >
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">
-              <th className="px-3 py-2">Ticket</th>
-              <th className="px-3 py-2">Note</th>
-              <th className="px-3 py-2">Submitted by</th>
-              <th className="px-3 py-2">Office</th>
-              <th className="px-3 py-2">Eastern time</th>
-              <th className="px-3 py-2">Audit status</th>
-              <th className="px-3 py-2">Rules</th>
+              <th scope="col" className="px-3 py-2">Ticket</th>
+              <th scope="col" className="px-3 py-2">Note</th>
+              <th scope="col" className="px-3 py-2">Submitted by</th>
+              <th scope="col" className="px-3 py-2">Office</th>
+              <th scope="col" className="px-3 py-2">Eastern time</th>
+              <th scope="col" className="px-3 py-2">Audit status</th>
+              <th scope="col" className="px-3 py-2">Rules</th>
             </tr>
           </thead>
           <tbody>

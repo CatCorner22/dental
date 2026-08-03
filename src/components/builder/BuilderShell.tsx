@@ -434,7 +434,15 @@ export function BuilderShell({
                 Download .txt
               </button>
               {report.phiStops.length > 0 && !overrideActive && (
-                <button className="text-xs font-medium text-rose-700 underline" onClick={() => setShowOverride(true)}>
+                <button
+                  type="button"
+                  // Was an 18px text link sitting beside three 44px buttons —
+                  // and it is the ONLY route to the privacy dialog, i.e. the
+                  // single control between a flagged identifier and an
+                  // unblocked submit. It gets a real target and real weight.
+                  className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
+                  onClick={() => setShowOverride(true)}
+                >
                   Review privacy stop
                 </button>
               )}

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { ALL_MODULES, MODULES_BY_ID, activeModules } from "./index";
+import { ALL_MODULES, MODULES_BY_ID, activeModules, moduleMatches } from "./index";
 import { runTextAudit } from "@/lib/audit/engine";
 import type { Condition, Field } from "@/lib/schema/types";
 
@@ -52,6 +52,9 @@ describe("module integrity", () => {
       "pediatric",
       "orthodontic",
       "oral-medicine",
+      "sleep-apnea",
+      "tmj-tmd",
+      "cosmetic",
       "medication",
       "teledentistry",
       "communication-followup",
@@ -145,5 +148,35 @@ describe("activeModules", () => {
       "extraction",
       "sedation-anesthesia"
     ]);
+  });
+});
+
+describe("finding a module in the picker", () => {
+  const find = (q: string) => ALL_MODULES.filter((m) => moduleMatches(m, q)).map((m) => m.id);
+
+  it("finds a module by the word clinicians say, not the word in the title", () => {
+    // The regression this exists for. "TMD" appears nowhere in "TMJ and
+    // Orofacial Pain Add-On", so title-only matching returned an empty list to
+    // anyone who typed the abbreviation the profession uses out loud.
+    expect(find("TMD")).toContain("tmj-tmd");
+    expect(find("apnea")).toContain("sleep-apnea");
+    expect(find("snoring")).toContain("sleep-apnea");
+    expect(find("whitening")).toContain("cosmetic");
+    expect(find("bleaching")).toContain("cosmetic");
+  });
+
+  it("is case-insensitive and ignores surrounding spaces", () => {
+    expect(find("  tmd  ")).toContain("tmj-tmd");
+    expect(find("ENDODONTIC")).toContain("endodontic");
+  });
+
+  it("returns everything for an empty query", () => {
+    expect(find("").length).toBe(ALL_MODULES.length);
+    expect(find("   ").length).toBe(ALL_MODULES.length);
+  });
+
+  it("still excludes modules that genuinely do not match", () => {
+    expect(find("tmd")).not.toContain("preventive");
+    expect(find("qqzzx")).toEqual([]);
   });
 });

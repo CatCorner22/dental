@@ -14,7 +14,7 @@ Operational draft current through August 1, 2026.
 
 ## Coverage
 
-The modular set covers examinations, emergencies, imaging, prevention, restorative dentistry, endodontics, periodontics, prosthodontics, implants, orthodontics, pediatrics, oral medicine, surgery, trauma, pathology, grafting, prescriptions, teledentistry, nitrous oxide, IV moderate sedation, deep sedation, and general anesthesia. Use the universal module for a new or uncommon procedure.
+The modular set covers examinations, emergencies, imaging, prevention, restorative dentistry, endodontics, periodontics, prosthodontics, implants, orthodontics, pediatrics, oral medicine, sleep apnea appliance therapy, temporomandibular disorders, elective cosmetic care and whitening, surgery, trauma, pathology, grafting, prescriptions, teledentistry, nitrous oxide, IV moderate sedation, deep sedation, and general anesthesia. Use the universal module for a new or uncommon procedure.
 
 ## Guided staff process
 
@@ -57,7 +57,10 @@ Complete patient identity, exact dates, signatures, legal authority, contact det
 | Nitrous oxide and oxygen only | Nitrous Oxide Add-On |
 | Pediatric or special-needs care | Pediatric and Behavior Add-On |
 | Braces, aligners, retainers, appliances | Orthodontic Add-On |
-| Mucosal lesion, salivary, TMD, sleep, cancer screening | Oral Medicine Add-On |
+| Mucosal lesion, salivary, cancer screening, medication-related condition | Oral Medicine Add-On |
+| Snoring, obstructive sleep apnea, oral appliance fit or titration | Sleep Apnea and Oral Appliance Add-On |
+| Jaw pain, clicking, locking, clenching, grinding, splint therapy | TMJ and Orofacial Pain Add-On |
+| Whitening, bleaching, smile-design workup, elective re-contouring | Cosmetic and Whitening Add-On |
 | Remote encounter | Teledentistry Add-On |
 | Postoperative call or other clinical communication | Communication and Follow-Up Add-On |
 | Pathology or laboratory result review | Pathology Result Add-On |
@@ -456,6 +459,57 @@ Use with the separate time-oriented anesthesia record.
 - Clinician-supplied diagnosis or differential: <term>
 - Medication review and possible association: <clinician-supplied fact>
 - Plan, biopsy, referral, medical coordination, self-care, warning signs, and reassessment: <fact>
+
+### Sleep Apnea and Oral Appliance Add-On
+
+- Referring physician and specialty: <role and specialty, no name>
+- Whose diagnosis is recorded here: <physician diagnosis on file/reported by the patient, not yet on file/no diagnosis on file, referred back for evaluation>
+- Sleep study type: <in-laboratory polysomnography/home sleep apnea test/reported by the patient, type unknown/not available>
+- Severity as reported in the study: <index as written in the physician's report, never computed or converted here>
+- Epworth Sleepiness Scale, if recorded: <score as recorded>
+- Prior therapy and why it was changed: <fact>
+- Appliance type, make, and model: <fact>
+- Records and protrusive bite record: <as taken and measured>
+- Fit, retention, and comfort at delivery: <observed facts>
+- Titration instructions given and adjustments made: <instructions and adjustments as given>
+- Morning occlusion check: <observed>
+- Side effects reported or observed: <facts>
+- Efficacy follow-up arranged with the physician: <arrangement>
+
+The diagnosis and the sleep study belong to the physician, and so does the determination that the appliance is working. This record states that testing was arranged; it never states that the condition is controlled.
+
+### TMJ and Orofacial Pain Add-On
+
+- Presenting complaint in the patient's words: <de-identified patient-reported words>
+- Side: <right/left/bilateral/not localized by the patient>
+- Onset, course, aggravating and relieving factors: <facts>
+- Parafunction and contributing history: <facts>
+- Maximum incisal opening, and which opening was measured: <mm; maximum unassisted/maximum assisted/comfortable>
+- Right and left lateral excursion, and protrusion: <mm>
+- Deviation or deflection on opening: <observed>
+- Joint noise: <none/click or crepitus, with side/locking reported>
+- Muscle and joint palpation: <sites palpated and the response at each>
+- Imaging reviewed and by whom interpreted: <image type and interpreter's role>
+- Appliance, fit, adjustment, and wear instruction: <fact>
+- Self-care advice and referral or co-management: <fact>
+- Review interval and what will be reassessed: <interval and measures to repeat>
+
+Record the range of motion as measured numbers rather than inside a paragraph. A number in a measurement field is bounds-checked for typos and can be compared against the next visit; the same number in prose cannot.
+
+### Cosmetic and Whitening Add-On
+
+- Procedure: <in-office/take-home/combined whitening, internal bleaching, smile-design workup, re-contouring>
+- What the patient asked for, in their words: <de-identified patient-reported words>
+- Expectations discussed, including limits: <what was discussed>
+- Consent for elective treatment: <risks, benefits, and alternatives discussed, with the patient's decision and the form status>
+- Clinical photographs: <not taken/for the clinical record only/separate written consent for use beyond the record on file>
+- Agent, concentration, delivery, and soft-tissue isolation: <as supplied and used>
+- Shade before and after: <shade guide and tab>
+- Sensitivity reported and what was advised: <facts and advice>
+- Records, mock-up or trial, and the patient's response: <fact>
+- Agreed sequence, phasing, and prerequisites: <phases and order>
+
+Elective care has no disease to point at, so what the patient wanted is the indication and is recorded as they said it. Consent to treat and consent to use photographs beyond the clinical record are separate permissions.
 
 ### Medication and Prescription Add-On
 

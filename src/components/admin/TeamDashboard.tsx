@@ -4,16 +4,10 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 
 export interface TeamView {
-  clinicGpa: number | null;
   medianTimeToFile: number | null;
   afterHoursFilings: number;
   /** Share of graded filings whose billing narrative was complete at filing. */
   narrativeReadyRate: number | null;
-  members: {
-    displayName: string;
-    band: "thriving" | "stable" | "support";
-    coachingTip: string | null;
-  }[];
   redemptions: {
     id: number;
     userName: string;
@@ -23,12 +17,6 @@ export interface TeamView {
     createdAt: string;
   }[];
 }
-
-const BAND_LABEL = {
-  thriving: { label: "Thriving", cls: "border-green-300 bg-green-50 text-green-900" },
-  stable: { label: "Cruising", cls: "border-slate-200 bg-white text-slate-700" },
-  support: { label: "Support offered", cls: "border-sky-300 bg-sky-50 text-sky-900" }
-} as const;
 
 export function TeamDashboard({ view }: { view: TeamView }) {
   const router = useRouter();
@@ -63,8 +51,9 @@ export function TeamDashboard({ view }: { view: TeamView }) {
 
   return (
     <div className="space-y-6">
-      <section className="grid grid-cols-2 gap-4 sm:grid-cols-4">
-        <Macro label="Clinic GPA (all graded notes)" value={view.clinicGpa?.toFixed(2) ?? "—"} />
+      {/* Practice-wide ops only — no named people, no GPA bands, no
+          thriving/cruising/support labels. Those turn into hallway rankings. */}
+      <section className="grid grid-cols-1 gap-4 sm:grid-cols-3">
         <Macro
           label="Median same-day time to file"
           value={view.medianTimeToFile === null ? "—" : `${view.medianTimeToFile} min`}
@@ -74,27 +63,6 @@ export function TeamDashboard({ view }: { view: TeamView }) {
           label="Billing narrative complete at filing"
           value={view.narrativeReadyRate === null ? "—" : `${Math.round(view.narrativeReadyRate * 100)}%`}
         />
-      </section>
-
-      <section>
-        <h2 className="mb-2 text-lg font-semibold">Coaching matrix</h2>
-        {view.members.length === 0 ? (
-          <p className="text-sm text-slate-500">
-            Bands appear once people have three or more graded filings in the last thirty days.
-          </p>
-        ) : (
-          <ul className="space-y-2">
-            {view.members.map((m) => (
-              <li key={m.displayName} className={`rounded border px-3 py-2 text-sm ${BAND_LABEL[m.band].cls}`}>
-                <div className="flex items-baseline justify-between">
-                  <span className="font-medium">{m.displayName}</span>
-                  <span className="text-xs font-semibold uppercase">{BAND_LABEL[m.band].label}</span>
-                </div>
-                {m.coachingTip && <p className="mt-0.5 text-xs">{m.coachingTip}</p>}
-              </li>
-            ))}
-          </ul>
-        )}
       </section>
 
       <section>

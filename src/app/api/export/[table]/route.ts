@@ -133,6 +133,7 @@ export async function GET(req: Request, { params }: Ctx): Promise<Response> {
       [
         "Ticket",
         "Submitted by",
+        "Office",
         "Eastern time",
         "Audit status",
         "Ruleset version",
@@ -141,6 +142,10 @@ export async function GET(req: Request, { params }: Ctx): Promise<Response> {
       rows.map((s) => [
         formatTicket(s.id),
         s.submittedByName,
+        // The frozen name. Blank for notes filed before the practice
+        // configured its offices — an empty cell is an honest "not recorded",
+        // where "Unknown" would read as a finding about the visit.
+        s.officeName ?? "",
         s.submittedAtEt,
         s.auditStatus,
         s.ruleVersion,

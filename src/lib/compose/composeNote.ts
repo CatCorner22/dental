@@ -62,8 +62,26 @@ function formatValue(field: Field, value: FieldValue): string {
   }
 }
 
-export function composeNote(state: NoteState, modules: ModuleDef[]): string {
+export interface NoteContext {
+  /** The office this encounter happened at, already resolved to a name. */
+  officeName?: string | null;
+}
+
+export function composeNote(
+  state: NoteState,
+  modules: ModuleDef[],
+  context: NoteContext = {}
+): string {
   const lines: string[] = ["# De-identified Smile Note draft", ""];
+  // Location goes at the TOP, with the encounter identity, not in the footer.
+  // A reader checking they have the right chart open scans the first lines;
+  // "which office was this" is part of that check, and a wrong-office paste is
+  // exactly the error the header exists to make visible. Omitted entirely when
+  // unknown, rather than printed as "Unknown" — a placeholder reads like a
+  // finding about the visit instead of a gap in the record.
+  if (context.officeName) {
+    lines.push(`**Office:** ${context.officeName}`, "");
+  }
   const ordered = [...modules].sort((a, b) => a.order - b.order);
 
   for (const mod of ordered) {
@@ -99,10 +117,17 @@ export function composeNote(state: NoteState, modules: ModuleDef[]): string {
 }
 
 // Plain-text variant for .txt export: same content, markdown markers stripped.
-export function composeNoteText(state: NoteState, modules: ModuleDef[]): string {
-  return composeNote(state, modules)
+export function composeNoteText(
+  state: NoteState,
+  modules: ModuleDef[],
+  context: NoteContext = {}
+): string {
+  return composeNote(state, modules, context)
     .replace(/^#{1,3} /gm, "")
-    .replace(/^- /gm, "  ");
+    .replace(/^- /gm, "  ")
+    // The office line is bold in markdown; the plain-text copy is what gets
+    // pasted into Curve Hero, so the asterisks must not travel with it.
+    .replace(/^\*\*(.+?):\*\* /gm, "$1: ");
 }
 
 export function suggestedFilename(state: NoteState, modules: ModuleDef[]): string {

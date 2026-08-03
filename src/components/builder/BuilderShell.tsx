@@ -31,6 +31,8 @@ function download(filename: string, content: string) {
 export function BuilderShell({
   draftId,
   initialTitle,
+  initialOfficeId,
+  offices,
   initialNote,
   initialVersion,
   initialSubmitted,
@@ -39,6 +41,8 @@ export function BuilderShell({
 }: {
   draftId: string;
   initialTitle: string;
+  initialOfficeId: string | null;
+  offices: { id: string; name: string }[];
   initialNote: NoteState;
   initialVersion: number;
   initialSubmitted: boolean;
@@ -48,6 +52,7 @@ export function BuilderShell({
   const router = useRouter();
   const [state, dispatch] = useReducer(noteReducer, initialNote);
   const [title, setTitle] = useState(initialTitle);
+  const [officeId, setOfficeId] = useState<string | null>(initialOfficeId);
   const [tab, setTab] = useState<"audit" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
@@ -98,7 +103,7 @@ export function BuilderShell({
   // IS `initialNote` and `title` IS `initialTitle`, so nothing fires.
   useEffect(() => {
     if (!canEdit) return;
-    if (state === initialNote && title === initialTitle) return;
+    if (state === initialNote && title === initialTitle && officeId === initialOfficeId) return;
     setEditedSinceLoad(true);
     setSubmittedNow(false);
     setSendFailedNow(false);
@@ -106,8 +111,8 @@ export function BuilderShell({
     // lingering resentNow would keep the chip on "Submitted" and disable both
     // Submit and Resend, wedging the edited draft behind a false status.
     setResentNow(false);
-    markEdited(state, title);
-  }, [state, title, canEdit, markEdited, initialNote, initialTitle]);
+    markEdited(state, title, officeId);
+  }, [state, title, officeId, canEdit, markEdited, initialNote, initialTitle, initialOfficeId]);
 
   const filename = suggestedFilename(state, ALL_MODULES);
 
@@ -219,6 +224,30 @@ export function BuilderShell({
             onChange={(e) => setTitle(e.target.value)}
             aria-label="Smile Note title"
           />
+          {/* WHERE this encounter happened.
+              Beside the title, in the sticky header, because it is encounter
+              identity rather than a clinical finding — the thing a reader
+              checks before trusting anything below it. Every office is offered
+              to everyone: staff rotate between locations and patients are seen
+              at whichever one suits the visit, so tying this to the author
+              would be wrong on both counts. */}
+          {offices.length > 0 && (
+            <select
+              className="tap-input rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
+              value={officeId ?? ""}
+              disabled={!canEdit}
+              onChange={(e) => setOfficeId(e.target.value || null)}
+              aria-label="Office where this encounter happened"
+              title="Which office this visit happened at. Staff rotate, so this is per note, not per person."
+            >
+              <option value="">Office…</option>
+              {offices.map((o) => (
+                <option key={o.id} value={o.id}>
+                  {o.name}
+                </option>
+              ))}
+            </select>
+          )}
           <StatusChip status={liveStatus} size="md" />
           {canEdit && <SaveIndicator state={autosave.state} />}
           {canEdit && liveStatus === "error" && (

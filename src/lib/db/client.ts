@@ -49,6 +49,7 @@ async function build(): Promise<Db> {
     const db = drizzlePg(new Pool({ connectionString: url }), { schema });
     await applySchema(db);
     await seedAdmin(db);
+    await seedOffices(db);
     return db;
   }
 
@@ -69,7 +70,23 @@ async function build(): Promise<Db> {
   const db = drizzlePglite(new PGlite(dir), { schema });
   await applySchema(db);
   await seedAdmin(db);
+  await seedOffices(db);
   return db;
+}
+
+// Configured offices, on an empty table only. Never a reconciliation: a
+// practice that renames an office through the app must not find the old name
+// back after the next deploy.
+async function seedOffices(db: Db): Promise<void> {
+  try {
+    const { seedOfficesIfEmpty } = await import("./repo/offices");
+    const { OFFICE_SEEDS } = await import("@/lib/practice/config");
+    await seedOfficesIfEmpty(db, OFFICE_SEEDS);
+  } catch (err) {
+    // A seeding failure must not take the whole app down — offices are
+    // optional on every path, and an admin can add them by hand.
+    console.warn("[db] office seed skipped:", err);
+  }
 }
 
 async function seedAdmin(db: Db): Promise<void> {

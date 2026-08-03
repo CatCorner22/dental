@@ -15,6 +15,11 @@ export interface SubmissionShellFields {
   format: string;
   ruleVersion: string;
   auditStatus: string;
+  officeId?: string | null;
+  // Frozen alongside submittedByName, and for the same reason: an office can
+  // be renamed or retired, and neither may rewrite where a filed note says
+  // the care happened.
+  officeName?: string | null;
 }
 
 export type FileSubmissionResult =
@@ -118,7 +123,15 @@ export async function getSubmission(db: Db, id: number): Promise<SubmissionRow |
 // schema — for a table that displays neither.
 export type SubmissionSummary = Pick<
   SubmissionRow,
-  "id" | "draftId" | "filename" | "submittedById" | "submittedByName" | "submittedAtEt" | "auditStatus" | "ruleVersion"
+  | "id"
+  | "draftId"
+  | "filename"
+  | "submittedById"
+  | "submittedByName"
+  | "submittedAtEt"
+  | "auditStatus"
+  | "ruleVersion"
+  | "officeName"
 >;
 
 const submissionSummaryColumns = {
@@ -129,7 +142,11 @@ const submissionSummaryColumns = {
   submittedByName: submissions.submittedByName,
   submittedAtEt: submissions.submittedAtEt,
   auditStatus: submissions.auditStatus,
-  ruleVersion: submissions.ruleVersion
+  ruleVersion: submissions.ruleVersion,
+  // The FROZEN name, not a join to the live offices table. A history list that
+  // resolved names live would silently relabel every past note the day the
+  // practice renames an office.
+  officeName: submissions.officeName
 };
 
 export async function listAllSubmissions(

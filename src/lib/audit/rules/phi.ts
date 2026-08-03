@@ -155,6 +155,54 @@ const PHI_PATTERNS: PhiPattern[] = [
     severity: "S2",
     message:
       "This long number could be an identifier. A clinician confirms it is a clinical value, not an identifier."
+  },
+  // -------------------------------------------------------------------------
+  // Obfuscation: the screen cannot read the number, so it cannot screen it
+  // -------------------------------------------------------------------------
+  //
+  // Every pattern above is written with `\d`, which in JavaScript matches ASCII
+  // 0-9 and nothing else. So a phone number typed in fullwidth digits
+  // (８６５-５５５-１２３４) or Arabic-Indic ones (١٢٣-٤٥-٦٧٨٩) reads identically to a
+  // human, arrives identically in the email, and is completely invisible to
+  // phi.phone and phi.ssn. The same is true of a zero-width space dropped
+  // between two digits: "865​-555-1234" defeats every \b-anchored rule in this
+  // file, and the Mask button then has nothing to mask.
+  //
+  // Rather than teach eleven patterns about Unicode — a fight this codebase has
+  // already lost once and written down about, in isValidPhiAttestation — invert
+  // the test. A clinical record written by this practice contains ASCII digits
+  // and visible characters. Anything else is a defect in its own right: it is
+  // unverifiable by the screen, it renders inconsistently in whatever system
+  // reads the note next, and it is the standard way hidden text is smuggled
+  // through a copy-paste. So the OBFUSCATION is the finding, and there is no
+  // need to work out what it was hiding.
+  //
+  // S0 rather than S1: the remedy is one press of Standardize, whose whitespace
+  // pass already removes exactly these characters, and a PHI stop is waivable
+  // with a named attestation for the rare case where a paste is innocent.
+  {
+    id: "phi.obfuscated-digits",
+    // A run of decimal digits containing at least one that is not ASCII. The
+    // leading `\p{Nd}*` backtracks so a non-ASCII digit anywhere in the run is
+    // found, not only at the start.
+    pattern: /\p{Nd}*(?![0-9])\p{Nd}\p{Nd}*/gu,
+    severity: "S0",
+    message:
+      "This number is written in non-ASCII digits, so the privacy screen cannot read it and " +
+      "another system may render it differently. Retype it in ordinary digits, or press Standardize."
+  },
+  {
+    id: "phi.hidden-characters",
+    // The same class normalizeWhitespace() strips, detected rather than removed
+    // so nothing silently rewrites a legal record: soft hyphen, bidi marks and
+    // isolates, zero-width spaces and joiners, variation selectors, interlinear
+    // annotation, and the TAG block that encodes arbitrary ASCII invisibly.
+    pattern:
+      /[\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB]+|[\u{E0000}-\u{E007F}]+/gu,
+    severity: "S0",
+    message:
+      "This text contains invisible characters. They hide content from the privacy screen and from " +
+      "anyone reading the note. Press Standardize to remove them, then check the text still says what you meant."
   }
 ];
 

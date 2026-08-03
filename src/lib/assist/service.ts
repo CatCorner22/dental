@@ -68,18 +68,38 @@ export async function runAssist(
 ): Promise<AssistOutcome> {
   const input = text.slice(0, MAX_INPUT);
 
-  // PHI gate. S0 identifier findings block the call outright: the privacy
-  // design of this app is that clinical prose never leaves the server, and
-  // an AI provider is exactly the kind of leaving that matters.
-  const phi = runPhiRule(input).filter((f) => f.severity === "S0");
+  // PHI gate.
+  //
+  // EVERY PHI finding blocks this call, not only the S0 stops — and the
+  // difference between those two thresholds is the entire point.
+  //
+  // S2 REVIEW is the right severity for a name heuristic inside the tool,
+  // because "Grace Miller" is a patient and "Bradley County" is where the health
+  // department is, and blocking the line on that guess costs more than it gains.
+  // That reasoning depends completely on a human being about to look at it. On
+  // this path there is no human: the text is handed to a third-party provider the
+  // instant the call is made, and no later review can recall it.
+  //
+  // So the bar for LEAVING THE BUILDING is lower than the bar for stopping the
+  // line inside it. Filtering to S0 here meant "John Smith presented for recall"
+  // — flagged S2 by the bare-name rule, exactly as designed — was sent to the
+  // provider anyway, which is not a heuristic falling short. It is the sentence
+  // on the front of the README ("No patient identifier ever enters this tool or
+  // any AI platform") not being true.
+  const phi = runPhiRule(input);
   if (phi.length > 0) {
+    const stops = phi.filter((f) => f.severity === "S0").length;
     return {
       ok: false,
       code: "phi-blocked",
       message:
         `The AI was not called. ${phi.length} possible identifier${phi.length === 1 ? "" : "s"} ` +
         `must be removed or masked first — de-identified text is the condition for any AI ` +
-        `assistance, with no exception and no override.`
+        `assistance, with no exception and no override. ` +
+        (stops < phi.length
+          ? `Some of these are flagged for review rather than blocked elsewhere in the app; ` +
+            `sending text to an outside provider cannot be reviewed afterwards, so here they stop the call.`
+          : `Use Mask identifiers, or edit the text, then try again.`)
     };
   }
 

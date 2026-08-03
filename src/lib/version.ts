@@ -16,4 +16,9 @@
 // 2.4.0 — billing-narrative justification rules (SRP periodontal evidence,
 //         core-buildup retention, crown necessity) and the note GPA stamp
 //         (deriveGpa v1) frozen onto filings.
-export const RULESET_VERSION = "2.4.0";
+// 2.5.0 — obfuscation screen (phi.obfuscated-digits, phi.hidden-characters):
+//         an identifier typed in a non-ASCII decimal script, or split by a
+//         zero-width character, was invisible to every \d-based PHI pattern
+//         while reading normally to a human. The obfuscation is now the finding,
+//         so no pattern has to be taught about Unicode individually.
+export const RULESET_VERSION = "2.5.0";

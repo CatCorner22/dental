@@ -39,6 +39,12 @@ export const users = pgTable("users", {
   // WITHOUT having to change their password. Compared together with
   // passwordChangedAt — see sessionWatermark().
   sessionsRevokedAt: timestamp("sessions_revoked_at", { withTimezone: true }),
+  // The office this person usually works from. A STARTING VALUE for the note
+  // picker and nothing else — never an access boundary, never a filter on what
+  // they can see or write. Staff rotate between locations, so anything that
+  // treated this as "where this person works" would lock a hygienist out of
+  // the note they are writing at the office they are standing in today.
+  defaultOfficeId: text("default_office_id"),
   // Who last repointed the reset-link destination, and when.
   //
   // Changing an address and then mailing yourself the reset link is a complete
@@ -54,12 +60,37 @@ export const users = pgTable("users", {
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+// A practice location. Configuration, never code — the app is a product, and
+// the next practice has a different number of them with different names.
+export const offices = pgTable("offices", {
+  id: text("id").primaryKey(),
+  name: text("name").notNull(),
+  // Short form for the note header and the export column, where the full
+  // "Cornerstone Dental at Fort Sanders West" is too long to scan.
+  shortCode: text("short_code").notNull(),
+  address: text("address"),
+  phone: text("phone"),
+  // Optional per-office override for where filed notes are mailed. Falls back
+  // to the practice-wide address when null.
+  exportEmail: text("export_email"),
+  active: boolean("active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
 export const drafts = pgTable("drafts", {
   id: text("id").primaryKey(),
   ownerId: text("owner_id")
     .notNull()
     .references(() => users.id),
   title: text("title").notNull().default("Untitled note"),
+  // WHICH OFFICE THIS ENCOUNTER HAPPENED AT — a property of the visit, not of
+  // the person writing it up. Staff rotate between locations and a patient may
+  // be seen at one office for an emergency and another for recall, so this is
+  // picked per note and defaults to the author's usual office without ever
+  // being constrained by it. No FK: an office can be retired while the notes
+  // written at it must still load.
+  officeId: text("office_id"),
   noteState: jsonb("note_state").$type<NoteState>().notNull(),
   status: text("status").notNull().default("unfinished"),
   lastSendFailed: boolean("last_send_failed").notNull().default(false),
@@ -82,6 +113,12 @@ export const submissions = pgTable("submissions", {
     .notNull()
     .references(() => users.id),
   submittedByName: text("submitted_by_name").notNull(), // frozen "Display (username)"
+  officeId: text("office_id"),
+  // FROZEN, for exactly the reason submittedByName is. Renaming an office, or
+  // retiring one, must not silently rewrite where a filed note says the care
+  // happened — that is a fact about a past encounter, and this record may form
+  // part of a legal one.
+  officeName: text("office_name"),
   submittedAtUtc: timestamp("submitted_at_utc", { withTimezone: true }).notNull().defaultNow(),
   submittedAtEt: text("submitted_at_et").notNull(),
   filename: text("filename").notNull(),
@@ -118,6 +155,7 @@ export const authThrottle = pgTable("auth_throttle", {
 
 export type UserRow = typeof users.$inferSelect;
 export type NewUser = typeof users.$inferInsert;
+export type OfficeRow = typeof offices.$inferSelect;
 export type DraftRow = typeof drafts.$inferSelect;
 export type NewDraft = typeof drafts.$inferInsert;
 export type SubmissionRow = typeof submissions.$inferSelect;

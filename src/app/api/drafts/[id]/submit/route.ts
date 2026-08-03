@@ -7,6 +7,7 @@ import { fileSubmissionAtomic } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { activeModules } from "@/lib/modules";
 import { composeNote, composeNoteText } from "@/lib/compose/composeNote";
+import { officeNameFor } from "@/lib/db/repo/offices";
 import { composeAuditReport } from "@/lib/compose/composeAuditReport";
 import { computeGates, runAudit } from "@/lib/audit/engine";
 import { sendSubmissionEmail } from "@/lib/email/sendSubmission";
@@ -82,7 +83,11 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // Server composes and runs the FULL audit — the client is never trusted.
   const note = draft.noteState;
   const modules = activeModules(note.selectedModuleIds);
-  const markdown = composeNote(note, modules);
+  // Resolved ONCE, here, and frozen below. Reading the office name at file
+  // time is what makes it a fact about the encounter rather than a live lookup
+  // that a later rename would silently rewrite.
+  const officeName = await officeNameFor(db, draft.officeId);
+  const markdown = composeNote(note, modules, { officeName });
   const report = runAudit({ note, modules, composedText: markdown });
   const gates = computeGates(report, phiOverride);
   if (!gates.emailAllowed) {
@@ -121,7 +126,9 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
         filename: filenameBase,
         format,
         ruleVersion: RULESET_VERSION,
-        auditStatus: report.status
+        auditStatus: report.status,
+        officeId: draft.officeId,
+        officeName
       },
       // Pin the claim to the exact version whose noteState was composed and
       // audited above — an autosave landing mid-submit must not be frozen out
@@ -134,9 +141,13 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
           submittedBy: submittedByName,
           submittedAtEt,
           ruleVersion: RULESET_VERSION,
-          auditStatus: report.status
+          auditStatus: report.status,
+          officeName
         });
-        frozenNote = (format === "txt" ? composeNoteText(note, modules) : markdown) + "\n" + stamp;
+        frozenNote =
+          (format === "txt" ? composeNoteText(note, modules, { officeName }) : markdown) +
+          "\n" +
+          stamp;
         frozenAudit = composeAuditReport(report, modules, markdown) + "\n" + stamp;
         return { note: frozenNote, audit: frozenAudit };
       }

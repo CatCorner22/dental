@@ -88,6 +88,34 @@ export const SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_by" text;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_by_id" text;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sessions_revoked_at" timestamp with time zone;`,
+  // Practice locations. A table rather than a constant because the app is a
+  // product: the next practice has a different number of offices with
+  // different names, and a fork per customer is not a business.
+  `CREATE TABLE IF NOT EXISTS "offices" (
+     "id" text PRIMARY KEY NOT NULL,
+     "name" text NOT NULL,
+     "short_code" text NOT NULL,
+     "address" text,
+     "phone" text,
+     "export_email" text,
+     "active" boolean DEFAULT true NOT NULL,
+     "sort_order" integer DEFAULT 0 NOT NULL,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   );`,
+  // The author's USUAL office. A default for the picker and nothing more —
+  // never a permission boundary. Staff rotate between locations, so anything
+  // that treated this as "where this person works" would lock a hygienist out
+  // of the note they are writing at the office they are standing in today.
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "default_office_id" text;`,
+  // Which office the ENCOUNTER happened at, chosen per note.
+  `ALTER TABLE "drafts" ADD COLUMN IF NOT EXISTS "office_id" text;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "office_id" text;`,
+  // Frozen at file time for the same reason submitted_by_name is: renaming or
+  // retiring an office must not rewrite where a filed note says the care
+  // happened. No FK anywhere on office_id, so a retired office never orphans
+  // the notes written at it.
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "office_name" text;`,
+  `CREATE INDEX IF NOT EXISTS "submissions_office_idx" ON "submissions" ("office_id", "submitted_at_utc" DESC);`,
   `CREATE TABLE IF NOT EXISTS "wishes" (
      "id" serial PRIMARY KEY NOT NULL,
      "author_id" text,

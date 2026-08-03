@@ -7,6 +7,7 @@ import {
   getDraft,
   updateDraftChecked
 } from "@/lib/db/repo/drafts";
+import { getOffice } from "@/lib/db/repo/offices";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
@@ -55,12 +56,31 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
 
   const patch: {
     title?: string;
+    officeId?: string | null;
     noteState?: typeof draft.noteState;
     status?: string;
     lastSendFailed?: boolean;
     lastSubmissionId?: number | null;
   } = {};
   if (typeof b.title === "string") patch.title = b.title.trim().slice(0, 200) || "Untitled note";
+  // The office this encounter happened at. Validated against the CONFIGURED
+  // list rather than stored as free text, so the note header and the export
+  // column can never carry a location the practice does not have — and so a
+  // caller cannot smuggle arbitrary text into a composed clinical note through
+  // a field the UI presents as a dropdown.
+  if (b.officeId !== undefined) {
+    if (b.officeId === null || b.officeId === "") {
+      patch.officeId = null;
+    } else if (typeof b.officeId === "string") {
+      const known = await getOffice(db, b.officeId);
+      if (!known) {
+        return Response.json({ error: "That office is not on the practice's list." }, { status: 400 });
+      }
+      patch.officeId = known.id;
+    } else {
+      return Response.json({ error: "Invalid office." }, { status: 400 });
+    }
+  }
   if (b.note !== undefined) {
     const res = validateNoteState(b.note);
     if (!res.ok) return Response.json({ error: res.error }, { status: 400 });

@@ -20,7 +20,7 @@ export type FlushOutcome = "clean" | "conflict" | "error";
 interface UseAutosave {
   state: AutosaveState;
   version: number;
-  markEdited: (note: NoteState, title: string) => void;
+  markEdited: (note: NoteState, title: string, officeId: string | null) => void;
   flush: () => Promise<FlushOutcome>;
   resolveConflict: () => void;
   // Adopt a version the server minted outside the save chain (the submit
@@ -39,7 +39,7 @@ interface UseAutosave {
 export function useAutosave(draftId: string, initialVersion: number): UseAutosave {
   const [state, dispatch] = useReducer(autosaveReducer, initialAutosave);
   const versionRef = useRef(initialVersion);
-  const pending = useRef<{ note: NoteState; title: string } | null>(null);
+  const pending = useRef<{ note: NoteState; title: string; officeId: string | null } | null>(null);
   const chain = useRef<Promise<FlushOutcome> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef<AutosaveState>(state);
@@ -63,7 +63,11 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
             body: JSON.stringify({
               baseVersion: versionRef.current,
               note: payload.note,
-              title: payload.title
+              title: payload.title,
+              // Saved on the same chain as the note, so switching office is
+              // as durable as typing — and so a note filed straight after the
+              // change cannot freeze the previous location into the record.
+              officeId: payload.officeId
             })
           });
           if (res.status === 409) {
@@ -95,8 +99,8 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
   }, [draftId]);
 
   const markEdited = useCallback(
-    (note: NoteState, title: string) => {
-      pending.current = { note, title };
+    (note: NoteState, title: string, officeId: string | null) => {
+      pending.current = { note, title, officeId };
       dispatch({ type: "edit" });
       if (timer.current) clearTimeout(timer.current);
       timer.current = setTimeout(() => void runChain(), DEBOUNCE_MS);

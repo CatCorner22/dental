@@ -105,13 +105,21 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ capability, text: input })
       });
-      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        text?: string;
+        items?: string[];
+        error?: string;
+      };
       if (!res.ok || !data.text) {
         setError(data.error ?? "The AI service did not answer. Everything else still works.");
       } else if (capability === "interrogate" || capability === "conflicts") {
+        // Rendered from the VALIDATED array, not by splitting prose. Splitting
+        // on newlines turned a wrapped line into two questions and a preamble
+        // into a first one; the server now answers through a schema and checks
+        // it, so there is nothing left here to parse.
         setAiQuestions({
           title: capability === "interrogate" ? "What this note leaves open" : "Possible contradictions",
-          lines: data.text.split("\n").map((l) => l.trim()).filter(Boolean)
+          lines: data.items ?? []
         });
       } else {
         setAiProposal({

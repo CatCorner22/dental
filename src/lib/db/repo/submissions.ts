@@ -187,6 +187,25 @@ export async function countAllSubmissions(db: Db): Promise<number> {
 }
 
 
+// The viewer's own most recent graded filings, for the dashboard ledger.
+export async function recentGradedForUser(
+  db: Db,
+  userId: string,
+  limit = 10
+): Promise<{ id: number; gpa: string | null; submittedAtEt: string; submittedAtUtc: Date }[]> {
+  return db
+    .select({
+      id: submissions.id,
+      gpa: submissions.gpa,
+      submittedAtEt: submissions.submittedAtEt,
+      submittedAtUtc: submissions.submittedAtUtc
+    })
+    .from(submissions)
+    .where(eq(submissions.submittedById, userId))
+    .orderBy(desc(submissions.submittedAtUtc), desc(submissions.id))
+    .limit(limit);
+}
+
 // A user with submission history is part of the legal record and must not
 // be deletable — the DELETE route checks this before touching the FK.
 export async function submissionCountByUser(db: Db, userId: string): Promise<number> {

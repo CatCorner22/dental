@@ -1,6 +1,8 @@
 import { redirect } from "next/navigation";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AccountForm } from "@/components/account/AccountForm";
+import { RevokeSessions } from "@/components/account/RevokeSessions";
+import { ROLE_LABEL } from "@/lib/auth/roles";
 
 export const runtime = "nodejs";
 export const metadata = { title: "My account" };
@@ -17,10 +19,12 @@ export default async function AccountPage() {
         <dt className="font-semibold text-slate-600">Display name</dt>
         <dd>{user.displayName}</dd>
         <dt className="font-semibold text-slate-600">Role</dt>
-        <dd>{user.role}</dd>
+        <dd>{ROLE_LABEL[user.role]}</dd>
       </dl>
       <h2 className="mb-2 text-lg font-semibold">Change password</h2>
       <AccountForm />
+      <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
+      <RevokeSessions />
     </div>
   );
 }

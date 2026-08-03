@@ -193,9 +193,14 @@ a dental lexicon and medication-name protection; duplicate-sentence and stale-te
 - Never auto-applies a suggestion; a person makes every edit.
 - No clinical-assertion defaults — nothing is pre-checked or pre-filled.
 - No CDT/SNODENT codes; plain-language procedure names only. Codes live in the EDR.
-- Stateless: no database, no localStorage, nothing persisted server-side; note text is never
-  logged. Email goes only to the fixed corporate address; requests containing any recipient
-  field are rejected.
+- **What is persisted, stated exactly** (this changed in V2 and the line above used to say
+  "stateless", which was true only of V1): drafts, filed submissions, user accounts, password-reset
+  token hashes, and an audit log live in Postgres. Note **text** is never written to a log or to
+  stderr, and the tool holds no patient identifiers by design — the de-identification rule is what
+  keeps the stored content safe, not an absence of storage. A filed note and its audit report are
+  frozen copies that are never rewritten.
+- Email goes only to the fixed corporate address; requests containing any recipient field are
+  rejected.
 - PHI heuristics are an aid, not a certification — the practice's HIPAA process governs.
 
 ## Run it

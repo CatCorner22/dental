@@ -87,6 +87,7 @@ export const SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_at" timestamp with time zone;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_by" text;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_by_id" text;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "sessions_revoked_at" timestamp with time zone;`,
   `CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
      "id" text PRIMARY KEY NOT NULL,
      "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,

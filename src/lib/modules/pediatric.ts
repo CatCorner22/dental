@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const pediatric: ModuleDef = {
   id: "pediatric",
@@ -77,10 +77,15 @@ export const pediatric: ModuleDef = {
           ),
           allowOther: true
         },
+        optionalTeeth(
+          "teeth",
+          "Teeth treated",
+          "Primary and permanent designations are both available. Record surfaces and steps below."
+        ),
         {
           id: "details",
           type: "textarea",
-          label: "Tooth, surface, isolation, material, medicament, appliance, and steps",
+          label: "Surface, isolation, material, medicament, appliance, and steps",
           placeholderHint: "<facts>"
         },
         {

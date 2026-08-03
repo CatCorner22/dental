@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const fixedProsthodontic: ModuleDef = {
   id: "fixed-prosthodontic",
@@ -28,10 +28,15 @@ export const fixedProsthodontic: ModuleDef = {
             "removal"
           )
         },
+        optionalTeeth(
+          "teeth",
+          "Natural teeth involved (abutments or restored teeth)",
+          "Pick the natural teeth. Describe pontics, implant sites, or spans in the field below."
+        ),
         {
           id: "site",
           type: "text",
-          label: "Tooth, abutment, pontic, or implant site",
+          label: "Pontic, implant site, or span detail",
           required: true,
           placeholderHint: "<value>"
         },

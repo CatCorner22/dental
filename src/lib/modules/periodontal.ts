@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const periodontal: ModuleDef = {
   id: "periodontal",
@@ -82,10 +82,15 @@ export const periodontal: ModuleDef = {
           ),
           allowOther: true
         },
+        optionalTeeth(
+          "teeth",
+          "Teeth treated (if site-specific)",
+          "Leave blank for full-mouth or quadrant work; describe those in the field below."
+        ),
         {
           id: "sites",
           type: "text",
-          label: "Quadrant, sextant, teeth, surfaces, and sites",
+          label: "Quadrant, sextant, surfaces, and sites",
           required: true,
           placeholderHint: "<value>"
         },

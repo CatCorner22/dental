@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const implant: ModuleDef = {
   id: "implant",
@@ -31,13 +31,18 @@ export const implant: ModuleDef = {
             "removal"
           )
         },
+        optionalTeeth(
+          "adjacent-teeth",
+          "Adjacent natural teeth",
+          "The implant site itself is edentulous — name the neighbouring teeth here and the site below."
+        ),
         {
           id: "site",
           type: "text",
-          label: "Edentulous site and adjacent teeth",
+          label: "Edentulous site",
           required: true,
           placeholderHint: "<value>",
-          helpText: "Name the edentulous site separately from natural-tooth designations."
+          helpText: "Name the edentulous site (e.g. the space, region, or arch position)."
         },
         {
           id: "diagnosis",

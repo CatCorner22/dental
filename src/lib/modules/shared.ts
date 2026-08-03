@@ -1,7 +1,28 @@
-import type { FieldOption } from "@/lib/schema/types";
+import type { FieldOption, ToothPickerField } from "@/lib/schema/types";
 
 export function opts(...values: string[]): FieldOption[] {
   return values.map((value) => ({ value }));
+}
+
+// An OPTIONAL, validated tooth field for procedural modules whose site is a
+// natural tooth some of the time but not always (a crown is on a tooth; a
+// biopsy usually is not). Keeping it optional means a clinician is never forced
+// to invent a tooth number for soft-tissue or edentulous work — but when the
+// site IS a tooth, it is captured through the validated picker instead of free
+// text, which is what puts it under the wrong-site poka-yoke (invalid-tooth and
+// surface-orphan are S0 in runAnatomyStateRule). The existing free-text site
+// field stays alongside it for the nuance a picker cannot hold: pontic spans,
+// edentulous sites, abutment vs. natural-tooth distinctions, lesion regions.
+export function optionalTeeth(id: string, label: string, helpText?: string): ToothPickerField {
+  return {
+    id,
+    type: "toothPicker",
+    label,
+    required: false,
+    dentitions: ["permanent", "primary", "supernumerary-permanent", "supernumerary-primary"],
+    multiple: true,
+    ...(helpText ? { helpText } : {})
+  };
 }
 
 export const YES_NO = opts("yes", "no");

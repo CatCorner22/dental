@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const operative: ModuleDef = {
   id: "operative",
@@ -39,10 +39,15 @@ export const operative: ModuleDef = {
           label: "Postoperative diagnosis",
           placeholderHint: "<clinician-supplied term>"
         },
+        optionalTeeth(
+          "teeth",
+          "Teeth involved (if tooth-specific)",
+          "Leave blank for soft-tissue or region-only procedures; describe those in the field below."
+        ),
         {
           id: "site-status",
           type: "text",
-          label: "Site, side, arch, tooth, lesion, and procedure status",
+          label: "Site, side, arch, lesion, and procedure status",
           required: true,
           placeholderHint: "<fact>"
         },

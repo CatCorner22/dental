@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { getSubmission } from "@/lib/db/repo/submissions";
 import { formatTicket } from "@/lib/tickets/ticket";
 import { parseRowId } from "@/lib/db/int4";
+import { SubmissionActions } from "@/components/history/SubmissionActions";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Submission" };
@@ -38,6 +39,11 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         This is the frozen record exactly as submitted — it never changes, even if the templates or
         rules are later updated. It may form part of a legal and medical record.
       </p>
+      <SubmissionActions
+        ticket={formatTicket(s.id)}
+        note={s.noteMarkdown ?? ""}
+        audit={s.auditReport ?? ""}
+      />
       <h2 className="mb-2 text-lg font-semibold">Note</h2>
       <pre className="mb-6 overflow-x-auto whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs">{s.noteMarkdown}</pre>
       <h2 className="mb-2 text-lg font-semibold">Audit report</h2>

@@ -5,6 +5,7 @@ import { SEVERITY_CLASS, SEVERITY_LABELS } from "@/lib/audit/types";
 import type { Severity } from "@/lib/audit/types";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
+import { TextDiff } from "@/components/diff/TextDiff";
 import {
   andon,
   ATTESTATION_RULE,
@@ -48,6 +49,16 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState<string | null>(null);
   const [aiQuestions, setAiQuestions] = useState<{ title: string; lines: string[] } | null>(null);
+  // An AI rewrite is a PROPOSAL, held here until the writer accepts it.
+  //
+  // It used to go straight into the input box. The note said "nothing is
+  // accepted yet" — but the writer's own words had already been overwritten,
+  // with no diff and no way back, on the one path in this app that can
+  // restructure a whole note rather than swap a word. Holding it here is what
+  // makes that sentence true.
+  const [aiProposal, setAiProposal] = useState<
+    { capability: string; label: string; before: string; after: string } | null
+  >(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
   const [copied, setCopied] = useState(false);
@@ -94,22 +105,30 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
         headers: { "content-type": "application/json" },
         body: JSON.stringify({ capability, text: input })
       });
-      const data = (await res.json().catch(() => ({}))) as { text?: string; error?: string };
+      const data = (await res.json().catch(() => ({}))) as {
+        text?: string;
+        items?: string[];
+        error?: string;
+      };
       if (!res.ok || !data.text) {
         setError(data.error ?? "The AI service did not answer. Everything else still works.");
       } else if (capability === "interrogate" || capability === "conflicts") {
+        // Rendered from the VALIDATED array, not by splitting prose. Splitting
+        // on newlines turned a wrapped line into two questions and a preamble
+        // into a first one; the server now answers through a schema and checks
+        // it, so there is nothing left here to parse.
         setAiQuestions({
           title: capability === "interrogate" ? "What this note leaves open" : "Possible contradictions",
-          lines: data.text.split("\n").map((l) => l.trim()).filter(Boolean)
+          lines: data.items ?? []
         });
       } else {
-        setInput(data.text);
-        setNotice(
-          "The AI rewrote the wording. Nothing is accepted yet — press Standardize and work the queue like any other text."
-        );
-        setResult(null);
-        setItems([]);
-        setTimeout(() => inputRef.current?.focus(), 50);
+        setAiProposal({
+          capability,
+          label: capability === "normalize" ? "Tightened wording" : "Restructured as SOAP",
+          before: input,
+          after: data.text
+        });
+        setAiQuestions(null);
       }
     } catch {
       setError("Could not reach the server — check the connection and try again.");
@@ -250,6 +269,58 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
           </div>
         )}
 
+        {/*
+          The proposal. Source stays in the box above, the change is shown
+          here, and nothing moves until the writer says so — the model path is
+          the one that can restructure a whole note, so it does not get the
+          apply-then-undo treatment the deterministic pass gets.
+        */}
+        {aiProposal && (
+          <div
+            className="mt-3 rounded border border-violet-300 bg-white p-3"
+            role="region"
+            aria-label={`AI proposal: ${aiProposal.label}`}
+          >
+            <div className="mb-1 flex items-center justify-between gap-2">
+              <h2 className="text-sm font-semibold text-violet-900">
+                {aiProposal.label} — proposed, not applied
+              </h2>
+              <span className="text-xs text-slate-500">verified against your text</span>
+            </div>
+            <p className="mb-2 text-xs text-slate-600">
+              Your text is untouched until you accept this. Read the change, then choose.
+            </p>
+            <TextDiff before={aiProposal.before} after={aiProposal.after} />
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                className="btn-primary text-xs"
+                onClick={() => {
+                  setInput(aiProposal.after);
+                  setAiProposal(null);
+                  setResult(null);
+                  setItems([]);
+                  setNotice(
+                    "Applied. Nothing is accepted yet — press Standardize and work the queue like any other text."
+                  );
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+              >
+                Use this wording
+              </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => {
+                  setAiProposal(null);
+                  setNotice("Discarded. Your wording was never changed.");
+                  setTimeout(() => inputRef.current?.focus(), 50);
+                }}
+              >
+                Keep mine
+              </button>
+            </div>
+          </div>
+        )}
+
         {aiQuestions && (
           <div className="mt-3 rounded border border-violet-300 bg-white p-3" role="region" aria-label={aiQuestions.title}>
             <div className="mb-1 flex items-center justify-between">
@@ -307,6 +378,18 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 {blockedExplanation(items)}
               </p>
             )}
+            {/*
+              The output pane shows the RESULT; this shows the CHANGE. The two
+              are different questions, and only the second one lets a reader
+              accept the rewrite on evidence rather than on trust. Collapsed by
+              default so the note itself stays the main thing on the page.
+            */}
+            <details className="mt-2">
+              <summary className="cursor-pointer text-xs font-medium text-slate-700">
+                See exactly what changed
+              </summary>
+              <TextDiff before={input} after={result.text} className="mt-2" />
+            </details>
             {allowed && pasteConfirmOpen && !copied && (
               <div className="mt-2 rounded border border-blue-300 bg-blue-50 p-3">
                 <label className="flex items-start gap-2 text-xs text-blue-900">

@@ -341,11 +341,19 @@ export function standardize(raw: string): StandardizeResult {
     }
 
     // Already defined somewhere in this text? Then the convention is satisfied
-    // and re-expanding would produce "root canal therapy (RCT) (RCT)".
-    const defined = new RegExp(
-      `${escapeRegExp(sh.expansion)}[\\s.,;:]*\\(${escapeRegExp(sh.display)}\\)`,
-      "i"
-    );
+    // and re-expanding would produce "root canal therapy (RCT) (RCT)". The
+    // plural definition counts too — "bitewing radiographs (BWs)" is this
+    // tool's own first-use output, and failing to recognise it broke
+    // idempotency exactly the way the BWX bug below did.
+    const definedAlternatives = [
+      `${escapeRegExp(sh.expansion)}[\\s.,;:]*\\(${escapeRegExp(sh.display)}\\)`
+    ];
+    if (sh.pluralExpansion) {
+      definedAlternatives.push(
+        `${escapeRegExp(sh.pluralExpansion)}[\\s.,;:]*\\(${escapeRegExp(sh.display)}s\\)`
+      );
+    }
+    const defined = new RegExp(definedAlternatives.join("|"), "i");
     if (defined.test(text)) continue;
 
     // EVERY occurrence is normalised to the canonical `display`, and only the
@@ -380,6 +388,7 @@ export function standardize(raw: string): StandardizeResult {
     //  THE ACTUAL TOKEN. See the `from` on the change entry below.
     let first = true;
     let matchedFirst = "";
+    let expandedTo = "";
     text = text.replace(re, (m: string, ...rest: unknown[]) => {
       const offset = rest[rest.length - 2] as number;
       const src = rest[rest.length - 1] as string;
@@ -400,10 +409,28 @@ export function standardize(raw: string): StandardizeResult {
       const endsSentence = m.endsWith(".") && (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after));
       const tail = endsSentence ? "." : "";
       if (!first) return `${applyPlural(m, sh.display)}${tail}`;
+      // PLURAL FIRST USE. "SSCs placed on teeth A and B" must not become the
+      // singular "stainless steel crown (SSC) placed on teeth A and B" — that
+      // documents one crown for two teeth, and a count is a billing and legal
+      // fact. applyPlural cannot fix a multi-word expansion (it only appends
+      // an "s", and only to a single word), so the correct plural comes from
+      // the table's pluralExpansion — written by a human, per term. When the
+      // table has none, the token is normalised but NOT expanded, and `first`
+      // stays true so a later singular occurrence can carry the definition.
+      const isPlural = /s$/i.test(m) && !/s$/i.test(sh.display);
+      if (isPlural && !sh.pluralExpansion) {
+        return `${applyPlural(m, sh.display)}${tail}`;
+      }
       first = false;
       matchedFirst = m;
-      return `${applyPlural(m, sh.expansion)} (${sh.display})${tail}`;
+      expandedTo = isPlural
+        ? `${sh.pluralExpansion} (${applyPlural(m, sh.display)})`
+        : `${sh.expansion} (${sh.display})`;
+      return `${expandedTo}${tail}`;
     });
+    // Every occurrence was a plural this table cannot safely expand: nothing
+    // was defined, so there is nothing to report as a definition.
+    if (first) continue;
     // `from` is what the note ACTUALLY said, not the table's canonical spelling.
     // Reporting the canonical form made every variant substitution invisible in
     // review: a note reading "NKA" produced the entry "NKDA → no known drug
@@ -414,7 +441,7 @@ export function standardize(raw: string): StandardizeResult {
     bump(applied, (a) => `${a.kind}:${a.from}`, {
       kind: "shorthand",
       from: shown,
-      to: `${applyPlural(matchedFirst, sh.expansion)} (${sh.display})`,
+      to: expandedTo,
       count: 1,
       why:
         hits.length > 1

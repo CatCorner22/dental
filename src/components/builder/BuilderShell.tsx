@@ -20,6 +20,7 @@ import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
 import { ConflictDialog, PhiOverrideDialog, SubmitDialog } from "./BuilderDialogs";
+import { Dialog } from "@/components/ui/Dialog";
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -69,6 +70,13 @@ export function BuilderShell({
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  // Below `lg` the module rail, form, and Sidekick stack vertically (see the
+  // flex-col wrapper below), which buried live audit feedback under the
+  // entire form — a clinician charting on a phone or tablet had to scroll
+  // past everything just to see whether the note was blocked. This mirrors
+  // the Sidekick into a reachable sheet on those screens instead; the desktop
+  // sticky aside is untouched.
+  const [showMobileAudit, setShowMobileAudit] = useState(false);
 
   const autosave = useAutosave(draftId, initialVersion);
   const { markEdited, flush } = autosave;
@@ -274,6 +282,65 @@ export function BuilderShell({
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
 
+  // Shared between the desktop sticky aside and the mobile audit sheet, so
+  // the two never drift into two different implementations of the same
+  // panel. Closes over local state directly rather than taking props — it is
+  // rendered, not reused as a component, so there is no extra fiber or
+  // remount cost to doing it this way.
+  const sidekickBody = (
+    <>
+      <div className="mb-3 flex items-center gap-3">
+        <ProgressRing counts={report.counts} />
+        <div className="min-w-0">
+          <StatusChip status={liveStatus} />
+          <p className="mt-1 text-xs text-slate-500">{report.status}</p>
+        </div>
+      </div>
+      <div className="mb-3 flex gap-1">
+        {([["audit", `Audit (${report.findings.length})`], ["preview", "Preview"]] as const).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            aria-pressed={tab === t}
+            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="pane-60">
+        {tab === "audit" ? (
+          <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+        ) : (
+          <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
+          Download .md
+        </button>
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(state, modules, { officeName }))}>
+          Download .txt
+        </button>
+        {report.phiStops.length > 0 && !overrideActive && (
+          <button
+            type="button"
+            className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
+            onClick={() => {
+              setShowMobileAudit(false);
+              setShowOverride(true);
+            }}
+          >
+            Review privacy stop
+          </button>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="pb-24">
       {/* Sticky patient-header-style bar */}
@@ -350,6 +417,29 @@ export function BuilderShell({
         </p>
       )}
 
+      {/* Mobile/tablet audit bar. Below `lg` the module rail, form, and
+          Sidekick stack vertically (see the flex-col wrapper just below),
+          which buried live audit feedback under the entire form — reaching
+          it meant scrolling past every field first. Placed here, above that
+          stack, it is visible without scrolling and opens the same Sidekick
+          content in a dismissible sheet. */}
+      <button
+        type="button"
+        onClick={() => setShowMobileAudit(true)}
+        className="tap mb-4 flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm lg:hidden"
+      >
+        <ProgressRing counts={report.counts} />
+        <span className="min-w-0 flex-1">
+          <StatusChip status={liveStatus} />
+          <span className="mt-0.5 block truncate text-xs text-slate-500">
+            {report.findings.length === 0
+              ? "No findings — view audit & preview"
+              : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — view audit & preview`}
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-slate-400">▸</span>
+      </button>
+
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Module rail */}
         <aside className="shrink-0 lg:w-60">
@@ -394,59 +484,12 @@ export function BuilderShell({
           </fieldset>
         </section>
 
-        {/* Sidekick */}
-        <aside className="shrink-0 lg:w-[26rem]">
+        {/* Sidekick — desktop only below `lg`; the mobile bar + sheet above
+            covers the same ground where this would otherwise sit below the
+            entire form. */}
+        <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
           <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
-            <div className="mb-3 flex items-center gap-3">
-              <ProgressRing counts={report.counts} />
-              <div className="min-w-0">
-                <StatusChip status={liveStatus} />
-                <p className="mt-1 text-xs text-slate-500">{report.status}</p>
-              </div>
-            </div>
-            <div className="mb-3 flex gap-1">
-              {([["audit", `Audit (${report.findings.length})`], ["preview", "Preview"]] as const).map(([t, label]) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  aria-pressed={tab === t}
-                  className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="pane-60">
-              {tab === "audit" ? (
-                <AuditPanel report={report} />
-              ) : (
-                <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
-              )}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
-                {copied ? "Copied ✓" : "Copy"}
-              </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
-                Download .md
-              </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(state, modules, { officeName }))}>
-                Download .txt
-              </button>
-              {report.phiStops.length > 0 && !overrideActive && (
-                <button
-                  type="button"
-                  // Was an 18px text link sitting beside three 44px buttons —
-                  // and it is the ONLY route to the privacy dialog, i.e. the
-                  // single control between a flagged identifier and an
-                  // unblocked submit. It gets a real target and real weight.
-                  className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
-                  onClick={() => setShowOverride(true)}
-                >
-                  Review privacy stop
-                </button>
-              )}
-            </div>
+            {sidekickBody}
           </div>
         </aside>
       </div>
@@ -464,6 +507,11 @@ export function BuilderShell({
         </div>
       )}
 
+      {showMobileAudit && (
+        <Dialog title="Audit & preview" onClose={() => setShowMobileAudit(false)}>
+          {sidekickBody}
+        </Dialog>
+      )}
       {showOverride && (
         <PhiOverrideDialog
           phiStops={report.phiStops}

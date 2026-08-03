@@ -34,6 +34,11 @@ export const users = pgTable("users", {
   // Session revocation watermark: a JWT minted before this instant is dead.
   // Null = the password has never been changed since account creation.
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+  // The other half of the watermark: set by "sign out on all devices", which
+  // is how someone kills a session they left open on an operatory machine
+  // WITHOUT having to change their password. Compared together with
+  // passwordChangedAt — see sessionWatermark().
+  sessionsRevokedAt: timestamp("sessions_revoked_at", { withTimezone: true }),
   // Who last repointed the reset-link destination, and when.
   //
   // Changing an address and then mailing yourself the reset link is a complete

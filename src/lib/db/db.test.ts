@@ -562,4 +562,28 @@ describe("db layer (PGlite)", () => {
     expect(log).toHaveLength(2);
     expect(log[0].action).toBe("draft.transfer");
   });
+
+  // Once sign-ins are logged they are the highest-volume event, so the viewer
+  // has to be able to scope them out of the way — and, more importantly, keep
+  // the FAILED sign-ins that a successful one would otherwise bury.
+  it("filters the audit log by family", async () => {
+    const admin = await freshUser("ida", "admin");
+    await logAction(db, { actorId: admin.id, action: "auth.signin", target: "ida" });
+    await logAction(db, { actorId: admin.id, action: "auth.failed", target: "ida" });
+    await logAction(db, { actorId: admin.id, action: "user.create", target: "newbie" });
+
+    expect((await listAuditLog(db, 200, "auth")).map((e) => e.action).sort()).toEqual([
+      "auth.failed",
+      "auth.signin"
+    ]);
+
+    // Security = everything sharp. A routine successful sign-in is dropped; a
+    // failed one and every management action stay.
+    const security = (await listAuditLog(db, 200, "security")).map((e) => e.action);
+    expect(security).toContain("auth.failed");
+    expect(security).toContain("user.create");
+    expect(security).not.toContain("auth.signin");
+
+    expect(await listAuditLog(db, 200, "all")).toHaveLength(3);
+  });
 });

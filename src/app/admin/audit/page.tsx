@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { canReadAuditLog } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
-import { listAuditLog } from "@/lib/db/repo/auditLog";
+import { listAuditLog, type AuditFilter } from "@/lib/db/repo/auditLog";
 import { listUsers } from "@/lib/db/repo/users";
 
 export const runtime = "nodejs";
@@ -10,6 +10,15 @@ export const metadata = { title: "Audit log" };
 
 const ACTION_LABEL: Record<string, string> = {
   "setup.first-admin": "First admin created",
+  "auth.signin": "Signed in",
+  "auth.failed": "Failed sign-in",
+  "auth.lockout": "Sign-in locked (too many attempts)",
+  "auth.revoke-sessions": "Signed out all devices",
+  "user.reset-link-sent": "Reset link sent",
+  "user.reset-link-failed": "Reset link failed",
+  "user.invite-sent": "Invite sent",
+  "user.invite-failed": "Invite failed",
+  "user.merge": "Users merged",
   "user.create": "User created",
   "user.update": "User updated",
   "user.delete": "User deleted",
@@ -24,21 +33,48 @@ const ACTION_LABEL: Record<string, string> = {
   "submit.phi-override": "Privacy stop overridden (attested)"
 };
 
-export default async function AuditLogPage() {
+const FILTERS: { key: AuditFilter; label: string }[] = [
+  { key: "all", label: "All events" },
+  { key: "security", label: "Security" },
+  { key: "auth", label: "Sign-ins" }
+];
+
+export default async function AuditLogPage({
+  searchParams
+}: {
+  searchParams: Promise<{ filter?: string }>;
+}) {
   const user = await freshSessionUser(); // fresh role — a demoted admin loses this page NOW
   if (!user) redirect("/login");
   if (!canReadAuditLog(user.role)) redirect("/");
+  const { filter: raw } = await searchParams;
+  const filter: AuditFilter = raw === "auth" || raw === "security" ? raw : "all";
   const db = await getDb();
-  const [log, users] = await Promise.all([listAuditLog(db, 300), listUsers(db)]);
+  const [log, users] = await Promise.all([listAuditLog(db, 300, filter), listUsers(db)]);
   const nameById = new Map(users.map((u) => [u.id, `${u.displayName} (${u.username})`]));
 
   return (
     <div>
       <h1 className="mb-1 text-2xl font-bold">Audit log</h1>
       <p className="mb-4 text-sm text-slate-600">
-        User-management and submission events, newest first. This log supports traceability; it
-        contains no patient data.
+        Sign-ins, user-management, and submission events, newest first. This log supports
+        traceability; it contains no patient data.
       </p>
+      <div className="mb-4 flex flex-wrap gap-1.5">
+        {FILTERS.map((f) => (
+          <a
+            key={f.key}
+            href={f.key === "all" ? "/admin/audit" : `/admin/audit?filter=${f.key}`}
+            className={`tap rounded-full border px-3 text-sm ${
+              filter === f.key
+                ? "border-blue-600 bg-blue-600 text-white"
+                : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
+            }`}
+          >
+            {f.label}
+          </a>
+        ))}
+      </div>
       <div className="overflow-x-auto rounded-lg border border-slate-200 bg-white">
         <table className="w-full text-sm">
           <thead>

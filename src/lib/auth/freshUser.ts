@@ -3,6 +3,7 @@ import { auth } from "./auth";
 import { getDb } from "@/lib/db/client";
 import { getUserById } from "@/lib/db/repo/users";
 import type { SessionUser } from "./roles";
+import { isTokenRevoked } from "./sessionWatermark";
 
 // The page-side twin of requireRole: pages must never trust the 30-day JWT
 // for role or active state, or a demoted/deactivated user keeps reading
@@ -17,8 +18,8 @@ export const freshSessionUser = cache(async (): Promise<SessionUser | null> => {
   const row = await getUserById(db, session.user.id);
   if (!row || !row.active) return null;
   // Mirror requireRole's revocation check: a token minted before the last
-  // password change must not keep rendering pages either.
-  if ((row.passwordChangedAt?.getTime() ?? 0) > (session.user.pwAt ?? 0)) return null;
+  // password change or device sign-out must not keep rendering pages either.
+  if (isTokenRevoked(row, session.user.pwAt)) return null;
   return {
     id: row.id,
     username: row.username,

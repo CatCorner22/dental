@@ -38,6 +38,7 @@ export async function updateUser(
       | "active"
       | "passHash"
       | "passwordChangedAt"
+      | "sessionsRevokedAt"
       | "email"
       | "groupEmail"
       | "emailChangedAt"

@@ -1,6 +1,6 @@
 "use client";
 
-import { useRef } from "react";
+import { useRef, useState } from "react";
 import type {
   Field,
   FieldValue,
@@ -10,6 +10,7 @@ import type {
   TextField,
   TextareaField
 } from "@/lib/schema/types";
+import { standardize } from "@/lib/standardize/standardize";
 
 interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
@@ -153,6 +154,64 @@ function PhraseChips({ phrases, onInsert }: { phrases: string[]; onInsert: (phra
   );
 }
 
+
+// The transformer, inline on every free-text field.
+//
+// "Writing on rails" used to mean going somewhere else to get standard wording.
+// Here it is one button beside the box you are already typing in, so the rails
+// are where the writing happens. Same pure module as the standalone page and
+// the same rule: deterministic rewrites are applied, judgement calls are shown
+// and left alone.
+//
+// Runs entirely in the browser — the module imports only vocabulary tables, no
+// database and no network — so it is instant, works offline, and the text never
+// leaves the page.
+function StandardizeField({
+  text,
+  onApply
+}: {
+  text: string;
+  onApply: (next: string) => void;
+}) {
+  const [note, setNote] = useState<string | null>(null);
+  if (!text.trim()) return null;
+
+  const run = () => {
+    const r = standardize(text);
+    if (r.text !== text) onApply(r.text);
+    const parts: string[] = [];
+    const changes = r.applied.filter((a) => a.kind !== "formatting").length;
+    if (r.text !== text) {
+      parts.push(changes > 0 ? `${changes} change${changes === 1 ? "" : "s"} applied` : "tidied");
+    }
+    if (r.flags.length > 0) {
+      // Named, not just counted: "1 needs your judgement" tells the writer
+      // nothing about WHICH word to look at.
+      parts.push(`your call: ${r.flags.map((f) => f.display).join(", ")}`);
+    }
+    setNote(parts.length ? parts.join(" · ") : "already standard");
+    setTimeout(() => setNote(null), 6000);
+  };
+
+  return (
+    <div className="mt-1 flex flex-wrap items-center gap-2">
+      <button
+        type="button"
+        className="chip"
+        title="Rewrite this field in the practice's standard wording"
+        onClick={run}
+      >
+        ✨ Standardize
+      </button>
+      {note && (
+        <span className="text-xs text-slate-600" role="status">
+          {note}
+        </span>
+      )}
+    </div>
+  );
+}
+
 export function TextInputField({ field, value, onChange, describedBy, invalid, id }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLInputElement>(null);
   const insert = (phrase: string) => {
@@ -175,6 +234,10 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
+      <StandardizeField
+        text={value?.value ?? ""}
+        onApply={(next) => onChange({ kind: "text", value: next })}
+      />
     </div>
   );
 }
@@ -201,6 +264,10 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
+      <StandardizeField
+        text={value?.value ?? ""}
+        onApply={(next) => onChange({ kind: "text", value: next })}
+      />
     </div>
   );
 }

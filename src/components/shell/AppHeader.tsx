@@ -3,6 +3,7 @@ import {
   canManageUsers,
   canReadAuditLog,
   canSubmitChangeRequest,
+  meetsRole,
   ROLE_LABEL
 } from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/roles";
@@ -28,6 +29,9 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
               <NavLinks
                 items={[
                   { href: "/", label: "Dashboard" },
+                  ...(meetsRole(user.role, "user")
+                    ? [{ href: "/standardize", label: "Standardize" }]
+                    : []),
                   { href: "/history", label: "History" },
                   { href: "/reference/templates", label: "References", activePrefix: "/reference" },
                   ...(canSubmitChangeRequest(user.role)

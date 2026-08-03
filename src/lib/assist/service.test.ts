@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { getAssistConfig, runAssist, type GenerateFn } from "./service";
+import { getAssistConfig, runAssist, type GenerateFn, type GenerateListFn } from "./service";
 
 // The service is tested with adversarial models: every test binds a fake
 // generate() that misbehaves in a specific way, and the service must refuse.
@@ -95,24 +95,90 @@ describe("verifier gate on rewrites", () => {
 });
 
 describe("verifier gate on question capabilities", () => {
+  // The list capabilities now go through a schema, so the double lies in
+  // OBJECT shape rather than in prose. Everything these tests assert about the
+  // rails is unchanged; only the seam the adversary attacks has moved.
+  const never: GenerateFn = async () => {
+    throw new Error("the text seam must not be used for a list capability");
+  };
+  const list = (value: unknown): GenerateListFn => async () => value;
+
   it("accepts a pure question list", async () => {
-    const model: GenerateFn = async () =>
-      "Was the consent conversation documented?\nWhich anesthetic and amount were used?";
-    const out = await runAssist("interrogate", "RCT completed on tooth 19.", model);
+    const out = await runAssist(
+      "interrogate",
+      "RCT completed on tooth 19.",
+      never,
+      list({
+        questions: [
+          "Was the consent conversation documented?",
+          "Which anesthetic and amount were used?"
+        ]
+      })
+    );
     expect(out.ok).toBe(true);
+    if (out.ok) expect(out.items).toHaveLength(2);
   });
 
   it("refuses a question list that asserts", async () => {
-    const model: GenerateFn = async () =>
-      "Was consent documented?\nThe patient has irreversible pulpitis and needs immediate treatment at the next available appointment.";
-    const out = await runAssist("interrogate", "RCT completed on tooth 19.", model);
+    const out = await runAssist(
+      "interrogate",
+      "RCT completed on tooth 19.",
+      never,
+      list({
+        questions: [
+          "Was consent documented?",
+          "The patient has irreversible pulpitis and needs immediate treatment."
+        ]
+      })
+    );
     expect(out.ok).toBe(false);
+    // Caught by the shape validator now, one layer earlier than the verifier.
+    if (!out.ok) expect(out.code).toBe("invalid-shape");
   });
 
   it("refuses a question that plants a number", async () => {
-    const model: GenerateFn = async () => "Was the dose 500 mg?";
-    const out = await runAssist("conflicts", "Amoxicillin prescribed for the abscess.", model);
+    const out = await runAssist(
+      "conflicts",
+      "Amoxicillin prescribed for the abscess.",
+      never,
+      list({
+        conflicts: [
+          { first: "Amoxicillin prescribed", second: "the dose was 500 mg", why: "Was the dose 500 mg?" }
+        ]
+      })
+    );
     expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("verifier-rejected");
+  });
+
+  it("refuses a payload of the wrong shape outright", async () => {
+    const out = await runAssist(
+      "interrogate",
+      "RCT completed on tooth 19.",
+      never,
+      list({ questions: "not an array" })
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("invalid-shape");
+  });
+
+  it("refuses a conflict between a statement and itself", async () => {
+    // A schema-valid way to look useful while saying nothing. A clinician sent
+    // to find this contradiction would find nothing there.
+    const out = await runAssist(
+      "conflicts",
+      "The patient reports pain.",
+      never,
+      list({ conflicts: [{ first: "pain reported", second: "Pain Reported", why: "these differ" }] })
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("invalid-shape");
+  });
+
+  it("says so plainly when the structured binding is missing", async () => {
+    const out = await runAssist("interrogate", "RCT completed on tooth 19.", never);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("model-error");
   });
 });
 

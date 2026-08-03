@@ -16,4 +16,17 @@
 // 2.4.0 — billing-narrative justification rules (SRP periodontal evidence,
 //         core-buildup retention, crown necessity) and the note GPA stamp
 //         (deriveGpa v1) frozen onto filings.
-export const RULESET_VERSION = "2.4.0";
+// 2.5.0 — the patient-experience layer and its review pass. The plain-language
+//         rule set and the "plain-language" category; suppression of STYLE
+//         abbreviation findings inside patient-facing text; the anxiety-comfort
+//         module; the "Written for the patient" and "Open items" sections of
+//         universal-core; telephone and portal encounter types; PLAIN_WORDS,
+//         the quadrant and s/s shorthand, four lexicon words, and a widened
+//         vague.moderate carve-out.
+//
+//         Recorded rather than tidied away: this layer merged under 2.1.0 and
+//         went unstamped until now, so notes filed in that window carry a
+//         version that does not describe the rules that ran. That is the exact
+//         failure this constant exists to prevent, and the CI guard added in
+//         2.4.0 is what stops it happening again.
+export const RULESET_VERSION = "2.5.0";

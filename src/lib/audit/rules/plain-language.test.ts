@@ -182,4 +182,54 @@ describe("the app's own patient-facing wording passes its own rule", () => {
       expect(w.pattern.flags, w.id).toContain("g");
     }
   });
+
+  it("names, in the staff table, every word its own pattern fires on", () => {
+    // The parity test compares TERM SETS between the code and the staff
+    // markdown. It cannot see inside a pattern — so an entry displayed as
+    // "initiate" whose regex also matched "commence" passed parity while
+    // correcting staff by a rule they were never shown. That is the direction
+    // the parity test's own comment calls the worse one.
+    //
+    // This checks the other half: every "/"-separated term in the display must
+    // actually match the pattern, so a display and its regex cannot drift apart
+    // in either direction without a red test.
+    const missing: string[] = [];
+    for (const w of PLAIN_WORDS) {
+      for (const term of w.display.split("/").map((t) => t.trim())) {
+        const fresh = new RegExp(w.pattern.source, w.pattern.flags);
+        if (!fresh.test(term)) missing.push(`${w.id}: display says "${term}" but the pattern ignores it`);
+      }
+    }
+    expect(missing).toEqual([]);
+  });
+
+  it("still fires on the variants the table now lists", () => {
+    // The concrete regressions. Each of these was a live pattern match that the
+    // staff table did not mention until it was named in the display.
+    const cases: Array<[string, string]> = [
+      ["commence treatment", "plain.initiate"],
+      ["at this time", "plain.at-this-point-in-time"],
+      ["anesthesia given", "plain.anesthetic"],
+      ["necrosis of the pulp", "plain.necrotic"],
+      ["occlusal wear", "plain.occlusion"],
+      ["the maxilla", "plain.maxillary"],
+      ["the mandible", "plain.mandibular"],
+      ["pulpitis", "plain.pulp"],
+      ["oedema", "plain.edema"],
+      ["aetiology", "plain.etiology"]
+    ];
+    for (const [text, ruleId] of cases) {
+      expect(ids(text), text).toContain(ruleId);
+    }
+  });
+
+  it("does not fire on a fragment that is not a word", () => {
+    // `/\bextraction?s?\b/` parsed as "extractio" + "n?" + "s?", so the
+    // non-word "extractio" matched. Harmless in practice, and a sign the
+    // pattern said something other than what it meant.
+    expect(ids("extractio")).toEqual([]);
+    expect(ids("extract the file")).toEqual([]);
+    expect(ids("extraction")).toContain("plain.extraction");
+    expect(ids("extractions")).toContain("plain.extraction");
+  });
 });

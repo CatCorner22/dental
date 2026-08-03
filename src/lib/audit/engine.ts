@@ -7,7 +7,7 @@ import type {
   Severity
 } from "./types";
 import { SEVERITY_ORDER } from "./types";
-import type { NoteState } from "@/lib/schema/types";
+import type { FieldValue, NoteState } from "@/lib/schema/types";
 import { fieldKey } from "@/lib/schema/types";
 import { isFieldVisible } from "@/lib/schema/conditions";
 import { runPhiRule } from "./rules/phi";
@@ -42,12 +42,22 @@ export function runTextAudit(text: string): AuditFinding[] {
 }
 
 export function runAudit(ctx: AuditContext): AuditReport {
-  const voices = splitByAudience(ctx.note, ctx.modules);
+  // The patient half is collected first and cheaply — it visits only the
+  // handful of fields carrying the audience marker. Most notes have none, and
+  // in that case the record half is never built at all: concatenating every
+  // field value in the note, on every keystroke, to answer a question whose
+  // answer is already known would be the wrong kind of thorough.
+  const patientVoice = collectPatientVoice(ctx.note, ctx.modules);
+  const textFindings = runTextAudit(ctx.composedText);
   const findings: AuditFinding[] = [
     ...runRequiredRule(ctx.note, ctx.modules),
     ...runAnatomyStateRule(ctx.note, ctx.modules),
     ...runMeasurementRule(ctx.note, ctx.modules),
-    ...suppressPatientVoiceStyle(runTextAudit(ctx.composedText), voices),
+    ...(patientVoice
+      ? suppressPatientVoiceStyle(textFindings, patientVoice, () =>
+          collectRecordVoice(ctx.note, ctx.modules)
+        )
+      : textFindings),
     ...runFieldSpelling(ctx.note, ctx.modules),
     ...runPatientLanguage(ctx.note, ctx.modules)
   ];
@@ -80,32 +90,44 @@ function runPatientLanguage(note: NoteState, modules: AuditContext["modules"]): 
   return findings;
 }
 
-interface VoiceSplit {
-  patient: string;
-  record: string;
+// The words a field actually contributes to the note. Values only — never the
+// labels, which are the app's own text and are held clean by the module dogfood.
+function valueText(value: FieldValue): string {
+  if (value.kind === "text") return value.value;
+  if (value.kind === "select") return `${value.value} ${value.otherText ?? ""}`;
+  if (value.kind === "multiselect") return value.values.join("\n");
+  return "";
 }
 
-// Every visible, non-empty field value, sorted by who the words are written
-// for. Only the raw values — never the labels, which are the app's own text.
-function splitByAudience(note: NoteState, modules: AuditContext["modules"]): VoiceSplit {
-  const patient: string[] = [];
-  const record: string[] = [];
+function collectVoice(
+  note: NoteState,
+  modules: AuditContext["modules"],
+  wantPatient: boolean
+): string {
+  const parts: string[] = [];
   for (const mod of modules) {
     for (const section of mod.sections) {
       for (const field of section.fields) {
+        if ((field.audience === "patient") !== wantPatient) continue;
         if (!isFieldVisible(field, mod.id, note)) continue;
         const value = note.values[fieldKey(mod.id, field.id)];
         if (!value) continue;
-        let text = "";
-        if (value.kind === "text") text = value.value;
-        else if (value.kind === "select") text = `${value.value} ${value.otherText ?? ""}`;
-        else if (value.kind === "multiselect") text = value.values.join("\n");
-        if (!text.trim()) continue;
-        (field.audience === "patient" ? patient : record).push(text);
+        const text = valueText(value);
+        if (text.trim()) parts.push(text);
       }
     }
   }
-  return { patient: patient.join("\n"), record: record.join("\n") };
+  return parts.join("\n");
+}
+
+/** Everything written for the patient. Empty string when the note has none. */
+function collectPatientVoice(note: NoteState, modules: AuditContext["modules"]): string {
+  return collectVoice(note, modules, true);
+}
+
+/** Everything written for the record. Only built when a patient voice exists. */
+function collectRecordVoice(note: NoteState, modules: AuditContext["modules"]): string {
+  return collectVoice(note, modules, false);
 }
 
 /**
@@ -123,13 +145,35 @@ function splitByAudience(note: NoteState, modules: AuditContext["modules"]): Voi
  * is narrow on purpose: only STYLE abbreviations, and only when the matched
  * text appears nowhere in the clinical half of the note. A word used in both
  * halves keeps its finding, because there it really is about the record.
+ *
+ * The suppressed set holds the finding OBJECTS, not composite string keys. An
+ * earlier version joined ruleId and matchedText with a separator, and the
+ * separator that got committed was a literal NUL byte — which made git treat
+ * this whole file as binary and refuse to merge it textually. Identity is what
+ * the filter actually needs here, since every candidate came out of the array
+ * being filtered, so there is no key to encode and nothing to get wrong.
  */
-function suppressPatientVoiceStyle(findings: AuditFinding[], voices: VoiceSplit): AuditFinding[] {
-  if (!voices.patient.trim()) return findings;
-  return findings.filter((f) => {
-    if (f.category !== "abbreviation" || f.severity !== "S3" || !f.matchedText) return true;
-    return !(voices.patient.includes(f.matchedText) && !voices.record.includes(f.matchedText));
-  });
+function suppressPatientVoiceStyle(
+  findings: AuditFinding[],
+  patientVoice: string,
+  // Lazy: a note usually carries no STYLE abbreviation finding at all, and
+  // building the record half is the expensive side of this comparison.
+  recordVoice: () => string
+): AuditFinding[] {
+  const candidates = findings.filter(
+    (f) => f.category === "abbreviation" && f.severity === "S3" && f.matchedText
+  );
+  if (candidates.length === 0) return findings;
+  if (!candidates.some((f) => patientVoice.includes(f.matchedText!))) return findings;
+
+  const record = recordVoice();
+  const suppressed = new Set(
+    candidates.filter(
+      (f) => patientVoice.includes(f.matchedText!) && !record.includes(f.matchedText!)
+    )
+  );
+  if (suppressed.size === 0) return findings;
+  return findings.filter((f) => !suppressed.has(f));
 }
 
 function runFieldSpelling(note: NoteState, modules: AuditContext["modules"]): AuditFinding[] {

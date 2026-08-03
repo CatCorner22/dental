@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { seesAllNotes } from "@/lib/auth/roles";
+import { meetsRole, seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import {
@@ -14,6 +14,8 @@ import { computeStats } from "@/lib/stats/computeStats";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { Dashboard } from "@/components/dashboard/Dashboard";
 import type { DraftStatus } from "@/lib/status/draftStatus";
+import { WordMap } from "@/components/standardize/WordMap";
+import { buildWordMap, wordMapCounts } from "@/lib/standardize/wordMap";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Dashboard" };
@@ -37,7 +39,11 @@ export default async function DashboardPage() {
 
   const stats = computeStats(await statRowsForUser(db, user.id));
 
+  const wordMapGroups = buildWordMap();
+  const counts = wordMapCounts(wordMapGroups);
+
   return (
+    <>
     <Dashboard
       role={user.role}
       displayName={user.displayName}
@@ -58,5 +64,22 @@ export default async function DashboardPage() {
       stats={stats}
       totalDrafts={total}
     />
+      {/* The practice's standard wording, on the dashboard where everyone who
+          writes a note will see it. Built from the same tables the audit
+          enforces, so this reference can never drift from the rule. Read-only
+          accounts are excluded — they cannot author a note, so the vocabulary
+          is not theirs to apply. */}
+      {meetsRole(user.role, "user") && (
+        <section className="mt-10">
+          <h2 className="mb-1 text-xl font-bold">Word map</h2>
+          <p className="mb-3 max-w-3xl text-sm text-slate-600">
+            The wording this practice standardizes on. Anything marked{" "}
+            <span className="rounded bg-amber-100 px-1 text-xs text-amber-900">your call</span>{" "}
+            needs a clinical judgement, so the tool flags it instead of changing it.
+          </p>
+          <WordMap groups={wordMapGroups} total={counts.total} auto={counts.auto} />
+        </section>
+      )}
+    </>
   );
 }

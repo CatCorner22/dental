@@ -11,6 +11,9 @@ import { getOffice } from "@/lib/db/repo/offices";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
+import { checkScope } from "@/lib/schema/scopeGuard";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { activeModules } from "@/lib/modules";
 import { filedNoteEqual } from "@/lib/compose/filedNoteEqual";
 import { statusForNote } from "@/lib/status/statusForNote";
 
@@ -95,6 +98,26 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     // order, whitespace, and stray otherText, so a raw compare would report a
     // spurious change (e.g. re-toggling a multiselect chip reorders its array)
     // and re-open the gate for an output-identical edit.
+    // SCOPE OF PRACTICE. Tennessee reserves diagnosis and treatment planning to
+    // the dentist, so an assistant or hygienist may not author those sections.
+    //
+    // Enforced here, on the server, against the PREVIOUS note rather than the
+    // mere presence of a value — the client autosaves the whole note on every
+    // keystroke, so rejecting on presence would make a dentist-assessed note
+    // permanently unsaveable for the hygienist working on the rest of it.
+    const scope = checkScope(
+      (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset",
+      activeModules(res.value.selectedModuleIds),
+      res.value,
+      draft.noteState
+    );
+    if (!scope.ok) {
+      return Response.json(
+        { error: scope.message, blockedFields: scope.blocked, reason: "scope" },
+        { status: 403 }
+      );
+    }
+
     const noteChanged = !filedNoteEqual(res.value, draft.noteState);
     if (noteChanged) {
       // The note is no longer the one that failed to send, nor the one already

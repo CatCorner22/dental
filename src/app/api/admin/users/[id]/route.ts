@@ -1,3 +1,4 @@
+import { isClinicalRole, type ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { deleteUser, getUserById, mutateAdminGuarded, updateUser } from "@/lib/db/repo/users";
@@ -75,6 +76,7 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     displayName?: string;
     role?: Role;
     active?: boolean;
+    clinicalRole?: ClinicalRole;
     email?: string | null;
     groupEmail?: string | null;
     emailChangedAt?: Date;
@@ -129,6 +131,15 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     patch.role = newRole;
   }
   if (typeof b.active === "boolean") patch.active = b.active;
+  // Scope of practice. Gated on canActOn like the other account fields — it is
+  // a statement about what someone may write in a clinical record, so it is not
+  // self-service the way an office assignment is. Nobody may set their own.
+  if (b.clinicalRole !== undefined) {
+    if (!isClinicalRole(b.clinicalRole)) {
+      return Response.json({ error: "Unknown clinical role." }, { status: 400 });
+    }
+    patch.clinicalRole = b.clinicalRole;
+  }
   // Repointing an address is an account-takeover primitive, not an edit: mail
   // yourself the reset link and you can sign Smile Notes as that clinician.
   // Held one tier above the reset-link power on purpose.

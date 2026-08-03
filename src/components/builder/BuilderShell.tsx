@@ -1,5 +1,7 @@
 "use client";
 
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules } from "@/lib/modules";
@@ -32,6 +34,7 @@ export function BuilderShell({
   draftId,
   initialTitle,
   initialOfficeId,
+  clinicalRole,
   offices,
   initialNote,
   initialVersion,
@@ -42,6 +45,7 @@ export function BuilderShell({
   draftId: string;
   initialTitle: string;
   initialOfficeId: string | null;
+  clinicalRole: ClinicalRole;
   offices: { id: string; name: string }[];
   initialNote: NoteState;
   initialVersion: number;

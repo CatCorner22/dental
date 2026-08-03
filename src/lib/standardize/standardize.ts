@@ -4,6 +4,13 @@ import { VAGUE_PHRASES, STALE_PHRASES, STIGMATIZING_PHRASES } from "@/lib/vocab/
 import { SHORTHAND, SHORTHAND_OWNS } from "@/lib/vocab/shorthand";
 import { findImplausibleQuantities } from "./plausibility";
 import { foldDigits } from "@/lib/text/foldDigits";
+import {
+  expandDurationX,
+  expandToothHash,
+  punctuateSectionLabels,
+  restoreInitialismCase,
+  separateGluedAbbreviations
+} from "./notation";
 
 // Paste-to-standard: the "writing on rails" pass, moved out of the companion
 // skill and into the app.
@@ -300,6 +307,29 @@ export function standardize(raw: string): StandardizeResult {
 
   let text = whitespaced;
 
+  // ---- Notation, BEFORE any vocabulary lookup. Ordering is the whole point.
+  //
+  // Un-gluing has to happen first or the tables cannot see what they are looking
+  // for: "reappoint 6mo" has no word boundary between "6" and "m", so the months
+  // rule never matched and the token survived every pass untouched. Measured on a
+  // real note before this line existed.
+  //
+  // Tooth notation runs here too rather than during presentation, so a later
+  // reader of this function sees notation settled before words change.
+  const beforeNotation = text;
+  text = expandToothHash(expandDurationX(separateGluedAbbreviations(text)));
+  if (text !== beforeNotation) {
+    applied.push({
+      kind: "formatting",
+      from: "chart notation",
+      to: "written out",
+      count: 1,
+      why:
+        "Wrote tooth designators, durations, and numbers run together with their units the way a " +
+        "reader outside dentistry can follow. \"#14\" means nothing to an insurer or an attorney."
+    });
+  }
+
   // ---- Spelling. Whole words only, case-preserving.
   for (const [wrong, right] of Object.entries(MISSPELLINGS)) {
     const re = new RegExp(`\\b${wrong}\\b`, "gi");
@@ -521,7 +551,13 @@ export function standardize(raw: string): StandardizeResult {
   // Presentation last, so the replacements above matched against the text as
   // typed rather than against a half-reformatted version of it.
   const beforePresentation = text;
-  text = ensureTerminalPeriod(spaceUnits(sentenceCase(text)));
+  // restoreInitialismCase runs AFTER sentenceCase, because sentenceCase is what
+  // breaks the casing it repairs: a sentence-initial "nka." became "Nka.", an
+  // initialism in title case, which reads as a typo in the one tool whose whole
+  // claim is standard form.
+  text = ensureTerminalPeriod(
+    punctuateSectionLabels(restoreInitialismCase(spaceUnits(sentenceCase(text))))
+  );
   if (text !== beforePresentation && !applied.some((a) => a.kind === "formatting")) {
     applied.push({
       kind: "formatting",

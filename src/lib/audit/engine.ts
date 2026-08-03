@@ -12,7 +12,7 @@ import { fieldKey } from "@/lib/schema/types";
 import { isFieldVisible } from "@/lib/schema/conditions";
 import { runPhiRule } from "./rules/phi";
 import { runResidueRule } from "./rules/residue";
-import { runAbbreviationRule, runVaguePhraseRule } from "./rules/terminology";
+import { runAbbreviationRule, runStigmatizingRule, runVaguePhraseRule } from "./rules/terminology";
 import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
 import { newSpellingBudget, runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
@@ -27,6 +27,7 @@ export function runTextAudit(text: string): AuditFinding[] {
     ...runResidueRule(text),
     ...runAbbreviationRule(text),
     ...runVaguePhraseRule(text),
+    ...runStigmatizingRule(text),
     ...runAnatomyTextRule(text)
   ];
 }

@@ -1,5 +1,5 @@
 import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
-import { VAGUE_PHRASES, STALE_PHRASES } from "@/lib/vocab/vague-phrases";
+import { VAGUE_PHRASES, STALE_PHRASES, STIGMATIZING_PHRASES } from "@/lib/vocab/vague-phrases";
 import { MISSPELLINGS, MEDICATION_WORDS } from "@/lib/vocab/misspellings";
 import { SHORTHAND, SHORTHAND_OWNS } from "@/lib/vocab/shorthand";
 
@@ -107,6 +107,17 @@ export function buildWordMap(): WordMapGroup[] {
       entries: VAGUE_PHRASES.map((p) => ({ avoid: p.display, use: p.replacement, auto: false })).sort(
         sortByAvoid
       )
+    },
+    {
+      id: "stigmatizing",
+      title: "Words that label the patient",
+      blurb:
+        "Patients read these notes. Each of these describes a person rather than the care, and the right replacement depends on what actually happened — so the tool points them out and leaves the wording to you.",
+      entries: STIGMATIZING_PHRASES.map((p) => ({
+        avoid: p.display,
+        use: p.replacement,
+        auto: false
+      })).sort(sortByAvoid)
     },
     {
       id: "stale",

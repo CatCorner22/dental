@@ -25,6 +25,7 @@ export type AuditCategory =
   | "anatomy"
   | "abbreviation"
   | "vague-phrase"
+  | "stigmatizing"
   | "spelling"
   | "measurement";
 

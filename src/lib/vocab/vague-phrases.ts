@@ -186,3 +186,103 @@ export const STALE_PHRASES: VaguePhrase[] = [
     replacement: "state when and what happened, or mark it unresolved"
   }
 ];
+
+// ---------------------------------------------------------------------------
+// Stigmatizing and judgemental language — the 21st Century Cures Act list
+// ---------------------------------------------------------------------------
+//
+// The Cures Act information-blocking rules give patients routine, immediate
+// access to these notes. The audience changed; the vocabulary mostly did not.
+// A word that reads as clinical shorthand to the person who typed it can read
+// as a verdict to the person it is about, and a patient who feels judged by
+// their record is less likely to report the next symptom honestly.
+//
+// This is a SEPARATE list from VAGUE_PHRASES on purpose. Those entries are
+// about a fact being missing. These are about a person being labelled, and the
+// note may be perfectly specific and still fail here. Different defect,
+// different category, different guidance.
+//
+// STYLE severity, and never auto-applied. Every one of these is a judgement
+// call in context — "declined" is usually right for "refused", but not if the
+// clinical point is that care was actively resisted — and this tool does not
+// rewrite clinical meaning. It says what it noticed and leaves the wording to
+// the clinician.
+//
+// Deliberately NOT duplicated here: `noncompliant`, `patient denies`, and
+// `poor historian`, which are already in VAGUE_PHRASES at REVIEW severity.
+// Listing them twice would flag the same span twice and downgrade nothing —
+// it would just teach people that the findings panel repeats itself, which is
+// how a checker starts getting ignored.
+//
+// Patterns are anchored to the LABELLING usage rather than the word alone.
+// "Diabetic retinopathy" is a diagnosis; "the diabetic in chair two" is a
+// label. A rule that cannot tell them apart cries wolf, and a checker that
+// cries wolf gets muted — which costs more than the rule ever gains.
+export const STIGMATIZING_PHRASES: VaguePhrase[] = [
+  {
+    id: "person-first-diabetic",
+    // "diabetic patient" / "is a diabetic" / "the diabetics" — never the
+    // adjectival diagnosis ("diabetic ketoacidosis", "diabetic neuropathy").
+    pattern: /\bdiabetic\s+(?:patient|pt)s?\b|\bis\s+an?\s+diabetic\b|\b(?:a|the)\s+diabetics\b/gi,
+    display: "diabetic (as a label)",
+    replacement: "person with diabetes — keep \"diabetic\" for the diagnosis itself"
+  },
+  {
+    id: "person-first-epileptic",
+    pattern: /\bepileptic\s+(?:patient|pt)s?\b|\bis\s+an?\s+epileptic\b|\b(?:a|the)\s+epileptics\b/gi,
+    display: "epileptic (as a label)",
+    replacement: "person with epilepsy — keep \"epileptic\" for the seizure type"
+  },
+  {
+    id: "person-first-addict",
+    pattern: /\b(?:drug\s+)?(?:addicts?|abusers?|junkies?)\b/gi,
+    display: "addict / abuser",
+    replacement: "person with a substance use disorder, or state the substance and the history"
+  },
+  {
+    id: "drug-seeking",
+    pattern: /\bdrug[-\s]seek(?:ing|er)s?\b/gi,
+    display: "drug seeking",
+    replacement: "state what was requested, what was discussed, and what was prescribed or declined"
+  },
+  {
+    id: "patient-refused",
+    // Anchored to the patient so the module named "Refusal and Incomplete
+    // Care" and the field "Consent or refusal form status" are untouched:
+    // those name a category, they do not describe a person.
+    pattern:
+      /\b(?:patient|pt)\s+refus(?:ed|es)\b|\brefus(?:ed|es)\s+(?:treatment|care|the\s+(?:procedure|radiograph|referral|appointment))\b/gi,
+    display: "patient refused",
+    replacement: "declined — and state what was declined and what was discussed"
+  },
+  {
+    id: "patient-failed",
+    pattern: /\b(?:patient|pt)\s+failed\s+to\b/gi,
+    display: "patient failed to",
+    replacement: "did not — state what did not happen without attributing fault"
+  },
+  {
+    id: "patient-claims",
+    pattern: /\b(?:patient|pt)\s+(?:claims?|alleges?|insists?)\b/gi,
+    display: "patient claims",
+    replacement: "patient reports — \"claims\" tells the reader you doubt them"
+  },
+  {
+    id: "uncooperative",
+    pattern: /\buncooperative\b|\bcombative\b/gi,
+    display: "uncooperative",
+    replacement: "describe the behaviour observed and what was tried"
+  },
+  {
+    id: "frequent-flyer",
+    pattern: /\bfrequent\s+flyer\b/gi,
+    display: "frequent flyer",
+    replacement: "state the visit history and the reason for each attendance"
+  },
+  {
+    id: "no-show",
+    pattern: /\bno[-\s]shows?\b/gi,
+    display: "no-show",
+    replacement: "did not attend"
+  }
+];

@@ -10,12 +10,18 @@ export function SurfacePicker({
   field,
   linkedTeeth,
   value,
-  onChange
+  onChange,
+  describedBy,
+  invalid
 }: {
   field: SurfacePickerField;
   linkedTeeth: ToothId[];
   value: Extract<FieldValue, { kind: "surfaces" }> | undefined;
   onChange: (value: FieldValue) => void;
+  // See ToothPicker: these two renderers were the only ones not receiving the
+  // description and validity wiring every other field gets.
+  describedBy?: string;
+  invalid?: boolean;
 }) {
   const byTooth = value?.byTooth ?? {};
 
@@ -32,7 +38,13 @@ export function SurfacePicker({
   };
 
   return (
-    <div className="space-y-1.5">
+    <div
+      className="space-y-1.5"
+      role="group"
+      aria-label={field.label}
+      aria-describedby={describedBy}
+      aria-invalid={invalid ? true : undefined}
+    >
       {linkedTeeth.map((toothId) => {
         const tooth = getTooth(toothId);
         const allowed = allowedSurfaces(toothId);

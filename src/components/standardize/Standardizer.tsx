@@ -1,7 +1,7 @@
 "use client";
 
 import { useMemo, useRef, useState } from "react";
-import { SEVERITY_LABELS } from "@/lib/audit/types";
+import { SEVERITY_CLASS, SEVERITY_LABELS } from "@/lib/audit/types";
 import type { Severity } from "@/lib/audit/types";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
@@ -34,14 +34,6 @@ interface Result {
   clean: boolean;
   findings: FindingLike[];
 }
-
-const SEV_CLASS: Record<string, string> = {
-  S0: "border-red-300 bg-red-50 text-red-900",
-  S1: "border-orange-300 bg-orange-50 text-orange-900",
-  S2: "border-amber-300 bg-amber-50 text-amber-900",
-  S3: "border-sky-200 bg-sky-50 text-sky-900",
-  S4: "border-slate-200 bg-white text-slate-600"
-};
 
 const ANDON_CLASS: Record<string, string> = {
   red: "border-red-300 bg-red-50 text-red-900",
@@ -388,7 +380,7 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 </summary>
                 <ul className="mt-2 space-y-1">
                   {infoItems.map((i) => (
-                    <li key={i.concern.key} className={`rounded border px-3 py-1.5 ${SEV_CLASS[i.concern.severity]}`}>
+                    <li key={i.concern.key} className={`rounded border px-3 py-1.5 ${SEVERITY_CLASS[i.concern.severity]}`}>
                       <span className="text-xs font-semibold uppercase">
                         {i.concern.severity} {SEVERITY_LABELS[i.concern.severity as Severity] ?? ""}
                       </span>
@@ -466,7 +458,7 @@ function ConcernCard({
 
   return (
     <div
-      className={`rounded border p-3 text-sm ${settled ? "border-green-300 bg-green-50" : SEV_CLASS[concern.severity]}`}
+      className={`rounded border p-3 text-sm ${settled ? "border-green-300 bg-green-50" : SEVERITY_CLASS[concern.severity]}`}
     >
       <div className="flex items-start justify-between gap-2">
         <div>

@@ -26,6 +26,7 @@ export type AuditCategory =
   | "abbreviation"
   | "vague-phrase"
   | "stigmatizing"
+  | "plain-language"
   | "spelling"
   | "measurement"
   | "medication-safety";
@@ -68,3 +69,28 @@ export interface AuditContext {
   modules: ModuleDef[]; // active modules
   composedText: string;
 }
+
+// One severity ramp, used by every surface that renders a finding.
+//
+// This existed twice — `SEVERITY_STYLES` in AuditPanel.tsx and `SEV_CLASS` in
+// Standardizer.tsx — and the two had drifted apart at S3 and S4. The SAME
+// finding rendered blue in the note builder and grey on the Standardize page,
+// which quietly told a clinician that an informational item was a different
+// KIND of item depending on which screen they happened to be looking at.
+// Severity is the app's core safety vocabulary; it cannot mean two things.
+export const SEVERITY_CLASS: Record<Severity, string> = {
+  S0: "border-red-300 bg-red-50 text-red-900",
+  S1: "border-orange-300 bg-orange-50 text-orange-900",
+  S2: "border-amber-300 bg-amber-50 text-amber-900",
+  S3: "border-blue-200 bg-blue-50 text-blue-900",
+  S4: "border-slate-200 bg-slate-50 text-slate-700"
+};
+
+// The overall-status banner, keyed on OverallStatus so a renamed status is a
+// type error rather than an unstyled banner.
+export const STATUS_CLASS: Record<OverallStatus, string> = {
+  BLOCKED: "border-red-300 bg-red-100 text-red-900",
+  "NEEDS CLINICIAN ACTION": "border-orange-300 bg-orange-100 text-orange-900",
+  "READY FOR CLINICIAN REVIEW": "border-amber-300 bg-amber-100 text-amber-900",
+  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "border-green-300 bg-green-100 text-green-900"
+};

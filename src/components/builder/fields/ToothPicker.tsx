@@ -14,11 +14,19 @@ const DENTITION_LABELS: Record<Dentition, string> = {
 export function ToothPicker({
   field,
   value,
-  onChange
+  onChange,
+  describedBy,
+  invalid
 }: {
   field: ToothPickerField;
   value: Extract<FieldValue, { kind: "teeth" }> | undefined;
   onChange: (value: FieldValue) => void;
+  // Every other field renderer receives these; the two pickers were the only
+  // ones that did not, so the field's help text and its audit findings were
+  // never announced here — on the two controls that decide WHICH TOOTH goes
+  // into a legal record. The wrong-site stop lands on exactly these fields.
+  describedBy?: string;
+  invalid?: boolean;
 }) {
   // Open on the dentition of the stored selection, not blindly on the first
   // tab — a saved primary tooth (e.g. "K") reopened on the Permanent tab is
@@ -45,7 +53,13 @@ export function ToothPicker({
   const rows = [teeth.slice(0, half), teeth.slice(half)];
 
   return (
-    <div className="rounded border border-slate-200 bg-slate-50 p-2" role="group" aria-label={`${field.label} — tooth picker`}>
+    <div
+      className={`rounded border bg-slate-50 p-2 ${invalid ? "border-red-500" : "border-slate-200"}`}
+      role="group"
+      aria-label={`${field.label} — tooth picker`}
+      aria-describedby={describedBy}
+      aria-invalid={invalid ? true : undefined}
+    >
       {field.dentitions.length > 1 && (
         <div className="mb-2 flex flex-wrap gap-1">
           {field.dentitions.map((d) => (
@@ -88,7 +102,7 @@ export function ToothPicker({
         </div>
       ))}
       {selected.length > 0 && (
-        <p className="mt-2 text-xs text-slate-600">
+        <p className="mt-2 text-xs text-slate-600" role="status" aria-live="polite">
           Selected: {selected.map((id) => `${id} (${TOOTH_TABLE.get(id)?.name ?? "?"})`).join("; ")}
         </p>
       )}

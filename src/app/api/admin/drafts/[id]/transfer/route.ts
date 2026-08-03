@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { canActOn, canReceiveTransfer, canTransferNotes, ROLE_LABEL } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import { getDraft, transferDraft } from "@/lib/db/repo/drafts";
-import { getUserById } from "@/lib/db/repo/users";
+import { getUserById, isCreatureOf } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 
@@ -95,11 +95,17 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // to it is the same act as transferring to yourself, one indirection later —
   // and it is how a Team Lead would get write access to a record the matrix
   // says they may reassign but never author. Treated identically to self.
-  if (to.createdById === guard.user.id && guard.user.role !== "admin") {
+  // Transitive: an account minted by an account you minted is still yours.
+  // The one-level form below was defeated by a puppet at one remove — mint two
+  // Team Leads, have one mint a Member, and the OTHER lead may transfer into
+  // it, with one human holding all three invite mailboxes.
+  const toIsPuppet =
+    guard.user.role !== "admin" && (await isCreatureOf(db, to.id, guard.user.id));
+  if ((to.createdById === guard.user.id || toIsPuppet) && guard.user.role !== "admin") {
     return Response.json(
       {
         error:
-          "You created that account, so you cannot transfer work into it. " +
+          "That account traces back to you, so you cannot transfer work into it. " +
           "Ask a colleague or a Smile Notes Developer to make this transfer."
       },
       { status: 403 }

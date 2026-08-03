@@ -142,3 +142,50 @@ describe("a masked note is actually fileable", () => {
     expect(blocking).toEqual([]);
   });
 });
+
+describe("overlapping and partial-word matches cannot leave an identifier behind", () => {
+  // Both of these shipped, and both ended the same way: an identifier still in
+  // the note while the re-audit reported AUDIT PASS and re-opened export.
+  const maskAll = (text: string) => {
+    const findings = runPhiRule(text).filter((f) => f.category === "phi" && f.matchedText);
+    return applyMaskPlan(text, buildMaskPlan(findings));
+  };
+
+  it("masks BOTH names when a spurious cross-name match overlaps them", () => {
+    // "John Smith, Mary Jones" also yields "Smith, Mary" across the comma.
+    // Replacing longest-first destroyed the other two anchors, leaving
+    // "John [PERSON-x] Jones" — both real names half-masked.
+    const out = maskAll("Consultation. John Smith, Mary Jones attended.");
+    expect(out).not.toContain("John");
+    expect(out).not.toContain("Smith");
+    expect(out).not.toContain("Mary");
+    expect(out).not.toContain("Jones");
+    expect(runPhiRule(out).filter((f) => f.ruleId.startsWith("phi.name"))).toEqual([]);
+  });
+
+  it("masks both people when they share a surname", () => {
+    const out = maskAll("Present: Grace Miller, Karen Miller (guardian).");
+    expect(out).not.toContain("Grace");
+    expect(out).not.toContain("Karen");
+    expect(out).not.toContain("Miller");
+  });
+
+  it("does not replace inside another word", () => {
+    // "Ray" must not rewrite "X-Ray": the radiograph is not a person, and the
+    // same person picking up two tokens breaks the one-token-per-identifier
+    // property the mask design documents.
+    const out = maskAll("Dr. Ray reviewed the X-Ray taken at the recall visit.");
+    expect(out).toContain("X-Ray");
+  });
+
+  it("is idempotent — masking a masked note changes nothing further", () => {
+    const once = maskAll("Seen by John Smith. Call 865-555-1234.");
+    const twice = maskAll(once);
+    expect(twice).toBe(once);
+  });
+
+  it("leaves text with no findings untouched", () => {
+    const clean = "Prophylaxis completed. Oral hygiene instruction given.";
+    expect(maskAll(clean)).toBe(clean);
+  });
+});

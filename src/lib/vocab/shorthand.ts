@@ -373,6 +373,34 @@ export const SHORTHAND: Shorthand[] = [
     expansion: "every other day",
     alternatives: ["every other day", "daily (if qd was intended)"],
     domain: "dosing"
+  },
+
+  // ---- Quadrants
+  //
+  // Case-SENSITIVE, unlike most of this table. Lower-case "ul" and "ll" turn up
+  // inside ordinary typing far more often than they turn up as quadrants, and
+  // an expansion that fires on a typo writes an anatomical site nobody meant.
+  // Quadrant shorthand is written in capitals in a chart, so requiring capitals
+  // costs the writer nothing and closes the whole class of false positive.
+  //
+  // These four are on the practice's own approved list, and the example in
+  // their standardization document uses one directly: "Pain 8/10, LL molar".
+  { id: "ur", pattern: /\bUR\b/g, display: "UR", expansion: "upper right quadrant", domain: "dental" },
+  { id: "ul", pattern: /\bUL\b/g, display: "UL", expansion: "upper left quadrant", domain: "dental" },
+  { id: "lr", pattern: /\bLR\b/g, display: "LR", expansion: "lower right quadrant", domain: "dental" },
+  { id: "ll", pattern: /\bLL\b/g, display: "LL", expansion: "lower left quadrant", domain: "dental" },
+
+  {
+    // From the same example: "s/s of abscess". Expanded, never interpreted —
+    // the practice's own transformer draft turned this into "signs and symptoms
+    // CONSISTENT WITH an abscess", which is a diagnostic inference the writer
+    // did not make. Expanding the shorthand is a vocabulary change; adding
+    // "consistent with" is a clinical claim, and this tool does not make those.
+    id: "ss",
+    pattern: /\bs\/s\b/gi,
+    display: "s/s",
+    expansion: "signs and symptoms",
+    domain: "medical"
   }
 ];
 

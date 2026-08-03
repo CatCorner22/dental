@@ -18,7 +18,7 @@ function escapeRegExp(s: string): string {
  * written to its own convention. A term that has been defined is the goal
  * state, not a defect.
  */
-function definedInText(text: string, matched: string): boolean {
+export function definedInText(text: string, matched: string): boolean {
   // Matched on the CONVENTION rather than on one exact phrasing: an initialism
   // in parentheses, immediately after at least two words of prose, is a
   // definition. Comparing against the table's `replacement` string does not

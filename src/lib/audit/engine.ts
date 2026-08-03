@@ -20,6 +20,7 @@ import { runMeasurementRule } from "./rules/measurement";
 import { runMedicationSafetyRules } from "./rules/medication-safety";
 import { runEffortRules } from "./rules/effort";
 import { runCompletenessRules } from "./rules/completeness";
+import { runPlainLanguageRule } from "./rules/plain-language";
 
 // Pure and isomorphic. The client runs the full audit live; the email route
 // re-runs the text audit server-side so a tampered client cannot bypass it.
@@ -39,14 +40,94 @@ export function runTextAudit(text: string): AuditFinding[] {
 }
 
 export function runAudit(ctx: AuditContext): AuditReport {
+  const voices = splitByAudience(ctx.note, ctx.modules);
   const findings: AuditFinding[] = [
     ...runRequiredRule(ctx.note, ctx.modules),
     ...runAnatomyStateRule(ctx.note, ctx.modules),
     ...runMeasurementRule(ctx.note, ctx.modules),
-    ...runTextAudit(ctx.composedText),
-    ...runFieldSpelling(ctx.note, ctx.modules)
+    ...suppressPatientVoiceStyle(runTextAudit(ctx.composedText), voices),
+    ...runFieldSpelling(ctx.note, ctx.modules),
+    ...runPatientLanguage(ctx.note, ctx.modules)
   ];
   return buildReport(findings);
+}
+
+// The plain-language rule, over patient-facing fields only.
+//
+// Deliberately a FIELD walk rather than part of runTextAudit. runTextAudit sees
+// the whole composed note, where "radiograph" and "periodontitis" are the
+// correct words — flagging them there would bury every real finding under a
+// hundred style rows and would contradict the abbreviation rule, which spends
+// its time putting those words IN.
+function runPatientLanguage(note: NoteState, modules: AuditContext["modules"]): AuditFinding[] {
+  const findings: AuditFinding[] = [];
+  for (const mod of modules) {
+    for (const section of mod.sections) {
+      for (const field of section.fields) {
+        if (field.audience !== "patient") continue;
+        if (field.type !== "text" && field.type !== "textarea") continue;
+        if (!isFieldVisible(field, mod.id, note)) continue;
+        const value = note.values[fieldKey(mod.id, field.id)];
+        if (!value || value.kind !== "text" || !value.value.trim()) continue;
+        findings.push(
+          ...runPlainLanguageRule(value.value, { moduleId: mod.id, fieldId: field.id })
+        );
+      }
+    }
+  }
+  return findings;
+}
+
+interface VoiceSplit {
+  patient: string;
+  record: string;
+}
+
+// Every visible, non-empty field value, sorted by who the words are written
+// for. Only the raw values — never the labels, which are the app's own text.
+function splitByAudience(note: NoteState, modules: AuditContext["modules"]): VoiceSplit {
+  const patient: string[] = [];
+  const record: string[] = [];
+  for (const mod of modules) {
+    for (const section of mod.sections) {
+      for (const field of section.fields) {
+        if (!isFieldVisible(field, mod.id, note)) continue;
+        const value = note.values[fieldKey(mod.id, field.id)];
+        if (!value) continue;
+        let text = "";
+        if (value.kind === "text") text = value.value;
+        else if (value.kind === "select") text = `${value.value} ${value.otherText ?? ""}`;
+        else if (value.kind === "multiselect") text = value.values.join("\n");
+        if (!text.trim()) continue;
+        (field.audience === "patient" ? patient : record).push(text);
+      }
+    }
+  }
+  return { patient: patient.join("\n"), record: record.join("\n") };
+}
+
+/**
+ * Drop auto-applicable abbreviation findings that exist ONLY in patient-facing
+ * text.
+ *
+ * `abbrev.xray` is severityClass "style", which in this app means one
+ * deterministic replacement a staff member may apply: "x-ray" becomes
+ * "radiograph". That is right for the clinical record and exactly backwards for
+ * a paragraph the patient reads, where the plain-language rule is at the same
+ * moment asking for "radiograph" to become "x-ray".
+ *
+ * Without this the panel would show both findings at once, each undoing the
+ * other, and the writer would have no way to satisfy the tool. The suppression
+ * is narrow on purpose: only STYLE abbreviations, and only when the matched
+ * text appears nowhere in the clinical half of the note. A word used in both
+ * halves keeps its finding, because there it really is about the record.
+ */
+function suppressPatientVoiceStyle(findings: AuditFinding[], voices: VoiceSplit): AuditFinding[] {
+  if (!voices.patient.trim()) return findings;
+  return findings.filter((f) => {
+    if (f.category !== "abbreviation" || f.severity !== "S3" || !f.matchedText) return true;
+    return !(voices.patient.includes(f.matchedText) && !voices.record.includes(f.matchedText));
+  });
 }
 
 function runFieldSpelling(note: NoteState, modules: AuditContext["modules"]): AuditFinding[] {

@@ -20,6 +20,7 @@ import { sedationAnesthesia } from "./sedation-anesthesia";
 import { pediatric } from "./pediatric";
 import { orthodontic } from "./orthodontic";
 import { oralMedicine } from "./oral-medicine";
+import { anxietyComfort } from "./anxiety-comfort";
 import { sleepApnea } from "./sleep-apnea";
 import { tmjTmd } from "./tmj-tmd";
 import { cosmetic } from "./cosmetic";
@@ -53,6 +54,7 @@ export const ALL_MODULES: ModuleDef[] = [
   pediatric,
   orthodontic,
   oralMedicine,
+  anxietyComfort,
   sleepApnea,
   tmjTmd,
   cosmetic,

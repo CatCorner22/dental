@@ -3,6 +3,8 @@ import {
   ALLERGY_STATUS,
   CARE_STATUS,
   CONFIRM_ASKED,
+  CONTACT_METHOD,
+  ITEM_OPEN,
   EDR_ONLY_STATUS,
   EVIDENCE_PHRASES,
   MEDICATION_STATUS,
@@ -12,9 +14,15 @@ import {
   NONE_REPORTED,
   NO_HISTORY_CHANGES,
   NO_MEDICATIONS,
+  OPEN_ITEM_DUE,
+  OPEN_ITEM_OWNER,
+  OPEN_ITEM_STATUS,
+  OPEN_ITEM_TRACKING,
   PATIENT_DECISION,
+  PATIENT_SUMMARY_DELIVERY,
   PREMEDICATION_STATUS,
   PREMED_NOT_REQUIRED,
+  URGENCY,
   YES_NO,
   opts
 } from "./shared";
@@ -35,18 +43,44 @@ export const universalCore: ModuleDef = {
           type: "select",
           label: "Encounter type",
           required: true,
-          options: opts(
-            "comprehensive examination",
-            "periodic examination",
-            "limited examination",
-            "consultation",
-            "recall visit",
-            "treatment visit",
-            "emergency visit",
-            "postoperative visit",
-            "teledentistry encounter"
-          ),
-          allowOther: true
+          options: [
+            ...opts(
+              "comprehensive examination",
+              "periodic examination",
+              "limited examination",
+              "consultation",
+              "recall visit",
+              "treatment visit",
+              "emergency visit",
+              "postoperative visit",
+              "teledentistry encounter"
+            ),
+            {
+              value: "telephone contact",
+              label: "Telephone contact (not teledentistry)"
+            },
+            {
+              value: "written or portal message",
+              label: "Written or portal message (not teledentistry)"
+            }
+          ],
+          allowOther: true,
+          helpText:
+            "Tennessee Rule 0460-01-.19 counts an encounter as teledentistry only when secure video or store-and-forward technology carried it; audio-only, email alone, and fax alone do not qualify. A phone call is a telephone contact. A cost-only conversation is a consultation — money never enters this record."
+        },
+        {
+          id: "contact-method",
+          type: "select",
+          label: "Contact method",
+          options: CONTACT_METHOD,
+          helpText: "How the practice and the patient reached each other at this encounter."
+        },
+        {
+          id: "urgency",
+          type: "select",
+          label: "Urgency",
+          options: URGENCY,
+          helpText: "The clinician's own judgement. This tool never infers urgency."
         },
         {
           id: "visit-purpose",
@@ -222,7 +256,23 @@ export const universalCore: ModuleDef = {
           label: "Pertinent negatives reported",
           standardPhrases: ["The patient reports no "]
         },
-        { id: "patient-goal", type: "text", label: "Patient goal", placeholderHint: "<value>" }
+        { id: "patient-goal", type: "text", label: "Patient goal", placeholderHint: "<value>" },
+        {
+          id: "comfort-concern",
+          type: "select",
+          label: "Anxiety or comfort concern",
+          options: [
+            { value: "None reported.", label: "None reported" },
+            {
+              value:
+                "The patient reported an anxiety or comfort concern; see the Anxiety and Comfort add-on.",
+              label: "Reported — add the Anxiety and Comfort add-on"
+            },
+            { value: "Not asked at this encounter.", label: "Not asked at this encounter" }
+          ],
+          helpText:
+            "The add-on records what the patient said concerns them, what the team did about it, and what to repeat next time. It is the field the next clinician reads before the patient sits down."
+        }
       ]
     },
     {
@@ -365,7 +415,14 @@ export const universalCore: ModuleDef = {
           id: "questions-discussed",
           type: "text",
           label: "Questions discussed",
-          standardPhrases: ["The clinician answered the patient's stated questions."]
+          // The practice's own standard line (section 3.1), as a chip the
+          // clinician chooses. It is never inserted for them: the tool would be
+          // asserting that an explanation happened, which is the one thing a
+          // note must not manufacture.
+          standardPhrases: [
+            "The clinician answered the patient's stated questions.",
+            "The clinician explained the diagnosis and the treatment options in plain language."
+          ]
         },
         {
           id: "patient-decision",
@@ -452,7 +509,16 @@ export const universalCore: ModuleDef = {
           id: "follow-up",
           type: "text",
           label: "Follow-up interval and purpose",
-          placeholderHint: "<value>"
+          placeholderHint: "<value>",
+          // Section 3.4's line, with the "[date/time]" placeholder removed. An
+          // exact appointment date beside clinical detail is an identifier and
+          // the privacy rule stops it, so the interval is what belongs here and
+          // the appointment itself lives in the schedule.
+          standardPhrases: [
+            "The next visit is scheduled before the patient leaves. ",
+            "The next visit is scheduled in ",
+            "The patient prefers to be contacted by "
+          ]
         },
         {
           id: "referral",
@@ -467,6 +533,104 @@ export const universalCore: ModuleDef = {
           label: "Author, reviewer, attestation, and signature",
           options: opts("to be completed in the EDR only"),
           helpText: "Names, credentials, and signatures never enter this tool."
+        }
+      ]
+    },
+    {
+      id: "patient-facing",
+      title: "Written for the patient",
+      // A section boundary is a voice boundary. Everything above is written for
+      // the next clinician and for a lawyer; this block is written for the
+      // person who was in the chair, and the audit treats it differently
+      // because of where it sits. composeNote omits an empty section entirely,
+      // so a note that skips this costs nothing.
+      fields: [
+        {
+          id: "patient-summary",
+          type: "textarea",
+          label: "Summary for the patient",
+          audience: "patient",
+          rows: 4,
+          placeholderHint: "<what we found, what we did, what happens next — in plain words>",
+          // Openers first, then the procedures in the words a patient uses.
+          // Friendly names only — no code numbers. The ADA code set is licensed
+          // and a number means nothing to the person reading this anyway.
+          standardPhrases: [
+            "Here is what we found at this visit: ",
+            "Here is what we did at this visit: ",
+            "Here is what happens next: ",
+            "Call the office if ",
+            "We cleaned your teeth. ",
+            "We filled a cavity in ",
+            "We took the tooth out. ",
+            "We started a root canal. ",
+            "We fitted a crown — a cap that covers the tooth. ",
+            "We took x-rays to see inside the tooth and the bone. ",
+            "We checked your gums. ",
+            "Nothing needed treatment at this visit. "
+          ],
+          helpText:
+            "Patients read their own notes by law. Write this the way you said it out loud. The tool checks it against a plain-word list instead of the clinical one, and the Standardize button is switched off here on purpose — it would turn your plain English back into clinical terms."
+        },
+        {
+          id: "patient-summary-delivery",
+          type: "select",
+          label: "How the patient received this summary",
+          options: PATIENT_SUMMARY_DELIVERY,
+          requiredIf: { fieldId: "patient-summary", notEmpty: true },
+          helpText: "Written and not given to anyone is a draft, not a handoff."
+        }
+      ]
+    },
+    {
+      id: "open-items",
+      title: "Open items",
+      fields: [
+        {
+          id: "open-item",
+          type: "select",
+          label: "Is anything still open after this encounter?",
+          options: OPEN_ITEM_STATUS,
+          helpText:
+            "The item most often dropped is the one everybody assumed somebody else had. Naming the role and the interval is what turns an intention into a handoff."
+        },
+        {
+          id: "open-item-what",
+          type: "textarea",
+          label: "What is open",
+          rows: 2,
+          visibleIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          requiredIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          placeholderHint: "<the action, in plain words>",
+          helpText: "Describe the action. Roles only — no staff or patient names."
+        },
+        {
+          id: "open-item-owner",
+          type: "select",
+          label: "Who owns it",
+          options: OPEN_ITEM_OWNER,
+          visibleIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          requiredIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          helpText: "A role, never a person. The role is what a later reader can act on."
+        },
+        {
+          id: "open-item-due",
+          type: "select",
+          label: "By when",
+          options: OPEN_ITEM_DUE,
+          visibleIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          requiredIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          helpText: "A relative interval. Exact dates belong in the EDR, not here."
+        },
+        {
+          id: "open-item-tracking",
+          type: "select",
+          label: "Where it is tracked",
+          options: OPEN_ITEM_TRACKING,
+          visibleIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          requiredIf: { fieldId: "open-item", equals: ITEM_OPEN },
+          helpText:
+            "\"Not yet tracked anywhere\" is a real answer and a useful one. Say it rather than naming a system that does not hold the item."
         }
       ]
     }

@@ -62,7 +62,12 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     ring: "text-slate-400"
   },
   phi: {
-    label: "Privacy stop — possible identifier saved in this draft",
+    // A chip label, not a sentence. This shipped as "Privacy stop — possible
+    // identifier saved in this draft": 52 characters against 8-19 for every
+    // sibling, so it wrapped to two lines in the sidebar and pushed the Save
+    // and Submit buttons across the sticky header. The detail it carried is
+    // not lost — the audit panel states the actual finding directly beneath.
+    label: "Privacy stop",
     short: "Privacy",
     icon: "⛨",
     chipClass: "border-rose-400 bg-rose-100 text-rose-900",

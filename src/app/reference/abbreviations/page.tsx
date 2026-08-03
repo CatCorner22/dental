@@ -1,5 +1,6 @@
 import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
 import { STALE_PHRASES, STIGMATIZING_PHRASES, VAGUE_PHRASES } from "@/lib/vocab/vague-phrases";
+import { PLAIN_WORDS } from "@/lib/vocab/plain-language";
 import { SEVERITY_LABELS } from "@/lib/audit/types";
 
 export const metadata = { title: "Abbreviation rules" };
@@ -66,6 +67,34 @@ export default function Page() {
         </thead>
         <tbody>
           {STIGMATIZING_PHRASES.map((p) => (
+            <tr key={p.id}>
+              <td>{p.display}</td>
+              <td>{p.replacement}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h2>Plain words for patient-facing text</h2>
+      <p>
+        This table runs the opposite way to the first one, on purpose. The clinical record wants{" "}
+        <em>radiograph</em>; the patient reading their own summary wants <em>x-ray</em>. Both are
+        right for their own reader, so each list is applied only where it belongs — this one only
+        to fields written for the patient, such as the summary in Universal Core.
+      </p>
+      <p>
+        Nothing here is ever rewritten for you, and the Standardize button is switched off on those
+        fields. A plainer word can carry a different clinical claim. Keeping the term and explaining
+        it once clears the finding: <em>periodontitis (gum disease that has reached the bone)</em>.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Avoid</th>
+            <th>Write instead</th>
+          </tr>
+        </thead>
+        <tbody>
+          {PLAIN_WORDS.map((p) => (
             <tr key={p.id}>
               <td>{p.display}</td>
               <td>{p.replacement}</td>

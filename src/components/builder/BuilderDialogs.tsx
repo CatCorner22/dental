@@ -5,6 +5,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import type { AuditFinding } from "@/lib/audit/types";
 import type { NoteState } from "@/lib/schema/types";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
+import { Character } from "@/components/mascot/Sparkle";
 
 export function ConflictDialog({ onReload, onClose }: { onReload: () => void; onClose: () => void }) {
   // NOT dismissible: "Keep editing here" is a last-writer-wins overwrite of a
@@ -206,7 +207,12 @@ export function SubmitDialog({
             </div>
           </div>
         )}
-        <p className="mb-4 text-xs text-slate-500">{filed.sparkle}</p>
+        {/* The mascot appears at the one moment worth celebrating: a note
+            filed clean. Decorative — the line beside her carries the meaning. */}
+        <div className="mb-4 flex items-center gap-2">
+          <Character id="sparkle" size="sm" />
+          <p className="text-xs text-slate-500">{filed.sparkle}</p>
+        </div>
         <div className="flex flex-wrap justify-end gap-2">
           <button type="button" className="btn-secondary" onClick={onClose}>
             Stay here

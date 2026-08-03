@@ -6,10 +6,18 @@ human-reviewable vector source, which is the form you want for a copyright depos
 
 ## The mark
 
-**Concept: "the note that checks itself."** A note card (writing rules at the top-left)
-holds a squat, friendly molar with a smile on its crown; a teal verification badge
-overlays the corner. It compresses the whole product into one image: a clinical note,
-kept friendly, that does not leave the tool until it has been checked.
+**Concept: "the note that checks itself" — atomic-age edition.** A note card (writing
+rules at the top-left) holds a squat, friendly molar with a smile on its crown, riding
+an **atomic orbit** with a satellite spark; a teal verification badge overlays the
+corner and gold starbursts celebrate. It compresses the whole product into one image:
+a clinical note, kept friendly, that does not leave the tool until it has been checked.
+
+**The retro-future rule: geometry, not costume.** The Space-Age optimism (Googie
+starbursts, orbit rings, capsule shapes) lives in the brand mark, the capsule buttons,
+the cream ground, and the one queue-clear sparkle — never in the clinical surfaces.
+Severity colors, contrast ratios, and the audit's visual language are untouched; a
+tool that is part of a legal record earns trust by staying calm, and earns love by
+being warm at the edges.
 
 The molar follows the practice's own mascot guardrails (`docs/characters.md`): squat and
 wide, rounded cusps, two stubby root-feet, deliberately non-phallic, G-rated.
@@ -22,12 +30,17 @@ wide, rounded cusps, two stubby root-feet, deliberately non-phallic, G-rated.
 
 ## Palette
 
-| Color | Hex | Role |
-|---|---|---|
-| Note blue | `#2B6CB8` | Primary brand color, card ground |
-| Check teal | `#5FB3A8` | Verification accent — the color of "cleared" |
-| Ink slate | `#1F2937` | Wordmark text |
-| White | `#FFFFFF` | Molar, badge check |
+| Color | Hex | Token | Role |
+|---|---|---|---|
+| Note blue | `#2B6CB8` | `brand-blue` | Primary brand color, card ground |
+| Check teal | `#5FB3A8` | `brand-teal` | Verification accent — the color of "cleared" |
+| Orbit coral | `#F26D6D` | `brand-coral` | The atomic orbit and its satellite |
+| Starburst gold | `#F2CE4B` | `brand-gold` | Celebration sparks (queue-clear) |
+| Space navy | `#1E3A5F` | `brand-navy` | Wordmark ink |
+| Cream | `#FBF7EF` | `brand-cream` | App ground — warm paper, not gray |
+| White | `#FFFFFF` | — | Molar, badge check |
+
+Tokens live in [`tailwind.config.ts`](../tailwind.config.ts) under `colors.brand`.
 
 The blues and teal are drawn from the existing character-set palette
 (`docs/characters.md`), so the brand and the mascots read as one family.

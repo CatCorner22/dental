@@ -50,7 +50,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
   if (session?.user && !user) {
     return (
       <html lang="en">
-        <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+        <body className="min-h-screen bg-brand-cream text-slate-900 antialiased">
           <main className="mx-auto max-w-md px-4 py-16 text-center">
             <h1 className="mb-2 text-xl font-bold">This session is no longer valid</h1>
             <p className="mb-6 text-sm text-slate-600">
@@ -68,7 +68,7 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
-      <body className="min-h-screen bg-slate-50 text-slate-900 antialiased">
+      <body className="min-h-screen bg-brand-cream text-slate-900 antialiased">
         <a
           href="#main"
           className="sr-only focus:not-sr-only focus:absolute focus:left-2 focus:top-2 focus:z-50 focus:rounded focus:bg-blue-700 focus:px-3 focus:py-2 focus:text-white"

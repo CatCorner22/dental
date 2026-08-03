@@ -353,6 +353,11 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
               aria-live="polite"
             >
               <span>
+                {light.state === "green" && (
+                  <span className="sparkle-pop mr-1 text-brand-gold" aria-hidden="true">
+                    ✦
+                  </span>
+                )}
                 {light.state === "green"
                   ? totalBlocking === 0
                     ? "Clean on the first pass. That is the standard, and you hit it — the next reader of this record will not have a single question."

@@ -16,26 +16,39 @@ function MarkGlyph({ px }: { px: number }) {
       focusable="false"
       className="shrink-0"
     >
-      <rect x="40" y="40" width="432" height="432" rx="104" fill="#2B6CB8" />
-      <rect x="118" y="120" width="150" height="18" rx="9" fill="#FFFFFF" opacity="0.35" />
-      <rect x="118" y="158" width="96" height="18" rx="9" fill="#FFFFFF" opacity="0.22" />
+      <g transform="rotate(-18 256 256)">
+        <ellipse
+          cx="256"
+          cy="256"
+          rx="242"
+          ry="102"
+          fill="none"
+          stroke="#F26D6D"
+          strokeWidth="14"
+          opacity="0.9"
+        />
+        <circle cx="498" cy="256" r="16" fill="#F26D6D" />
+      </g>
+      <rect x="56" y="56" width="400" height="400" rx="96" fill="#2B6CB8" />
+      <rect x="126" y="128" width="140" height="17" rx="8.5" fill="#FFFFFF" opacity="0.35" />
+      <rect x="126" y="164" width="90" height="17" rx="8.5" fill="#FFFFFF" opacity="0.22" />
       <path
         fill="#FFFFFF"
-        d="M256 196c-16 -14 -42 -14 -56 4c-13 16 -12 40 -4 58c7 15 10 30 12 58c1 16 22 16 25 1c3 -17 6 -29 23 -29c17 0 20 12 23 29c3 15 24 15 25 -1c2 -28 5 -43 12 -58c8 -18 9 -42 -4 -58c-14 -18 -40 -18 -56 -4z"
+        d="M256 200c-16 -14 -42 -14 -56 4c-13 16 -12 40 -4 58c7 15 10 30 12 58c1 16 22 16 25 1c3 -17 6 -29 23 -29c17 0 20 12 23 29c3 15 24 15 25 -1c2 -28 5 -43 12 -58c8 -18 9 -42 -4 -58c-14 -18 -40 -18 -56 -4z"
       />
       <path
-        d="M226 254 q30 24 60 0"
+        d="M226 258 q30 24 60 0"
         fill="none"
         stroke="#2B6CB8"
         strokeWidth="14"
         strokeLinecap="round"
       />
-      <circle cx="376" cy="376" r="84" fill="#5FB3A8" stroke="#FFFFFF" strokeWidth="14" />
+      <circle cx="380" cy="380" r="82" fill="#5FB3A8" stroke="#FFFFFF" strokeWidth="14" />
       <path
-        d="M338 378 l26 26 l50 -56"
+        d="M344 382 l25 25 l48 -54"
         fill="none"
         stroke="#FFFFFF"
-        strokeWidth="26"
+        strokeWidth="25"
         strokeLinecap="round"
         strokeLinejoin="round"
       />

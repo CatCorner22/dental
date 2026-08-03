@@ -1,5 +1,14 @@
 # Set up the ChatGPT Skill (Custom GPT)
 
+> **RETIRED (2026-08-03).** The practice no longer uses ChatGPT for note work — the Smile
+> Notes web app is the only runtime. Everything this skill did now exists in the app with
+> actual enforcement: the standardizer with its fix-or-attest queue, the deterministic
+> audit, verified blocks, and the verifier-gated AI assist (`ASSIST_ENABLED=1`). **Do not
+> load this package into a Custom GPT for daily work** — its terminology tables are no
+> longer maintained and have already drifted from the app's vocab (the app's
+> `/reference` pages and `src/lib/vocab/` are the single source of truth). This folder is
+> kept as historical reference and as source material for `scripts/build-lexicon.mjs`.
+
 This folder is a complete, portable "Skill" package. It standardizes and harmonizes dental-note
 words and phrases so staff drafts come out consistent. It works in ChatGPT (Custom GPT), and the
 same files work in a Claude Project.

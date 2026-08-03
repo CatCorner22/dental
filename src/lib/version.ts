@@ -5,4 +5,9 @@
 // module definitions, or controlled vocabulary.
 // 2.1.0 — plural-preserving first-use shorthand expansion (pluralExpansion):
 //         "SSCs" no longer expands to a singular; counts survive.
-export const RULESET_VERSION = "2.1.0";
+// 2.2.0 — Mockingbird medication-safety gates (kg rule, dose reconciliation,
+//         household units, dental interaction screens), effort gates
+//         (gibberish, unprofessional tone), and anticipatory completeness
+//         rules (imaging interpretation, anesthetic amount, extraction
+//         outcome, prescription duration, consent decision).
+export const RULESET_VERSION = "2.2.0";

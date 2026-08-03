@@ -13,7 +13,13 @@
 // So this validates only what makes a wish USABLE (is there a real sentence in
 // it?), never whether it is a good idea. Judging that is the reader's job.
 
-export type WishCategory = "standards" | "supply" | "feature" | "performance" | "other";
+export type WishCategory =
+  | "standards"
+  | "rule-disagreement"
+  | "supply"
+  | "feature"
+  | "performance"
+  | "other";
 
 export interface CategoryDef {
   id: WishCategory;
@@ -29,6 +35,17 @@ export const WISH_CATEGORIES: CategoryDef[] = [
     label: "Something is below standard",
     hint: "A condition, a process, or equipment that is not where it should be. Say what you saw and where — you do not need to be certain, and you do not need to have a solution.",
     urgent: true
+  },
+  // The escape valve that keeps "no override" honest. The tool never lets a
+  // user force a note past a rule they merely dislike — but a rule can be
+  // wrong, and the person who sees that first is the person it just blocked.
+  // Their disagreement goes here, named and reasoned, for a Team Lead to
+  // settle. The rule stays in force until someone with authority says
+  // otherwise; the disagreement is never silently swallowed.
+  {
+    id: "rule-disagreement",
+    label: "I disagree with a Smile Notes rule",
+    hint: "A rule flagged something you believe is correct as written. Name the rule, quote nothing from the patient note, and say why the rule is wrong or too broad. A Team Lead settles it."
   },
   {
     id: "supply",

@@ -55,12 +55,25 @@ export function meetsRole(role: Role | undefined, min: Role): boolean {
 // Note capabilities
 // ---------------------------------------------------------------------------
 
-// Only a plain "user" is scoped to their own Smile Notes. `readonly` is a
-// practice-wide viewer by design, and lead/manager/admin have oversight.
-// Written as an explicit predicate because the old `role === "user"` spelling
-// gave new roles practice-wide visibility by ACCIDENT rather than by decision.
+// Who can see the whole practice's Smile Notes rather than only their own.
+//
+// An ALLOWLIST, not an exclusion. The previous spelling was `role !== "user"`,
+// which meant every role added in future got practice-wide read on the clinical
+// record by accident — the default was "sees everything" and you had to
+// remember to opt out. Now the default is "sees only their own" and each
+// grant is a deliberate line in this array.
+//
+// `readonly` is on the list on purpose, even though it is the LOWEST rank. The
+// role exists to give someone a practice-wide view with no ability to change
+// anything (a biller, a locum, an outside reviewer). Scope it to "own notes"
+// and the account can see nothing at all, because it can never author a note —
+// the role would have no function. It is a real grant, so it is stated here in
+// one place rather than falling out of a `!==`, and it is the reason a
+// read-only account must be issued as deliberately as a privileged one.
+const PRACTICE_WIDE_READERS: readonly Role[] = ["readonly", "lead", "manager", "admin"];
+
 export function seesAllNotes(role: Role): boolean {
-  return role !== "user";
+  return PRACTICE_WIDE_READERS.includes(role);
 }
 
 // Editing someone else's clinical note is a developer action, not an

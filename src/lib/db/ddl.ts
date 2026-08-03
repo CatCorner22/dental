@@ -81,6 +81,12 @@ export const SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "password_changed_at" timestamp with time zone;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email" text;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "group_email" text;`,
+  // Provenance columns behind the separation-of-duties rules. No FK: these must
+  // survive the referenced account being deleted, since the whole point is to
+  // remember who did something after the fact.
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_at" timestamp with time zone;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "email_changed_by" text;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "created_by_id" text;`,
   `CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
      "id" text PRIMARY KEY NOT NULL,
      "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,

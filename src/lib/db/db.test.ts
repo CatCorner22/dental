@@ -51,7 +51,10 @@ let db: Db;
 let close: () => Promise<void>;
 const note: NoteState = { selectedModuleIds: ["extraction"], values: {} };
 
-async function freshUser(username: string, role: "readonly" | "user" | "admin" = "user") {
+async function freshUser(
+  username: string,
+  role: "readonly" | "user" | "lead" | "manager" | "admin" = "user"
+) {
   return insertUser(db, {
     id: crypto.randomUUID(),
     username,
@@ -332,6 +335,55 @@ describe("db layer (PGlite)", () => {
       const u = await freshUser("solo");
       const res = await mergeUsers(db, u.id, u.id, new Date());
       expect(res.ok).toBe(false);
+    });
+
+    // The authority re-check inside the lock. The route checks first, but it
+    // reads both rows outside the transaction, so a role change landing in
+    // between would widen what the merge may touch.
+    it("re-asserts the actor's ceiling inside the transaction", async () => {
+      const lead = await freshUser("mlead", "lead");
+      const victim = await freshUser("mvictim");
+      const boss = await freshUser("mboss", "manager");
+
+      // A Team Lead may merge two team members.
+      const target = await freshUser("mkeep");
+      expect((await mergeUsers(db, victim.id, target.id, new Date(), { id: lead.id, role: "lead" })).ok)
+        .toBe(true);
+
+      // ...but never a Hierarchy Manager, even if the route were bypassed.
+      const v2 = await freshUser("mvictim2");
+      const up = await mergeUsers(db, boss.id, v2.id, new Date(), { id: lead.id, role: "lead" });
+      expect(up.ok).toBe(false);
+      if (!up.ok) expect(up.reason).toBe("not-allowed");
+      expect((await getUserByUsername(db, "mboss"))?.active).toBe(true);
+    });
+
+    // The puppet-account chain: mint an account whose invite you addressed to
+    // yourself, then move a colleague's live work into it and edit it as them.
+    it("refuses to merge work into an account the actor created", async () => {
+      const lead = await freshUser("plead", "lead");
+      const puppet = await insertUser(db, {
+        id: crypto.randomUUID(),
+        username: "puppet",
+        displayName: "Puppet",
+        role: "user",
+        passHash: "x",
+        active: true,
+        createdById: lead.id
+      });
+      const victim = await freshUser("pvictim");
+      await insertDraft(db, { id: crypto.randomUUID(), ownerId: victim.id, noteState: note });
+
+      const res = await mergeUsers(db, victim.id, puppet.id, new Date(), { id: lead.id, role: "lead" });
+      expect(res.ok).toBe(false);
+      if (!res.ok) expect(res.reason).toBe("not-allowed");
+      // The victim keeps their work and their account.
+      expect(await ownerDraftCount(db, victim.id)).toBe(1);
+      expect((await getUserByUsername(db, "pvictim"))?.active).toBe(true);
+
+      // A Smile Notes Developer is exempt — they are the trusted operator.
+      expect((await mergeUsers(db, victim.id, puppet.id, new Date(), { id: "dev", role: "admin" })).ok)
+        .toBe(true);
     });
 
     it("refuses to merge away the last active developer", async () => {

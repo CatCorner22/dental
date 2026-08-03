@@ -34,6 +34,18 @@ export const users = pgTable("users", {
   // Session revocation watermark: a JWT minted before this instant is dead.
   // Null = the password has never been changed since account creation.
   passwordChangedAt: timestamp("password_changed_at", { withTimezone: true }),
+  // Who last repointed the reset-link destination, and when.
+  //
+  // Changing an address and then mailing yourself the reset link is a complete
+  // account takeover in two requests: you become that person and can sign
+  // Smile Notes in their name. These two columns let the reset-link route
+  // enforce separation of duties — the actor who moved the address is not the
+  // actor who may send a link to it. Nothing else reads them.
+  emailChangedAt: timestamp("email_changed_at", { withTimezone: true }),
+  emailChangedBy: text("email_changed_by"),
+  // Who created this account. Used to stop an actor handing another
+  // clinician's work to an account they themselves minted and control.
+  createdById: text("created_by_id"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 

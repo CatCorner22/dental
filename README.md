@@ -26,13 +26,44 @@ field. History has a note-label column, search, and status filters.
 
 ### Roles
 
-| Role | Can do |
-|---|---|
-| **Read only** | View any draft and the references; no editing or submitting |
-| **User** | Create, auto-save, and submit their own drafts |
-| **Admin** | Everything, plus add / deactivate / delete users, reset passwords, and transfer draft ownership |
+Five roles. Rank governs general access; **user management is governed by a separate capability
+table keyed on the _target's_ role**, which is how "top of the practice, but may only ever add
+Team Leads" is expressed without collapsing into "can do everything below me". Every rule is a
+named predicate in `src/lib/auth/roles.ts`, and every cell below is asserted by a test.
 
-The first admin is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`). Both the
+| Capability | Read only | Team Member | Team Lead | Hierarchy Manager | SN Developer |
+|---|:-:|:-:|:-:|:-:|:-:|
+| Write / submit own Smile Note | – | ✅ | ✅ | ✅ | ✅ |
+| See all practice notes & history | ✅ | own only | ✅ | ✅ | ✅ |
+| Transfer a note to another person | – | – | ✅ | ✅ | ✅ |
+| Add users | – | – | ✅ *(Read only / Team Member)* | ✅ *(Team Lead only)* | ✅ *(any)* |
+| Merge users | – | – | ✅ *(≤ Team Member)* | ✅ *(≤ Team Lead)* | ✅ *(any)* |
+| Send a password-reset **link** | – | – | ✅ *(≤ Team Member)* | ✅ *(≤ Team Lead)* | ✅ *(any)* |
+| See or set a password directly | – | – | **never** | **never** | ✅ |
+| Edit the email on an existing account | – | – | – | ✅ *(≤ Team Lead)* | ✅ |
+| Change a user's role | – | – | – | ✅ *(to Team Lead)* | ✅ *(any)* |
+| Delete a user | – | – | – | ✅ *(≤ Team Lead)* | ✅ |
+| Submit a Data Hygiene Gauntlet ticket | – | – | ✅ | ✅ | ✅ |
+| Read the audit log | – | – | – | ✅ | ✅ |
+
+Two things a deploying practice should know before handing out roles:
+
+- **"Read only" is a practice-wide view of every clinical note.** It is the lowest rank but not
+  the narrowest read — a Team Member sees only their own notes, a read-only account sees
+  everyone's. That is deliberate (the role exists for a biller, a locum, or a reviewer, and
+  scoped to "own notes" it would see nothing at all), but it means a read-only account must be
+  issued as carefully as a privileged one.
+- **Two rules enforce separation of duties**, because either half alone is an account takeover:
+  whoever changed an account's email may not also send its reset link, and nobody may transfer or
+  merge work into an account they created themselves. In both cases a colleague or a Smile Notes
+  Developer can do it, so there is always a way forward — it just takes two people.
+
+Hierarchy Managers must have two different email addresses on file, one of them a management
+group address, so the practice's escalation path is never a single unread mailbox.
+
+The first developer account is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`).
+The `admin` value is kept in the database for backward compatibility; its label is
+"Smile Notes Developer". Both the
 API routes **and the pages** re-read the caller's role and active state fresh from the database
 on every request, so demoting or deactivating a user takes effect on their very next click, not
 when their token expires. The legal-record notice is enforced server-side: until a user

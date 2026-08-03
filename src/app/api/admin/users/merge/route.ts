@@ -55,7 +55,36 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  const result = await mergeUsers(db, sourceId, targetId, new Date());
+  // Merge is the bulk form of transfer — it moves EVERY draft the source owns
+  // in one call — so it carries the same rule. An account you created is an
+  // account whose password you set, so merging a colleague's work into it hands
+  // you write access to all of it at once. Same reasoning as the self-merge
+  // block above, one indirection later.
+  if (target.createdById === guard.user.id && guard.user.role !== "admin") {
+    return Response.json(
+      {
+        error:
+          "You created that account, so you cannot merge work into it. " +
+          "Ask a colleague or a Smile Notes Developer to make this merge."
+      },
+      { status: 403 }
+    );
+  }
+  if (target.id === guard.user.id && guard.user.role !== "admin") {
+    return Response.json(
+      { error: "You cannot merge another person's work into your own account." },
+      { status: 403 }
+    );
+  }
+
+  // The authority checks above ran OUTSIDE the merge transaction, so a role
+  // change landing in between could widen what this call is allowed to touch.
+  // Passing the actor in lets mergeUsers re-assert both ceilings while holding
+  // the lock, against the rows it is actually about to modify.
+  const result = await mergeUsers(db, sourceId, targetId, new Date(), {
+    id: guard.user.id,
+    role: guard.user.role
+  });
   if (!result.ok) {
     const message =
       result.reason === "last-admin"
@@ -64,8 +93,12 @@ export async function POST(req: Request): Promise<Response> {
           ? "Those are the same account."
           : result.reason === "bad-target"
             ? "Merge into an active account that can edit notes — not a deactivated or read-only one."
-            : "Not found.";
-    return Response.json({ error: message }, { status: result.reason === "missing" ? 404 : 409 });
+            : result.reason === "not-allowed"
+              ? "You are not allowed to merge these two accounts."
+              : "Not found.";
+    const status =
+      result.reason === "missing" ? 404 : result.reason === "not-allowed" ? 403 : 409;
+    return Response.json({ error: message }, { status });
   }
 
   await logAction(db, {

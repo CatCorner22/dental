@@ -40,16 +40,47 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // themselves and then edit and file it under their own name, which is
   // exactly the "must not put words in a clinician's record" rule the
   // capability matrix exists to enforce.
+  //
+  // Two corrections to the original spelling of this check:
+  //   - A missing owner row now FAILS CLOSED. `owner && !canActOn(...)` let a
+  //     null owner sail past the ceiling. Unreachable today (drafts.ownerId is
+  //     a foreign key and deleting an owner with drafts is refused) but a
+  //     fail-open default is one migration away from mattering.
+  //   - Your OWN note is exempt. canActOn(lead, "lead") is false, so a Team
+  //     Lead or Hierarchy Manager could not hand off a note they wrote
+  //     themselves — the guard was stronger than the matrix intends and broke
+  //     an ordinary hand-off.
   const owner = await getUserById(db, draft.ownerId);
-  if (owner && !canActOn(guard.user.role, owner.role)) {
+  const ownNote = draft.ownerId === guard.user.id;
+  if (!ownNote && (!owner || !canActOn(guard.user.role, owner.role))) {
     return Response.json(
-      { error: `You cannot reassign a Smile Note owned by a ${ROLE_LABEL[owner.role]}.` },
+      {
+        error: owner
+          ? `You cannot reassign a Smile Note owned by a ${ROLE_LABEL[owner.role]}.`
+          : "That Smile Note's owner could not be verified."
+      },
       { status: 403 }
     );
   }
   if (toUserId === guard.user.id && guard.user.role !== "admin") {
     return Response.json(
       { error: "You cannot transfer a Smile Note to yourself." },
+      { status: 403 }
+    );
+  }
+
+  // An account you created is an account you control: you chose the address the
+  // invite went to, so you set its password. Handing another clinician's work
+  // to it is the same act as transferring to yourself, one indirection later —
+  // and it is how a Team Lead would get write access to a record the matrix
+  // says they may reassign but never author. Treated identically to self.
+  if (to.createdById === guard.user.id && guard.user.role !== "admin") {
+    return Response.json(
+      {
+        error:
+          "You created that account, so you cannot transfer work into it. " +
+          "Ask a colleague or a Smile Notes Developer to make this transfer."
+      },
       { status: 403 }
     );
   }

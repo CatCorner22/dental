@@ -16,10 +16,15 @@ import {
 import { emailPolicyError, normalizeEmail } from "@/lib/auth/emails";
 import { issueResetLink } from "@/lib/auth/issueResetLink";
 import { generateResetToken } from "@/lib/auth/resetToken";
+import { checkThrottle, inviteKey, recordFailure } from "@/lib/auth/throttle";
 
 export const runtime = "nodejs";
 
 const ROLES: Role[] = ["readonly", "user", "lead", "manager", "admin"];
+
+// Onboarding a new hire happens in bursts — a practice taking on four people
+// in one sitting is normal, a script minting forty is not.
+const INVITE_FREE_ATTEMPTS = 12;
 
 export async function GET(): Promise<Response> {
   // Anyone who manages users needs to see them. What they may DO to each row is
@@ -109,6 +114,19 @@ export async function POST(req: Request): Promise<Response> {
   }
 
   const db = await getDb();
+
+  // Creating an account sends mail somebody else pays for, and an unmetered
+  // loop here is both a mail bomb and a way to fill the user table. Metered
+  // before the work, matching the contract every other sending route follows.
+  const now = new Date();
+  const meter = await checkThrottle(db, inviteKey(guard.user.id), now);
+  if (meter.locked) {
+    return Response.json(
+      { error: `That is a lot of new accounts at once. Try again in ${meter.retryAfterSec} seconds.` },
+      { status: 429, headers: { "retry-after": String(meter.retryAfterSec) } }
+    );
+  }
+
   // Stored lowercase so "Nurse" and "nurse" can never be two people; the
   // unique-constraint catch turns a lost race into a clean 409, not a 500.
   const uname = username.toLowerCase();
@@ -127,7 +145,12 @@ export async function POST(req: Request): Promise<Response> {
       passHash: await hashPassword(settingDirectly ? password : generateResetToken()),
       active: true,
       email: email || null,
-      groupEmail: groupEmail || null
+      groupEmail: groupEmail || null,
+      // Remembered so this account can never become the destination of a
+      // transfer or merge performed by the same person. Whoever chose the
+      // invite address controls the mailbox, therefore controls the account —
+      // handing them another clinician's work would let them edit and file it.
+      createdById: guard.user.id
     });
   } catch {
     return Response.json({ error: "That username is taken." }, { status: 409 });
@@ -140,9 +163,14 @@ export async function POST(req: Request): Promise<Response> {
     detail: role
   });
 
+  // Every created account counts against the meter, not only failures — the
+  // cost being limited here is the account and the mail, both of which a
+  // SUCCESSFUL call incurs.
+  await recordFailure(db, inviteKey(guard.user.id), now, INVITE_FREE_ATTEMPTS);
+
   let invited: boolean | undefined;
   if (!settingDirectly) {
-    const sent = await issueResetLink(db, created, guard.user.id, new Date(), "welcome");
+    const sent = await issueResetLink(db, created, guard.user.id, now, "welcome");
     invited = sent.ok;
     await logAction(db, {
       actorId: guard.user.id,

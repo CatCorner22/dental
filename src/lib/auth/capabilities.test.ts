@@ -183,6 +183,16 @@ describe("other capabilities", () => {
     }
   });
 
+  // The grant is deliberate but non-monotonic — rank 0 reads MORE than rank 1 —
+  // so it is pinned here. A read-only account is a practice-wide view of the
+  // clinical record and must be issued as carefully as a privileged one.
+  it("keeps practice-wide read an explicit allowlist, not an exclusion", () => {
+    expect(seesAllNotes("user")).toBe(false);
+    for (const r of ["readonly", "lead", "manager", "admin"] as Role[]) {
+      expect(seesAllNotes(r), r).toBe(true);
+    }
+  });
+
   it("requires two emails only for a Hierarchy Manager", () => {
     expect(requiresTwoEmails("manager")).toBe(true);
     for (const r of ["readonly", "user", "lead", "admin"] as Role[]) {

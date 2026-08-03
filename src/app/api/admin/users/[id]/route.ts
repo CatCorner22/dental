@@ -29,6 +29,17 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   const target = await getUserById(db, id);
   if (!target) return Response.json({ error: "Not found." }, { status: 404 });
 
+  // Defence in depth. canActOn already refuses a self-target today, but only
+  // because no practice role's ceiling equals its own rank — a property of the
+  // MANAGE_CEILING table, not of this route. Raise any ceiling and self-service
+  // promotion appears here silently. Say it out loud instead.
+  if (id === guard.user.id) {
+    return Response.json(
+      { error: "You cannot use this screen on your own account." },
+      { status: 403 }
+    );
+  }
+
   // Authority is checked against the TARGET's current role, so no one can act
   // on an account more powerful than they are allowed to touch.
   if (!canDeactivateOrDelete(guard.user.role, target.role)) {
@@ -49,6 +60,8 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     active?: boolean;
     email?: string | null;
     groupEmail?: string | null;
+    emailChangedAt?: Date;
+    emailChangedBy?: string;
   } = {};
   if (typeof b.displayName === "string") {
     const cleanName = sanitizeIdentity(b.displayName);
@@ -85,6 +98,14 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     }
     if (typeof b.email === "string") patch.email = normalizeEmail(b.email) || null;
     if (typeof b.groupEmail === "string") patch.groupEmail = normalizeEmail(b.groupEmail) || null;
+    // Stamp WHO moved the delivery address, so the reset-link route can refuse
+    // to let the same person also mail the link there. Only stamped when the
+    // address genuinely changes — re-saving the same value must not lock a
+    // manager out of a reset they had every right to send.
+    if (patch.email !== undefined && (patch.email ?? "") !== (target.email ?? "")) {
+      patch.emailChangedAt = new Date();
+      patch.emailChangedBy = guard.user.id;
+    }
   }
   if (Object.keys(patch).length === 0) {
     return Response.json({ error: "Nothing valid to update." }, { status: 400 });
@@ -130,6 +151,17 @@ export async function DELETE(_req: Request, { params }: Ctx): Promise<Response> 
   const db = await getDb();
   const target = await getUserById(db, id);
   if (!target) return Response.json({ error: "Not found." }, { status: 404 });
+
+  // Defence in depth. canActOn already refuses a self-target today, but only
+  // because no practice role's ceiling equals its own rank — a property of the
+  // MANAGE_CEILING table, not of this route. Raise any ceiling and self-service
+  // promotion appears here silently. Say it out loud instead.
+  if (id === guard.user.id) {
+    return Response.json(
+      { error: "You cannot use this screen on your own account." },
+      { status: 403 }
+    );
+  }
   if (!canDeleteUser(guard.user.role, target.role)) {
     return Response.json(
       { error: `You cannot delete a ${ROLE_LABEL[target.role]} account. Deactivate it instead.` },

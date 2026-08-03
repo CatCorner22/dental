@@ -137,3 +137,17 @@ export function passwordCheckKey(userId: string): string {
 export function resendKey(draftId: string): string {
   return `resend:${draftId}`;
 }
+
+// Keyed by the TARGET account, not the actor. Looping reset links at one
+// person is a mail bomb aimed at them, and — because issuing a link retires
+// the previous one — a way to break a reset they are halfway through. Two
+// different managers hammering the same colleague draw from one budget.
+export function resetLinkKey(userId: string): string {
+  return `resetlink:${userId}`;
+}
+
+// Keyed by the actor: the thing being metered is one person minting accounts,
+// each of which sends mail and adds a row.
+export function inviteKey(actorId: string): string {
+  return `invite:${actorId}`;
+}

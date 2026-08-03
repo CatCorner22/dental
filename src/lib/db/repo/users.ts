@@ -1,6 +1,7 @@
 import { and, eq, isNull, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, users, type NewUser, type UserRow } from "../schema";
+import { canMergeUsers, type Role } from "@/lib/auth/roles";
 
 export async function countUsers(db: Db): Promise<number> {
   const rows = await db.select({ n: sql<number>`count(*)::int` }).from(users);
@@ -29,7 +30,20 @@ export async function listUsers(db: Db): Promise<UserRow[]> {
 export async function updateUser(
   db: Db,
   id: string,
-  patch: Partial<Pick<UserRow, "displayName" | "role" | "active" | "passHash" | "passwordChangedAt">>
+  patch: Partial<
+    Pick<
+      UserRow,
+      | "displayName"
+      | "role"
+      | "active"
+      | "passHash"
+      | "passwordChangedAt"
+      | "email"
+      | "groupEmail"
+      | "emailChangedAt"
+      | "emailChangedBy"
+    >
+  >
 ): Promise<UserRow | undefined> {
   const [row] = await db.update(users).set(patch).where(eq(users.id, id)).returning();
   return row;
@@ -81,7 +95,7 @@ export async function createFirstAdminGuarded(db: Db, user: NewUser): Promise<"c
 
 export type MergeResult =
   | { ok: true; draftsMoved: number; submissionsKept: number }
-  | { ok: false; reason: "same-user" | "missing" | "last-admin" | "bad-target" };
+  | { ok: false; reason: "same-user" | "missing" | "last-admin" | "bad-target" | "not-allowed" };
 
 // Merge a duplicate account into the one the person actually uses.
 //
@@ -96,7 +110,12 @@ export async function mergeUsers(
   db: Db,
   sourceId: string,
   targetId: string,
-  now: Date
+  now: Date,
+  // The caller's authority, re-asserted INSIDE the lock. The route checks the
+  // ceilings first, but it reads both rows outside this transaction, so a role
+  // change landing in between would widen what the merge may touch. Optional so
+  // existing callers and tests keep working; when supplied it is authoritative.
+  actor?: { id: string; role: Role }
 ): Promise<MergeResult> {
   if (sourceId === targetId) return { ok: false, reason: "same-user" };
   return db.transaction(async (tx) => {
@@ -106,6 +125,16 @@ export async function mergeUsers(
     const [source] = await tx.select().from(users).where(eq(users.id, sourceId)).limit(1);
     const [target] = await tx.select().from(users).where(eq(users.id, targetId)).limit(1);
     if (!source || !target) return { ok: false, reason: "missing" as const };
+
+    if (actor && actor.role !== "admin") {
+      const allowed =
+        canMergeUsers(actor.role, source.role) &&
+        canMergeUsers(actor.role, target.role) &&
+        target.createdById !== actor.id &&
+        target.id !== actor.id &&
+        source.id !== actor.id;
+      if (!allowed) return { ok: false, reason: "not-allowed" as const };
+    }
     // The target inherits live work, so it must be able to do that work: an
     // inactive or read-only target would strand every moved draft with an owner
     // who can never edit or file it, recoverable only by a Developer.

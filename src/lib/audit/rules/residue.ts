@@ -1,5 +1,6 @@
 import type { AuditFinding } from "../types";
 import { STALE_PHRASES } from "@/lib/vocab/vague-phrases";
+import { MASK_TOKEN_PATTERN } from "../maskPhi";
 
 // Template-residue checks from the formal audit pass: unresolved
 // placeholders, markers, stale copy-forward wording, duplicate sentences.
@@ -40,11 +41,26 @@ const RESIDUE_PATTERNS: { id: string; pattern: RegExp; message: string }[] = [
   }
 ];
 
+// A redaction token is FINISHED content, not residue.
+//
+// This rule exists to catch a placeholder nobody filled in — "[patient name]",
+// "[date]". A mask token is the opposite: a clinician looked at a flagged
+// identifier and deliberately replaced it. Without this exemption, masking
+// left the note with S1 findings, and S1 blocks email — so taking the safe
+// option made the note unfileable and pushed the clinician straight back to
+// waiving the privacy stop, which is the behaviour masking exists to replace.
+//
+// Anchored to the exact token shape, so "[anything else]" is still residue.
+function isMaskToken(matched: string): boolean {
+  return new RegExp(`^${MASK_TOKEN_PATTERN.source}$`).test(matched);
+}
+
 export function runResidueRule(text: string): AuditFinding[] {
   const findings: AuditFinding[] = [];
   for (const p of RESIDUE_PATTERNS) {
     const seen = new Map<string, number>();
     for (const m of text.matchAll(p.pattern)) {
+      if (isMaskToken(m[0])) continue;
       seen.set(m[0], (seen.get(m[0]) ?? 0) + 1);
     }
     for (const [matched, count] of seen) {

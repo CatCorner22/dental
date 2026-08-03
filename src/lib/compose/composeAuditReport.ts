@@ -3,6 +3,7 @@ import { SEVERITY_LABELS } from "@/lib/audit/types";
 import type { ModuleDef } from "@/lib/schema/types";
 import { MODULES_BY_ID } from "@/lib/modules";
 import { RULESET_VERSION } from "@/lib/version";
+import { visibleText } from "@/lib/audit/engine";
 
 export const AUDIT_VERSION = `deterministic-checker ${RULESET_VERSION}`;
 
@@ -12,8 +13,44 @@ function ownerFor(severity: string): string {
   return "clinician";
 }
 
+// Every cell carries arbitrary note prose — the duplicate-sentence rule puts up
+// to 80 characters of whatever the clinician typed into the Location column.
+//
+// This escaped `|` and `\n` but not `\r` or backticks. A lone carriage return
+// is a line ending to a markdown renderer, so note text containing "\r```"
+// landed a fence at column 0: the Issues table ended early and the rest of the
+// document — Terms changed, the Draft note, the EDR finalization checklist —
+// was swallowed into a code block. In the app that is invisible (history
+// renders frozen text in a <pre>), but the frozen .md is emailed as an
+// attachment and opened in real markdown viewers, which is exactly where the
+// legal record needs to survive intact.
+//
+// All line endings collapse, and backticks are neutralized so no fence can
+// open from inside a cell.
 function cell(text: string): string {
-  return text.replace(/\|/g, "\\|").replace(/\n/g, " ");
+  return text
+    .replace(/\|/g, "\\|")
+    .replace(/[\r\n\u2028\u2029]+/g, " ")
+    .replace(/`/g, "'");
+}
+
+export interface PhiAttestation {
+  stops: number;
+  reason: string;
+  attestedBy: string;
+}
+
+// User prose entering a frozen legal document: newlines collapsed so it cannot
+// forge a heading or a second section, length bounded, pipes escaped in case
+// it is ever moved into a table. The same shape of defense the select-value
+// validator uses against a forged "## Submission record".
+function frozenLine(text: string): string {
+  // visibleText FIRST: zero-width and bidi format characters are not \s, so
+  // without this a reason made of them survives the collapse and the record's
+  // "Reason given:" line renders blank — an attestation nobody can read is not
+  // an attestation. The validator strips the same set, so what was checked is
+  // what is written.
+  return visibleText(text).replace(/\s+/g, " ").replace(/\|/g, "\\|").trim().slice(0, 300);
 }
 
 // Matches the "Audit output" format in the formal audit pass
@@ -21,7 +58,8 @@ function cell(text: string): string {
 export function composeAuditReport(
   report: AuditReport,
   activeModules: ModuleDef[],
-  draft: string
+  draft: string,
+  phiAttestation?: PhiAttestation
 ): string {
   const lines: string[] = [
     "# Dental-note audit",
@@ -55,6 +93,25 @@ export function composeAuditReport(
   });
   if (report.findings.length === 0) {
     lines.push("| — | — | — | — | No finding from the deterministic checker. | Clinician review still required. | clinician |");
+  }
+
+  // The waiver goes INTO the frozen record, not only into the audit log. This
+  // is the one safety gate a person can override, and before this the filed
+  // document itself read as though the stops had simply been resolved — the
+  // attestation lived in a log table most readers will never open. A legal
+  // record that omits "a human overrode the privacy screen, and said why"
+  // is not a record of what happened.
+  if (phiAttestation) {
+    lines.push(
+      "",
+      "## Privacy stops overridden by attestation",
+      "",
+      `- Stops overridden: ${phiAttestation.stops}`,
+      `- Attested by: ${frozenLine(phiAttestation.attestedBy)}`,
+      `- Reason given: ${frozenLine(phiAttestation.reason)}`,
+      "",
+      "The flagged text remains in the note below exactly as written. The attestation is the signer's statement that none of it identifies a person; the checker's findings above stand as findings."
+    );
   }
 
   lines.push(

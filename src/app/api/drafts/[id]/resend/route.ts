@@ -88,7 +88,11 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
     // The frozen copies, verbatim — never recomposed. A resend must deliver
     // the document the ticket names, not today's rendering of it.
     frozenNote: submission.noteMarkdown,
-    frozenAudit: submission.auditReport
+    frozenAudit: submission.auditReport,
+    // A resend is a later message in the SAME conversation as the original,
+    // not a second thread about the same ticket. Any attempt > 0 points its
+    // References back at the original, which is what mail clients group on.
+    attempt: 1
   });
 
   if (!outcome.attempted) {

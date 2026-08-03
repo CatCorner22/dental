@@ -81,6 +81,45 @@ export function buildReport(findings: AuditFinding[]): AuditReport {
   return { findings: sorted, counts, status, phiStops };
 }
 
+// An attestation has to say something. The old floor was five characters —
+// checked only in the browser, so a tampered client could waive every privacy
+// stop with no reason at all, and the server logged "(no reason given)" and
+// filed the note anyway. The gate the whole compliance story leans on was
+// client-side theater.
+//
+// One validator, used by BOTH the dialog and the submit route, so the two can
+// never disagree about what counts as a reason. The bar is deliberately about
+// substance, not length alone: four words that state what the flagged text
+// actually is ("tooth numbers not a date", "lot number of the implant").
+// Sincerity cannot be validated; friction plus a named, frozen record is the
+// enforceable part.
+export const PHI_ATTESTATION_RULE =
+  "State what the flagged text actually is, in at least four words (20 characters or more).";
+
+// Zero-width and format characters are NOT matched by \s, so a reason built
+// from them passed every check — 23 characters, 4 "words", 5 distinct — while
+// rendering as blank to every human who would ever read it. The attestation
+// would have been written into the frozen legal record and the audit log as
+// empty space: exactly the waive-with-no-reason failure this validator exists
+// to close, wearing a costume.
+//
+// Stripped rather than rejected, and stripped in the SAME helper the frozen
+// record uses, so what gets validated is what gets read.
+const INVISIBLE =
+  /[\u00AD\u180E\u200B-\u200F\u202A-\u202E\u2060-\u2064\uFEFF]/g;
+
+export function visibleText(text: string): string {
+  return text.replace(INVISIBLE, "");
+}
+
+export function isValidPhiAttestation(reason: string): boolean {
+  const trimmed = visibleText(reason).trim();
+  if (trimmed.length < 20) return false;
+  if (trimmed.split(/\s+/).filter(Boolean).length < 4) return false;
+  // "aaaaaaaaaaaaaaaaaaaa a a a" — length and word games with no content.
+  return new Set(trimmed.replace(/\s/g, "").toLowerCase()).size >= 5;
+}
+
 // phiOverridden: the user completed the explicit override dialog and attested
 // that every flagged item was reviewed and none is an identifier.
 export function computeGates(report: AuditReport, phiOverridden: boolean): AuditGates {

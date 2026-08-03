@@ -19,6 +19,7 @@ export function statusForNote(
   const status = deriveDraftStatus({
     hasContent,
     counts: report.counts,
+    phiStops: report.phiStops.length,
     submitted: opts.submitted,
     lastSendFailed: opts.lastSendFailed
   });

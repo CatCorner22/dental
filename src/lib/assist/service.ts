@@ -1,4 +1,5 @@
 import { runPhiRule } from "@/lib/audit/rules/phi";
+import { retrieveContext } from "./retrieval";
 import { verifyMeaning, type VerifyRejection } from "@/lib/verify/verifyMeaning";
 import {
   ASSIST_PROMPT_VERSION,
@@ -42,7 +43,14 @@ export function getAssistConfig(
 export type GenerateFn = (args: { system: string; prompt: string }) => Promise<string>;
 
 export type AssistOutcome =
-  | { ok: true; text: string; capability: AssistCapability; promptVersion: string }
+  | {
+      ok: true;
+      text: string;
+      capability: AssistCapability;
+      promptVersion: string;
+      /** Which practice-standards sections were retrieved into the prompt. */
+      retrievedSources: string[];
+    }
   | {
       ok: false;
       code: "phi-blocked" | "verifier-rejected" | "model-error";
@@ -75,9 +83,17 @@ export async function runAssist(
     };
   }
 
+  // Retrieval: the practice's own standards, selected by what the text
+  // actually contains, appended to the system prompt. Read from the same
+  // tables the deterministic pass enforces, so it can never drift from them.
+  const retrieved = retrieveContext(input);
+  const system = retrieved.text
+    ? `${SYSTEM_PROMPTS[capability]}\n\n--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}`
+    : SYSTEM_PROMPTS[capability];
+
   let raw: string;
   try {
-    raw = await generate({ system: SYSTEM_PROMPTS[capability], prompt: input });
+    raw = await generate({ system, prompt: input });
   } catch {
     return {
       ok: false,
@@ -101,5 +117,11 @@ export async function runAssist(
     };
   }
 
-  return { ok: true, text: output, capability, promptVersion: ASSIST_PROMPT_VERSION };
+  return {
+    ok: true,
+    text: output,
+    capability,
+    promptVersion: ASSIST_PROMPT_VERSION,
+    retrievedSources: retrieved.sources
+  };
 }

@@ -1,4 +1,4 @@
-import { desc, like, not, or } from "drizzle-orm";
+import { and, desc, eq, like, not, or } from "drizzle-orm";
 import type { Db } from "../client";
 import { auditLog, type AuditLogRow } from "../schema";
 
@@ -61,6 +61,18 @@ export async function logAction(
 //                management action, with routine successful sign-ins removed.
 //   "all"      — no filter (default).
 export type AuditFilter = "all" | "auth" | "security";
+
+// The assist rows for one draft, oldest first — folded into the frozen
+// filing as AI provenance. Details only ("normalize v1.0.0 [sources]");
+// never note text, which no audit row carries anyway.
+export async function assistEventsForDraft(db: Db, draftId: string): Promise<string[]> {
+  const rows = await db
+    .select({ detail: auditLog.detail })
+    .from(auditLog)
+    .where(and(eq(auditLog.action, "assist.used"), eq(auditLog.target, draftId)))
+    .orderBy(auditLog.at, auditLog.id);
+  return rows.map((r) => r.detail ?? "").filter(Boolean);
+}
 
 export async function listAuditLog(
   db: Db,

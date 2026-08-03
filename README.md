@@ -66,6 +66,11 @@ Two things a deploying practice should know before handing out roles:
 Hierarchy Managers must have two different email addresses on file, one of them a management
 group address, so the practice's escalation path is never a single unread mailbox.
 
+Accounts can enable **TOTP two-factor authentication** (any authenticator app) from
+`/account`: a live code is required at sign-in, checked only after the password verifies and at
+the same throttle cost, so the second factor never becomes a free oracle. A lost device is
+reset by a Smile Notes Developer as a named, logged event.
+
 The first developer account is created at `/setup` (or from `ADMIN_USERNAME` / `ADMIN_PASSWORD`).
 The `admin` value is kept in the database for backward compatibility; its label is
 "Smile Notes Developer". Both the
@@ -118,10 +123,21 @@ so a later change to the templates or rules never rewrites what a past note said
 `RULESET_VERSION` constant is stamped everywhere, and CI (`.github/workflows/ci.yml`) runs
 typecheck + tests + build on every push and PR.
 
-### Encouragement (personal only)
+### Encouragement, progression, and the store (privacy stated exactly)
 
-Each user sees their own submission count, first-pass rate, clean-note streak, a few badges, and
-Sparkle the tooth mascot's (deterministic, non-AI) micro-copy — no cross-staff comparison.
+Each user sees their own submission count, first-pass rate, clean-note streak, badges, lifetime
+rank with XP, a points balance, a 30-day GPA trend, and Sparkle the tooth mascot's
+(deterministic, non-AI) micro-copy. Every filed note carries a frozen **GPA** (Completeness /
+Specificity / Consistency / billing-narrative Justification) derived from the audit report —
+never a second filing gate. Points from clean notes spend in the **clinic store** (`/store`,
+practice-fulfilled rewards, lead-approved), and the **training arena** (`/training`) pays double
+bounties on planted-defect practice cases checked by the real audit engine.
+
+The visibility contract, stated exactly because "no cross-staff comparison" stopped being the
+whole truth when coaching arrived: **peers never see each other's numbers**. A Team Lead's
+dashboard (`/admin/team`) shows practice-wide aggregates and, per person, a coaching **band**
+(thriving / cruising / support offered) with one tip — never per-note scores, never a ranked
+list. The personal dashboard prints this rule where every user can read it.
 
 ### Team-spirit lines
 
@@ -143,7 +159,7 @@ Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by 
 |---|---|
 | `src/` | Next.js 15 web app: note builder, standardizer with resolution queue, audit engine, AI assist, email export, reference pages |
 | `skill/` | **Retired** ChatGPT Custom GPT package, kept as historical reference — the reference pages and vocab tables in `src/` are the single terminology truth |
-| `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 30 add-ons), the guided staff process, and the formal audit pass |
+| `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 31 add-ons), the guided staff process, and the formal audit pass |
 | `knowledge/` | Research digests: Curve Hero benchmark, TN law, industry standards and medication safety, litigation patterns |
 | `public/brand/` | Original Smile Notes logomark and lockup (see `docs/brand.md`) |
 | `scripts/build-lexicon.mjs` | Regenerates the spelling lexicon from the skill documents |

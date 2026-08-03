@@ -5,6 +5,7 @@ import {
   runInteractionRule,
   runMedicationSafetyRules,
   runMixedUnitsRule,
+  runOpioidPmpRule,
   runWeightUnitRule
 } from "./medication-safety";
 
@@ -150,5 +151,36 @@ describe("interaction screens", () => {
     for (const f of all) {
       expect(f.suggestion ?? "").not.toMatch(/did you mean|should be \d|correct dose/i);
     }
+  });
+});
+
+describe("opioid PMP/CSMD gate", () => {
+  it("stops an opioid prescription with no documented database check", () => {
+    const f = runOpioidPmpRule("Prescribed hydrocodone 5/325, 8 tablets, for post-operative pain.");
+    expect(f).toHaveLength(1);
+    expect(f[0].severity).toBe("S1");
+    expect(f[0].message).toMatch(/CSMD|PMP/);
+  });
+
+  it("recognizes brand names and Tylenol #3", () => {
+    expect(runOpioidPmpRule("Rx Percocet sent to pharmacy.")).toHaveLength(1);
+    expect(runOpioidPmpRule("Prescribed Tylenol #3 for three days.")).toHaveLength(1);
+  });
+
+  it("is satisfied by a recorded check, in either word order", () => {
+    expect(
+      runOpioidPmpRule("CSMD reviewed prior to prescribing. Prescribed hydrocodone 5/325, 8 tablets.")
+    ).toHaveLength(0);
+    expect(
+      runOpioidPmpRule("Prescribed tramadol 50 mg. Checked the prescription monitoring database before sending.")
+    ).toHaveLength(0);
+  });
+
+  it("stays silent when the opioid is history, not a prescription", () => {
+    expect(runOpioidPmpRule("Medical history: prior oxycodone use after knee surgery.")).toHaveLength(0);
+  });
+
+  it("stays silent for non-opioid prescriptions", () => {
+    expect(runOpioidPmpRule("Prescribed ibuprofen 600 mg for 5 days.")).toHaveLength(0);
   });
 });

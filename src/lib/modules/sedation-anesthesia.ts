@@ -98,12 +98,40 @@ export const sedationAnesthesia: ModuleDef = {
       title: "Intraoperative record",
       fields: [
         {
+          id: "emergency-prep",
+          type: "select",
+          label: "Emergency equipment, reversal agents, and rescue readiness confirmed before sedation",
+          required: true,
+          options: opts("confirmed for the depth intended and one level deeper", "unresolved"),
+          helpText:
+            "The rescue standard: the team must be prepared to rescue from one level deeper than intended. A note that cannot say this was confirmed is a note the Board reads twice."
+        },
+        {
           id: "drugs",
           type: "select",
-          label: "Drugs, doses, units, routes, and actual times",
+          label: "Drugs, doses, units, routes, and actual times — including local anesthetics",
           required: true,
           options: opts("recorded in the time-oriented anesthesia record only"),
-          helpText: "Never restate, calculate, or convert doses in this draft."
+          helpText:
+            "Never restate, calculate, or convert doses in this draft. Local anesthetic agents and amounts belong in the same time-oriented log as the sedatives."
+        },
+        {
+          id: "monitors-used",
+          type: "multiselect",
+          label: "Monitors in use",
+          required: true,
+          options: opts(
+            "pulse oximetry (SpO2)",
+            "blood pressure",
+            "heart rate",
+            "respiratory rate",
+            "capnography (ETCO2)",
+            "ECG",
+            "direct observation of consciousness"
+          ),
+          joiner: ", ",
+          helpText:
+            "WHICH monitors ran is narrative; their readings live in the time-oriented record. Capnography is expected for moderate sedation and deeper unless the record explains otherwise."
         },
         {
           id: "monitors",

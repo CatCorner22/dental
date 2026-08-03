@@ -21,6 +21,13 @@ import { formatEasternTime } from "@/lib/tickets/etTime";
 import { slugifyTitle } from "@/lib/tickets/slug";
 import { composeStamp } from "@/lib/tickets/stamp";
 import { RULESET_VERSION } from "@/lib/version";
+import { checkFilingAuthority } from "@/lib/auth/approval";
+import { deriveGpa } from "@/lib/gpa/deriveGpa";
+import { assistEventsForDraft } from "@/lib/db/repo/auditLog";
+import { statRowsForUser } from "@/lib/db/repo/submissions";
+import { computeStats } from "@/lib/stats/computeStats";
+import { awardForSubmission, awardOnce } from "@/lib/db/repo/gamify";
+import { BADGES } from "@/lib/stats/badges";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
 import { sparkleLine } from "@/lib/stats/sparkle";
 
@@ -100,6 +107,20 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // Server composes and runs the FULL audit — the client is never trusted.
   const note = draft.noteState;
   const modules = activeModules(note.selectedModuleIds);
+
+  // Approve & Lock: a sedation or robotic record, or a note carrying a
+  // dentist's assessment/plan, is FILED by a dentist — the filer's name is
+  // what freezes onto the legal record as the licensed approver. The author
+  // transfers the draft; the transfer rail keeps their authorship on the
+  // record. Checked before any gate so the person hears the real reason, not
+  // a downstream symptom.
+  const filing = checkFilingAuthority(guard.user.clinicalRole, modules, note);
+  if (!filing.allowed) {
+    return Response.json(
+      { error: filing.message, code: "dentist-filing-required" },
+      { status: 403 }
+    );
+  }
   // Resolved ONCE, here, and frozen below. Reading the office name at file
   // time is what makes it a fact about the encounter rather than a live lookup
   // that a later rename would silently rewrite.
@@ -137,6 +158,18 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const submittedAtEt = formatEasternTime(now);
   const filenameBase = slugifyTitle(draft.title);
 
+  // The GPA, derived from the report above and frozen with the filing. Never
+  // a gate — the gates already ran; this is the grade on what passed them.
+  const grade = deriveGpa(report, note, modules);
+  // AI provenance: every assist event recorded against this draft, folded in
+  // as identifiers (capability, prompt version, sources). Empty means no AI
+  // touched this note's text — which is itself a statement worth freezing.
+  const assistEvents = await assistEventsForDraft(db, draft.id);
+  const assistProvenance =
+    assistEvents.length > 0
+      ? { events: assistEvents, gpaVersion: grade.gpaVersion }
+      : { events: [], gpaVersion: grade.gpaVersion };
+
   // File atomically: claim, reserve the ticket, and freeze the immutable
   // copies in ONE transaction. Of any concurrent submits, exactly one wins;
   // a mid-way failure rolls the whole thing back so the draft stays
@@ -157,6 +190,9 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
         format,
         ruleVersion: RULESET_VERSION,
         auditStatus: report.status,
+        gpa: grade.gpa.toFixed(2),
+        gpaSubscores: grade.subscores as unknown as Record<string, number>,
+        assistProvenance,
         officeId: draft.officeId,
         officeName
       },
@@ -215,6 +251,34 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     );
   }
   const ticket = filed.ticket;
+
+  // The economy (best-effort, like the email): the note is FILED; a points
+  // hiccup must never look like a filing failure. Idempotency lives in the
+  // database (partial unique index on the ledger), so a retry cannot
+  // double-pay. Badge bonuses are keyed per badge the same way.
+  try {
+    const rows = await statRowsForUser(db, guard.user.id);
+    const freshStats = computeStats(rows);
+    await awardForSubmission(db, {
+      userId: guard.user.id,
+      submissionId: filed.submissionId,
+      gpa: grade.gpa,
+      streak: freshStats.currentStreak
+    });
+    for (const badgeId of freshStats.badges) {
+      const bonus = BADGES[badgeId].bonus;
+      if (!bonus) continue;
+      await awardOnce(db, {
+        userId: guard.user.id,
+        refType: "badge",
+        refId: badgeId,
+        points: bonus,
+        reason: `badge:${badgeId}`
+      });
+    }
+  } catch {
+    // A missing award is a support question; a failed filing is an outage.
+  }
 
   // Email (best-effort): the note is already filed; a send failure marks the
   // draft resendable, it never un-files the ticket.

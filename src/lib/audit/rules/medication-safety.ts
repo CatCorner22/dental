@@ -392,12 +392,55 @@ export function runInteractionRule(text: string): AuditFinding[] {
   return findings;
 }
 
+// ---------------------------------------------------------------------------
+// Controlled-substance prescriptions: the PMP/CSMD gate.
+//
+// Tennessee requires prescribers to check the Controlled Substance Monitoring
+// Database before prescribing opioids (with narrow exceptions). A note that
+// records an opioid prescription without recording the database check is a
+// note that documents a statutory step as skipped — whether or not it was.
+// Flag-only, S1: the fix is one sentence, and the attest path covers the
+// statutory exceptions (e.g. certain low-quantity or post-procedure cases),
+// which only the prescriber can claim.
+
+const OPIOIDS =
+  /\b(?:hydrocodone|vicodin|norco|lortab|oxycodone|percocet|oxycontin|roxicodone|codeine|tylenol\s*(?:#|no\.?\s*)?[34]\b|tramadol|ultram|morphine|hydromorphone|dilaudid|meperidine|demerol)\b/i;
+
+const OPIOID_RX_CUE = /\b(?:prescrib\w+|dispens\w+|rx\b|called\s+in|sent\s+(?:to\s+)?(?:the\s+)?pharmacy)\b/i;
+
+const PMP_CHECKED =
+  /\b(?:CSMD|PMP|prescription\s+(?:drug\s+)?monitoring|controlled\s+substance\s+(?:monitoring\s+)?database)\b[^.\n]{0,60}\b(?:checked|reviewed|queried|consulted)\b|\b(?:checked|reviewed|queried|consulted)\b[^.\n]{0,60}\b(?:CSMD|PMP|prescription\s+(?:drug\s+)?monitoring)\b/i;
+
+export function runOpioidPmpRule(text: string): AuditFinding[] {
+  const opioid = new RegExp(OPIOIDS.source, OPIOIDS.flags).exec(text);
+  if (!opioid) return [];
+  if (!new RegExp(OPIOID_RX_CUE.source, OPIOID_RX_CUE.flags).test(text)) return [];
+  if (new RegExp(PMP_CHECKED.source, PMP_CHECKED.flags).test(text)) return [];
+  return [
+    {
+      ruleId: "medsafe.opioid-no-pmp-check",
+      category: "medication-safety",
+      severity: "S1",
+      message:
+        `An opioid prescription ("${opioid[0]}") is recorded without a documented CSMD/PMP ` +
+        `check. Tennessee requires the prescription monitoring database to be checked before ` +
+        `prescribing an opioid, and the record must show it happened.`,
+      matchedText: opioid[0],
+      suggestion:
+        'Record the check ("CSMD reviewed prior to prescribing") — or, if a statutory exception ' +
+        "applies, attest which one. Only the prescriber can claim an exception.",
+      occurrences: 1
+    }
+  ];
+}
+
 export function runMedicationSafetyRules(text: string): AuditFinding[] {
   return [
     ...runWeightUnitRule(text),
     ...runDoseArithmeticRule(text),
     ...runHouseholdUnitRule(text),
     ...runMixedUnitsRule(text),
-    ...runInteractionRule(text)
+    ...runInteractionRule(text),
+    ...runOpioidPmpRule(text)
   ];
 }

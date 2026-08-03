@@ -10,4 +10,10 @@
 //         (gibberish, unprofessional tone), and anticipatory completeness
 //         rules (imaging interpretation, anesthetic amount, extraction
 //         outcome, prescription duration, consent decision).
-export const RULESET_VERSION = "2.2.0";
+// 2.3.0 — robotic-assisted surgery module; sedation module gains the
+//         monitors-in-use list and emergency-preparedness confirmation;
+//         opioid prescriptions require a documented CSMD/PMP check.
+// 2.4.0 — billing-narrative justification rules (SRP periodontal evidence,
+//         core-buildup retention, crown necessity) and the note GPA stamp
+//         (deriveGpa v1) frozen onto filings.
+export const RULESET_VERSION = "2.4.0";

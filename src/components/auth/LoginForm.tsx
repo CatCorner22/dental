@@ -7,6 +7,8 @@ import { markFeedbackNoticeUnseen } from "@/components/notice/FeedbackNotice";
 export function LoginForm() {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
+  const [totp, setTotp] = useState("");
+  const [showTotp, setShowTotp] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
@@ -16,14 +18,23 @@ export function LoginForm() {
     setError("");
     let res;
     try {
-      res = await signIn("credentials", { username, password, redirect: false });
+      res = await signIn("credentials", { username, password, totp, redirect: false });
     } catch {
       setError("Could not reach the server — check the connection and try again.");
       setBusy(false);
       return;
     }
     if (res?.error) {
-      setError("Wrong username or password, or the account is inactive.");
+      // A failure with correct-looking credentials may be a missing second
+      // factor. The server never says which (an attacker must not learn
+      // whether an account has MFA from the error), so the form OFFERS the
+      // code field after any failure instead of asserting it is needed.
+      setShowTotp(true);
+      setError(
+        showTotp || totp
+          ? "Sign-in failed. Check the username, password, and authenticator code."
+          : "Sign-in failed. If this account uses an authenticator app, enter the current code below."
+      );
       setBusy(false);
       return;
     }
@@ -56,6 +67,21 @@ export function LoginForm() {
         <label className="field-label" htmlFor="li-pass">Password</label>
         <input id="li-pass" type="password" className="field-input" value={password} onChange={(e) => setPassword(e.target.value)} autoComplete="current-password" required />
       </div>
+      {showTotp && (
+        <div>
+          <label className="field-label" htmlFor="li-totp">Authenticator code</label>
+          <input
+            id="li-totp"
+            className="field-input"
+            value={totp}
+            onChange={(e) => setTotp(e.target.value)}
+            inputMode="numeric"
+            autoComplete="one-time-code"
+            placeholder="6-digit code"
+            maxLength={7}
+          />
+        </div>
+      )}
       {error && <p className="text-sm text-red-700" role="alert">{error}</p>}
       <button type="submit" className="btn-primary w-full justify-center" disabled={busy}>
         {busy ? "Signing in…" : "Sign in"}

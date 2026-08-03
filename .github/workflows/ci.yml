@@ -10,6 +10,11 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+        with:
+          # Full history: the version-stamp guard below diffs against the PR
+          # base, and a shallow clone has no merge base to diff from
+          # ("fatal: origin/main...HEAD: no merge base" on every PR).
+          fetch-depth: 0
       - uses: actions/setup-node@v4
         with:
           node-version: 22
@@ -24,7 +29,7 @@ jobs:
       - name: Rule changes must bump their version stamp
         if: github.event_name == 'pull_request'
         run: |
-          git fetch --no-tags --depth=1 origin ${{ github.base_ref }}
+          git fetch --no-tags origin ${{ github.base_ref }}
           BASE="origin/${{ github.base_ref }}"
           CHANGED=$(git diff --name-only "$BASE"...HEAD)
           rules_changed=$(echo "$CHANGED" | grep -E '^src/lib/(vocab|modules)/|^src/lib/audit/(rules/|maskPhi)' | grep -v '\.test\.ts$' || true)

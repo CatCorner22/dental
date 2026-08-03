@@ -13,6 +13,19 @@ export interface Tooth {
   toothClass: "incisor" | "canine" | "premolar" | "molar";
   isAnterior: boolean;
   name: string;
+  /**
+   * ISO 3950 (FDI) two-digit notation, as a SECONDARY display only.
+   *
+   * Universal remains the number that enters the record — the audit's
+   * FDI-leakage rule stays in force, because a bare "18" in prose is
+   * ambiguous between the two systems and that ambiguity is the whole
+   * hazard. This field exists so a picker or chart can show "3 (FDI 16)"
+   * to staff trained abroad, who otherwise translate in their heads all
+   * day — a translation step being exactly where wrong-tooth errors live.
+   * Undefined for supernumerary designations (FDI's supernumerary form is
+   * not part of the practice's charting standard).
+   */
+  fdi?: string;
 }
 
 type ClassName =
@@ -75,6 +88,14 @@ function classOf(className: ClassName): Tooth["toothClass"] {
 
 function buildTable(): Map<ToothId, Tooth> {
   const table = new Map<ToothId, Tooth>();
+  // FDI quadrant digits: permanent 1-4, primary 5-8, both clockwise from the
+  // patient's upper right. Position counts from the midline (1 = central
+  // incisor); the seed ids run distal-to-mesial, so position is the distance
+  // from the END of the list.
+  const FDI_QUADRANT: Record<"permanent" | "primary", Record<Tooth["quadrant"], number>> = {
+    permanent: { UR: 1, UL: 2, LL: 3, LR: 4 },
+    primary: { UR: 5, UL: 6, LL: 7, LR: 8 }
+  };
   const add = (
     seedQuadrants: QuadrantSeed[],
     classOrder: ClassName[],
@@ -85,6 +106,7 @@ function buildTable(): Map<ToothId, Tooth> {
         const className = classOrder[i];
         const toothClass = classOf(className);
         const isAnterior = toothClass === "incisor" || toothClass === "canine";
+        const fdi = `${FDI_QUADRANT[dentition][q.quadrant]}${q.ids.length - i}`;
         const tooth: Tooth = {
           id,
           dentition,
@@ -93,7 +115,8 @@ function buildTable(): Map<ToothId, Tooth> {
           quadrant: q.quadrant,
           toothClass,
           isAnterior,
-          name: `${dentition} ${q.arch} ${q.side} ${className}`
+          name: `${dentition} ${q.arch} ${q.side} ${className}`,
+          fdi
         };
         table.set(id, tooth);
         // Derive the supernumerary designation adjacent to this tooth.
@@ -102,7 +125,8 @@ function buildTable(): Map<ToothId, Tooth> {
           ...tooth,
           id: superId,
           dentition: dentition === "permanent" ? "supernumerary-permanent" : "supernumerary-primary",
-          name: `supernumerary tooth adjacent to ${dentition} ${q.arch} ${q.side} ${className}`
+          name: `supernumerary tooth adjacent to ${dentition} ${q.arch} ${q.side} ${className}`,
+          fdi: undefined
         });
       });
     }

@@ -10,6 +10,7 @@ import { removableProsthodontic } from "./removable-prosthodontic";
 import { endodontic } from "./endodontic";
 import { periodontal } from "./periodontal";
 import { implant } from "./implant";
+import { roboticSurgery } from "./robotic-surgery";
 import { operative } from "./operative";
 import { extraction } from "./extraction";
 import { biopsy } from "./biopsy";
@@ -44,6 +45,7 @@ export const ALL_MODULES: ModuleDef[] = [
   endodontic,
   periodontal,
   implant,
+  roboticSurgery,
   operative,
   extraction,
   biopsy,

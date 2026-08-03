@@ -87,3 +87,90 @@ export const EVIDENCE_PHRASES = [
 ];
 
 export const NONE_REPORTED = "None reported.";
+
+// ---------------------------------------------------------------------------
+// Safety block: the fields where "nothing to report" is the dangerous answer.
+//
+// A blank allergy box means "we do not know". "No known drug allergies" means
+// somebody asked and the answer was none — an affirmative clinical claim, and
+// the one a later reader leans on before prescribing. The two are not the same
+// fact, and a form that lets the second happen by default is a form that
+// manufactures it.
+//
+// So each of these carries an explicit status (never a bare yes/no "reviewed"
+// tick) and, when the status is a negative, a separate confirmation saying
+// whether it was asked TODAY or carried forward. Tennessee requires a concise
+// medical history sufficient for a later dentist to continue care; carried
+// forward and asked-today are different levels of evidence for that, and only
+// the person in the room knows which one applies.
+
+/** The literal stored for each negative status — referenced by visibleIf. */
+export const NKA = "No known allergies of any kind (NKA).";
+export const NKDA = "No known drug allergies (NKDA); other allergy types not excluded.";
+export const NO_MEDICATIONS = "No current medications reported.";
+export const NO_HISTORY_CHANGES = "No changes reported to the medical history.";
+export const PREMED_NOT_REQUIRED = "Not required.";
+
+export const ALLERGY_STATUS: FieldOption[] = [
+  { value: NKA, label: "No known allergies of any kind (NKA)" },
+  { value: NKDA, label: "No known DRUG allergies (NKDA) — other types not excluded" },
+  {
+    value: "Allergies on file; see the allergy list in the clinical system.",
+    label: "Allergies on file (details stay in the EDR)"
+  },
+  {
+    value: "Allergy history not reviewed at this visit.",
+    label: "Not reviewed at this visit"
+  }
+];
+
+export const MEDICATION_STATUS: FieldOption[] = [
+  { value: NO_MEDICATIONS, label: "None reported" },
+  {
+    value: "Medication list reviewed; see the medication list in the clinical system.",
+    label: "List reviewed (details stay in the EDR)"
+  },
+  {
+    value: "Medication list not reviewed at this visit.",
+    label: "Not reviewed at this visit"
+  }
+];
+
+export const NEGATIVE_STATUS_HISTORY: FieldOption[] = [
+  { value: NO_HISTORY_CHANGES, label: "No changes reported" },
+  { value: "Changes reported; see below.", label: "Changes reported" },
+  { value: "Medical history not reviewed at this visit.", label: "Not reviewed at this visit" }
+];
+
+export const PREMEDICATION_STATUS: FieldOption[] = [
+  { value: PREMED_NOT_REQUIRED, label: "Not required" },
+  { value: "Required; taken before the appointment as directed.", label: "Required — taken" },
+  {
+    // Deliberately blunt. This is a stop-and-ask, not a note written afterwards.
+    value: "Required; NOT taken. Dentist notified before treatment.",
+    label: "Required — NOT taken (tell the dentist now)"
+  },
+  {
+    value: "Premedication requirement not reviewed at this visit.",
+    label: "Not reviewed at this visit"
+  }
+];
+
+// The double-check itself. Deliberately not a yes/no tick: the useful
+// distinction is not "did you confirm" (everyone ticks yes) but WHAT the
+// confirmation rests on, and carrying a negative forward unasked is the
+// specific failure that puts a stale "no allergies" in front of a prescriber.
+export const CONFIRM_ASKED: FieldOption[] = [
+  {
+    value: "Confirmed with the patient at this visit and checked against the chart.",
+    label: "Asked the patient at this visit AND checked the chart"
+  },
+  {
+    value: "Confirmed with the patient at this visit.",
+    label: "Asked the patient at this visit"
+  },
+  {
+    value: "Carried forward from the chart; not re-confirmed with the patient at this visit.",
+    label: "Carried forward from the chart — not re-asked at this visit"
+  }
+];

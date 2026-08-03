@@ -5,10 +5,13 @@ import { getDb } from "@/lib/db/client";
 import { getUserByUsername } from "@/lib/db/repo/users";
 import { verifyPassword } from "./password";
 import {
+  checkThrottle,
   clearThrottle,
+  FREE_ATTEMPTS,
   IP_FREE_ATTEMPTS,
   IP_MAX_LOCK_MS,
   loginIpKey,
+  loginPairKey,
   recordFailure
 } from "./throttle";
 import { clientIp } from "./clientIp";
@@ -83,43 +86,37 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // refused before any hash. A correct password clears the whole streak
         // at the end, so a legitimate user's reservations never accumulate.
         const ip = clientIp(request as Request | undefined);
-        const ipKey = ip ? loginIpKey(ip) : null;
-        if (ipKey) {
-          const gate = await recordFailure(db, ipKey, now, IP_FREE_ATTEMPTS, IP_MAX_LOCK_MS);
-          if (gate.locked) {
-            // ONE row per lock, written on the transition only.
-            //
-            // This used to log on every refused request, with a comment
-            // claiming the throttle bounded it. It did the opposite: being
-            // locked is what made the write cheap, because the refusal skipped
-            // bcrypt and the account lookup and went straight to an INSERT
-            // carrying raw, unvalidated `username`. A caller who kept retrying
-            // wrote unbounded attacker-chosen text into the audit log as fast
-            // as the connection allowed — a 5 MB username became a 5 MB row,
-            // and the log the practice manager reads (and exports) grew
-            // without limit. Refusing an attempt must cost the attacker more
-            // than it costs us; gating on justLocked is what makes that true.
-            //
-            // The target is the IP, not the typed username: at this point no
-            // account has been looked up, so the username is a claim, while
-            // the address is the thing actually being throttled.
-            if (gate.justLocked) {
-              // Written directly rather than through logAuth, whose `detail` is
-              // always "from <ip>" — which here would just repeat the target.
-              // The useful fact is how long the source is out for.
-              try {
-                await logAction(db, {
-                  actorId: null, // genuinely a system action; no account is known yet
-                  action: "auth.lockout",
-                  target: ip,
-                  detail: `${IP_FREE_ATTEMPTS}+ failed sign-ins; refused for ${gate.retryAfterSec}s`
-                });
-              } catch {
-                // Same rule as logAuth: a logging failure must not become an outage.
-              }
-            }
-            return null; // over budget → no bcrypt
-          }
+        // Keyed on the PAIR, and CHECKED read-only rather than reserved.
+        //
+        // Both halves of that sentence are corrections of a design that a live
+        // probe proved broken, and they fix two different things.
+        //
+        // THE KEY. Throttling on the address alone meant one budget for an
+        // entire dental practice behind one NAT address, so a stranger
+        // hammering the login form refused every clinician in the building. The
+        // pair scopes an attacker's damage to the one username they are
+        // grinding on. See loginPairKey.
+        //
+        // THE CHECK. This used to call recordFailure — a WRITE — as the gate,
+        // before the password was ever examined. That made the refusal
+        // unconditional: an attempt carrying the CORRECT password still
+        // incremented the streak, still re-armed the lock, and was still
+        // refused. Every expiry was immediately re-locked by the next attempt,
+        // so the only way out was fifteen minutes of total silence, which an
+        // attacker simply never allows. Measured on a running server: after 70
+        // seconds of uninterrupted guessing the right password was still
+        // rejected. The old comment here claimed "the correct password always
+        // works"; it did not.
+        //
+        // Reading the lock instead means a lapsed lock genuinely lets one
+        // attempt through to be verified, and a correct one clears the streak
+        // outright. The burst protection that reserving used to provide now
+        // comes from hashGate below, which bounds concurrent bcrypt on a key
+        // nobody can forge — a strictly better instrument for that job.
+        const pairKey = ip ? loginPairKey(ip, username) : null;
+        if (pairKey) {
+          const gate = await checkThrottle(db, pairKey, now);
+          if (gate.locked) return null; // no write, so a refusal costs an attacker more than us
         }
 
         // New accounts are stored lowercase; the exact-match fallback keeps
@@ -128,7 +125,7 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
           (await getUserByUsername(db, username)) ??
           (await getUserByUsername(db, username.toLowerCase()));
 
-        // The IP budget above is only as honest as the header it reads. This
+        // The pair budget is only as honest as the header it is keyed on. This
         // gate is not: it caps concurrent bcrypt process-wide, so a caller who
         // rotates x-real-ip for an unlimited budget still cannot take the event
         // loop away from the clinicians already signed in. See hashGate.ts.
@@ -141,19 +138,53 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         );
         if (!slot.ok) return null; // too busy to hash — not a credential verdict
 
+        // Charged only now, on a genuinely failed verification. Both failure
+        // paths below share it, so an unknown username costs an attacker the
+        // same budget as a wrong password and neither is free.
+        const chargeFailure = async () => {
+          if (!pairKey || !ip) return;
+          await recordFailure(db, pairKey, now, FREE_ATTEMPTS, IP_MAX_LOCK_MS);
+          // The address, metered but NEVER used to refuse. Spraying many
+          // usernames from one source is the shape of credential stuffing and a
+          // manager should see it — but blocking on this key is precisely the
+          // office-wide outage above, so it only ever writes a log row.
+          // justLocked keeps that to one row per window: writing on every
+          // refused request is what previously let anyone with a script inflate
+          // the audit log (and its CSV export) without bound.
+          const spray = await recordFailure(db, loginIpKey(ip), now, IP_FREE_ATTEMPTS, IP_MAX_LOCK_MS);
+          if (spray.justLocked) {
+            try {
+              await logAction(db, {
+                actorId: null, // a system observation; no account is known yet
+                action: "auth.spray",
+                target: ip,
+                detail: `${IP_FREE_ATTEMPTS}+ failed sign-ins from this address`
+              });
+            } catch {
+              // Same rule as logAuth: a logging failure must not become an outage.
+            }
+          }
+        };
+
         if (!user || !user.active) {
+          await chargeFailure();
           // Deliberately NOT logged. An unknown username is unbounded input, so
           // logging it would let anyone write arbitrary rows into the audit log
           // — and the log would then double as a list of guessed usernames.
-          return null; // the attempt was already reserved above
+          return null;
         }
         if (!slot.value) {
+          await chargeFailure();
           // A real account with a wrong password IS worth recording: it is the
-          // signal a practice manager needs to see. Bounded by the IP throttle.
+          // signal a practice manager needs to see. Bounded by the pair budget.
           await logAuth(db, "auth.failed", user.username, ip, user.id, user.displayName);
-          return null; // already reserved
+          return null;
         }
-        if (ipKey) await clearThrottle(db, ipKey);
+        // The right password ends the streak outright, so a clinician who
+        // finally remembers it is not still serving a sentence — and, because
+        // the gate above is now a read rather than a write, this is reachable
+        // the moment a lock lapses instead of only after total silence.
+        if (pairKey) await clearThrottle(db, pairKey);
         await logAuth(db, "auth.signin", user.username, ip, user.id, user.displayName);
         return {
           id: user.id,

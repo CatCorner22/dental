@@ -62,6 +62,27 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
       { status: 403 }
     );
   }
+  // The DESTINATION carries the same ceiling as the owner. Merge — which this
+  // file's own comment calls the bulk form of transfer, "so it carries the same
+  // rule" — checks both endpoints; this checked only one, and the asymmetry was
+  // exploitable in two ways.
+  //
+  // Alone: a Team Lead could push any clinician's live note onto a Hierarchy
+  // Manager or the Developer. canActOn(lead, "manager") is false, so no lead —
+  // including the one who did it — could pull it back. A one-way button that
+  // strands a colleague's unfinished note out of everyone's reach.
+  //
+  // Chained: the self-transfer and created-by-me blocks immediately below stop
+  // an actor sending a note to their OWN account. With no ceiling on the
+  // destination, a manager sends it to a Team Lead they minted, signs in as
+  // that lead, and sends it on to themselves — arriving at the outcome both
+  // blocks exist to prevent, one hop later.
+  if (!canActOn(guard.user.role, to.role) && toUserId !== guard.user.id) {
+    return Response.json(
+      { error: `You cannot transfer a Smile Note to a ${ROLE_LABEL[to.role]}.` },
+      { status: 403 }
+    );
+  }
   if (toUserId === guard.user.id && guard.user.role !== "admin") {
     return Response.json(
       { error: "You cannot transfer a Smile Note to yourself." },

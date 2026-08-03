@@ -103,6 +103,27 @@ Keep an abbreviation only if the practice has one approved meaning, defines it a
 | grossly intact | name the tested function and result |
 | no complications | no complication was observed during the stated procedure or observation period |
 
+## Words that label the patient
+
+Under the 21st Century Cures Act patients have routine, immediate access to these notes. The audience changed; the vocabulary largely did not. A word that reads as shorthand to the person typing it can read as a verdict to the person it is about, and a patient who feels judged by their record is less likely to report the next symptom honestly.
+
+These are flagged at STYLE severity and are **never** rewritten automatically. The right replacement depends on what actually happened — "declined" is usually right for "refused", but not when the clinical point is that care was actively resisted — and choosing for the clinician would be the tool inventing content.
+
+| Avoid | Write instead |
+|---|---|
+| diabetic (as a label) | person with diabetes — keep "diabetic" for the diagnosis itself |
+| epileptic (as a label) | person with epilepsy — keep "epileptic" for the seizure type |
+| addict / abuser | person with a substance use disorder, or state the substance and the history |
+| drug seeking | state what was requested, what was discussed, and what was prescribed or declined |
+| patient refused | declined — and state what was declined and what was discussed |
+| patient failed to | did not — state what did not happen without attributing fault |
+| patient claims | patient reports — "claims" tells the reader you doubt them |
+| uncooperative | describe the behaviour observed and what was tried |
+| frequent flyer | state the visit history and the reason for each attendance |
+| no-show | did not attend |
+
+`noncompliant`, `patient denies`, and `poor historian` belong here too, and are already listed in the table above at the stronger REVIEW severity. They are not repeated here — one finding per problem.
+
 ## Clinical uncertainty
 
 Use:

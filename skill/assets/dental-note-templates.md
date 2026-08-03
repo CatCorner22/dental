@@ -279,7 +279,16 @@ Complete patient identity, exact dates, signatures, legal authority, contact det
 ### Periodontal Add-On
 
 - Examination type: <screening/comprehensive/reassessment/maintenance>
-- Probing depth, recession, clinical attachment level, bleeding, suppuration, mobility, furcation, plaque, calculus, mucogingival and implant findings: <site-specific chart linked in EDR>
+- Site-specific charting: <full six-point chart in the EDR at this visit/at a previous visit, not repeated/screening probing only/charting not completed>
+- Deepest probing depth recorded: <mm>
+- Greatest clinical attachment loss recorded: <mm>
+- Greatest recession recorded: <mm>
+- Bleeding on probing: <%>
+- Plaque score: <%>
+- Greatest mobility recorded: <none/Grade 1/Grade 2/Grade 3/not assessed>
+- Greatest furcation involvement recorded: <none/Class I/Class II/Class III/not assessed>
+- Suppuration: <none observed/present, sites in the EDR chart/present, sites named in the narrative/not assessed>
+- Periodontal narrative — site-specific findings, calculus, mucogingival and implant findings: <facts>
 - Proximal contacts, endodontic-periodontal lesions, restoration and prosthesis status, fremitus, and occlusal findings: <facts>
 - Image and bone findings: <fact>
 - Bone quality, quantity, pattern, and anatomic limitations: <clinician-supplied image or examination facts>
@@ -291,6 +300,8 @@ Complete patient identity, exact dates, signatures, legal authority, contact det
 - Anesthesia, instruments, irrigation, medicament, laser settings, graft, membrane, biologic, and sutures: <only supplied facts>
 - Tissue response, deposits removed, endpoint, complications, and hemostasis: <fact>
 - Self-care instruction, risk-factor counseling, reevaluation, maintenance interval, and referral: <fact>
+
+The six-point chart itself belongs in the EDR — this tool does not replace it. The summary measures above are whole-mouth figures recorded so that this visit is comparable to the next one, and so that a typo in a depth is caught before a clinician confirms it. "Chart in the EDR" is an answer to *when it was recorded*, not a substitute for the periodontal record.
 
 ### Implant Add-On
 

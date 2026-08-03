@@ -1,6 +1,6 @@
 import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
 import { MISSPELLINGS, MEDICATION_WORDS } from "@/lib/vocab/misspellings";
-import { VAGUE_PHRASES, STALE_PHRASES } from "@/lib/vocab/vague-phrases";
+import { VAGUE_PHRASES, STALE_PHRASES, STIGMATIZING_PHRASES } from "@/lib/vocab/vague-phrases";
 import { SHORTHAND, SHORTHAND_OWNS } from "@/lib/vocab/shorthand";
 import { findImplausibleQuantities } from "./plausibility";
 
@@ -47,6 +47,7 @@ export interface RaisedFlag {
     | "ambiguous-shorthand"
     | "vague-phrase"
     | "stale-text"
+    | "stigmatizing"
     | "medication-spelling"
     | "implausible-quantity"
     | "truncated";
@@ -454,11 +455,15 @@ export function standardize(raw: string): StandardizeResult {
     }
   }
 
-  // ---- Vague and stale phrases. Never rewritten — the replacement IS the
-  // clinical content, and inventing it is the one thing this tool must not do.
+  // ---- Vague, stale, and stigmatizing phrases. Never rewritten — the
+  // replacement IS the clinical content, and inventing it is the one thing this
+  // tool must not do. That applies doubly to the stigmatizing list: swapping a
+  // kinder word for a clinically meaningful one would change what the note
+  // says about the visit, which is not a formatting decision.
   for (const [list, kind] of [
     [VAGUE_PHRASES, "vague-phrase"],
-    [STALE_PHRASES, "stale-text"]
+    [STALE_PHRASES, "stale-text"],
+    [STIGMATIZING_PHRASES, "stigmatizing"]
   ] as const) {
     for (const phrase of list) {
       const re = new RegExp(phrase.pattern.source, phrase.pattern.flags);

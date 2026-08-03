@@ -1,6 +1,6 @@
 import type { AuditFinding } from "../types";
 import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
-import { VAGUE_PHRASES } from "@/lib/vocab/vague-phrases";
+import { STIGMATIZING_PHRASES, VAGUE_PHRASES } from "@/lib/vocab/vague-phrases";
 
 function escapeRegExp(s: string): string {
   return s.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
@@ -66,6 +66,41 @@ export function runVaguePhraseRule(text: string): AuditFinding[] {
         category: "vague-phrase",
         severity: "S2",
         message: `"${matched}" is vague or unsafe wording. A clinician supplies the specific fact.`,
+        matchedText: matched,
+        suggestion: phrase.replacement,
+        occurrences: count
+      });
+    }
+  }
+  return findings;
+}
+
+/**
+ * Language that labels the patient rather than describing the care.
+ *
+ * Separate from the vague-phrase rule because it is a different defect. A
+ * vague note is missing a fact; a stigmatizing note may state every fact
+ * correctly and still describe a person in terms they would not recognise as
+ * fair. Under the 21st Century Cures Act the patient reads this.
+ *
+ * STYLE severity, always. It never blocks and it is never auto-applied: the
+ * right wording depends on what actually happened, and substituting a kinder
+ * word for a clinically meaningful one would be this tool inventing content —
+ * the one thing it must not do.
+ */
+export function runStigmatizingRule(text: string): AuditFinding[] {
+  const findings: AuditFinding[] = [];
+  for (const phrase of STIGMATIZING_PHRASES) {
+    const seen = new Map<string, number>();
+    for (const m of text.matchAll(phrase.pattern)) {
+      seen.set(m[0], (seen.get(m[0]) ?? 0) + 1);
+    }
+    for (const [matched, count] of seen) {
+      findings.push({
+        ruleId: `stigma.${phrase.id}`,
+        category: "stigmatizing",
+        severity: "S3",
+        message: `"${matched}" labels the patient. Patients read these notes; a clinician decides the wording.`,
         matchedText: matched,
         suggestion: phrase.replacement,
         occurrences: count

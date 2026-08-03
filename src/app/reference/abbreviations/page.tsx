@@ -1,5 +1,5 @@
 import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
-import { STALE_PHRASES, VAGUE_PHRASES } from "@/lib/vocab/vague-phrases";
+import { STALE_PHRASES, STIGMATIZING_PHRASES, VAGUE_PHRASES } from "@/lib/vocab/vague-phrases";
 import { SEVERITY_LABELS } from "@/lib/audit/types";
 
 export const metadata = { title: "Abbreviation rules" };
@@ -44,6 +44,28 @@ export default function Page() {
         </thead>
         <tbody>
           {VAGUE_PHRASES.map((p) => (
+            <tr key={p.id}>
+              <td>{p.display}</td>
+              <td>{p.replacement}</td>
+            </tr>
+          ))}
+        </tbody>
+      </table>
+      <h2>Words that label the patient</h2>
+      <p>
+        Patients have routine access to these notes. Each of these describes the person rather than
+        the care. The tool flags them and never rewrites them, because the right wording depends on
+        what actually happened at the visit.
+      </p>
+      <table>
+        <thead>
+          <tr>
+            <th>Avoid</th>
+            <th>Write instead</th>
+          </tr>
+        </thead>
+        <tbody>
+          {STIGMATIZING_PHRASES.map((p) => (
             <tr key={p.id}>
               <td>{p.display}</td>
               <td>{p.replacement}</td>

@@ -3,6 +3,7 @@
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 
 import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
@@ -19,8 +20,24 @@ import { AuditPanel } from "./AuditPanel";
 import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
-import { ConflictDialog, PhiOverrideDialog, SubmitDialog } from "./BuilderDialogs";
 import { Dialog } from "@/components/ui/Dialog";
+
+// None of these three render on first paint — a conflict, a PHI override,
+// and a submit confirmation are all things that happen only after an edit
+// or a click. Splitting them out of the initial chunk keeps their weight
+// (and react-markdown-adjacent Sparkle copy) off the note page's first load,
+// which is the heaviest page in the app. `ssr: false` is safe: none of the
+// three is ever the FIRST thing rendered for a request — they only appear
+// after client-side state changes post-mount.
+const ConflictDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.ConflictDialog), {
+  ssr: false
+});
+const PhiOverrideDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.PhiOverrideDialog), {
+  ssr: false
+});
+const SubmitDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.SubmitDialog), {
+  ssr: false
+});
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });

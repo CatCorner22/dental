@@ -4,6 +4,7 @@ import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 import { getAssistConfig, runAssist } from "@/lib/assist/service";
+import { logAction } from "@/lib/db/repo/auditLog";
 import { ASSIST_CAPABILITIES, type AssistCapability } from "@/lib/assist/prompts";
 
 export const runtime = "nodejs";
@@ -68,6 +69,21 @@ export async function POST(req: Request): Promise<Response> {
     const res = await generateText({ model: config.model, system, prompt });
     return res.text;
   });
+
+  // Provenance, when the caller is working a draft: one audit row per
+  // successful assist naming the capability, prompt version, and retrieved
+  // sources — identifiers only, never text. The submit route folds these
+  // into the frozen filing so a reviewer can see which AI touched what.
+  const draftId = typeof parsed.value.draftId === "string" ? parsed.value.draftId.slice(0, 64) : "";
+  if (outcome.ok && draftId) {
+    await logAction(db, {
+      actorId: guard.user.id,
+      actorName: `${guard.user.displayName} (${guard.user.username})`,
+      action: "assist.used",
+      target: draftId,
+      detail: `${outcome.capability} v${outcome.promptVersion}${outcome.retrievedSources.length ? ` [${outcome.retrievedSources.join(", ")}]` : ""}`
+    });
+  }
 
   if (!outcome.ok) {
     // 422: the request was understood and refused for a stated reason. The

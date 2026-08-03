@@ -13,4 +13,7 @@
 // 2.3.0 — robotic-assisted surgery module; sedation module gains the
 //         monitors-in-use list and emergency-preparedness confirmation;
 //         opioid prescriptions require a documented CSMD/PMP check.
-export const RULESET_VERSION = "2.3.0";
+// 2.4.0 — billing-narrative justification rules (SRP periodontal evidence,
+//         core-buildup retention, crown necessity) and the note GPA stamp
+//         (deriveGpa v1) frozen onto filings.
+export const RULESET_VERSION = "2.4.0";

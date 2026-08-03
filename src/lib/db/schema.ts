@@ -156,7 +156,16 @@ export const submissions = pgTable("submissions", {
   ruleVersion: text("rule_version").notNull(),
   auditStatus: text("audit_status").notNull(),
   noteMarkdown: text("note_markdown").notNull(), // frozen, with stamp
-  auditReport: text("audit_report").notNull() // frozen, with stamp
+  auditReport: text("audit_report").notNull(), // frozen, with stamp
+  // The note GPA, frozen at filing like the audit it derives from. Text
+  // rather than a float column so "3.70" is stored exactly as stamped —
+  // this is a grade on a record, not a quantity to sum.
+  gpa: text("gpa"),
+  gpaSubscores: jsonb("gpa_subscores").$type<Record<string, number>>(),
+  // AI-assist provenance for this filing: which capabilities touched the
+  // draft's text, under which prompt version, with which retrieved sources.
+  // Hashes and identifiers only — never note text.
+  assistProvenance: jsonb("assist_provenance").$type<Record<string, unknown>>()
 });
 
 export const auditLog = pgTable("audit_log", {

@@ -131,6 +131,9 @@ export const SCHEMA_STATEMENTS: string[] = [
   // happened. No FK anywhere on office_id, so a retired office never orphans
   // the notes written at it.
   `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "office_name" text;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "gpa" text;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "gpa_subscores" jsonb;`,
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "assist_provenance" jsonb;`,
   `CREATE INDEX IF NOT EXISTS "submissions_office_idx" ON "submissions" ("office_id", "submitted_at_utc" DESC);`,
   `CREATE TABLE IF NOT EXISTS "wishes" (
      "id" serial PRIMARY KEY NOT NULL,

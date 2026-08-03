@@ -22,6 +22,8 @@ import { slugifyTitle } from "@/lib/tickets/slug";
 import { composeStamp } from "@/lib/tickets/stamp";
 import { RULESET_VERSION } from "@/lib/version";
 import { checkFilingAuthority } from "@/lib/auth/approval";
+import { deriveGpa } from "@/lib/gpa/deriveGpa";
+import { assistEventsForDraft } from "@/lib/db/repo/auditLog";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
 import { sparkleLine } from "@/lib/stats/sparkle";
 
@@ -152,6 +154,18 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   const submittedAtEt = formatEasternTime(now);
   const filenameBase = slugifyTitle(draft.title);
 
+  // The GPA, derived from the report above and frozen with the filing. Never
+  // a gate — the gates already ran; this is the grade on what passed them.
+  const grade = deriveGpa(report, note, modules);
+  // AI provenance: every assist event recorded against this draft, folded in
+  // as identifiers (capability, prompt version, sources). Empty means no AI
+  // touched this note's text — which is itself a statement worth freezing.
+  const assistEvents = await assistEventsForDraft(db, draft.id);
+  const assistProvenance =
+    assistEvents.length > 0
+      ? { events: assistEvents, gpaVersion: grade.gpaVersion }
+      : { events: [], gpaVersion: grade.gpaVersion };
+
   // File atomically: claim, reserve the ticket, and freeze the immutable
   // copies in ONE transaction. Of any concurrent submits, exactly one wins;
   // a mid-way failure rolls the whole thing back so the draft stays
@@ -172,6 +186,9 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
         format,
         ruleVersion: RULESET_VERSION,
         auditStatus: report.status,
+        gpa: grade.gpa.toFixed(2),
+        gpaSubscores: grade.subscores as unknown as Record<string, number>,
+        assistProvenance,
         officeId: draft.officeId,
         officeName
       },

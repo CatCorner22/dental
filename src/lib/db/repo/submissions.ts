@@ -20,6 +20,12 @@ export interface SubmissionShellFields {
   // be renamed or retired, and neither may rewrite where a filed note says
   // the care happened.
   officeName?: string | null;
+  // The note GPA and its axis subscores, frozen at filing (see deriveGpa).
+  gpa?: string | null;
+  gpaSubscores?: Record<string, number> | null;
+  // AI-assist provenance: capabilities, prompt versions, retrieved sources —
+  // identifiers only, never text.
+  assistProvenance?: Record<string, unknown> | null;
 }
 
 export type FileSubmissionResult =

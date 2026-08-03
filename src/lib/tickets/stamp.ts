@@ -29,7 +29,11 @@ export function composeStamp(s: SubmissionStamp): string {
     "",
     `- Ticket: ${s.ticket}`,
     `- Submitted by: ${s.submittedBy}`,
-    ...(s.officeName ? [`- Office: ${s.officeName}`] : []),
+    // One line, bounded — the stamp's own list format must not be forgeable by
+    // a value that arrives from a table rather than from this function.
+    ...(s.officeName
+      ? [`- Office: ${s.officeName.replace(/\s+/g, " ").trim().slice(0, 120)}`]
+      : []),
     `- Submitted (US Eastern): ${s.submittedAtEt}`,
     `- Ruleset version: ${s.ruleVersion}`,
     `- Audit status at submission: ${s.auditStatus}`,

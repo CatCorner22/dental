@@ -53,6 +53,11 @@ export function BuilderShell({
   const [state, dispatch] = useReducer(noteReducer, initialNote);
   const [title, setTitle] = useState(initialTitle);
   const [officeId, setOfficeId] = useState<string | null>(initialOfficeId);
+  // Has this session made a real edit yet? Distinguishes "nothing has happened"
+  // from "something happened and was reverted" — see the autosave effect.
+  // Has this session made a real edit yet? Distinguishes "nothing has happened"
+  // from "something happened and was reverted" — see the autosave effect.
+  const hasEdited = useRef(false);
   const [tab, setTab] = useState<"audit" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
@@ -76,7 +81,16 @@ export function BuilderShell({
   const [moduleQuery, setModuleQuery] = useState("");
 
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
-  const markdown = useMemo(() => composeNote(state, modules), [state, modules]);
+  // The office name the CLIENT composes with must be the one the SERVER
+  // freezes, or the preview is not the artifact and the two audits disagree.
+  const officeName = useMemo(
+    () => offices.find((o) => o.id === officeId)?.name ?? null,
+    [offices, officeId]
+  );
+  const markdown = useMemo(
+    () => composeNote(state, modules, { officeName }),
+    [state, modules, officeName]
+  );
   const report = useMemo(
     () => runAudit({ note: state, modules, composedText: markdown }),
     [state, modules, markdown]
@@ -103,7 +117,18 @@ export function BuilderShell({
   // IS `initialNote` and `title` IS `initialTitle`, so nothing fires.
   useEffect(() => {
     if (!canEdit) return;
-    if (state === initialNote && title === initialTitle && officeId === initialOfficeId) return;
+    // On MOUNT, unchanged means "do not save" — otherwise opening a note would
+    // write it. After the first real edit it means something different and
+    // dangerous: a value was already queued, and returning here leaves it
+    // queued. Change the office and change it straight back (two arrow keys)
+    // and the FIRST value stayed pending, so Submit flushed the office the
+    // clinician had just corrected away — onto a legal record, while the
+    // picker on screen showed the right one. So once edited, always re-queue;
+    // re-saving identical data is harmless and self-correcting.
+    const unchanged =
+      state === initialNote && title === initialTitle && officeId === initialOfficeId;
+    if (unchanged && !hasEdited.current) return;
+    if (!unchanged) hasEdited.current = true;
     setEditedSinceLoad(true);
     setSubmittedNow(false);
     setSendFailedNow(false);
@@ -370,7 +395,7 @@ export function BuilderShell({
               <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
                 Download .md
               </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(state, modules))}>
+              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(state, modules, { officeName }))}>
                 Download .txt
               </button>
               {report.phiStops.length > 0 && !overrideActive && (

@@ -4,8 +4,7 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getDraft } from "@/lib/db/repo/drafts";
 import { BuilderShell } from "@/components/builder/BuilderShell";
-import { listActiveOffices } from "@/lib/db/repo/offices";
-import { getUserById } from "@/lib/db/repo/users";
+import { getOffice, officesForPicker } from "@/lib/db/repo/offices";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Note" };
@@ -24,12 +23,21 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
   // Only ACTIVE offices are offered for a new choice; a note already recorded
   // at a since-retired office keeps that value and still displays it, because
   // where care happened is a fact about the past, not a current setting.
-  const offices = await listActiveOffices(db);
-  // A brand-new draft starts at the author's usual office purely as a
-  // convenience. It is a starting position, never a constraint — staff rotate,
-  // and the picker beside it is always free.
-  const me = await getUserById(db, user.id);
-  const initialOfficeId = draft.officeId ?? me?.defaultOfficeId ?? null;
+  const active = await officesForPicker(db, user.id);
+  // Plus the office this draft is ALREADY recorded at, even if it has since
+  // been retired. Without it the picker's value matches no option and the
+  // browser renders a blank box — so a draft written at a closed location
+  // looks like it has no office, and "fixing" the blank silently relocates the
+  // encounter to wherever the user picks.
+  const current = draft.officeId ? await getOffice(db, draft.officeId) : undefined;
+  const offices =
+    current && !active.some((o) => o.id === current.id) ? [...active, current] : active;
+  // NO pre-selection. The picker shows exactly what the draft holds, so the
+  // screen can never display an office the record does not have — the failure
+  // a single "default office" made possible, where filing without touching
+  // anything froze null while the clinician was looking at a location. A
+  // person's own offices are simply listed first.
+  const initialOfficeId = draft.officeId ?? null;
 
   return (
     <BuilderShell

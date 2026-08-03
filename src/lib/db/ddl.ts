@@ -102,11 +102,21 @@ export const SCHEMA_STATEMENTS: string[] = [
      "sort_order" integer DEFAULT 0 NOT NULL,
      "created_at" timestamp with time zone DEFAULT now() NOT NULL
    );`,
-  // The author's USUAL office. A default for the picker and nothing more —
-  // never a permission boundary. Staff rotate between locations, so anything
-  // that treated this as "where this person works" would lock a hygienist out
-  // of the note they are writing at the office they are standing in today.
-  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "default_office_id" text;`,
+  // Which offices a person works at — MANY, not one. A lone "default office"
+  // was the wrong shape: staff rotate, so most people belong to several.
+  //
+  // NOT a permission boundary. Every office stays selectable by everyone on
+  // every note; this orders the picker and answers "who works where".
+  `CREATE TABLE IF NOT EXISTS "user_offices" (
+     "user_id" text NOT NULL,
+     "office_id" text NOT NULL,
+     PRIMARY KEY ("user_id", "office_id")
+   );`,
+  `CREATE INDEX IF NOT EXISTS "user_offices_office_idx" ON "user_offices" ("office_id");`,
+  // Retire the abandoned single-default column if an earlier deploy created it.
+  // Dropped rather than left in place: a column nothing reads is a column the
+  // next reader assumes is authoritative.
+  `ALTER TABLE "users" DROP COLUMN IF EXISTS "default_office_id";`,
   // Which office the ENCOUNTER happened at, chosen per note.
   `ALTER TABLE "drafts" ADD COLUMN IF NOT EXISTS "office_id" text;`,
   `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "office_id" text;`,

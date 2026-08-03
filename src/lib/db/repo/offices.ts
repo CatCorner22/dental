@@ -1,6 +1,6 @@
 import { asc, eq } from "drizzle-orm";
 import type { Db } from "../client";
-import { offices, type OfficeRow } from "../schema";
+import { offices, userOffices, type OfficeRow } from "../schema";
 
 /**
  * Every office, active first, in configured order.
@@ -73,4 +73,47 @@ export async function seedOfficesIfEmpty(db: Db, seeds: OfficeSeed[]): Promise<b
     }))
   );
   return true;
+}
+
+/**
+ * The offices a person is assigned to work at.
+ *
+ * NOT a permission check, and nothing may use it as one. Every office stays
+ * selectable by everyone on every note: patients are seen wherever suits the
+ * visit, and cover gets arranged at short notice. This exists so the picker can
+ * put someone's own locations first, and so "who works where" is answerable.
+ */
+export async function officeIdsForUser(db: Db, userId: string): Promise<string[]> {
+  const rows = await db.select().from(userOffices).where(eq(userOffices.userId, userId));
+  return rows.map((r) => r.officeId);
+}
+
+/**
+ * Replace a person's assignments wholesale.
+ *
+ * Delete-then-insert inside one transaction: a partial apply would leave
+ * somebody assigned to a location they were being moved off, and the set is
+ * small enough that a diff would be more code for no benefit.
+ */
+export async function setOfficesForUser(db: Db, userId: string, officeIds: string[]): Promise<void> {
+  const unique = [...new Set(officeIds)];
+  await db.transaction(async (tx) => {
+    await tx.delete(userOffices).where(eq(userOffices.userId, userId));
+    if (unique.length > 0) {
+      await tx.insert(userOffices).values(unique.map((officeId) => ({ userId, officeId })));
+    }
+  });
+}
+
+/**
+ * Active offices, with the person's own assignments first.
+ *
+ * Ordering only. The full list is always present, because the one thing this
+ * must never do is make an office harder to reach than the visit requires.
+ */
+export async function officesForPicker(db: Db, userId: string): Promise<OfficeRow[]> {
+  const [all, mine] = await Promise.all([listActiveOffices(db), officeIdsForUser(db, userId)]);
+  if (mine.length === 0) return all;
+  const assigned = new Set(mine);
+  return [...all.filter((o) => assigned.has(o.id)), ...all.filter((o) => !assigned.has(o.id))];
 }

@@ -1,6 +1,7 @@
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { deleteUser, getUserById, mutateAdminGuarded, updateUser } from "@/lib/db/repo/users";
+import { getOffice, setOfficesForUser } from "@/lib/db/repo/offices";
 import { ownerDraftCount } from "@/lib/db/repo/drafts";
 import { submissionCountByUser } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
@@ -63,6 +64,35 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     emailChangedAt?: Date;
     emailChangedBy?: string;
   } = {};
+  // Which offices this person works at. A SET, because staff rotate and most
+  // people genuinely belong to several.
+  //
+  // Deliberately NOT gated on canEditContact: it is not contact data, it grants
+  // no access, and it is not a takeover vector. It sits with displayName, which
+  // anyone who can manage the account may set. Nothing anywhere may read it as
+  // a permission — every office stays selectable by everyone on every note.
+  //
+  // Applied AFTER the account update succeeds, so a rejected patch cannot leave
+  // the assignments changed.
+  let officeIds: string[] | null = null;
+  if (b.officeIds !== undefined) {
+    if (!Array.isArray(b.officeIds) || b.officeIds.some((x) => typeof x !== "string")) {
+      return Response.json({ error: "Invalid office list." }, { status: 400 });
+    }
+    const ids = [...new Set(b.officeIds as string[])].filter(Boolean);
+    if (ids.length > 50) {
+      return Response.json({ error: "Too many offices." }, { status: 400 });
+    }
+    for (const id of ids) {
+      if (!(await getOffice(db, id))) {
+        return Response.json(
+          { error: "That office is not on the practice's list." },
+          { status: 400 }
+        );
+      }
+    }
+    officeIds = ids;
+  }
   if (typeof b.displayName === "string") {
     const cleanName = sanitizeIdentity(b.displayName);
     if (cleanName) patch.displayName = cleanName;
@@ -134,12 +164,15 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   } else {
     await updateUser(db, id, patch);
   }
+  // Only once the account update has actually landed — including the
+  // last-admin guard above, which can refuse it.
+  if (officeIds !== null) await setOfficesForUser(db, id, officeIds);
   await logAction(db, {
     actorId: guard.user.id,
     actorName: `${guard.user.displayName} (${guard.user.username})`,
     action: "user.update",
     target: target.username,
-    detail: JSON.stringify(patch)
+    detail: JSON.stringify(officeIds === null ? patch : { ...patch, officeIds })
   });
   return Response.json({ ok: true });
 }

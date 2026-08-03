@@ -106,6 +106,28 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     }
   }
 
+  // The office is part of the frozen record, so changing it after filing has to
+  // re-open the submit gate exactly as a content change does.
+  //
+  // Left alone, this was the worst of the three possible behaviours: the write
+  // was accepted, stored, and reported as saved, while the ticket, the emailed
+  // copy, the History row and the CSV all kept the old office forever. The
+  // note-changed check above cannot see it — filedNoteEqual composes without
+  // any office context, by design, so the two sides agree — which is precisely
+  // why the office needs its own comparison.
+  //
+  // Re-opening rather than refusing: a note recorded at the wrong location is a
+  // materially wrong record, and a corrected second ticket is better than a
+  // permanent first one that is false about where care happened.
+  if (patch.officeId !== undefined && patch.officeId !== draft.officeId) {
+    patch.lastSendFailed = false;
+    patch.lastSubmissionId = null;
+    patch.status = statusForNote(patch.noteState ?? draft.noteState, {
+      submitted: false,
+      lastSendFailed: false
+    }).status;
+  }
+
   const updated = await updateDraftChecked(db, id, b.baseVersion, patch, new Date());
   if (!updated) {
     return Response.json(

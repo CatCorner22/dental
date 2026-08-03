@@ -5,8 +5,11 @@ import { offices } from "./schema";
 import {
   listActiveOffices,
   listOffices,
+  officeIdsForUser,
   officeNameFor,
-  seedOfficesIfEmpty
+  officesForPicker,
+  seedOfficesIfEmpty,
+  setOfficesForUser
 } from "./repo/offices";
 import { insertUser } from "./repo/users";
 import { insertDraft } from "./repo/drafts";
@@ -177,5 +180,72 @@ describe("the frozen office name is history, not a live lookup", () => {
     const mine = rows.find((r) => r.id === filed.id);
     expect(mine?.officeName).toBe("Executive Park");
     expect(mine?.officeName).not.toContain("West Wing");
+  });
+});
+
+describe("office assignments are a SET, and never a permission", () => {
+  it("lets one person be assigned to several offices", async () => {
+    // The whole reason a single default was wrong: staff rotate, so most
+    // people genuinely work at more than one location.
+    await db.delete(offices);
+    await seedOfficesIfEmpty(db, SEEDS);
+    const u = await insertUser(db, {
+      id: crypto.randomUUID(),
+      username: `multi-${Date.now()}`,
+      displayName: "Rotating Hygienist",
+      role: "user",
+      passHash: "x"
+    });
+    await setOfficesForUser(db, u.id, ["t-and-c", "fsw"]);
+    expect((await officeIdsForUser(db, u.id)).sort()).toEqual(["fsw", "t-and-c"]);
+  });
+
+  it("replaces the whole set rather than accumulating", async () => {
+    const u = await insertUser(db, {
+      id: crypto.randomUUID(),
+      username: `moved-${Date.now()}`,
+      displayName: "Moved",
+      role: "user",
+      passHash: "x"
+    });
+    await setOfficesForUser(db, u.id, ["t-and-c", "fsw"]);
+    await setOfficesForUser(db, u.id, ["exec-park"]);
+    // Someone moved off a location must not still be assigned to it.
+    expect(await officeIdsForUser(db, u.id)).toEqual(["exec-park"]);
+    await setOfficesForUser(db, u.id, []);
+    expect(await officeIdsForUser(db, u.id)).toEqual([]);
+  });
+
+  it("orders the picker by assignment but NEVER shortens it", async () => {
+    // The one thing this must not do is make an office harder to reach than
+    // the visit requires. A patient can be seen anywhere and cover is arranged
+    // at short notice, so the full list is always present — assignment only
+    // decides what appears first.
+    const u = await insertUser(db, {
+      id: crypto.randomUUID(),
+      username: `picker-${Date.now()}`,
+      displayName: "Picker",
+      role: "user",
+      passHash: "x"
+    });
+    const everything = (await listActiveOffices(db)).map((o) => o.id).sort();
+    await setOfficesForUser(db, u.id, ["fsw"]);
+    const shown = await officesForPicker(db, u.id);
+    expect(shown[0].id).toBe("fsw");
+    expect(shown.map((o) => o.id).sort()).toEqual(everything);
+  });
+
+  it("shows every office to someone with no assignments at all", async () => {
+    const u = await insertUser(db, {
+      id: crypto.randomUUID(),
+      username: `none-${Date.now()}`,
+      displayName: "Unassigned",
+      role: "user",
+      passHash: "x"
+    });
+    const shown = await officesForPicker(db, u.id);
+    expect(shown.map((o) => o.id).sort()).toEqual(
+      (await listActiveOffices(db)).map((o) => o.id).sort()
+    );
   });
 });

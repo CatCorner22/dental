@@ -64,6 +64,11 @@ export const users = pgTable("users", {
   // -function assistant, therapist) and ALTER TYPE ... ADD VALUE has caused
   // enough trouble in this schema already.
   clinicalRole: text("clinical_role").notNull().default("unset"),
+  // TOTP multi-factor authentication. The secret is stored only while MFA is
+  // pending or enabled; disabling clears it. Base32, never logged, never
+  // returned by any API after enrollment confirms.
+  mfaSecret: text("mfa_secret"),
+  mfaEnabled: boolean("mfa_enabled").notNull().default(false),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 

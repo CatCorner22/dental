@@ -106,6 +106,8 @@ export const SCHEMA_STATEMENTS: string[] = [
   // which restricts nothing — every existing account lands there, so enabling
   // this feature locks nobody out until the practice records who is who.
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "clinical_role" text DEFAULT 'unset' NOT NULL;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_secret" text;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" boolean DEFAULT false NOT NULL;`,
   // Which offices a person works at — MANY, not one. A lone "default office"
   // was the wrong shape: staff rotate, so most people belong to several.
   //

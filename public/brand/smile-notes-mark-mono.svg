@@ -1,0 +1,32 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" role="img" aria-label="Smile Notes logomark, single color">
+  <!--
+    Smile Notes logomark v2, single-color variant for print, engraving, and
+    colored surfaces. Uses currentColor so it inherits its surroundings.
+    (c) 2026 Blake Reagan. All rights reserved.
+  -->
+  <g transform="rotate(-18 256 256)">
+    <ellipse cx="256" cy="256" rx="242" ry="102" fill="none" stroke="currentColor" stroke-width="13" opacity="0.45"/>
+    <circle cx="498" cy="256" r="15" fill="currentColor" opacity="0.6"/>
+  </g>
+  <rect x="56" y="56" width="400" height="400" rx="96" fill="currentColor"/>
+  <rect x="126" y="128" width="140" height="17" rx="8.5" fill="#FFFFFF" opacity="0.4"/>
+  <rect x="126" y="164" width="90" height="17" rx="8.5" fill="#FFFFFF" opacity="0.25"/>
+  <path
+    fill="#FFFFFF"
+    d="M256 200
+       c-16 -14 -42 -14 -56 4
+       c-13 16 -12 40 -4 58
+       c7 15 10 30 12 58
+       c1 16 22 16 25 1
+       c3 -17 6 -29 23 -29
+       c17 0 20 12 23 29
+       c3 15 24 15 25 -1
+       c2 -28 5 -43 12 -58
+       c8 -18 9 -42 -4 -58
+       c-14 -18 -40 -18 -56 -4
+       z"/>
+  <path d="M226 258 q30 24 60 0" fill="none" stroke="currentColor" stroke-width="14" stroke-linecap="round"/>
+  <path d="M96 106 q10 22 32 32 q-22 10 -32 32 q-10 -22 -32 -32 q22 -10 32 -32 z" fill="currentColor" opacity="0.5"/>
+  <circle cx="380" cy="380" r="82" fill="#FFFFFF"/>
+  <path d="M344 382 l25 25 l48 -54" fill="none" stroke="currentColor" stroke-width="25" stroke-linecap="round" stroke-linejoin="round"/>
+</svg>

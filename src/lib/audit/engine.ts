@@ -17,6 +17,9 @@ import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
 import { newSpellingBudget, runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
 import { runMeasurementRule } from "./rules/measurement";
+import { runMedicationSafetyRules } from "./rules/medication-safety";
+import { runEffortRules } from "./rules/effort";
+import { runCompletenessRules } from "./rules/completeness";
 import { runPlainLanguageRule } from "./rules/plain-language";
 
 // Pure and isomorphic. The client runs the full audit live; the email route
@@ -29,7 +32,10 @@ export function runTextAudit(text: string): AuditFinding[] {
     ...runAbbreviationRule(text),
     ...runVaguePhraseRule(text),
     ...runStigmatizingRule(text),
-    ...runAnatomyTextRule(text)
+    ...runAnatomyTextRule(text),
+    ...runMedicationSafetyRules(text),
+    ...runEffortRules(text),
+    ...runCompletenessRules(text)
   ];
 }
 

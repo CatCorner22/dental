@@ -2,6 +2,7 @@ import { describe, expect, it } from "vitest";
 import {
   isWishCategory,
   isWishStatus,
+  ruleDisagreementStats,
   sortWishes,
   WISH_CATEGORIES,
   WISH_TITLE_MAX,
@@ -131,5 +132,31 @@ describe("a below-standard report cannot be buried or closed silently", () => {
     const done = { category: "standards", status: "done", createdAt: new Date(2020, 0, 1) };
     const open = { category: "feature", status: "new", createdAt: new Date(2026, 0, 1) };
     expect(sortWishes([done, open])[0]).toBe(open);
+  });
+});
+
+describe("ruleDisagreementStats", () => {
+  const row = (title: string, status = "new", category = "rule-disagreement") => ({
+    category,
+    status,
+    title
+  });
+
+  it("groups by rule, counts open vs settled, sorts by open first", () => {
+    const stats = ruleDisagreementStats([
+      row("Rule disagreement: vague.tolerated-well"),
+      row("Rule disagreement: vague.tolerated-well", "looking"),
+      row("Rule disagreement: vague.tolerated-well", "declined"),
+      row("Rule disagreement: medsafe.interaction.nsaid-asthma"),
+      row("Unrelated wish", "new", "feature")
+    ]);
+    expect(stats).toEqual([
+      { rule: "vague.tolerated-well", open: 2, settled: 1 },
+      { rule: "medsafe.interaction.nsaid-asthma", open: 1, settled: 0 }
+    ]);
+  });
+
+  it("returns empty for no disagreements", () => {
+    expect(ruleDisagreementStats([row("x", "new", "feature")])).toEqual([]);
   });
 });

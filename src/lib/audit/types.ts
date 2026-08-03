@@ -28,7 +28,8 @@ export type AuditCategory =
   | "stigmatizing"
   | "plain-language"
   | "spelling"
-  | "measurement";
+  | "measurement"
+  | "medication-safety";
 
 export interface AuditFinding {
   ruleId: string;

@@ -3,6 +3,7 @@ import { MISSPELLINGS, MEDICATION_WORDS } from "@/lib/vocab/misspellings";
 import { VAGUE_PHRASES, STALE_PHRASES, STIGMATIZING_PHRASES } from "@/lib/vocab/vague-phrases";
 import { SHORTHAND, SHORTHAND_OWNS } from "@/lib/vocab/shorthand";
 import { findImplausibleQuantities } from "./plausibility";
+import { foldDigits } from "@/lib/text/foldDigits";
 
 // Paste-to-standard: the "writing on rails" pass, moved out of the companion
 // skill and into the app.
@@ -107,6 +108,18 @@ function normalizeWhitespace(input: string): string {
       /[\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB]|[\u{E0000}-\u{E007F}]/gu,
       ""
     )
+    // Decimal digits from another script onto ASCII. "٥٠٠ mg" and "５００ mg" read
+    // as five hundred to a person and are invisible to every \d-based rule in the
+    // audit engine, which is how a phone number or an SSN could sit in a note
+    // that screened clean. The obfuscation screen now flags them, and this is
+    // what makes its advice ("press Standardize") true — without it the finding
+    // named a remedy that did nothing.
+    //
+    // Safely in the APPLIED half: ٥٠٠ and 500 are the same quantity written two
+    // ways, so the number the note asserts does not change. Folded before the
+    // spacing and punctuation work below, so "５００mg" reaches the unit-spacing
+    // rule as "500mg" and comes out as "500 mg".
+    .replace(/\p{Nd}/gu, (d) => foldDigits(d))
     // C0 controls other than tab and newline. A NUL reaching a practice-
     // management system that handles C strings truncates the note at that
     // byte, silently discarding everything a clinician wrote after it.

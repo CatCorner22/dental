@@ -14,6 +14,7 @@
 // that, rather than teaching each check about Unicode separately.
 
 import { visibleText } from "@/lib/audit/engine";
+import { foldDigits } from "@/lib/text/foldDigits";
 
 /**
  * Fold text to the form every check compares against.
@@ -39,31 +40,6 @@ export function canonical(text: string): string {
  * of them. The value of a decimal digit is its offset from the zero of its own
  * block, and codePointAt arithmetic recovers that without a lookup table.
  */
-function foldDigits(text: string): string {
-  return text.replace(/\p{Nd}/gu, (d) => {
-    const code = d.codePointAt(0)!;
-    // Walk down to this digit's own block zero: the lowest contiguous code
-    // point that is still a decimal digit, at most nine steps away. The digit's
-    // value is its distance from there.
-    //
-    // The first version of this returned "0" the moment it saw the character
-    // "0" while walking, which quietly rewrote every ASCII number in the note —
-    // "19" became "00" and "3" became "0". The comparisons still passed, because
-    // input and output were corrupted identically, which is exactly why it
-    // needed catching by something other than a passing test: the numbers
-    // printed back to a clinician in a rejection message would have been
-    // fiction. foldDigits is pinned by its own test now.
-    let zero = code;
-    while (
-      zero > 0 &&
-      code - (zero - 1) < 10 &&
-      /\p{Nd}/u.test(String.fromCodePoint(zero - 1))
-    ) {
-      zero--;
-    }
-    return String(code - zero);
-  });
-}
 
 /** Lowercased alphabetic tokens. Digits are compared separately and exactly. */
 export function words(text: string): string[] {

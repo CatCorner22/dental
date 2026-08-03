@@ -1,5 +1,6 @@
 import type { AuditFinding } from "../types";
 import { GIVEN_NAMES } from "@/lib/vocab/given-names";
+import { NON_ASCII_DIGIT } from "@/lib/text/foldDigits";
 
 // Heuristic prohibited-data screen. It helps; it cannot certify
 // de-identification. Drafts stay de-identified by construction (placeholders),
@@ -182,14 +183,27 @@ const PHI_PATTERNS: PhiPattern[] = [
   // with a named attestation for the rare case where a paste is innocent.
   {
     id: "phi.obfuscated-digits",
-    // A run of decimal digits containing at least one that is not ASCII. The
-    // leading `\p{Nd}*` backtracks so a non-ASCII digit anywhere in the run is
-    // found, not only at the start.
-    pattern: /\p{Nd}*(?![0-9])\p{Nd}\p{Nd}*/gu,
+    // Anchored AT the non-ASCII digit, and that is a performance requirement
+    // rather than a stylistic choice. The natural way to write "a digit run
+    // containing at least one non-ASCII digit" is `\p{Nd}*(?![0-9])\p{Nd}\p{Nd}*`,
+    // whose leading `\p{Nd}*` consumes to the end of a digit run and then
+    // backtracks through every remaining position looking for a non-ASCII digit
+    // that never arrives — once per start position. Quadratic. Measured on a run
+    // of plain ASCII digits: 1.8 ms at 1,000, 28 ms at 4,000, 445 ms at 16,000,
+    // and 6.5 SECONDS at 64,000, on a rule that runs inside the per-keystroke
+    // audit. performance.test.ts exists to forbid exactly that and its digit case
+    // has dashes in it, so the run never got long enough to show.
+    //
+    // Anchoring here is linear: an ASCII digit fails the lookahead in constant
+    // time and the scan moves on. The cost is that the match begins at the first
+    // non-ASCII digit rather than at the start of the run, so "12٣45" reports
+    // "٣45" — which is the right trade, because the finding is the obfuscation
+    // and Standardize folds the whole run either way.
+    pattern: NON_ASCII_DIGIT,
     severity: "S0",
     message:
       "This number is written in non-ASCII digits, so the privacy screen cannot read it and " +
-      "another system may render it differently. Retype it in ordinary digits, or press Standardize."
+      "another system may render it differently. Press Standardize to convert it, then check the number."
   },
   {
     id: "phi.hidden-characters",

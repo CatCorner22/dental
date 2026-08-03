@@ -200,14 +200,24 @@ export async function submissionCountByUser(db: Db, userId: string): Promise<num
 export async function statRowsForUser(
   db: Db,
   userId: string
-): Promise<{ auditStatus: string; submittedAtUtc: Date; draftCreatedAtUtc: Date | null }[]> {
+): Promise<
+  {
+    auditStatus: string;
+    submittedAtUtc: Date;
+    draftCreatedAtUtc: Date | null;
+    gpa: string | null;
+    gpaSubscores: Record<string, number> | null;
+  }[]
+> {
   // Left join: a purged or merged draft must not delete its filing from the
   // stats — the ROI timing fields just go null for that row.
   return db
     .select({
       auditStatus: submissions.auditStatus,
       submittedAtUtc: submissions.submittedAtUtc,
-      draftCreatedAtUtc: drafts.createdAt
+      draftCreatedAtUtc: drafts.createdAt,
+      gpa: submissions.gpa,
+      gpaSubscores: submissions.gpaSubscores
     })
     .from(submissions)
     .leftJoin(drafts, eq(submissions.draftId, drafts.id))

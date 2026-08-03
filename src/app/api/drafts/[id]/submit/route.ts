@@ -24,6 +24,10 @@ import { RULESET_VERSION } from "@/lib/version";
 import { checkFilingAuthority } from "@/lib/auth/approval";
 import { deriveGpa } from "@/lib/gpa/deriveGpa";
 import { assistEventsForDraft } from "@/lib/db/repo/auditLog";
+import { statRowsForUser } from "@/lib/db/repo/submissions";
+import { computeStats } from "@/lib/stats/computeStats";
+import { awardForSubmission, awardOnce } from "@/lib/db/repo/gamify";
+import { BADGES } from "@/lib/stats/badges";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
 import { sparkleLine } from "@/lib/stats/sparkle";
 
@@ -247,6 +251,34 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     );
   }
   const ticket = filed.ticket;
+
+  // The economy (best-effort, like the email): the note is FILED; a points
+  // hiccup must never look like a filing failure. Idempotency lives in the
+  // database (partial unique index on the ledger), so a retry cannot
+  // double-pay. Badge bonuses are keyed per badge the same way.
+  try {
+    const rows = await statRowsForUser(db, guard.user.id);
+    const freshStats = computeStats(rows);
+    await awardForSubmission(db, {
+      userId: guard.user.id,
+      submissionId: filed.submissionId,
+      gpa: grade.gpa,
+      streak: freshStats.currentStreak
+    });
+    for (const badgeId of freshStats.badges) {
+      const bonus = BADGES[badgeId].bonus;
+      if (!bonus) continue;
+      await awardOnce(db, {
+        userId: guard.user.id,
+        refType: "badge",
+        refId: badgeId,
+        points: bonus,
+        reason: `badge:${badgeId}`
+      });
+    }
+  } catch {
+    // A missing award is a support question; a failed filing is an outage.
+  }
 
   // Email (best-effort): the note is already filed; a send failure marks the
   // draft resendable, it never un-files the ticket.

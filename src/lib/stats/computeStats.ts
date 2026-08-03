@@ -1,5 +1,5 @@
 import type { BadgeId } from "./badges";
-import { deriveBadges } from "./badges";
+import { deriveBadges, deriveGpaBadges } from "./badges";
 
 // A note is "first pass" when its frozen audit status is the clean tier — no
 // open S0/S1/S2 at submit time. buildReport only emits that exact string when
@@ -11,6 +11,9 @@ export interface SubmissionStatRow {
   submittedAtUtc: Date;
   /** When the draft behind this filing was opened. Null for rows filed before the join existed. */
   draftCreatedAtUtc?: Date | null;
+  /** The frozen GPA stamp. Null for rows filed before grading existed. */
+  gpa?: string | null;
+  gpaSubscores?: Record<string, number> | null;
 }
 
 export interface UserStats {
@@ -85,5 +88,24 @@ export function computeStats(rows: SubmissionStatRow[]): UserStats {
     afterHoursCount: afterHours,
     afterHoursRate: total === 0 ? 0 : afterHours / total
   };
-  return { ...stats, badges: deriveBadges(stats) };
+  const badges = [
+    ...deriveBadges(stats),
+    ...deriveGpaBadges(
+      rows.map((r) => ({
+        submittedAtUtc: r.submittedAtUtc,
+        gpa: r.gpa ?? null,
+        gpaSubscores: r.gpaSubscores ?? null
+      }))
+    )
+  ];
+  return { ...stats, badges };
+}
+
+/** Rolling GPA over the graded rows in the last `days` days. Null when none. */
+export function rollingGpa(rows: SubmissionStatRow[], days = 30, now = new Date()): number | null {
+  const cutoff = now.getTime() - days * 86_400_000;
+  const graded = rows.filter((r) => r.gpa !== null && r.gpa !== undefined && r.submittedAtUtc.getTime() >= cutoff);
+  if (graded.length === 0) return null;
+  const sum = graded.reduce((a, r) => a + parseFloat(r.gpa as string), 0);
+  return Math.round((sum / graded.length) * 100) / 100;
 }

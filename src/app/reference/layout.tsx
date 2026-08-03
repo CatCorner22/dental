@@ -8,15 +8,18 @@ const LINKS = [
   { href: "/reference/templates", label: "Templates" },
   { href: "/reference/terminology", label: "Terminology & style" },
   { href: "/reference/abbreviations", label: "Abbreviation rules" },
+  { href: "/reference/shorthand", label: "Shorthand expansions" },
   { href: "/reference/tooth-chart", label: "Tooth chart" },
   { href: "/reference/sedation-imaging", label: "Sedation & imaging" },
   { href: "/reference/tennessee-law", label: "Tennessee law" },
-  { href: "/reference/data-hygiene", label: "Data Hygiene Guide" }
+  { href: "/reference/data-hygiene", label: "Data Hygiene Guide" },
+  { href: "/reference/source-ledger", label: "Evidence and sources" },
+  { href: "/reference/deployment", label: "Deployment" }
 ];
 
 // The reference pages were the only family relying on middleware alone. The
 // project's own rule (guards.ts) is that middleware is convenience and every
-// route checks for itself, so one guard here covers all eight routes. The
+// route checks for itself, so one guard here covers every reference route. The
 // content is internal training material rather than patient data, but a page
 // whose protection lives in exactly one place is a page that loses it the day
 // someone edits the matcher.

@@ -71,6 +71,19 @@ export const VAGUE_PHRASES: VaguePhrase[] = [
     replacement: "give a measurement or defined scale; keep formal anesthesia-depth terms"
   },
   {
+    // The staff-facing table has listed "minimal, moderate, or large" since the
+    // beginning; only two of the three were ever implemented. The reference
+    // parity test is what surfaced it — the doc was promising a check the tool
+    // did not perform, which is worse than not offering the check at all.
+    //
+    // No sedation carve-out here, unlike its two siblings: there is no
+    // anesthesia depth called "large".
+    id: "large",
+    pattern: /\blarge\b/gi,
+    display: "large",
+    replacement: "give a measurement or defined scale"
+  },
+  {
     id: "routine",
     pattern: /\broutine\b/gi,
     display: "routine",

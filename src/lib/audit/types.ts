@@ -14,6 +14,25 @@ export const SEVERITY_LABELS: Record<Severity, string> = {
   S4: "INFO"
 };
 
+/**
+ * What a severity means, in a sentence, for the person reading it.
+ *
+ * The labels above are the practice's formal audit vocabulary and they stay. These
+ * are for the screen. A usability review of the builder found the panel rendering
+ * "S1 REQUIRED" — the internal code AND the label — and a non-clinical reviewer read
+ * it as an error code they had done something to deserve. The code is taxonomy for
+ * the ruleset and the frozen report; it is not an instruction to a human.
+ *
+ * Each one says what happens next, because that is the only question the reader has.
+ */
+export const SEVERITY_MEANING: Record<Severity, string> = {
+  S0: "Must be fixed. This blocks copying and filing.",
+  S1: "Needed before this note can be filed.",
+  S2: "Worth a look before you file. Does not block.",
+  S3: "Wording only. Does not block.",
+  S4: "For information. Does not block."
+};
+
 export const SEVERITY_ORDER: Severity[] = ["S0", "S1", "S2", "S3", "S4"];
 
 export type AuditCategory =

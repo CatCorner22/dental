@@ -1,7 +1,13 @@
 "use client";
 
 import type { AuditFinding, AuditReport } from "@/lib/audit/types";
-import { SEVERITY_CLASS, SEVERITY_LABELS, SEVERITY_ORDER, STATUS_CLASS } from "@/lib/audit/types";
+import {
+  SEVERITY_CLASS,
+  SEVERITY_LABELS,
+  SEVERITY_MEANING,
+  SEVERITY_ORDER,
+  STATUS_CLASS
+} from "@/lib/audit/types";
 
 
 function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () => void }) {
@@ -32,7 +38,11 @@ function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () =>
     >
       <div className="flex items-start justify-between gap-2">
         <span className="font-semibold">
-          {finding.severity} {SEVERITY_LABELS[finding.severity]}
+          {/* The plain label only. The raw code (S0..S4) is ruleset taxonomy and
+              belongs in the frozen audit report, not in front of a person trying
+              to finish a note — a reviewer with no clinical training read "S1
+              REQUIRED" as an error code they had caused. */}
+          {SEVERITY_LABELS[finding.severity]}
           {finding.matchedText && (
             <span className="ml-1.5 rounded bg-white/70 px-1 font-mono font-normal">
               {finding.matchedText.length > 40 ? `${finding.matchedText.slice(0, 37)}…` : finding.matchedText}
@@ -49,6 +59,11 @@ function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () =>
         )}
       </div>
       <p className="mt-1">{finding.message}</p>
+      {/* WHAT HAPPENS NEXT, said out loud. The single most common complaint in the
+          usability review was that the app says no without saying why or what it
+          costs: "does this stop me filing, or is it advice?" was unanswerable from
+          a colour and a word. */}
+      <p className="mt-1 opacity-80">{SEVERITY_MEANING[finding.severity]}</p>
       {finding.suggestion && (
         <p className="mt-1">
           <span className="font-semibold">Standard wording:</span> {finding.suggestion}

@@ -20,8 +20,33 @@
      The stack is spelled out rather than assumed: Aptos ships with current
      Microsoft 365, Calibri with older installs, Helvetica/Arial everywhere
      else, and the system-ui front stop keeps Linux and Android sensible. */
+  /* THE TEXT-SCALING FIX.
+   *
+   * `body { font-size: 12pt }` was an ABSOLUTE unit, and Tailwind's caption sizes
+   * (text-sm, text-xs) are `rem` — relative to the ROOT. So raising the browser's
+   * own default font size scaled every caption, help text and dense table and left
+   * body copy pinned at 16px. At a 24px default, `text-sm` computes to 21px and
+   * `text-xs` to 18px, both LARGER than the prose they annotate. The one control an
+   * older employee is most likely to already know how to use produced an inverted
+   * layout.
+   *
+   * Setting the root in `rem` fixes it at the source: 0.75rem of the user's own
+   * default is 12pt when their default is 16px, and scales with them when it is
+   * not. Everything sized in rem — which is everything Tailwind emits — now moves
+   * together.
+   *
+   * --text-scale is the in-app control on top of that, for the case where the
+   * browser setting is not discoverable (it rarely is) or where one shared
+   * workstation needs a bigger size than the person who set the browser up wanted.
+   */
+  html {
+    font-size: calc(1rem * var(--text-scale, 1));
+  }
+
   body {
-    font-size: 12pt;
+    /* 1rem, because the 12pt this replaces WAS 16px (12 x 96/72) — the point of
+       the change is that the size now scales, not that it changes. */
+    font-size: 1rem;
     font-family: Aptos, Calibri, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
       Arial, sans-serif;
     /* Notched and rounded screens: keep content clear of the hardware. */
@@ -82,6 +107,53 @@
   [aria-invalid="true"] {
     @apply border-red-500;
   }
+}
+
+/* HIGH CONTRAST.
+ *
+ * Not a dark theme. A dental operatory is bright, the people most likely to need
+ * this are reading at arm's length under a task light, and a dark theme in that
+ * room is harder to read rather than easier. So this raises contrast and weight
+ * on the existing light ground instead of inverting it.
+ *
+ * Severity colour is deliberately NOT touched. Red, orange, amber and green carry
+ * defined meanings that the status chips pair with an icon and a word, and
+ * re-deriving that palette for a second theme is how two screens end up
+ * disagreeing about what amber means. Contrast here is applied to TEXT, BORDERS
+ * and FOCUS — the things that were failing — and the severity system keeps its one
+ * source of truth.
+ */
+[data-contrast="high"] {
+  --tw-ring-offset-width: 2px;
+}
+[data-contrast="high"] body {
+  color: #000;
+}
+[data-contrast="high"] .text-slate-400,
+[data-contrast="high"] .text-slate-500,
+[data-contrast="high"] .text-slate-600 {
+  /* slate-400 on white is 2.6:1 — below the 4.5:1 that normal text needs, and it
+     is what help text and timestamps were rendered in. */
+  color: #334155 !important;
+}
+[data-contrast="high"] .border-slate-100,
+[data-contrast="high"] .border-slate-200,
+[data-contrast="high"] .border-slate-300 {
+  border-color: #475569 !important;
+}
+[data-contrast="high"] .field-input,
+[data-contrast="high"] .chip,
+[data-contrast="high"] .btn {
+  border-width: 2px;
+}
+[data-contrast="high"] a {
+  text-decoration-thickness: 2px;
+}
+[data-contrast="high"] ::placeholder {
+  /* Placeholders were the worst offender: grey-on-white at 11px, holding the
+     format hint a writer needs most on their first note. */
+  color: #475569 !important;
+  opacity: 1;
 }
 
 /* Rendered reference markdown */
@@ -333,6 +405,9 @@
     background: transparent !important;
     border: 0 !important;
     padding: 0 !important;
+    /* Print stays in pt deliberately: paper has physical dimensions and a
+       reader's screen preference should not change what a filed record looks
+       like on a page in a records request. */
     font-size: 11pt;
   }
   h1,

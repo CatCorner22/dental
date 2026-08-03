@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AccountForm } from "@/components/account/AccountForm";
 import { RevokeSessions } from "@/components/account/RevokeSessions";
+import { DisplaySettings } from "@/components/shell/DisplaySettings";
 import { MfaSettings } from "@/components/account/MfaSettings";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
@@ -31,6 +32,7 @@ export default async function AccountPage() {
       <MfaSettings enabled={row?.mfaEnabled ?? false} />
       <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
       <RevokeSessions />
+      <DisplaySettings />
     </div>
   );
 }

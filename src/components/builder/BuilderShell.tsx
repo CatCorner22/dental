@@ -17,6 +17,7 @@ import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { computeGates, runAudit } from "@/lib/audit/engine";
+import { OMISSION_NOTICE_THRESHOLD, omissionReport } from "@/lib/audit/omissions";
 import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
@@ -161,6 +162,14 @@ export function BuilderShell({
     [deferredState, auditModules, markdown]
   );
   const fieldFindings = useMemo(() => findingsByField(report.findings), [report.findings]);
+
+  // How much of this note is a recorded absence rather than a fact. Deferred with
+  // the rest of the graded copy, and never a gate — see omissions.ts for why
+  // closing the escape hatch would make notes worse, not better.
+  const omissions = useMemo(
+    () => omissionReport(deferredState, auditModules),
+    [deferredState, auditModules]
+  );
 
   const phiSignature = useMemo(
     () => JSON.stringify(report.phiStops.map((f) => [f.ruleId, f.matchedText]).sort()),
@@ -473,6 +482,58 @@ export function BuilderShell({
           )}
         </div>
       </div>
+
+      {/* WHY SUBMIT IS OFF, in words, on the screen.
+          The reason lived only in a `title` tooltip — which does not exist on a
+          tablet, never appears for a keyboard user, and needs a deliberate hover a
+          hurried person will not perform. A usability review's single most common
+          complaint was the app saying no without saying why: someone filled a note,
+          pressed Submit, nothing happened, and they had to infer the cause from
+          coloured chips in a panel. Counted and named, with the count matching the
+          panel so the two cannot disagree. */}
+      {canEdit && hasContent && !gates.emailAllowed && liveStatus !== "submitted" && (
+        <p
+          className="mb-4 rounded border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900"
+          role="status"
+        >
+          <strong>Not ready to file yet.</strong>{" "}
+          {report.counts.S0 > 0 && (
+            <>
+              {report.counts.S0} item{report.counts.S0 === 1 ? "" : "s"} must be fixed
+              {report.counts.S1 > 0 ? ", and " : ". "}
+            </>
+          )}
+          {report.counts.S1 > 0 && (
+            <>
+              {report.counts.S1} required field{report.counts.S1 === 1 ? "" : "s"}{" "}
+              {report.counts.S1 === 1 ? "is" : "are"} still open.{" "}
+            </>
+          )}
+          Each one is listed in the audit panel with a link straight to the field.
+        </p>
+      )}
+
+      {/* WHAT THIS NOTE ACTUALLY SAYS, when most of it says "not applicable".
+          Shown, never blocked. Clicking a licence is one action and finding out the
+          real answer is a conversation, so the escape hatch is the path of least
+          resistance — a usability reviewer walking the app cold found exactly that.
+          The answer is not to close it (a form that refuses "I do not know" gets a
+          fabricated value instead) but to stop it being invisible. */}
+      {canEdit && omissions.licensed > 0 && omissions.rate >= OMISSION_NOTICE_THRESHOLD && (
+        <p className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <strong>
+            {omissions.licensed} of {omissions.answered + omissions.licensed} required answers record
+            an absence rather than a finding.
+          </strong>{" "}
+          That is allowed and it is written into the note — {" "}
+          {omissions.byLicence
+            .map((b) => `${b.fields.length} × "${b.licence.label}"`)
+            .join(", ")}
+          . Worth one more look if any of them could be answered instead: a recorded
+          absence is defensible, and so is a fact, but only one of them is useful to
+          whoever reads this next.
+        </p>
+      )}
 
       {!canEdit && (
         <p className="mb-4 rounded border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700">

@@ -227,3 +227,22 @@ describe("standardize — shorthand: define on first use, then leave it", () => 
     expect(twice.text).toBe(once.text);
   });
 });
+
+describe("standardize — oversize input is reported, never silently dropped", () => {
+  it("flags truncation rather than quietly returning a shorter note", () => {
+    const long = "Patient reports pain. ".repeat(1000); // ~22,000 chars
+    const r = standardize(long);
+    expect(r.truncated).toBe(true);
+    const flag = r.flags.find((f) => f.kind === "truncated");
+    expect(flag).toBeDefined();
+    // It leads the list: losing content outranks every wording change.
+    expect(r.flags[0].kind).toBe("truncated");
+    expect(flag!.guidance).toContain("20,000");
+  });
+
+  it("does not claim truncation for input that fits", () => {
+    const r = standardize("Composite placed on the mesial surface.");
+    expect(r.truncated).toBe(false);
+    expect(r.flags.some((f) => f.kind === "truncated")).toBe(false);
+  });
+});

@@ -46,7 +46,8 @@ export interface RaisedFlag {
     | "ambiguous-shorthand"
     | "vague-phrase"
     | "stale-text"
-    | "medication-spelling";
+    | "medication-spelling"
+    | "truncated";
   display: string;
   guidance: string;
   count: number;
@@ -58,6 +59,17 @@ export interface StandardizeResult {
   flags: RaisedFlag[];
   /** True when the text is already standard: nothing applied, nothing flagged. */
   clean: boolean;
+  /**
+   * True when the input exceeded MAX_INPUT and the tail was dropped.
+   *
+   * This has to be reported, not swallowed. The API route rejects an oversize
+   * paste with a 413, but the INLINE builder button calls this function
+   * directly in the browser with no such check — so without this flag a
+   * clinician with a very long field would silently get a SHORTER note back
+   * and nothing on screen would say so. Losing the end of a clinical note
+   * quietly is the worst thing this module could do.
+   */
+  truncated: boolean;
 }
 
 const MAX_INPUT = 20000;
@@ -151,6 +163,13 @@ function matchCase(sample: string, replacement: string): string {
   return replacement;
 }
 
+// Escape a literal for use inside a RegExp. Written out rather than inlined
+// because the inline version of this was subtly wrong and silently produced a
+// pattern that could not match what it was built to find.
+function escapeRegExp(literal: string): string {
+  return literal.replace(/[.*+?^${}()|[\]\\]/g, "\\$&");
+}
+
 function bump<T extends { count: number }>(list: T[], key: (x: T) => string, item: T): void {
   const found = list.find((x) => key(x) === key(item));
   if (found) found.count += item.count;
@@ -161,7 +180,9 @@ export function standardize(raw: string): StandardizeResult {
   const applied: AppliedChange[] = [];
   const flags: RaisedFlag[] = [];
 
-  const input = typeof raw === "string" ? raw.slice(0, MAX_INPUT) : "";
+  const source = typeof raw === "string" ? raw : "";
+  const truncated = source.length > MAX_INPUT;
+  const input = source.slice(0, MAX_INPUT);
   const whitespaced = normalizeWhitespace(input);
   if (whitespaced !== input.trim()) {
     applied.push({
@@ -228,17 +249,29 @@ export function standardize(raw: string): StandardizeResult {
     // Already defined somewhere in this text? Then the convention is satisfied
     // and re-expanding would produce "root canal therapy (RCT) (RCT)".
     const defined = new RegExp(
-      `${sh.expansion.replace(/[.*+?^${}()|[\\]\\\\]/g, "\\\\$&")}\\s*\\(${sh.display}\\)`,
+      `${escapeRegExp(sh.expansion)}\\s*\\(${escapeRegExp(sh.display)}\\)`,
       "i"
     );
     if (defined.test(text)) continue;
 
+    // EVERY occurrence is normalised to the canonical `display`, and only the
+    // first is expanded. The variants in these patterns are the reason:
+    // /\bBWX?\b/ matches "BWX", /\bFM[XS]\b/ matches "FMS", and
+    // /\bb\.?i\.?d\.?\b/ matches "b.i.d." — all with a canonical display of
+    // "BW", "FMX", "bid".
+    //
+    // Writing the MATCHED text into the parentheses was a real bug: it produced
+    // "bitewing radiograph (BWX)", which the `defined` check above (looking for
+    // "(BW)") then failed to recognise, so a second pass expanded it again into
+    // "bitewing radiograph (bitewing radiograph (BWX))". Normalising fixes the
+    // idempotency AND is the more correct behaviour anyway — standardising is
+    // the entire job, so "BWX" and "b.i.d." should come out as the one spelling
+    // the practice agreed on.
     let first = true;
-    text = text.replace(re, (m) => {
-      if (!first) return m;
+    text = text.replace(re, () => {
+      if (!first) return sh.display;
       first = false;
-      // Sentence-initial gets a capital; mid-sentence stays lower.
-      return `${sh.expansion} (${m})`;
+      return `${sh.expansion} (${sh.display})`;
     });
     bump(applied, (a) => `${a.kind}:${a.from}`, {
       kind: "shorthand",
@@ -314,10 +347,22 @@ export function standardize(raw: string): StandardizeResult {
     });
   }
 
+  if (truncated) {
+    // Surfaced as a flag rather than an applied change: nothing was
+    // standardised here, something was LOST, and the writer has to act.
+    flags.unshift({
+      kind: "truncated",
+      display: "This note was too long and the end was cut off",
+      guidance: `Only the first ${MAX_INPUT.toLocaleString()} characters were standardized. Standardize the rest separately, and check that nothing is missing from the end.`,
+      count: 1
+    });
+  }
+
   return {
     text,
     applied,
     flags,
-    clean: applied.length === 0 && flags.length === 0
+    clean: applied.length === 0 && flags.length === 0,
+    truncated
   };
 }

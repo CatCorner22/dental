@@ -180,6 +180,8 @@ function StandardizeField({
     const r = standardize(text);
     if (r.text !== text) onApply(r.text);
     const parts: string[] = [];
+    // Loudest first: something was LOST, which matters more than what changed.
+    if (r.truncated) parts.push("⚠ too long — the end was not standardized");
     const changes = r.applied.filter((a) => a.kind !== "formatting").length;
     if (r.text !== text) {
       parts.push(changes > 0 ? `${changes} change${changes === 1 ? "" : "s"} applied` : "tidied");

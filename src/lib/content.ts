@@ -16,6 +16,12 @@ const DOCS = {
 
 export type DocName = keyof typeof DOCS;
 
+// Exported so a test can assert every allowlisted document actually has a page
+// rendering it. Two of these were allowlisted and unrouted for the whole life
+// of the project, which nothing caught because "allowlisted" and "reachable"
+// were never compared.
+export const DOC_NAMES = Object.keys(DOCS) as DocName[];
+
 export function readReferenceDoc(name: DocName): string {
   return readFileSync(path.join(process.cwd(), DOCS[name]), "utf8");
 }

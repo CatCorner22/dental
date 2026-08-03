@@ -68,6 +68,9 @@ Do not collapse these states.
 | N2O | nitrous oxide and oxygen inhalation sedation |
 | IVS | intravenous sedation, with intended and achieved depth |
 | EBL | estimated blood loss, with amount and unit |
+| U | write "units" in full — U is read as a zero, so 10U becomes 100 |
+| IU | write "international units" in full — IU is read as IV or as the number 10 |
+| MS or MSO4 or MgSO4 | write the term out in full — MS is read as morphine sulfate, as magnesium sulfate, and as multiple sclerosis |
 | PRN | state the condition and action in patient instructions |
 | NKDA or NKA | no known drug allergies or no known allergies, only when verified |
 | RCT | root canal treatment |
@@ -92,7 +95,9 @@ Keep an abbreviation only if the practice has one approved meaning, defines it a
 | stable | name the unchanged finding, comparison, and period |
 | adequate | state the criterion that was met |
 | significant | state the measurement or clinical effect |
-| minimal, moderate, or large | give a measurement or defined scale; keep formal anesthesia-depth terms |
+| minimal | give a measurement or defined scale; keep formal anesthesia-depth terms |
+| moderate | give a measurement or defined scale; keep formal anesthesia-depth terms |
+| large | give a measurement or defined scale |
 | routine | name the reason, interval, or procedure |
 | as needed | state the trigger and action |
 | appears | state the observation and reason for uncertainty |
@@ -102,6 +107,22 @@ Keep an abbreviation only if the practice has one approved meaning, defines it a
 | unremarkable | name the structure and observed finding |
 | grossly intact | name the tested function and result |
 | no complications | no complication was observed during the stated procedure or observation period |
+| and/or | state each option separately; write "A, B, or both" when both are possible |
+| etc. | list each item; do not use etc. |
+| respectively | repeat the tooth, site, drug, device, or actor instead of pairing lists |
+
+## Copy-forward and stale-text signals
+
+Text carried over from a previous note, or left where a placeholder was. The wording may well be true — but a clinician has to confirm it was written for *this* visit, which is why these are flagged rather than removed.
+
+| Signal | Write instead |
+|---|---|
+| same as above | restate the fact for this entry |
+| see previous note | state the fact in this entry; link records only in the EDR |
+| unchanged | name the unchanged finding, the comparison, and the period |
+| today | use a relative interval or leave the exact date for the EDR |
+| last visit | state the interval and what happened, or mark it unresolved |
+| previously | state when and what happened, or mark it unresolved |
 
 ## Words that label the patient
 

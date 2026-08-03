@@ -164,11 +164,41 @@ export const SHORTHAND: Shorthand[] = [
   { id: "tmd", pattern: /\bTMD\b/gi, display: "TMD", expansion: "temporomandibular disorder", domain: "dental" },
   { id: "cej", pattern: /\bCEJ\b/gi, display: "CEJ", expansion: "cementoenamel junction", domain: "dental" },
   {
+    id: "mod",
+    // Surface combinations. formatSurfaces() already EMITS these, but nothing
+    // recognised them when a clinician typed them in prose, so "MOD composite"
+    // went through as an unexplained initialism. Uppercase-only and anchored to
+    // the real combinations: a case-insensitive /\bmod\b/ would swallow the
+    // ordinary English word, and /\b[MODBFLI]+\b/ would swallow "I", "B", and
+    // every other stray capital.
+    pattern: /\b(?:MOD|MO|DO|MID|DI|MI|OD|OL|OB|MODB?L?|DOL?|MODP)\b/g,
+    display: "MOD",
+    expansion: "surface combination (mesial, occlusal, distal, and so on)",
+    // Never expanded: which surfaces a restoration touches is a clinical fact
+    // and the letters carry it exactly. Spelling them out would be longer and
+    // no clearer, and guessing the order would be wrong.
+    alternatives: ["name the surfaces in the standard order — the letters are already correct"],
+    domain: "dental"
+  },
+  {
     id: "pd",
     pattern: /\bPD\b/g,
     display: "PD",
     expansion: "probing depth",
-    alternatives: ["probing depth", "pocket depth", "partial denture"],
+    alternatives: ["probing depth", "pocket depth", "partial denture", "periodontal disease"],
+    domain: "dental"
+  },
+  {
+    id: "ppd",
+    // On the practice's own approved list as "probing pocket depth", and NOT
+    // matched by the PD entry above. Never expanded, because in a medical
+    // history PPD is the tuberculin skin test (purified protein derivative) —
+    // and a note that turns a positive TB test into a periodontal measurement
+    // has deleted a systemic finding.
+    pattern: /\bPPDs?\b/g,
+    display: "PPD",
+    expansion: "probing pocket depth",
+    alternatives: ["probing pocket depth", "purified protein derivative (the tuberculin skin test)"],
     domain: "dental"
   },
 
@@ -214,7 +244,13 @@ export const SHORTHAND: Shorthand[] = [
   // ---- Chart structure and history
   {
     id: "cc",
-    pattern: /\bCC\b/g,
+    // Case-INSENSITIVE, which the uppercase-only version was not. The reading
+    // that makes this dangerous is the volume one, and a volume is written
+    // lowercase: "2 cc of lidocaine" sailed through untouched while only a
+    // shouted "CC" was ever raised. The header of this file says an ambiguous
+    // term must be flagged rather than guessed; that promise was only being
+    // kept for the harmless casing.
+    pattern: /\bCC\b|\bcc\b/g,
     display: "CC",
     expansion: "chief complaint",
     // CC is a VOLUME (cubic centimetre) at least as often as "chief complaint",

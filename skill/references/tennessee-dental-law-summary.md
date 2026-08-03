@@ -43,7 +43,7 @@ Rule 0460-02-.12 applies to office and other nonhospital dental records within i
 - Do not withhold records because of unpaid dental fees.
 - Tenn. Code Ann. § 63-2-101 generally requires a copy or summary after a proper written patient or authorized-representative request within ten working days. Verify the current statute, authorization, format, and fee provisions before release.
 - Retain adult dental records at least seven years after the last professional contact by the dentist or supervisee.
-- Retain a minor's record at least one year after the patient reaches majority or seven years after the last professional contact, whichever is longer.
+- Retain a minor's record at least one year after the patient reaches majority, or **ten** years after the last professional contact, whichever is longer. **Two Tennessee authorities state a different floor here and the practice should take the longer one.** Board Rule 0460-02-.12 gives seven years; the Tennessee Department of Health Standards of Practice Manual gives ten years from the last date of service. The adult rule above is not affected — three sources agree it is seven years — so the discrepancy is specific to minors. Ask counsel which governs this practice; until then, ten satisfies either reading and seven does not.
 - Retain records for a patient described by the rule as incompetent indefinitely. Ask counsel to map this older term to current capacity and guardianship law.
 - Do not destroy a record while the services are disputed.
 - Destroy records only under a consistent office procedure that protects confidentiality. Keep a destruction log with enough group-level detail to identify whether a patient's record was included.
@@ -157,7 +157,7 @@ Rule 0460-01-.18 contains training, assessment, consent, method, duration, docum
 - [ ] Verify the current Rule 0460 index and each chapter revision
 - [ ] Verify current Tenn. Code Ann. §§ 63-2-101, 63-2-102, and Title 63, Chapter 5
 - [ ] Map every staff role to permitted acts, certification, and supervision
-- [ ] Configure seven-year, minor, incapacity, dispute-hold, and destruction-log rules
+- [ ] Configure seven-year adult, minor (take the longer of the two stated floors — see Records), incapacity, dispute-hold, and destruction-log rules
 - [ ] Configure record access, fees, format, authorization, and release timing
 - [ ] Configure consent and refusal fields without PII in AI input
 - [ ] Configure exact drug, date, amount, and image fields for local EDR completion

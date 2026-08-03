@@ -61,10 +61,45 @@ const PERCENT = /(\d+(?:\.\d+)?)\s*%/g;
 
 // number (with optional decimal and thousands separators) followed by a unit
 // word within a couple of characters.
-const NUM_UNIT = /(\d[\d,]*(?:\.\d+)?)\s{0,3}([A-Za-zµ°/]+)/g;
+//
+// The leading `\.?` matters more than it looks. Requiring a leading DIGIT meant
+// a naked decimal lost its point before it was ever read: ".5 mg" matched as
+// "5 mg", and "Gave .50000 mg." was reported back to the clinician as
+// "50000 mg" — the safety checker quoting a number one hundred thousand times
+// what the note actually said. A checker that misquotes the note is asserting a
+// value, which is the one thing this module exists not to do.
+const NUM_UNIT = /(\.?\d[\d,]*(?:\.\d+)?)\s{0,3}([A-Za-zµ°/]+)/g;
+
+// Two dose constructs the Joint Commission prohibits outright, both of which
+// are misread rather than merely untidy — and neither of which is a magnitude
+// problem, so the ceilings above cannot see them.
+//
+//   NAKED DECIMAL  ".5 mg" read as "5 mg" — a tenfold overdose if the point is
+//   missed on a photocopy, a fax, or a tired second glance.
+//   TRAILING ZERO  "1.0 mg" read as "10 mg" if the point is missed.
+//
+// Flagged, never corrected. Writing "0.5" for ".5" would be a safe fix and
+// writing "1" for "1.0" would be too, but the module's contract is that it
+// never proposes a value, and holding that line matters more than the two
+// keystrokes it saves.
+const NAKED_DECIMAL = /(?<![\d.])\.(\d+)\s{0,3}([A-Za-zµ]+)/g;
+const TRAILING_ZERO = /\b(\d+)\.0+\s{0,3}([A-Za-zµ]+)/g;
 
 function toNumber(raw: string): number {
   return Number(raw.replace(/,/g, ""));
+}
+
+// The dose-FORM rules fire only on units that carry a drug amount.
+//
+// Scoped deliberately. "Probing depth 3.0 mm" and "recession .5 mm" are untidy
+// but nobody is harmed by misreading a periodontal measurement by a factor of
+// ten, whereas a whole perio chart of them would bury the one flag that does
+// matter. The module header is explicit that a checker which cries wolf gets
+// ignored, and this is where that principle earns its keep.
+const DOSE_UNITS = /^(?:mg|mcg|µg|ug|g|grams?|mL|ml|L|lit(?:re|er)s?|units?|u|iu|cc|carpules?)$/i;
+
+function isDoseUnit(unit: string): boolean {
+  return DOSE_UNITS.test(unit);
 }
 
 function bump(list: ImplausibleQuantity[], item: ImplausibleQuantity): void {
@@ -116,6 +151,28 @@ export function findImplausibleQuantities(text: string): ImplausibleQuantity[] {
         count: 1
       });
     }
+  }
+
+  // Dose FORM, not dose magnitude. Both of these read as a tenfold error the
+  // moment the decimal point is lost — to a photocopier, a fax, or a tired
+  // second glance — which is why the Joint Commission prohibits writing them
+  // at all rather than merely discouraging it.
+  for (const m of text.matchAll(NAKED_DECIMAL)) {
+    if (!isDoseUnit(m[2])) continue;
+    bump(out, {
+      matched: m[0].trim(),
+      reason: `"${m[0].trim()}" is missing its leading zero. If the point is missed this reads as ${m[1]} ${m[2]} — at least a tenfold error. Write a zero before the point. This tool will not rewrite a dose.`,
+      count: 1
+    });
+  }
+
+  for (const m of text.matchAll(TRAILING_ZERO)) {
+    if (!isDoseUnit(m[2])) continue;
+    bump(out, {
+      matched: m[0].trim(),
+      reason: `"${m[0].trim()}" carries a trailing zero. If the point is missed this reads as ten times the dose. Drop the zero and the point. This tool will not rewrite a dose.`,
+      count: 1
+    });
   }
 
   return out;

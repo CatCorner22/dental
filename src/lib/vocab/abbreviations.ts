@@ -120,6 +120,39 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     replacement: "estimated blood loss, with amount and unit",
     severityClass: "review"
   },
+  // ---- Joint Commission / ISMP DO NOT USE list.
+  //
+  // These are not untidy shorthand, they are constructs with a documented
+  // history of being MISREAD, and the remedy is always to write the word out.
+  // None of them was detected at all before: "insulin 10U" passed this audit
+  // clean, which is the single worst miss the list contains, because U read as
+  // a zero turns 10 units into 100.
+  {
+    id: "unit-u",
+    // Attached to a number ("10U", "10 u"), which is how the error occurs. A
+    // bare capital U in prose is far more likely to be an initial or a tooth
+    // reference than a unit, and flagging that would be noise.
+    pattern: /\b\d+\s?[Uu]\b/g,
+    display: "U (units)",
+    replacement: 'write "units" in full — U is read as a zero, so 10U becomes 100',
+    severityClass: "review"
+  },
+  {
+    id: "unit-iu",
+    pattern: /\b\d+\s?IU\b|\bIU\b/g,
+    display: "IU",
+    replacement: 'write "international units" in full — IU is read as IV or as the number 10',
+    severityClass: "review"
+  },
+  {
+    id: "morphine-ms",
+    // MS is morphine sulfate or magnesium sulfate, and the two are confused in
+    // both directions. There is no safe expansion, only the full drug name.
+    pattern: /\bMSO4\b|\bMgSO4\b|\bMS\b(?!\s*(?:Word|Office))/g,
+    display: "MS / MSO4 / MgSO4",
+    replacement: "write the full drug name — MS is read as both morphine sulfate and magnesium sulfate",
+    severityClass: "review"
+  },
   {
     id: "prn",
     pattern: /\bp\.?r\.?n\.?(?=[\s,.;:)]|$)/gi,

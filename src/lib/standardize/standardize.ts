@@ -125,7 +125,15 @@ function normalizeWhitespace(input: string): string {
     .replace(/ ?\n ?/g, "\n")
     .replace(/\n{3,}/g, "\n\n")
     // A space before terminal punctuation, and a missing one after.
-    .replace(/ +([,.;:!?])/g, "$1")
+    //
+    // The lookahead protects a NAKED LEADING DECIMAL. Without it this rule read
+    // the point in "Midazolam .5 mg IV." as stray punctuation, deleted the
+    // space, and produced "Midazolam.5 mg IV." — a dose welded onto the drug
+    // name in a document that is a legal record. The Joint Commission already
+    // prohibits writing a dose that way ("use 0.X mg"); silently gluing it to
+    // the preceding word makes an error-prone construct worse rather than
+    // raising it, which is what the rule below now does instead.
+    .replace(/ +([,;:!?]|\.(?!\d))/g, "$1")
     // Colon excluded: "MOD:B" and ratios like "1:100,000" are notation,
     // not prose punctuation.
     .replace(/([,;])(?=[A-Za-z])/g, "$1 ")

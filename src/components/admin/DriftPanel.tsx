@@ -128,7 +128,12 @@ export function DriftPanel({ events }: { events: DriftEvent[] }) {
               <li key={c.code} className="flex items-baseline gap-2 text-sm">
                 <span className="min-w-8 font-bold tabular-nums text-slate-900">{c.count}</span>
                 <span className="text-slate-700">{CODE_LABEL[c.code] ?? c.code}</span>
-                <span className="font-mono text-xs text-slate-400">{c.code}</span>
+                {/* The id only when it adds something. PHI rule ids arrive here
+                    too and have no plain-English label, so printing both showed
+                    the same string twice. */}
+                {CODE_LABEL[c.code] && (
+                  <span className="font-mono text-xs text-slate-400">{c.code}</span>
+                )}
               </li>
             ))}
           </ul>

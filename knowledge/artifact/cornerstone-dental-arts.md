@@ -40,6 +40,7 @@ what a human typed, and nothing more.
 | 2026-08-03 | Hardened the de-identified premise: bare-name detection, a real attestation, a privacy status, and redaction. |
 | 2026-08-03 | Hostile review plus a browser accessibility pass. Fixed twelve items; ten remain open and are listed in §9. |
 | 2026-08-03 | Created this Artifact. Seeded from five existing sources. Ingested nothing new. |
+| 2026-08-03 | Built the patient-experience layer from the practice's own standardization document: encounter types for phone and portal contact, an open-items handoff, an anxiety and comfort module, a patient-facing summary with its own plain-word rule, and a page splitting the note header between Curve Hero and Smile Notes. Money stays out of the clinical record entirely, at the practice's direction. |
 
 ---
 
@@ -224,10 +225,14 @@ which fields belong in Curve.*
    legitimate notes, four unrecognised date formats, and a redaction path that erases clinical text.
 3. **Ask the practice the five open questions in §6**, starting with facial aesthetics and who holds
    which clinical role.
-4. **Get Tennessee dental counsel to review**, as the source report itself recommends.
-5. **Watch one real appointment** at each office before the pilot. Every source describes intended
+4. **Watch how staff use the patient summary.** The plain-word rule is new and its list is a first
+   draft. Two things to measure at the pilot: which words staff keep and explain rather than
+   replace, and which clinical terms the list is missing. Both change the list, and neither can be
+   guessed from outside the operatory.
+5. **Get Tennessee dental counsel to review**, as the source report itself recommends.
+6. **Watch one real appointment** at each office before the pilot. Every source describes intended
    process; none observed the actual ninety seconds between patients.
-6. **Decide on the HIPAA 2026 operational controls** — mandatory multi-factor sign-in, encryption at
+7. **Decide on the HIPAA 2026 operational controls** — mandatory multi-factor sign-in, encryption at
    rest, annual security risk analysis, business-associate agreement tracking, and Tennessee's
    45-day breach notification. These are practice operations and hosting, not app features, and the
    repository documents none of them. Multi-factor sign-in and encryption at rest are partly

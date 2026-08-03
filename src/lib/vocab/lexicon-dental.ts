@@ -10,7 +10,7 @@ articaine articulator aspiration aspirin asthma asymptomatic attrition auscultat
 azithromycin bacterial benzocaine bicuspid bifurcation bilateral biopsy bitewing bleaching
 bonding bracket brackets bradycardia bridge bronchospasm bruxism buccal bupivacaine bur
 calculus candidiasis canine cannula capnography carcinoma cardiac cardiovascular caries
-carious carpule catheter cellulitis cementation cementum cephalometric ceramic chlorhexidine
+carious carpule cavities cavity catheter cellulitis cementation cementum cephalometric ceramic chlorhexidine
 circumferential clindamycin codeine comorbidity composite condylar condyle contraindication
 coping coronal coronectomy crepitus crestal crossbite crown curettage curette cuspid cyst
 debond debonding debridement decalcification decay decoronation defibrillator dehiscence
@@ -18,7 +18,7 @@ dentate dentin dentition denture dexamethasone diabetes diabetic diastema diazep
 displacement distal drainage dycal dysphagia dysplasia dyspnea ecchymosis edema edematous
 edentulous elastics elastomer electrocardiogram elevator enamel endodontic endodontics
 enucleation epinephrine epistaxis erosion eruption erythema erythematous eugenol exostosis
-explorer extraction extrusion exudate facebow facial fentanyl fistula fixation flange
+explorer extraction extrusion exudate facebow facial fentanyl fistula fitted fixation flange
 fluctuant flumazenil fluoride fluorosis forceps formocresol fracture framework frenectomy
 frenulum frenum friable furcation gauze gingiva gingival gingivectomy gingivitis
 gingivoplasty graft granuloma gutta handpiece hematoma hemisection hemorrhage hemostasis
@@ -42,7 +42,7 @@ replantation resection resin resorption restoration resuscitation retainer reten
 retractor retreatment rongeur sanguineous scaler scaling sealant sedation septum serous
 sessile sinus siloxane splint stomatitis subgingival sublingual submandibular
 submentovertex suppuration supraeruption supragingival suture sutures symphysis syncope
-syringe tachycardia temporomandibular titanium tomography torus tori tramadol
+syringe tachycardia tartar temporomandibular titanium tomography torus tori tramadol
 transcranial transpharyngeal triazolam trigeminal trismus tuberosity ulcer ulceration
 unilateral veneer verrucous vestibule vestibuloplasty xerostomia zirconia
 injection injections saline irrigated granulation inferior superior anterior posterior

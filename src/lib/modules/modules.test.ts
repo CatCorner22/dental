@@ -52,6 +52,7 @@ describe("module integrity", () => {
       "pediatric",
       "orthodontic",
       "oral-medicine",
+      "anxiety-comfort",
       "sleep-apnea",
       "tmj-tmd",
       "cosmetic",
@@ -116,18 +117,30 @@ describe("module integrity", () => {
 
   it("dogfoods its own language: labels, options, and phrases pass the terminology audit", () => {
     const badCategories = new Set(["abbreviation", "vague-phrase", "stale-text", "phi"]);
+    // The abbreviation rule is the CLINICAL register — it puts "radiograph"
+    // in and takes "x-ray" out. On a field written for the patient that is
+    // exactly backwards, and runAudit already suppresses those findings there.
+    // The dogfood has to hold the app's own patient-voice text to the same
+    // standard the app holds a clinician's, or the two disagree.
+    const patientCategories = new Set(["vague-phrase", "stale-text", "phi"]);
     for (const mod of ALL_MODULES) {
       for (const f of allFields(mod.id)) {
         const texts: string[] = [f.label];
         if (f.type === "select" || f.type === "multiselect") {
-          texts.push(...f.options.map((o) => o.label ?? o.value));
+          // BOTH sides of every option. This audited `label ?? value`, so an
+          // option carrying a friendly label was never checked on the string it
+          // actually writes into the note — and the value is the one a clinician
+          // is later asked to justify. "routine" as an urgency value would have
+          // shipped a vague.routine finding into every note that picked it.
+          for (const o of f.options) texts.push(o.value, o.label ?? o.value);
         }
         if ((f.type === "text" || f.type === "textarea") && f.standardPhrases) {
           texts.push(...f.standardPhrases);
         }
+        const bad = f.audience === "patient" ? patientCategories : badCategories;
         for (const text of texts) {
           const findings = runTextAudit(text).filter(
-            (x) => badCategories.has(x.category) || x.severity === "S0"
+            (x) => bad.has(x.category) || x.severity === "S0"
           );
           expect(
             findings,

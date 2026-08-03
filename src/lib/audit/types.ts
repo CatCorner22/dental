@@ -27,7 +27,8 @@ export type AuditCategory =
   | "vague-phrase"
   | "stigmatizing"
   | "spelling"
-  | "measurement";
+  | "measurement"
+  | "medication-safety";
 
 export interface AuditFinding {
   ruleId: string;

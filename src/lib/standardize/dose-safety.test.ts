@@ -104,6 +104,23 @@ describe("PPD and MOD — on the practice's list, absent from the app", () => {
     // Never expanded — the letters already carry the fact exactly, in order.
     expect(standardize("MOD composite placed on 14.").text).toContain("MOD");
   });
+
+  it.each([
+    ["History of MI in 2019.", "myocardial infarction"],
+    ["Patient reports OD of acetaminophen last year.", "overdose"],
+    ["Referred by her OB.", "obstetrician"],
+    ["Seen by Dr. Patel, DO.", "Doctor of Osteopathy"],
+    ["History of DI managed with desmopressin.", "diabetes insipidus"],
+    ["DO NOT USE the old chart.", "a capitalised ordinary word"]
+  ])("does NOT read %j as a surface combination (%s)", (input) => {
+    // The first version of the MOD pattern accepted two-letter combinations
+    // and flagged every one of these. Mislabelling a cardiac history as tooth
+    // anatomy is the cries-wolf failure arriving from the other direction, and
+    // it costs more than the recognition it buys — this entry never expands
+    // anything, so under-recognising is invisible while over-recognising
+    // teaches staff to dismiss the flags.
+    expect(flags(input)).not.toContain("MOD");
+  });
 });
 
 describe("scoping — the dose rules must not fire on measurements", () => {

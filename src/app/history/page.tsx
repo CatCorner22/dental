@@ -51,6 +51,7 @@ export default async function HistoryPage() {
             ticket: formatTicket(s.id),
             label: s.filename,
             by: s.submittedByName,
+            office: s.officeName ?? "",
             at: s.submittedAtEt,
               status: s.auditStatus,
               rules: s.ruleVersion

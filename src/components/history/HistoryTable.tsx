@@ -8,6 +8,7 @@ export interface HistoryRow {
   ticket: string;
   label: string;
   by: string;
+  office: string;
   at: string;
   status: string;
   rules: string;
@@ -34,7 +35,8 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
       return (
         r.ticket.toLowerCase().includes(q) ||
         r.label.toLowerCase().includes(q) ||
-        r.by.toLowerCase().includes(q)
+        r.by.toLowerCase().includes(q) ||
+        r.office.toLowerCase().includes(q)
       );
     });
   }, [rows, query, status]);
@@ -45,10 +47,10 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
         <input
           type="search"
           className="field-input max-w-xs"
-          placeholder="Search ticket, note, or name…"
+          placeholder="Search ticket, note, name, or office…"
           value={query}
           onChange={(e) => setQuery(e.target.value)}
-          aria-label="Search submissions by ticket, note label, or submitter"
+          aria-label="Search submissions by ticket, note label, submitter, or office"
         />
         {statuses.length > 1 &&
           statuses.map(([s, n]) => (
@@ -79,6 +81,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
               <th className="px-3 py-2">Ticket</th>
               <th className="px-3 py-2">Note</th>
               <th className="px-3 py-2">Submitted by</th>
+              <th className="px-3 py-2">Office</th>
               <th className="px-3 py-2">Eastern time</th>
               <th className="px-3 py-2">Audit status</th>
               <th className="px-3 py-2">Rules</th>
@@ -94,6 +97,10 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
                 </td>
                 <td className="max-w-56 truncate px-3 py-2" title={r.label}>{r.label}</td>
                 <td className="px-3 py-2">{r.by}</td>
+                {/* Blank, not "Unknown", for notes filed before the practice
+                    configured its offices — an empty cell reads as "not
+                    recorded" rather than as a finding about the visit. */}
+                <td className="px-3 py-2 text-slate-600">{r.office}</td>
                 <td className="px-3 py-2">{r.at}</td>
                 <td className="px-3 py-2 text-xs">{r.status}</td>
                 <td className="px-3 py-2 text-xs text-slate-500">{r.rules}</td>
@@ -101,7 +108,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
             ))}
             {filtered.length === 0 && (
               <tr>
-                <td colSpan={6} className="px-3 py-6 text-center text-sm text-slate-500">
+                <td colSpan={7} className="px-3 py-6 text-center text-sm text-slate-500">
                   No submission matches this search.
                 </td>
               </tr>

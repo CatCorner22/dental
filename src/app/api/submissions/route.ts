@@ -29,6 +29,10 @@ export async function GET(req: Request): Promise<Response> {
       id: s.id,
       ticket: formatTicket(s.id),
       submittedByName: s.submittedByName,
+      // The frozen office. Dropped here originally, which left the one field a
+      // three-office practice most needs to scan for visible in the CSV and
+      // nowhere on the screen.
+      officeName: s.officeName,
       submittedAtEt: s.submittedAtEt,
       auditStatus: s.auditStatus,
       ruleVersion: s.ruleVersion

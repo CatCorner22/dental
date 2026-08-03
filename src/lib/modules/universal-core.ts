@@ -1,10 +1,20 @@
 import type { ModuleDef } from "@/lib/schema/types";
 import {
+  ALLERGY_STATUS,
   CARE_STATUS,
+  CONFIRM_ASKED,
   EDR_ONLY_STATUS,
   EVIDENCE_PHRASES,
+  MEDICATION_STATUS,
+  NEGATIVE_STATUS_HISTORY,
+  NKA,
+  NKDA,
   NONE_REPORTED,
+  NO_HISTORY_CHANGES,
+  NO_MEDICATIONS,
   PATIENT_DECISION,
+  PREMEDICATION_STATUS,
+  PREMED_NOT_REQUIRED,
   YES_NO,
   opts
 } from "./shared";
@@ -72,26 +82,85 @@ export const universalCore: ModuleDef = {
           options: YES_NO
         },
         {
+          id: "history-changes-status",
+          type: "select",
+          label: "Medical history changes",
+          required: true,
+          options: NEGATIVE_STATUS_HISTORY,
+          helpText:
+            '"No changes" is a statement about the patient, not an empty box. Say it only if you asked.'
+        },
+        {
+          id: "history-changes-confirm",
+          type: "select",
+          label: "Double-check: no history changes",
+          options: CONFIRM_ASKED,
+          visibleIf: { fieldId: "history-changes-status", equals: NO_HISTORY_CHANGES },
+          requiredIf: { fieldId: "history-changes-status", equals: NO_HISTORY_CHANGES },
+          helpText: "Carried forward without asking is a different fact. Say which this is."
+        },
+        {
           id: "history-changes",
           type: "text",
           label: "Changes reported",
+          visibleIf: { fieldId: "history-changes-status", notEquals: NO_HISTORY_CHANGES },
           standardPhrases: [NONE_REPORTED, "The patient reports "]
         },
         {
-          id: "allergies-reviewed",
+          id: "allergies-status",
           type: "select",
-          label: "Allergies and reactions reviewed",
+          label: "Allergy status",
           required: true,
-          options: YES_NO,
-          helpText: "The allergy facts stay in the EDR."
+          options: ALLERGY_STATUS,
+          helpText:
+            "NKA and NKDA are DIFFERENT statements. NKDA covers drugs only — a latex or food allergy can still exist. Pick the one you actually verified."
         },
         {
-          id: "medications-reviewed",
+          id: "allergies-confirm",
           type: "select",
-          label: "Current medications reviewed",
+          label: "Double-check: no known allergies",
+          options: CONFIRM_ASKED,
+          visibleIf: { fieldId: "allergies-status", in: [NKA, NKDA] },
+          requiredIf: { fieldId: "allergies-status", in: [NKA, NKDA] },
+          helpText:
+            "A negative allergy statement is an affirmative clinical claim, and it is the one a later reader relies on before prescribing. It gets its own confirmation."
+        },
+        {
+          id: "medications-status",
+          type: "select",
+          label: "Current medications",
           required: true,
-          options: YES_NO,
-          helpText: "The medication list stays in the EDR."
+          options: MEDICATION_STATUS,
+          helpText: "The medication list itself stays in the EDR."
+        },
+        {
+          id: "medications-confirm",
+          type: "select",
+          label: "Double-check: no current medications",
+          options: CONFIRM_ASKED,
+          visibleIf: { fieldId: "medications-status", equals: NO_MEDICATIONS },
+          requiredIf: { fieldId: "medications-status", equals: NO_MEDICATIONS },
+          helpText:
+            "\"None\" is the answer most often carried forward unasked, and the one that hides an interaction."
+        },
+        {
+          id: "premedication-status",
+          type: "select",
+          label: "Antibiotic premedication",
+          required: true,
+          options: PREMEDICATION_STATUS,
+          helpText:
+            "Required-and-not-taken is a reason to stop and ask the dentist, not a note to write afterwards."
+        },
+        {
+          id: "premedication-confirm",
+          type: "select",
+          label: "Double-check: premedication not required",
+          options: CONFIRM_ASKED,
+          visibleIf: { fieldId: "premedication-status", equals: PREMED_NOT_REQUIRED },
+          requiredIf: { fieldId: "premedication-status", equals: PREMED_NOT_REQUIRED },
+          helpText:
+            "Prophylaxis turns on cardiac and joint history. If that history was not reviewed at this visit, say so rather than implying it was."
         },
         {
           id: "relevant-conditions",

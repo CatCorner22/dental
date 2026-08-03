@@ -105,27 +105,54 @@ export async function recordFailure(
     .onConflictDoUpdate({
       target: authThrottle.key,
       set: {
-        // A stale streak (first failure older than the window, and no live
-        // lock) restarts at 1 instead of compounding forever.
+        // Three transitions, and getting the interaction between them right is
+        // the whole ballgame — the alternative shipped a self-renewing lock
+        // that a running server confirmed could hold an address out forever.
         //
-        // While a lock IS live the count FREEZES. Counting refusals as
-        // failures made the lock self-renewing: each bounced request pushed
-        // the count higher, the higher count computed a longer backoff, and
-        // the backoff was re-applied from now — so a caller who simply kept
-        // retrying held their own lock open forever and pinned it at the
-        // ceiling. A lock has to decay on its own, or it is not a throttle,
-        // it is a permanent ban anyone can trigger against a shared address.
+        //  (a) LIVE LOCK → freeze. While serving a lock the count does not
+        //      move. Counting refused requests as failures is what let the
+        //      lock renew itself: each bounce raised the count, a higher count
+        //      computed a longer backoff, and re-applying it from `now` pinned
+        //      the deadline in the future for as long as anyone kept knocking.
+        //
+        //  (b) SERVED LOCK → reset to 1. Once a lock's time has passed, the
+        //      streak is spent: the next failure starts a fresh one, so the
+        //      key hands back its free attempts instead of snapping straight
+        //      back into an escalated lock. This is the line that makes the
+        //      lock actually DECAY under sustained hammering rather than just
+        //      recompute — without it, continuous guessing re-locks on the
+        //      first failure after every expiry, which is a permanent ban by
+        //      another name. The trade is no cross-lock escalation; the pair
+        //      key and the process-wide hash cap carry the rate-limiting that
+        //      escalation used to, so this is affordable now.
+        //
+        //  (c) STALE WINDOW → reset to 1. A streak whose first failure predates
+        //      the window carries no information.
         failCount: sql`CASE
-          WHEN ${authThrottle.firstFailAt} < ${windowStart}
-           AND (${authThrottle.lockedUntil} IS NULL OR ${authThrottle.lockedUntil} < ${now})
-          THEN 1
           WHEN ${authThrottle.lockedUntil} IS NOT NULL AND ${authThrottle.lockedUntil} > ${now}
           THEN ${authThrottle.failCount}
+          WHEN ${authThrottle.lockedUntil} IS NOT NULL AND ${authThrottle.lockedUntil} <= ${now}
+          THEN 1
+          WHEN ${authThrottle.firstFailAt} < ${windowStart}
+          THEN 1
           ELSE ${authThrottle.failCount} + 1 END`,
         firstFailAt: sql`CASE
+          WHEN ${authThrottle.lockedUntil} IS NOT NULL AND ${authThrottle.lockedUntil} > ${now}
+          THEN ${authThrottle.firstFailAt}
+          WHEN ${authThrottle.lockedUntil} IS NOT NULL AND ${authThrottle.lockedUntil} <= ${now}
+          THEN ${now}
           WHEN ${authThrottle.firstFailAt} < ${windowStart}
-           AND (${authThrottle.lockedUntil} IS NULL OR ${authThrottle.lockedUntil} < ${now})
-          THEN ${now} ELSE ${authThrottle.firstFailAt} END`
+          THEN ${now}
+          ELSE ${authThrottle.firstFailAt} END`,
+        // Clear a lock the moment it is no longer live, in the SAME statement
+        // that reset the count. Leaving the expired timestamp behind would make
+        // every later failure match branch (b) and reset forever — unlimited
+        // free attempts after the first lock. Cleared here, re-set below only if
+        // the fresh count warrants it.
+        lockedUntil: sql`CASE
+          WHEN ${authThrottle.lockedUntil} IS NOT NULL AND ${authThrottle.lockedUntil} > ${now}
+          THEN ${authThrottle.lockedUntil}
+          ELSE NULL END`
       }
     })
     .returning();
@@ -141,7 +168,39 @@ export async function recordFailure(
   const lockMs = lockMsFor(row.failCount, freeAttempts, maxLockMs);
   if (lockMs <= 0) return UNLOCKED;
   const lockedUntil = new Date(now.getTime() + lockMs);
-  await db.update(authThrottle).set({ lockedUntil }).where(eq(authThrottle.key, key));
+
+  // Applying the lock is CONDITIONAL, and that condition is the only thing
+  // making `justLocked` mean what its callers rely on.
+  //
+  // This was an unconditional UPDATE, which quietly broke the guarantee: the
+  // `lockedUntil` read back from the upsert above is written by THIS statement,
+  // not by the upsert, so concurrent callers all saw NULL, all sailed past the
+  // remainingMs check, and all returned justLocked: true. A hundred parallel
+  // sign-in attempts therefore produced a hundred "newly locked" verdicts and a
+  // hundred audit rows — restoring in a burst exactly the amplification the
+  // flag exists to prevent.
+  //
+  // Guarding on "still unlocked" makes the write a compare-and-set: the first
+  // caller to land takes the lock and is told so, and every other caller in the
+  // burst matches nothing, gets an empty RETURNING, and reports the lock it
+  // lost the race to. Exactly one justLocked per lock, whatever the concurrency.
+  const applied = await db
+    .update(authThrottle)
+    .set({ lockedUntil })
+    .where(
+      and(
+        eq(authThrottle.key, key),
+        or(isNull(authThrottle.lockedUntil), lt(authThrottle.lockedUntil, now))
+      )
+    )
+    .returning();
+
+  if (applied.length === 0) {
+    // Someone else locked it between our upsert and here. Report THEIR lock —
+    // never ours, which was never stored and would over-report the wait.
+    const existing = await checkThrottle(db, key, now);
+    return existing.locked ? existing : UNLOCKED;
+  }
   return { locked: true, retryAfterSec: Math.ceil(lockMs / 1000), justLocked: true };
 }
 
@@ -164,12 +223,41 @@ export function loginKey(username: string): string {
   return `login:${username.toLowerCase().slice(0, MAX_KEY_CHARS)}`;
 }
 
-// Login is throttled by client IP rather than by username. A username-keyed
-// lock, checked before bcrypt, lets anyone who knows a username hold the real
-// account owner out (and does nothing about an attacker who simply varies the
-// username to keep spending bcrypt CPU). Keying on IP fixes both: it bounds
-// one source's bcrypt spend across every username, and it cannot trap a
-// legitimate user who logs in from a different address.
+// Login is throttled on the PAIR (source address, username) — not on either
+// one alone. Both single-field designs were tried and both are broken:
+//
+//   username alone — anyone who knows a username holds the real owner out from
+//   anywhere on the internet. A pure denial-of-service handed to strangers.
+//
+//   address alone — this is the one that shipped, and it is worse in a dental
+//   practice than it looks on paper. A whole office sits behind one NAT
+//   address, so ONE outsider hammering the login form spends the budget that
+//   the entire practice shares, and every clinician is refused with the right
+//   password in their hands. Measured against a running server: 70 seconds of
+//   uninterrupted guessing kept the correct password locked out, and the only
+//   escape was a 15-minute idle window the attacker simply never allows.
+//
+// The pair fixes the collateral damage: an attacker grinding on "drhoward"
+// cannot touch the budget of the hygienist signing in as "mreyes" from the
+// next room. To lock a colleague out you must already be inside the practice's
+// network AND targeting that colleague by name — a far smaller blast radius
+// than "anyone on the internet closes the whole office".
+//
+// What the pair gives up is the cross-username CPU bound: a caller varying the
+// username gets a fresh budget each time. That objection is answered somewhere
+// better — hashGate.ts caps concurrent bcrypt process-wide, on a key nobody can
+// forge — which is why the pair is affordable now and was not before.
+export function loginPairKey(ip: string, username: string): string {
+  return `login:${ip.slice(0, MAX_KEY_CHARS)}|${username.toLowerCase().slice(0, MAX_KEY_CHARS)}`;
+}
+
+// The address alone, kept as a DETECTOR and never as a gate.
+//
+// Spraying many usernames from one source is the shape of credential stuffing,
+// and a practice manager should see it. But refusing on this key is exactly the
+// office-wide outage described above, so nothing may block on it: it is
+// recorded, it trips, it writes one audit row, and the sign-in proceeds on the
+// pair budget regardless.
 export function loginIpKey(ip: string): string {
   return `loginip:${ip.slice(0, MAX_KEY_CHARS)}`;
 }

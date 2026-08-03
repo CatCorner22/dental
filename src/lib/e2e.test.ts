@@ -15,8 +15,34 @@ const values: NoteState["values"] = {
   "universal-core.encounter-type": { kind: "select", value: "treatment visit" },
   "universal-core.visit-purpose": { kind: "text", value: "Removal of a painful lower right molar" },
   "universal-core.history-reviewed": { kind: "select", value: "yes" },
-  "universal-core.allergies-reviewed": { kind: "select", value: "yes" },
-  "universal-core.medications-reviewed": { kind: "select", value: "yes" },
+  // The safety block. A bare "reviewed: yes" tick used to stand in for all of
+  // this; each of these is now a distinct statement, and every negative one
+  // carries its own confirmation of whether it was asked or carried forward.
+  "universal-core.history-changes-status": {
+    kind: "select",
+    value: "No changes reported to the medical history."
+  },
+  "universal-core.history-changes-confirm": {
+    kind: "select",
+    value: "Confirmed with the patient at this visit."
+  },
+  "universal-core.allergies-status": {
+    kind: "select",
+    value: "No known drug allergies (NKDA); other allergy types not excluded."
+  },
+  "universal-core.allergies-confirm": {
+    kind: "select",
+    value: "Confirmed with the patient at this visit and checked against the chart."
+  },
+  "universal-core.medications-status": {
+    kind: "select",
+    value: "Medication list reviewed; see the medication list in the clinical system."
+  },
+  "universal-core.premedication-status": { kind: "select", value: "Not required." },
+  "universal-core.premedication-confirm": {
+    kind: "select",
+    value: "Confirmed with the patient at this visit and checked against the chart."
+  },
   "universal-core.diagnosis": { kind: "text", value: "Nonrestorable carious tooth" },
   "universal-core.diagnosis-status": { kind: "select", value: "final" },
   "universal-core.recommended-care": { kind: "text", value: "Surgical extraction under intravenous moderate sedation" },

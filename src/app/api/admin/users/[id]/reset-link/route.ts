@@ -56,16 +56,41 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
   // moved the address is not the person who may send a link to it. Another
   // Hierarchy Manager or a Smile Notes Developer can, which keeps a real
   // recovery path open while requiring two people to be involved.
+  // The check is on the actor AND on whoever created the actor's account,
+  // because "another person" has to mean a person the first one did not make.
+  //
+  // Comparing against guard.user.id alone was defeated by a two-step chain, all
+  // of it inside one attacker's own permissions. A Hierarchy Manager may create
+  // a Team Lead (canAddUser(manager, "lead")) and chooses the address the
+  // welcome link is delivered to — their own. They redeem it, and now hold a
+  // second identity whose capabilities they do not have: a lead may send reset
+  // links to Team Members, a manager may not act on... themselves. So the
+  // manager changes a clinician's email — correctly barring the manager from
+  // sending that link — then signs in as the puppet, whose id is different, and
+  // sends it. Two requests, one human, and the account is theirs.
+  //
+  // createdById is already recorded and already carries this exact meaning for
+  // merge and transfer destinations. Reading it here closes the chain without
+  // new state: an account cannot be the independent second party for the person
+  // who minted it.
+  const actor = await getUserById(db, guard.user.id);
+  const changedBy = target.emailChangedBy;
+  const actorIsCreatureOfChanger = Boolean(
+    changedBy && actor?.createdById && actor.createdById === changedBy
+  );
   if (
     guard.user.role !== "admin" &&
-    target.emailChangedBy &&
-    target.emailChangedBy === guard.user.id
+    changedBy &&
+    (changedBy === guard.user.id || actorIsCreatureOfChanger)
   ) {
     return Response.json(
       {
-        error:
-          "You changed the email on this account, so you cannot also send its reset link. " +
-          "Ask another Hierarchy Manager or a Smile Notes Developer to send it."
+        error: actorIsCreatureOfChanger
+          ? "The person who changed the email on this account also created yours, so you " +
+            "cannot send its reset link. Ask a Hierarchy Manager or Smile Notes Developer " +
+            "outside that chain."
+          : "You changed the email on this account, so you cannot also send its reset link. " +
+            "Ask another Hierarchy Manager or a Smile Notes Developer to send it."
       },
       { status: 403 }
     );

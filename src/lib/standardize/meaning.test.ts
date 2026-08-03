@@ -198,7 +198,20 @@ describe("regression — pattern variants stay idempotent", () => {
     // Standardizing is the job: BWX and b.i.d. come out as the one spelling
     // the practice agreed on, not as whatever was typed.
     expect(standardize("BWX taken.").text).toContain("(BW)");
-    expect(standardize("FMS compared.").text).toContain("(FMX)");
     expect(standardize("Amoxicillin b.i.d.").text).toContain("(bid)");
+  });
+
+  it("does NOT normalize FMS to FMX — that is a different diagnosis", () => {
+    // This assertion used to run the other way, pinning the defect: FMS was
+    // folded into the FMX entry, so "Medical history: FMS, hypertension" came
+    // out as "full-mouth radiographic series, hypertension" — a diagnosis
+    // deleted and an imaging study invented in its place. In a dental note FMS
+    // is usually a slip for FMX; in a medical history it is fibromyalgia
+    // syndrome. Only the person who took the history knows which.
+    const out = standardize("Medical history: FMS, hypertension, and asthma.");
+    expect(out.text).not.toContain("radiographic series");
+    expect(out.text).toContain("FMS");
+    // Coverage is not lost — it is raised for a human instead of guessed.
+    expect(out.flags.some((f) => f.display === "FMS")).toBe(true);
   });
 });

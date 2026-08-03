@@ -21,8 +21,15 @@ describe("S1 — a dosing abbreviation must not split the prescription", () => {
     expect(out, out).not.toMatch(promoted);
   });
 
-  it("still defines the dosing term on first use", () => {
-    expect(standardize("ibuprofen p.r.n. pain").text.toLowerCase()).toContain("as needed (prn)");
+  it("raises prn for a human instead of expanding it", () => {
+    // This used to assert the expansion. Expanding produced "600 mg as needed
+    // (prn) pain" — broken grammar, because "prn X" means "as needed FOR X" —
+    // and a later rule then flagged "as needed" as vague, so the tool told the
+    // clinician to rewrite text the tool had just written. The fact actually
+    // missing is the trigger condition, which only the prescriber can supply.
+    const out = standardize("ibuprofen p.r.n. pain");
+    expect(out.text.toLowerCase()).not.toContain("as needed (prn)");
+    expect(out.flags.some((f) => f.display === "prn")).toBe(true);
   });
 });
 

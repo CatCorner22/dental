@@ -81,20 +81,40 @@ const MAX_INPUT = 20000;
 function normalizeWhitespace(input: string): string {
   return input
     .replace(/\r\n?/g, "\n")
-    // Invisible characters that survive a copy-paste out of a PDF or an EDR and
-    // then defeat every downstream match. Written as escapes, not literals:
-    // a source file holding real zero-width bytes is unreviewable in a diff.
+    // \u2028 LINE SEPARATOR and \u2029 PARAGRAPH SEPARATOR are LINE
+    // BREAKS, and belong here beside \r\n rather than in the deletion class
+    // below. Deleting them ran two lines together with no separator at all: a
+    // Word soft break between "No bleeding" and "Swelling resolved" produced
+    // the single token "No bleedingSwelling resolved." Two independent
+    // clinical statements welded into nonsense, in the copy that a clinician
+    // pastes into Curve Hero.
+    .replace(/[\u2028\u2029]/g, "\n")
+    // Invisible characters that survive a copy-paste out of a PDF or an EDR
+    // and then defeat every downstream match. Written as escapes, not
+    // literals: a source file holding real zero-width bytes is unreviewable
+    // in a diff, which is how these get missed in the first place.
     .replace(
-      // \u2066-\u2069 are the LRI/RLI/FSI/PDI isolates — the modern
-      // replacements for the \u202A-\u202E overrides already listed, and
-      // able to reorder how digits and punctuation DISPLAY in a document
-      // that is a legal record.
-      /[\u00AD\u200B-\u200F\u2028\u2029\u202A-\u202E\u2060-\u2069\uFEFF]/g,
+      // \u2066-\u2069 are the LRI/RLI/FSI/PDI isolates, the modern
+      // replacements for the \u202A-\u202E overrides beside them, and able
+      // to reorder how digits and punctuation DISPLAY in a legal record.
+      //
+      // \u061C is the Arabic letter mark, same bidi family as \u200E/\u200F.
+      // \uFE00-\uFE0F are variation selectors and \uFFF9-\uFFFB interlinear
+      // annotation: both render as nothing at all. \u{E0000}-\u{E007F} are
+      // the TAG characters, which encode arbitrary ASCII invisibly and are
+      // the standard way hidden text is smuggled through a copy-paste.
+      /[\u00AD\u061C\u200B-\u200F\u202A-\u202E\u2060-\u2069\uFE00-\uFE0F\uFEFF\uFFF9-\uFFFB]|[\u{E0000}-\u{E007F}]/gu,
       ""
     )
-    // Non-breaking and thin spaces are spaces to a reader but not to \s in
-    // a character class of [ \t], so they defeated every downstream match.
-    .replace(/[\u00A0\u2007\u2009\u202F]/g, " ")
+    // C0 controls other than tab and newline. A NUL reaching a practice-
+    // management system that handles C strings truncates the note at that
+    // byte, silently discarding everything a clinician wrote after it.
+    .replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\u007F]/g, "")
+    // Everything that renders as a space but is not one to [ \t]. This was an
+    // arbitrary subset before: \u2002 is indistinguishable from a space on
+    // screen, so "4 mm" written with one looked correct while defeating every
+    // \b-anchored rule downstream.
+    .replace(/[\u00A0\u1680\u2000-\u200A\u202F\u205F\u3000]/g, " ")
     // Smart punctuation to ASCII: an em-dash or curly quote pasted from Word
     // renders inconsistently and breaks naive matching later.
     .replace(/[\u2018\u2019\u201A\u201B]/g, "'")
@@ -129,7 +149,19 @@ function sentenceCase(input: string): string {
         .replace(/^(\s*)([a-z])/, (_m, pre: string, ch: string) => pre + ch.toUpperCase())
         .replace(
           /([.!?])(\s+)([a-z])/g,
-          (_m, dot: string, gap: string, ch: string) => dot + gap + ch.toUpperCase()
+          (m: string, dot: string, gap: string, ch: string, offset: number, whole: string) => {
+            // A dotted abbreviation's final period is not a sentence boundary.
+            // "Ibuprofen 600 mg p.r.n. pain" is ONE instruction; capitalising
+            // after it produced "p.r.n. Pain", which reads as a new sentence
+            // and splits a prescription from the condition it treats.
+            //
+            // This bites hardest on the abbreviations the tool deliberately
+            // refuses to expand — q.d. and q.o.d. are on the ISMP do-not-use
+            // list and are left exactly as written, so they always reached the
+            // caser intact.
+            if (/(?:\b[A-Za-z]\.){2,}$/.test(whole.slice(0, offset + 1))) return m;
+            return dot + gap + ch.toUpperCase();
+          }
         );
     })
     .join("\n");
@@ -320,16 +352,60 @@ export function standardize(raw: string): StandardizeResult {
     // idempotency AND is the more correct behaviour anyway — standardising is
     // the entire job, so "BWX" and "b.i.d." should come out as the one spelling
     // the practice agreed on.
+    // Three things the matched text carries that the canonical form does not,
+    // each of which was being thrown away by replacing with a bare constant:
+    //
+    //  PLURAL. "TMJs palpated bilaterally" became "temporomandibular joint
+    //  (TMJ) palpated bilaterally" — two joints silently became one. "SSCs
+    //  placed on teeth A and B" documented one crown for two teeth. Counts are
+    //  billing and legal facts, which is exactly why applyPlural exists for the
+    //  abbreviation path; this path simply was not using it.
+    //
+    //  TRAILING PERIOD. The dosing patterns end in a mandatory `\.`, so the
+    //  match for "b.i.d." in "Rinse chlorhexidine b.i.d. Patient advised no
+    //  alcohol." swallowed the sentence terminator and welded the next sentence
+    //  onto the prescription — "twice daily (bid) Patient advised no alcohol."
+    //  Two statements, one of them a negation, became one. Re-emitting the
+    //  period keeps the sentence boundary the writer put there.
+    //
+    //  THE ACTUAL TOKEN. See the `from` on the change entry below.
     let first = true;
-    text = text.replace(re, () => {
-      if (!first) return sh.display;
+    let matchedFirst = "";
+    text = text.replace(re, (m: string, ...rest: unknown[]) => {
+      const offset = rest[rest.length - 2] as number;
+      const src = rest[rest.length - 1] as string;
+      // Does this abbreviation's own period ALSO end the sentence?
+      //
+      // "p.r.n. pain" — lowercase follows, so the period belongs to the
+      // abbreviation alone and the prescription continues. Emitting one here
+      // would split a single instruction in two.
+      //
+      // "b.i.d. Patient advised no alcohol." — a capital follows, so it is
+      // doing double duty and the sentence genuinely ends. Swallowing it
+      // welded a separate statement (often a negation) onto the prescription:
+      // "twice daily (bid) Patient advised no alcohol."
+      //
+      // The previous rule always swallowed it, having over-corrected from an
+      // earlier one that always split.
+      const after = src.slice(offset + m.length);
+      const endsSentence = m.endsWith(".") && (/^\s*$/.test(after) || /^\s+[A-Z]/.test(after));
+      const tail = endsSentence ? "." : "";
+      if (!first) return `${applyPlural(m, sh.display)}${tail}`;
       first = false;
-      return `${sh.expansion} (${sh.display})`;
+      matchedFirst = m;
+      return `${applyPlural(m, sh.expansion)} (${sh.display})${tail}`;
     });
+    // `from` is what the note ACTUALLY said, not the table's canonical spelling.
+    // Reporting the canonical form made every variant substitution invisible in
+    // review: a note reading "NKA" produced the entry "NKDA → no known drug
+    // allergies (NKDA)", so the one word that changed meaning never appeared in
+    // the UI at all. The whole safety story here is that a human reads this list
+    // and accepts it, which requires the list to say what was replaced.
+    const shown = matchedFirst && matchedFirst !== sh.display ? matchedFirst : sh.display;
     bump(applied, (a) => `${a.kind}:${a.from}`, {
       kind: "shorthand",
-      from: sh.display,
-      to: `${sh.expansion} (${sh.display})`,
+      from: shown,
+      to: `${applyPlural(matchedFirst, sh.expansion)} (${sh.display})`,
       count: 1,
       why:
         hits.length > 1

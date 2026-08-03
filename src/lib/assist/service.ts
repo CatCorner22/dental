@@ -6,6 +6,13 @@ import {
   SYSTEM_PROMPTS,
   type AssistCapability
 } from "./prompts";
+import {
+  CONFLICTS_SCHEMA,
+  QUESTIONS_SCHEMA,
+  conflictsToLines,
+  validateConflicts,
+  validateQuestions
+} from "./schemas";
 
 // The assist service: one narrow doorway through which every AI call passes.
 //
@@ -42,6 +49,22 @@ export function getAssistConfig(
 
 export type GenerateFn = (args: { system: string; prompt: string }) => Promise<string>;
 
+/**
+ * The structured seam, for capabilities whose answer is a LIST.
+ *
+ * Separate from GenerateFn rather than folded into it, because the two return
+ * genuinely different things and a union return type would push the branch into
+ * every caller. Injected the same way, so the adversarial test double can lie in
+ * this direction too — returning the wrong shape, an assertion dressed as a
+ * question, or a conflict between a sentence and itself.
+ */
+export type GenerateListFn = (args: {
+  system: string;
+  prompt: string;
+  schemaName: string;
+  schema: Record<string, unknown>;
+}) => Promise<unknown>;
+
 export type AssistOutcome =
   | {
       ok: true;
@@ -50,10 +73,17 @@ export type AssistOutcome =
       promptVersion: string;
       /** Which practice-standards sections were retrieved into the prompt. */
       retrievedSources: string[];
+      /**
+       * Set for the list capabilities. `text` stays populated (one item per
+       * line) so the verifier and any plain-text consumer keep working, but the
+       * UI should render THIS — it is the validated structure rather than a
+       * string somebody has to split again.
+       */
+      items?: string[];
     }
   | {
       ok: false;
-      code: "phi-blocked" | "verifier-rejected" | "model-error";
+      code: "phi-blocked" | "verifier-rejected" | "model-error" | "invalid-shape";
       /** Cold logic for the user: what stopped the call and what to do. */
       message: string;
       rejections?: VerifyRejection[];
@@ -64,14 +94,15 @@ const MAX_INPUT = 20000;
 export async function runAssist(
   capability: AssistCapability,
   text: string,
-  generate: GenerateFn
+  generate: GenerateFn,
+  generateList?: GenerateListFn
 ): Promise<AssistOutcome> {
   const input = text.slice(0, MAX_INPUT);
 
-  // PHI gate. S0 identifier findings block the call outright: the privacy
-  // design of this app is that clinical prose never leaves the server, and
-  // an AI provider is exactly the kind of leaving that matters.
-  const phi = runPhiRule(input).filter((f) => f.severity === "S0");
+  // PHI gate. ANY phi finding blocks the call — not only S0. Bare-name hits
+  // are S2 for the in-app audit (review, not hard-stop on filing), but an AI
+  // provider is off-server: probable patient names must never leave either.
+  const phi = runPhiRule(input).filter((f) => f.category === "phi");
   if (phi.length > 0) {
     return {
       ok: false,
@@ -91,19 +122,80 @@ export async function runAssist(
     ? `${SYSTEM_PROMPTS[capability]}\n\n--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}`
     : SYSTEM_PROMPTS[capability];
 
-  let raw: string;
-  try {
-    raw = await generate({ system, prompt: input });
-  } catch {
-    return {
-      ok: false,
-      code: "model-error",
-      message: "The AI service did not answer. The deterministic tools still work — continue without it."
-    };
+  const isList = capability === "interrogate" || capability === "conflicts";
+
+  // The list capabilities go through a SCHEMA, not through prose.
+  //
+  // Constrained decoding fixes the shape; the validators below fix the rest,
+  // because a schema cannot tell a question from an assertion wearing a question
+  // mark's clothes. Both layers report the same way, so a malformed answer is a
+  // stated refusal rather than a UI that renders "Here are the questions:" as
+  // the first question.
+  let output: string;
+  let items: string[] | undefined;
+  if (isList) {
+    if (!generateList) {
+      return {
+        ok: false,
+        code: "model-error",
+        message:
+          "This capability needs the structured model binding, which this deployment did not provide. The deterministic tools still work."
+      };
+    }
+    let value: unknown;
+    try {
+      value = await generateList({
+        system,
+        prompt: input,
+        schemaName: capability === "interrogate" ? "OpenQuestions" : "Contradictions",
+        schema: capability === "interrogate" ? QUESTIONS_SCHEMA : CONFLICTS_SCHEMA
+      });
+    } catch {
+      return {
+        ok: false,
+        code: "model-error",
+        message:
+          "The AI service did not answer. The deterministic tools still work — continue without it."
+      };
+    }
+    if (capability === "interrogate") {
+      const parsed = validateQuestions(value);
+      if (!parsed.ok) {
+        return {
+          ok: false,
+          code: "invalid-shape",
+          message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
+        };
+      }
+      items = parsed.items;
+    } else {
+      const parsed = validateConflicts(value);
+      if (!parsed.ok) {
+        return {
+          ok: false,
+          code: "invalid-shape",
+          message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
+        };
+      }
+      items = conflictsToLines(parsed.items);
+    }
+    output = items.join("\n");
+  } else {
+    let raw: string;
+    try {
+      raw = await generate({ system, prompt: input });
+    } catch {
+      return {
+        ok: false,
+        code: "model-error",
+        message:
+          "The AI service did not answer. The deterministic tools still work — continue without it."
+      };
+    }
+    output = raw.trim();
   }
 
-  const output = raw.trim();
-  const mode = capability === "interrogate" || capability === "conflicts" ? "questions" : "rewrite";
+  const mode = isList ? "questions" : "rewrite";
   const verdict = verifyMeaning(input, output, { mode });
   if (!verdict.ok) {
     return {
@@ -122,6 +214,7 @@ export async function runAssist(
     text: output,
     capability,
     promptVersion: ASSIST_PROMPT_VERSION,
-    retrievedSources: retrieved.sources
+    retrievedSources: retrieved.sources,
+    ...(items ? { items } : {})
   };
 }

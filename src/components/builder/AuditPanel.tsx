@@ -4,9 +4,14 @@ import type { AuditFinding, AuditReport } from "@/lib/audit/types";
 import { SEVERITY_CLASS, SEVERITY_LABELS, SEVERITY_ORDER, STATUS_CLASS } from "@/lib/audit/types";
 
 
-function FindingRow({ finding }: { finding: AuditFinding }) {
+function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () => void }) {
   const jump = () => {
     if (!finding.fieldRef) return;
+    // When the panel is open inside the mobile audit sheet, the field being
+    // jumped to sits behind the modal's backdrop — closing it first is what
+    // makes "Go to field" land somewhere visible instead of scrolling a
+    // hidden page underneath an overlay.
+    onJump?.();
     const el = document.getElementById(`field-${finding.fieldRef.moduleId}-${finding.fieldRef.fieldId}`);
     if (!el) return;
     // The CSS reduced-motion block cannot reach a JS smooth scroll, and this
@@ -53,7 +58,15 @@ function FindingRow({ finding }: { finding: AuditFinding }) {
   );
 }
 
-export function AuditPanel({ report }: { report: AuditReport }) {
+export function AuditPanel({
+  report,
+  onJump
+}: {
+  report: AuditReport;
+  /** Called just before a "Go to field" jump scrolls — used to dismiss the
+      mobile audit sheet so the target field is not left behind a backdrop. */
+  onJump?: () => void;
+}) {
   return (
     <div>
       <div className={`mb-3 rounded border px-3 py-2 text-sm font-semibold ${STATUS_CLASS[report.status]}`}>
@@ -74,6 +87,7 @@ export function AuditPanel({ report }: { report: AuditReport }) {
               <FindingRow
                 key={`${f.ruleId}-${f.matchedText ?? ""}-${f.fieldRef ? `${f.fieldRef.moduleId}.${f.fieldRef.fieldId}` : i}`}
                 finding={f}
+                onJump={onJump}
               />
             ))
         )}

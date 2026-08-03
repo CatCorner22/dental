@@ -82,9 +82,11 @@ export default function Page() {
         to fields written for the patient, such as the summary in Universal Core.
       </p>
       <p>
-        Nothing here is ever rewritten for you, and the Standardize button is switched off on those
-        fields. A plainer word can carry a different clinical claim. Keeping the term and explaining
-        it once clears the finding: <em>periodontitis (gum disease that has reached the bone)</em>.
+        Nothing here is ever rewritten for you. A plainer word can carry a different clinical claim,
+        so the tool points and you decide. Standardize still works on those fields — it warns you
+        first that it rewrites toward clinical wording, and Undo puts your words back in one click.
+        Keeping the term and explaining it once clears the finding:{" "}
+        <em>periodontitis (gum disease that has reached the bone)</em>.
       </p>
       <table>
         <thead>

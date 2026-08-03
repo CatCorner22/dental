@@ -22,6 +22,7 @@ export interface VerifyRejection {
     | "drugs-changed"
     | "attribution-dropped"
     | "content-shrunk"
+    | "claims-added"
     | "not-questions";
   detail: string;
 }
@@ -87,6 +88,23 @@ function attributions(text: string): string[] {
   return text.match(ATTRIBUTION) ?? [];
 }
 
+// Clinical claim tokens: diagnoses, procedures, and outcome verbs a rewrite
+// must not invent. Digits/drugs catch numeric and Rx hallucinations; this
+// catches "examined" becoming "extracted" with no number change.
+const CLINICAL_CLAIM =
+  /\b(?:caries|decay|pulpitis|abscess|periodontitis|gingivitis|periapical|radiolucency|fracture|fractured|extracted|extraction|extirpation|obturation|pulpotomy|pulpectomy|crown|bridge|implant|veneer|onlay|inlay|sealant|scaling|planing|curettage|osteotomy|biopsy|sutured|suture|incision|drainage|referral|referred|diagnosis|diagnosed|irreversible|necrosis|perforat(?:ed|ion)|separated\s+instrument|file\s+separation)\b/gi;
+
+function clinicalClaims(text: string): string[] {
+  return text.match(CLINICAL_CLAIM) ?? [];
+}
+
+const QUESTION_SENTINELS = new Set([
+  "no open questions.",
+  "no contradictions found.",
+  "no conflicts found.",
+  "none."
+]);
+
 export interface VerifyOptions {
   /**
    * "rewrite": full content-preservation contract (normalize, restructure).
@@ -100,14 +118,16 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
   const rejections: VerifyRejection[] = [];
 
   if (opts.mode === "questions") {
-    // A question engine must never assert. Lines are either empty, a short
-    // heading, or a question. One declarative clinical sentence and the
-    // output is refused wholesale.
+    // A question engine must never assert. Every non-empty line is a question
+    // or one of a tiny allow-list of "nothing found" sentinels — length is
+    // not a loophole for short clinical recommendations.
     const lines = output
       .split("\n")
       .map((l) => l.replace(/^[\s\-*\d.)]+/, "").trim())
       .filter((l) => l.length > 0);
-    const declarative = lines.filter((l) => !/\?$/.test(l) && l.length > 60);
+    const declarative = lines.filter(
+      (l) => !/\?$/.test(l) && !QUESTION_SENTINELS.has(l.toLowerCase())
+    );
     if (declarative.length > 0) {
       rejections.push({
         code: "not-questions",
@@ -180,6 +200,24 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     rejections.push({
       code: "content-shrunk",
       detail: `Output has ${outWords} words for ${inWords} input words — content was dropped, not standardized.`
+    });
+  }
+
+  // Invented clinical claims: the model may reword, not diagnose or invent
+  // procedures. Only ADDED claims fail — dropped wording is the shrink guard's
+  // job, and synonym swaps that leave the lexicon are accepted.
+  const inClaims = new Set(clinicalClaims(input).map((c) => c.toLowerCase()));
+  const addedClaims = [
+    ...new Set(
+      clinicalClaims(output)
+        .map((c) => c.toLowerCase())
+        .filter((c) => !inClaims.has(c))
+    )
+  ];
+  if (addedClaims.length > 0) {
+    rejections.push({
+      code: "claims-added",
+      detail: `Output invented clinical claims the note never contained: ${addedClaims.join(", ")}`
     });
   }
 

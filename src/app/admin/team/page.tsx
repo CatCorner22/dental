@@ -7,6 +7,8 @@ import { statRowsForUser } from "@/lib/db/repo/submissions";
 import { listRedemptions, seedStoreIfEmpty } from "@/lib/db/repo/gamify";
 import { STARTER_STORE } from "@/lib/gamify/economy";
 import { computeStats } from "@/lib/stats/computeStats";
+import { computeStats, rollingGpa } from "@/lib/stats/computeStats";
+import { deriveLeadCoachingTip } from "@/lib/gamify/insights";
 import { TeamDashboard, type TeamView } from "@/components/admin/TeamDashboard";
 
 export const runtime = "nodejs";
@@ -44,6 +46,23 @@ export default async function TeamPage() {
         if (j === 1) justified++;
       }
     }
+    // Fewer than three graded notes in the window is not a band, it is noise.
+    const graded30 = rows.filter(
+      (r) => r.gpa && r.submittedAtUtc.getTime() >= Date.now() - 30 * 86_400_000
+    ).length;
+    if (rolling === null || graded30 < 3) continue;
+    const band = rolling >= 3.8 ? "thriving" : rolling >= 3.0 ? "stable" : "support";
+    const opportunity = deriveLeadCoachingTip(rows);
+    members.push({
+      displayName: u.displayName,
+      band,
+      coachingTip:
+        band === "support"
+          ? `${opportunity ?? "Recent notes are missing details the audit asks for."} The system has offered practice modules; a five-minute one-on-one on that area lands better than any dashboard.`
+          : band === "thriving"
+            ? "Thriving. Approve their store requests promptly and say so out loud — public praise is the one leaderboard this system endorses."
+            : null
+    });
   }
 
   const view: TeamView = {

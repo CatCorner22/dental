@@ -62,14 +62,25 @@ export async function logAction(
 //   "all"      — no filter (default).
 export type AuditFilter = "all" | "auth" | "security";
 
-// The assist rows for one draft, oldest first — folded into the frozen
-// filing as AI provenance. Details only ("normalize v1.0.0 [sources]");
-// never note text, which no audit row carries anyway.
-export async function assistEventsForDraft(db: Db, draftId: string): Promise<string[]> {
+// The assist rows for one draft by the filer, oldest first — folded into the
+// frozen filing as AI provenance. Scoped to actorId so a third party cannot
+// forge provenance by posting assist against someone else's draft id.
+// Details only ("normalize v1.0.0 [sources]"); never note text.
+export async function assistEventsForDraft(
+  db: Db,
+  draftId: string,
+  actorId: string
+): Promise<string[]> {
   const rows = await db
     .select({ detail: auditLog.detail })
     .from(auditLog)
-    .where(and(eq(auditLog.action, "assist.used"), eq(auditLog.target, draftId)))
+    .where(
+      and(
+        eq(auditLog.action, "assist.used"),
+        eq(auditLog.target, draftId),
+        eq(auditLog.actorId, actorId)
+      )
+    )
     .orderBy(auditLog.at, auditLog.id);
   return rows.map((r) => r.detail ?? "").filter(Boolean);
 }

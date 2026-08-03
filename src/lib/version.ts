@@ -30,4 +30,14 @@
 //         verifier accepted 0 of 5 faithful rewrites, because the tables are
 //         both what the deterministic pass applies AND what licenses a model's
 //         expansions.
-export const RULESET_VERSION = "2.6.0";
+// 2.7.0 — abbreviation preload: 54 entries across dental terms of art (endodontic
+//         working length and irrigants, periodontal grafting and SPT, MRONJ and
+//         oroantral communication, prosthodontic and paediatric terms), the
+//         medical history that changes dental treatment (HTN, DM, CHF, COPD, CVA,
+//         GERD, OSA, SBE, PMH), safe pharmacy sig codes, and a second batch of
+//         ISMP / Joint Commission do-not-use constructs (hs/qhs, TIW/BIW, the
+//         eye-and-ear Latin set, ss, APAP, cc, D/C) which are FLAGGED AND NEVER
+//         EXPANDED, because expanding a dangerous abbreviation launders it.
+//         Ambiguous additions (MI, CAD, RA, cap, ac/pc) ask rather than guess.
+//         See knowledge/sources/dental-abbreviation-preload.md.
+export const RULESET_VERSION = "2.7.0";

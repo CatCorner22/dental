@@ -24,7 +24,9 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
   },
   {
     id: "pa",
-    pattern: /\bPA\b/g,
+    // Case-insensitive: staff type "pa taken", and this entry ASKS rather than
+    // rewrites, so widening the match only widens the question.
+    pattern: /\bPA\b/gi,
     display: "PA",
     replacement: "periapical radiograph or posteroanterior cephalometric radiograph",
     severityClass: "review"
@@ -351,6 +353,86 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     display: "mo",
     replacement: "months",
     severityClass: "style"
+  },
+
+  // ---- Dosing intervals.
+  //
+  // Here rather than in SHORTHAND, and the reason is a real defect the property
+  // suite caught. SHORTHAND defines a term on first use as "expansion (display)",
+  // and these abbreviations CONTAIN A DIGIT — so "q6h" became "every 6 hours
+  // (q6h)", putting the number 6 into a dosing instruction twice. A duplicated
+  // number in a prescription is the class of error this whole codebase is built
+  // to prevent. A direct replacement has no parenthetical and no duplicate.
+  { id: "q4h", pattern: /\bq\.?4\.?h\b/gi, display: "q4h", replacement: "every 4 hours", severityClass: "style" },
+  { id: "q6h", pattern: /\bq\.?6\.?h\b/gi, display: "q6h", replacement: "every 6 hours", severityClass: "style" },
+  { id: "q8h", pattern: /\bq\.?8\.?h\b/gi, display: "q8h", replacement: "every 8 hours", severityClass: "style" },
+  { id: "q12h", pattern: /\bq\.?12\.?h\b/gi, display: "q12h", replacement: "every 12 hours", severityClass: "style" },
+
+  // ---- Joint Commission / ISMP DO NOT USE, batch 2.
+  //
+  // These are FLAGGED AND NEVER EXPANDED, which is the whole point of the
+  // category. Expanding a dangerous abbreviation launders it: the note comes out
+  // clean, the reader is reassured, and the writing habit that caused the
+  // documented misreading survives completely intact. The remedy is always that a
+  // person writes the words out.
+  {
+    // "hs" is read as "half-strength" as often as "at bedtime", and the two are a
+    // dose apart.
+    id: "hs",
+    pattern: /\bq?\.?h\.?s\.?(?=[\s,.;:)]|$)/gi,
+    display: "hs / qhs",
+    replacement: 'write "at bedtime" — hs is also read as half-strength',
+    severityClass: "review"
+  },
+  {
+    id: "tiw",
+    pattern: /\b[TB]IW\b/g,
+    display: "TIW / BIW",
+    replacement:
+      'write "three times a week" or "twice a week" in full — TIW is read as three times a DAY',
+    severityClass: "review"
+  },
+  {
+    // OD is the one with three readings and the worst consequences: right eye,
+    // once daily, and overdose.
+    id: "eye-ear-latin",
+    pattern: /\b(?:OD|OS|OU|AD|AS|AU)\b/g,
+    display: "OD / OS / OU / AD / AS / AU",
+    replacement:
+      'name the eye or ear in words — OD is read as right eye, as once daily, and as overdose',
+    severityClass: "review"
+  },
+  {
+    id: "one-half-ss",
+    pattern: /\b\d+\s?ss\b|\bss\b(?=\s*(?:mg|mL|ml|tab))/gi,
+    display: "ss (one half)",
+    replacement: 'write "one half" or use 0.5 — ss is read as the number 55',
+    severityClass: "review"
+  },
+  {
+    id: "apap",
+    pattern: /\bAPAP\b/gi,
+    display: "APAP",
+    replacement: 'write "acetaminophen" in full — APAP is not recognised by everyone who reads it',
+    severityClass: "review"
+  },
+  {
+    // cc is read as U, which is how a volume becomes a hundredfold dose. mL is
+    // the only safe form. Bounded to a number so "CC" as chief complaint is not
+    // swept up — that abbreviation has its own entry.
+    id: "cc-volume",
+    pattern: /\b\d+\s?cc\b/gi,
+    display: "cc (cubic centimeters)",
+    replacement: 'write mL — cc is misread as U, turning a volume into units',
+    severityClass: "review"
+  },
+  {
+    // Discharge and discontinue are opposite instructions.
+    id: "dc",
+    pattern: /\bD\/C\b/gi,
+    display: "D/C",
+    replacement: 'write "discharge" or "discontinue" — D/C is read as both',
+    severityClass: "review"
   },
 
   // ---- Ambiguous: the tool asks, because the reading changes the record.

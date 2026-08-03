@@ -102,6 +102,17 @@ Keep an abbreviation only if the practice has one approved meaning, defines it a
 | cal | calculus, or clinical attachment loss (CAL) — write which |
 | tp | treatment plan, or toothpaste — write which |
 | cx | continuing care, cancelled, or complications — write which |
+| q4h | every 4 hours |
+| q6h | every 6 hours |
+| q8h | every 8 hours |
+| q12h | every 12 hours |
+| hs / qhs | write "at bedtime" — hs is also read as half-strength |
+| TIW / BIW | write "three times a week" or "twice a week" in full — TIW is read as three times a DAY |
+| OD / OS / OU / AD / AS / AU | name the eye or ear in words — OD is read as right eye, as once daily, and as overdose |
+| ss (one half) | write "one half" or use 0.5 — ss is read as the number 55 |
+| APAP | write "acetaminophen" in full — APAP is not recognised by everyone who reads it |
+| cc (cubic centimeters) | write mL — cc is misread as U, turning a volume into units |
+| D/C | write "discharge" or "discontinue" — D/C is read as both |
 
 ## Replace vague or unsafe phrases
 

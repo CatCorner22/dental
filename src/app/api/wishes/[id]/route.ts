@@ -48,6 +48,27 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   const existing = await getWish(db, numId);
   if (!existing) return Response.json({ error: "Not found." }, { status: 404 });
 
+  // CLOSING a below-standard report also needs a reason — not just declining
+  // one. The rule above covered "declined" alone, so `{"status":"done"}` shut a
+  // safety observation with no note at all: it left the amber banner, left the
+  // default filter, and — because the decider's name only renders alongside a
+  // note — closed with nobody's name on it. "Someone said it was fine" is not
+  // a record, and this is the one category where the record is the point.
+  if (
+    existing.category === "standards" &&
+    (b.status === "done" || b.status === "declined") &&
+    !note.trim()
+  ) {
+    return Response.json(
+      {
+        error:
+          "Say what was done. Closing a below-standard report without a note leaves no record " +
+          "that anything actually changed."
+      },
+      { status: 422 }
+    );
+  }
+
   await updateWishStatus(db, numId, {
     status: b.status,
     decidedByName: `${guard.user.displayName} (${guard.user.username})`,

@@ -99,3 +99,37 @@ describe("sorting keeps safety visible", () => {
     expect(rows).toEqual(copy);
   });
 });
+
+
+// The two defects that made the safety half of this feature untrustworthy.
+//
+// Both are about the same thing: a below-standard report is the one item on
+// this list where the record IS the point, and both bugs let one disappear
+// quietly — one by volume, one by a silent close.
+describe("a below-standard report cannot be buried or closed silently", () => {
+  it("sorts an OLD open standards report above newer everything", () => {
+    // sortWishes did this correctly all along. The bug was upstream: the page
+    // applied a 500-row LIMIT first, so an old report fell out of the query
+    // before this function ever saw it — and the amber banner, counted from
+    // the same truncated list, dropped to zero with it. Fixed by fetching open
+    // standards reports separately and unbounded; this pins the ranking half.
+    const old = {
+      category: "standards",
+      status: "new",
+      createdAt: new Date(2020, 0, 1)
+    };
+    const newer = Array.from({ length: 50 }, (_, i) => ({
+      category: "feature",
+      status: "new",
+      createdAt: new Date(2026, 0, i + 1)
+    }));
+    const sorted = sortWishes([...newer, old]);
+    expect(sorted[0]).toBe(old);
+  });
+
+  it("stops floating one once it is genuinely settled", () => {
+    const done = { category: "standards", status: "done", createdAt: new Date(2020, 0, 1) };
+    const open = { category: "feature", status: "new", createdAt: new Date(2026, 0, 1) };
+    expect(sortWishes([done, open])[0]).toBe(open);
+  });
+});

@@ -2,7 +2,7 @@ import { redirect } from "next/navigation";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { canManageUsers } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
-import { listWishes } from "@/lib/db/repo/wishes";
+import { listOpenStandardsWishes, listWishes } from "@/lib/db/repo/wishes";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { sortWishes } from "@/lib/wishes/wishes";
 import { WishList } from "@/components/wishes/WishList";
@@ -19,7 +19,15 @@ export default async function WishesPage() {
   const user = await freshSessionUser();
   if (!user) redirect("/login");
   const db = await getDb();
-  const rows = sortWishes(await listWishes(db));
+  // The paged list PLUS every open below-standard report, deduplicated. The
+  // page cap is what made a safety report disappear; fetching those rows
+  // separately means the cap can never reach them.
+  const [paged, openStandards] = await Promise.all([
+    listWishes(db),
+    listOpenStandardsWishes(db)
+  ]);
+  const seen = new Set(paged.map((w) => w.id));
+  const rows = sortWishes([...paged, ...openStandards.filter((w) => !seen.has(w.id))]);
 
   return (
     <div className="max-w-3xl">

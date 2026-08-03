@@ -33,6 +33,24 @@ export interface Shorthand {
   display: string;
   /** The full term of art. */
   expansion: string;
+  /**
+   * The correct plural of the expansion, for patterns that match a plural
+   * token ("SSCs", "4 BWs", "TMJs").
+   *
+   * This field exists because of a counting bug: the first-use expansion
+   * replaced "SSCs placed on teeth A and B" with the SINGULAR "stainless
+   * steel crown (SSC) placed on teeth A and B" — one crown documented for two
+   * teeth. applyPlural() deliberately refuses to pluralise a multi-word
+   * replacement (it can only append an "s", and "scaling and root planings"
+   * would be worse than the bug), so multi-word expansions silently dropped
+   * the plural instead. A count is a billing and legal fact; the only safe
+   * plural is one a human wrote out in full, which is what this field is.
+   *
+   * When a plural token is matched and this field is absent, the token is
+   * left as shorthand rather than expanded — an unexpanded initialism is a
+   * style miss, a changed count is a falsified record.
+   */
+  pluralExpansion?: string;
   /** Present when the shorthand has more than one real reading in a dental chart. */
   alternatives?: string[];
   domain: "dental" | "medical" | "dosing";
@@ -50,6 +68,7 @@ export const SHORTHAND: Shorthand[] = [
     pattern: /(?<!\b(?:kg|kgs|lb|lbs)\s)\bBWX?s?\b/gi,
     display: "BW",
     expansion: "bitewing radiograph",
+    pluralExpansion: "bitewing radiographs",
     domain: "dental"
   },
   {
@@ -60,6 +79,7 @@ export const SHORTHAND: Shorthand[] = [
     pattern: /\b[Pp][Aa][Nn][Oo]s?\b|\bPANs?\b/g,
     display: "PANO",
     expansion: "panoramic radiograph",
+    pluralExpansion: "panoramic radiographs",
     domain: "dental"
   },
   {
@@ -87,11 +107,14 @@ export const SHORTHAND: Shorthand[] = [
     alternatives: ["full-mouth radiographic series (FMX)", "fibromyalgia syndrome"],
     domain: "dental"
   },
+  // No pluralExpansion: "CBCTs" means multiple SCANS, and writing "cone-beam
+  // computed tomography scans" would add a noun the writer never typed. A
+  // plural CBCTs is left as shorthand rather than miscounted.
   { id: "cbct", pattern: /\bCBCTs?\b/gi, display: "CBCT", expansion: "cone-beam computed tomography", domain: "dental" },
-  { id: "parl", pattern: /\bPARLs?\b/gi, display: "PARL", expansion: "periapical radiolucency", domain: "dental" },
+  { id: "parl", pattern: /\bPARLs?\b/gi, display: "PARL", expansion: "periapical radiolucency", pluralExpansion: "periapical radiolucencies", domain: "dental" },
 
   // ---- Procedures
-  { id: "rct", pattern: /\bRCTs?\b/gi, display: "RCT", expansion: "root canal therapy", domain: "dental" },
+  { id: "rct", pattern: /\bRCTs?\b/gi, display: "RCT", expansion: "root canal therapy", pluralExpansion: "root canal therapies", domain: "dental" },
   { id: "srp", pattern: /\bSRP\b/gi, display: "SRP", expansion: "scaling and root planing", domain: "dental" },
   { id: "ohi", pattern: /\bOHI\b/gi, display: "OHI", expansion: "oral hygiene instruction", domain: "dental" },
   {
@@ -115,7 +138,7 @@ export const SHORTHAND: Shorthand[] = [
     alternatives: ["extraction", "extension"],
     domain: "dental"
   },
-  { id: "ssc", pattern: /\bSSCs?\b/gi, display: "SSC", expansion: "stainless steel crown", domain: "dental" },
+  { id: "ssc", pattern: /\bSSCs?\b/gi, display: "SSC", expansion: "stainless steel crown", pluralExpansion: "stainless steel crowns", domain: "dental" },
   { id: "sdf", pattern: /\bSDF\b/gi, display: "SDF", expansion: "silver diamine fluoride", domain: "dental" },
 
   // ---- Materials
@@ -160,7 +183,7 @@ export const SHORTHAND: Shorthand[] = [
     alternatives: ["clinical attachment level", "calcium"],
     domain: "dental"
   },
-  { id: "tmj", pattern: /\bTMJs?\b/gi, display: "TMJ", expansion: "temporomandibular joint", domain: "dental" },
+  { id: "tmj", pattern: /\bTMJs?\b/gi, display: "TMJ", expansion: "temporomandibular joint", pluralExpansion: "temporomandibular joints", domain: "dental" },
   { id: "tmd", pattern: /\bTMD\b/gi, display: "TMD", expansion: "temporomandibular disorder", domain: "dental" },
   { id: "cej", pattern: /\bCEJ\b/gi, display: "CEJ", expansion: "cementoenamel junction", domain: "dental" },
   {
@@ -217,12 +240,12 @@ export const SHORTHAND: Shorthand[] = [
   },
 
   // ---- Prosthodontics
-  { id: "fpd", pattern: /\bFPDs?\b/gi, display: "FPD", expansion: "fixed partial denture", domain: "dental" },
-  { id: "rpd", pattern: /\bRPDs?\b/gi, display: "RPD", expansion: "removable partial denture", domain: "dental" },
+  { id: "fpd", pattern: /\bFPDs?\b/gi, display: "FPD", expansion: "fixed partial denture", pluralExpansion: "fixed partial dentures", domain: "dental" },
+  { id: "rpd", pattern: /\bRPDs?\b/gi, display: "RPD", expansion: "removable partial denture", pluralExpansion: "removable partial dentures", domain: "dental" },
   { id: "ovd", pattern: /\b(?:OVD|VDO)\b/gi, display: "OVD", expansion: "occlusal vertical dimension", domain: "dental" },
 
   // ---- Anesthesia
-  { id: "ianb", pattern: /\bIANBs?\b/gi, display: "IANB", expansion: "inferior alveolar nerve block", domain: "dental" },
+  { id: "ianb", pattern: /\bIANBs?\b/gi, display: "IANB", expansion: "inferior alveolar nerve block", pluralExpansion: "inferior alveolar nerve blocks", domain: "dental" },
   {
     id: "psa",
     pattern: /\bPSA\b/g,

@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const removableProsthodontic: ModuleDef = {
   id: "removable-prosthodontic",
@@ -27,6 +27,11 @@ export const removableProsthodontic: ModuleDef = {
             "evaluation"
           )
         },
+        optionalTeeth(
+          "abutment-teeth",
+          "Abutment or retained teeth",
+          "Pick the natural teeth the appliance engages. Describe the arch and design below."
+        ),
         {
           id: "arch-design",
           type: "text",

@@ -84,6 +84,51 @@ describe("anatomy text rule", () => {
     expect(f.message).toContain("FDI");
     expect(findings("extracted tooth 30", "anatomy.text-tooth")).toEqual([]);
   });
+
+  // The gap the Curve benchmark found: FDI leakage written with "#" or "No."
+  // instead of the literal word "tooth" used to pass clean. The same clinical
+  // error must stop regardless of which marker the writer chose.
+  it("catches FDI leakage written with # or No.", () => {
+    expect(findings("restoration on #36 MOD", "anatomy.text-tooth")).toHaveLength(1);
+    expect(findings("prepared No. 47 for a crown", "anatomy.text-tooth")).toHaveLength(1);
+    // Valid Universal numbers with the same markers stay clean.
+    expect(findings("restoration on #19 MOD", "anatomy.text-tooth")).toEqual([]);
+    expect(findings("prepared #3 for a crown", "anatomy.text-tooth")).toEqual([]);
+  });
+
+  // "No." only reads as a tooth with its period, so ordinary prose is safe.
+  it("does not read ordinary prose as a tooth number", () => {
+    expect(findings("no other findings were noted", "anatomy.text-tooth")).toEqual([]);
+    expect(findings("no 3 accessory canals were located", "anatomy.text-tooth")).toEqual([]);
+  });
+
+  // The higher-value half: a surface a tooth's class cannot have, in narrative.
+  // Occlusal on an anterior tooth and incisal on a posterior one are S0 in the
+  // structured picker; they must be S0 in free text too.
+  it("stops an impossible surface written in narrative", () => {
+    const occ = findings("composite on tooth 8 occlusal surface", "anatomy.text-surface-stop");
+    expect(occ).toHaveLength(1);
+    expect(occ[0].severity).toBe("S0");
+    expect(findings("composite on tooth 8 O", "anatomy.text-surface-stop")).toHaveLength(1);
+    expect(findings("prepared #3 incisal edge", "anatomy.text-surface-stop")).toHaveLength(1);
+  });
+
+  it("allows a legal surface and does not misread words as surface codes", () => {
+    // Occlusal IS legal on a molar; incisal IS legal on an incisor.
+    expect(findings("amalgam on tooth 30 occlusal", "anatomy.text-surface-stop")).toEqual([]);
+    expect(findings("bonding on tooth 8 incisal", "anatomy.text-surface-stop")).toEqual([]);
+    // "or" / "in" must never be read as the O / I surface codes.
+    expect(findings("tooth 8 or 9 as needed", "anatomy.text-surface-stop")).toEqual([]);
+    expect(findings("tooth 8 in the arch", "anatomy.text-surface-stop")).toEqual([]);
+  });
+
+  // ReDoS guard: the new markers must not create catastrophic backtracking.
+  it("stays fast on a hostile string", () => {
+    const hostile = "#".repeat(2000) + " ".repeat(2000) + "9".repeat(2000);
+    const started = Date.now();
+    runTextAudit(hostile);
+    expect(Date.now() - started).toBeLessThan(500);
+  });
 });
 
 describe("full audit, gating, and status", () => {
@@ -350,7 +395,7 @@ describe("PHI evasion resistance", () => {
     const found = runTextAudit("Extracted teeth 3, 36, and 40.").filter(
       (f) => f.ruleId === "anatomy.text-tooth"
     );
-    expect(found.map((f) => f.matchedText).sort()).toEqual(["tooth 36", "tooth 40"]);
+    expect(found.map((f) => f.matchedText).sort()).toEqual(["36", "40"]);
     expect(runTextAudit("Extracted teeth 3, 14, and 30.").filter((f) => f.category === "anatomy")).toEqual([]);
   });
 

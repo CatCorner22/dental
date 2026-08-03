@@ -241,3 +241,47 @@
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
 }
 }
+
+/* Print.
+ *
+ * A filed Smile Note is a legal record, and a records request wants the note —
+ * not the navigation, the feedback prompt, or the export buttons that produced
+ * the printout. Without this, "Print" produced a page whose first third was app
+ * chrome and whose note was clipped inside a scrolling <pre>.
+ *
+ * Scoped to what every page shares (header, footer, dialogs, anything marked
+ * print:hidden) so it works for the submission page and does no harm anywhere
+ * else. */
+@media print {
+  header,
+  footer,
+  [role="dialog"],
+  .print\:hidden {
+    display: none !important;
+  }
+  body {
+    background: #fff;
+    color: #000;
+  }
+  main {
+    max-width: none;
+    padding: 0;
+  }
+  /* The frozen note lives in a <pre>. On screen it scrolls; on paper it has to
+   * wrap and break across pages, or everything past the first page is lost. */
+  pre {
+    white-space: pre-wrap !important;
+    overflow: visible !important;
+    background: transparent !important;
+    border: 0 !important;
+    padding: 0 !important;
+    font-size: 11pt;
+  }
+  h1,
+  h2 {
+    break-after: avoid-page;
+  }
+  a[href]::after {
+    content: "";
+  }
+}

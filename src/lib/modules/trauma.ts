@@ -1,5 +1,5 @@
 import type { ModuleDef } from "@/lib/schema/types";
-import { opts } from "./shared";
+import { opts, optionalTeeth } from "./shared";
 
 export const trauma: ModuleDef = {
   id: "trauma",
@@ -46,6 +46,11 @@ export const trauma: ModuleDef = {
           label: "Preinjury and current occlusion; midline, interference, overbite, and overjet",
           placeholderHint: "<facts when relevant>"
         },
+        optionalTeeth(
+          "teeth",
+          "Injured teeth",
+          "Pick the teeth involved; record each one's findings in the field below."
+        ),
         {
           id: "per-tooth",
           type: "textarea",

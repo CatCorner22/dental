@@ -108,15 +108,40 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
 }
 
 // Free-text cross-check: catches impossible Universal numbers and probable
-// FDI leakage ("tooth 36") in narrative text.
+// FDI leakage in narrative text.
+//
+// The tooth marker is deliberately broader than the word "tooth". Staff write
+// "#19", "No. 19", and "teeth 3, 4" interchangeably, and the structured
+// wrong-site guard only covers the four modules that have a tooth picker — so
+// on every other module the site arrives as narrative, and a rule that only
+// fired on the literal word "tooth" let "#36" (FDI leakage) pass silently
+// while "tooth 36" was stopped. The same clinical error must not depend on
+// which word the writer chose.
+//
 // A number immediately followed by a unit of time or measurement is not a
-// tooth, so the lookahead below ends the tooth run there. Without it,
-// "tooth 30, 45 minutes total" would flag 45 as an invalid tooth and block.
-const NOT_A_UNIT = "(?!\\s*(?:minutes?|mins?|seconds?|secs?|hours?|hrs?|days?|weeks?|months?|years?|mm|cm|ml|mg|%)\\b)";
+// tooth, so the lookahead ends the tooth run there. Without it, "tooth 30,
+// 45 minutes total" would flag 45 as an invalid tooth and block.
+const NOT_A_UNIT =
+  "(?!\\s*(?:minutes?|mins?|seconds?|secs?|hours?|hrs?|days?|weeks?|months?|years?|mm|cm|ml|mg|%)\\b)";
+
+// The markers that introduce a tooth number. "no." keeps its period so ordinary
+// prose ("no other findings", "no 3 canals seen") does not read as a tooth ref;
+// "#" is a tooth number in a dental note by convention. Only the word forms can
+// introduce a comma list.
+const TOOTH_MARK = "(?:\\btooth|\\bteeth|#|\\bno\\.)";
 const TOOTH_LIST = new RegExp(
-  `\\b(?:tooth|teeth)\\s*#?\\s*(\\d{1,3}${NOT_A_UNIT}(?:[\\s,]*(?:and|&|through|to|or|-)?[\\s,]*#?\\d{1,3}${NOT_A_UNIT})*)`,
+  `${TOOTH_MARK}\\s*#?\\s*(\\d{1,3}${NOT_A_UNIT}(?:[\\s,]*(?:and|&|through|to|or|-)?[\\s,]*#?\\d{1,3}${NOT_A_UNIT})*)`,
   "gi"
 );
+
+// A tooth number written next to a surface that its class cannot have. This is
+// the free-text twin of the structured anatomy.surface-stop (S0): occlusal on
+// an anterior tooth, incisal on a posterior one. Only these two are hard stops,
+// because every other surface is legal somewhere. The word forms are matched
+// case-insensitively; the bare letters O / I only in upper case and only as
+// whole tokens, so "or", "in", and "is" cannot be read as a surface.
+const SURF_WORD = new RegExp(`${TOOTH_MARK}\\s*#?\\s*(\\d{1,3})\\s+(occlusal|incisal)\\b`, "gi");
+const SURF_CODE = new RegExp(`${TOOTH_MARK}\\s*#?\\s*(\\d{1,3})\\s+(O|I)\\b`, "g");
 
 export function runAnatomyTextRule(text: string): AuditFinding[] {
   const findings: AuditFinding[] = [];
@@ -138,9 +163,39 @@ export function runAnatomyTextRule(text: string): AuditFinding[] {
       category: "anatomy",
       severity: "S0",
       message: fdi
-        ? `"tooth ${num}" is not a valid ADA Universal designation. It may be FDI notation; this office uses ADA Universal (1-32, A-T).`
-        : `"tooth ${num}" is not a valid ADA Universal designation.`,
-      matchedText: `tooth ${num}`,
+        ? `Tooth ${num} is not a valid ADA Universal designation. It may be FDI notation; this office uses ADA Universal (1-32, A-T).`
+        : `Tooth ${num} is not a valid ADA Universal designation.`,
+      matchedText: num,
+      occurrences: count
+    });
+  }
+
+  // Surface-vs-class check. Runs over VALID teeth only — an invalid number is
+  // already an S0 above, and its class is unknown anyway.
+  const surfSeen = new Map<string, number>();
+  const scan = (re: RegExp, normalize: (s: string) => "O" | "I") => {
+    for (const m of text.matchAll(re)) {
+      const num = m[1];
+      const tooth = getTooth(num);
+      if (!tooth) continue;
+      const surface = normalize(m[2]);
+      const hardStop = (surface === "O" && tooth.isAnterior) || (surface === "I" && !tooth.isAnterior);
+      if (!hardStop) continue;
+      const key = `${num}:${surface}`;
+      surfSeen.set(key, (surfSeen.get(key) ?? 0) + 1);
+    }
+  };
+  scan(SURF_WORD, (s) => (s.toLowerCase() === "occlusal" ? "O" : "I"));
+  scan(SURF_CODE, (s) => (s === "O" ? "O" : "I"));
+  for (const [key, count] of surfSeen) {
+    const [num, surface] = key.split(":");
+    const tooth = getTooth(num)!;
+    findings.push({
+      ruleId: "anatomy.text-surface-stop",
+      category: "anatomy",
+      severity: "S0",
+      message: `Surface ${surface} is not valid on ${tooth.name} (tooth ${num}). Anterior teeth take I; posterior teeth take O. Correct the site before this entry leaves the tool.`,
+      matchedText: `${num} ${surface}`,
       occurrences: count
     });
   }

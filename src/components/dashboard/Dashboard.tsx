@@ -379,6 +379,25 @@ function StatsCard({ stats }: { stats: UserStats }) {
           value={`${stats.currentStreak}${stats.currentStreak >= 3 ? " 🔥" : ""}`}
         />
       </div>
+      {(stats.medianMinutesToFile !== null || stats.totalSubmitted > 0) && (
+        // The ROI row: charting time and after-hours notes are the two numbers
+        // that show whether the tool is paying for its minute. Computed from
+        // timestamps the system already records — nothing new is watched.
+        <div className="mt-3 grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 text-center">
+          <Stat
+            label="Median time to file (same day)"
+            value={
+              stats.medianMinutesToFile === null
+                ? "—"
+                : `${Math.round(stats.medianMinutesToFile)} min`
+            }
+          />
+          <Stat
+            label="Filed after hours"
+            value={`${Math.round(stats.afterHoursRate * 100)}%`}
+          />
+        </div>
+      )}
       {stats.badges.length > 0 && (
         <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
           {stats.badges.map((id) => (

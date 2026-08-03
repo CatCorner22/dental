@@ -11,7 +11,9 @@ import {
   canAssignRole,
   canDeactivate,
   canDeleteUser,
+  canActOn,
   canEditContact,
+  canManageUsers,
   canMergeUsers,
   canReceiveTransfer,
   canSendResetLink,
@@ -32,6 +34,10 @@ interface Row {
   // broadcast to every user manager.
   email?: string | null;
   groupEmail?: string | null;
+  // Which offices this person works at. Shown to everyone who may manage the
+  // account — unlike an email address, an assignment grants nothing and is
+  // simply a fact about the rota.
+  officeIds: string[];
 }
 
 const ROLES: Role[] = ["readonly", "user", "lead", "manager", "admin"];
@@ -51,6 +57,7 @@ interface Perms {
   showLink: boolean;
   showSetPassword: boolean;
   showContact: boolean;
+  showOffices: boolean;
   showMerge: boolean;
   showDelete: boolean;
 }
@@ -71,6 +78,11 @@ function permsFor(u: Row, selfId: string, selfRole: Role): Perms {
     showLink: !isSelf && u.active && canSendResetLink(selfRole, u.role),
     showSetPassword: canSetPasswordDirectly(selfRole),
     showContact: canEditContact(selfRole, u.role),
+    // Anyone who may manage this account may set its offices. Deliberately a
+    // LOWER bar than contact details: an assignment is not a takeover vector,
+    // it grants no access, and it decides only what order the note picker
+    // shows locations in.
+    showOffices: canManageUsers(selfRole) && canActOn(selfRole, u.role),
     showMerge: !isSelf && u.active && canMergeUsers(selfRole, u.role),
     showDelete: !isSelf && canDeleteUser(selfRole, u.role)
   };
@@ -94,6 +106,7 @@ interface RowHandlers {
   onLink: (row: Row) => void;
   onSetPassword: (row: Row) => void;
   onContact: (row: Row) => void;
+  onOffices: (row: Row) => void;
   onMerge: (row: Row) => void;
 }
 
@@ -193,6 +206,14 @@ function RowActions({
           Edit contact
         </button>
       )}
+      {perms.showOffices && (
+        <button
+          className="tap rounded px-2 text-blue-700 hover:underline"
+          onClick={() => handlers.onOffices(user)}
+        >
+          Offices
+        </button>
+      )}
       {perms.showMerge && (
         <button
           className="tap rounded px-2 text-blue-700 hover:underline"
@@ -236,11 +257,13 @@ async function send(
 export function UserAdmin({
   users,
   selfId,
-  selfRole
+  selfRole,
+  offices
 }: {
   users: Row[];
   selfId: string;
   selfRole: Role;
+  offices: { id: string; name: string }[];
 }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
@@ -248,6 +271,7 @@ export function UserAdmin({
   const [linkFor, setLinkFor] = useState<Row | null>(null);
   const [mergeFrom, setMergeFrom] = useState<Row | null>(null);
   const [contactFor, setContactFor] = useState<Row | null>(null);
+  const [officesFor, setOfficesFor] = useState<Row | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -282,6 +306,7 @@ export function UserAdmin({
     onLink: setLinkFor,
     onSetPassword: setSetPasswordFor,
     onContact: setContactFor,
+    onOffices: setOfficesFor,
     onMerge: setMergeFrom
   };
 
@@ -426,6 +451,18 @@ export function UserAdmin({
           onSent={(message) => {
             setLinkFor(null);
             setNotice(message);
+          }}
+        />
+      )}
+      {officesFor && (
+        <OfficesDialog
+          row={officesFor}
+          offices={offices}
+          onClose={() => setOfficesFor(null)}
+          onDone={(m) => {
+            setOfficesFor(null);
+            setNotice(m);
+            router.refresh();
           }}
         />
       )}
@@ -1014,6 +1051,95 @@ function MergeDialog({
             onClick={submit}
           >
             {busy ? "Merging…" : "Merge"}
+          </button>
+        </div>
+      </div>
+    </Dialog>
+  );
+}
+
+
+// Which offices a person works at.
+//
+// A SET, not a single choice: staff rotate, and most people genuinely belong to
+// more than one location. Nothing here restricts anything — every office stays
+// selectable on every note regardless of what is ticked. The assignment orders
+// that picker so somebody's own locations come first, and answers "who works
+// where" without anyone having to ask.
+function OfficesDialog({
+  row,
+  offices,
+  onClose,
+  onDone
+}: {
+  row: Row;
+  offices: { id: string; name: string }[];
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const [selected, setSelected] = useState<string[]>(row.officeIds);
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const toggle = (id: string) =>
+    setSelected((prev) => (prev.includes(id) ? prev.filter((x) => x !== id) : [...prev, id]));
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    const res = await send(`/api/admin/users/${row.id}`, {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ officeIds: selected })
+    });
+    if (res.ok) {
+      return onDone(
+        selected.length === 0
+          ? `${row.username} is not assigned to an office.`
+          : `${row.username} works at ${selected.length} office${selected.length === 1 ? "" : "s"}.`
+      );
+    }
+    setError(res.error);
+    setBusy(false);
+  };
+  return (
+    <Dialog title={`Offices — ${row.username}`} onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-sm text-slate-600">
+          Tick every office this person works at. This does not restrict anything — every office
+          stays available on every note, because a patient may be seen anywhere and cover gets
+          arranged at short notice. It puts their own locations first in the picker.
+        </p>
+        {offices.length === 0 ? (
+          <p className="rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+            No offices are configured yet.
+          </p>
+        ) : (
+          <ul className="space-y-1.5">
+            {offices.map((o) => (
+              <li key={o.id}>
+                <label className="tap flex items-center gap-2 rounded px-1 py-1 text-sm hover:bg-slate-50">
+                  <input
+                    type="checkbox"
+                    className="size-4"
+                    checked={selected.includes(o.id)}
+                    onChange={() => toggle(o.id)}
+                  />
+                  {o.name}
+                </label>
+              </li>
+            ))}
+          </ul>
+        )}
+        {error && (
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex gap-2">
+          <button className="btn-primary" disabled={busy} onClick={submit}>
+            {busy ? "Saving…" : "Save offices"}
+          </button>
+          <button className="btn-secondary" onClick={onClose}>
+            Cancel
           </button>
         </div>
       </div>

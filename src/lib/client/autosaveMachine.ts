@@ -31,6 +31,23 @@ export function needsSave(s: AutosaveState): boolean {
   return s.status === "dirty";
 }
 
+/**
+ * What to show the writer when a save is refused.
+ *
+ * Pure, and here rather than in the hook, so it can be tested: the save chain
+ * STOPS on an error and does not retry, which makes this string the entire
+ * explanation a writer gets for why their work is not on the server. It used to
+ * be `Save failed (403).` unconditionally, and the worst case of that was the
+ * scope-of-practice refusal — a hygienist who typed a diagnosis got a status
+ * code, no route forward, and unsaved work in a field they were never permitted
+ * to author. The route already sends a sentence for every refusal; this prefers
+ * it and keeps the code only for a failure with no body (a proxy, a 502).
+ */
+export function saveErrorMessage(status: number, body: { error?: unknown }): string {
+  const sentence = typeof body.error === "string" ? body.error.trim() : "";
+  return sentence.length > 0 ? sentence : `Save failed (${status}).`;
+}
+
 export function autosaveReducer(state: AutosaveState, event: AutosaveEvent): AutosaveState {
   switch (event.type) {
     case "edit":

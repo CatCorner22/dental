@@ -91,14 +91,25 @@ export function NoteForm({
   state,
   onChange,
   findingsByField = {},
-  clinicalRole = "unset"
+  clinicalRole
 }: {
   modules: ModuleDef[];
   state: NoteState;
   onChange: (key: string, value: FieldValue) => void;
   findingsByField?: FieldFindings;
-  /** Defaults to "unset", which restricts nothing. */
-  clinicalRole?: ClinicalRole;
+  /**
+   * REQUIRED, with no default, and that is the point.
+   *
+   * This prop used to default to "unset" — the value that restricts nothing —
+   * and BuilderShell did not pass it. So every scope lock below was dead in the
+   * only screen that renders this form: an assistant or hygienist saw
+   * Assessment and Plan wide open, typed a diagnosis into them, and learned the
+   * rule 1.5 seconds later when the server refused the autosave with a bare
+   * "Save failed (403)." and stopped retrying. The permissive default is what
+   * made that silent, and a required prop is what makes it unrepeatable — an
+   * omitted scope is now a compile error rather than an unlocked record.
+   */
+  clinicalRole: ClinicalRole;
 }) {
   return (
     <div className="space-y-4">

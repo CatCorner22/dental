@@ -390,7 +390,13 @@ export function BuilderShell({
         {/* Form */}
         <section className="min-w-0 flex-1">
           <fieldset disabled={!canEdit} className="min-w-0">
-            <NoteForm modules={modules} state={state} onChange={setValue} findingsByField={fieldFindings} />
+            <NoteForm
+              modules={modules}
+              state={state}
+              onChange={setValue}
+              findingsByField={fieldFindings}
+              clinicalRole={clinicalRole}
+            />
           </fieldset>
         </section>
 

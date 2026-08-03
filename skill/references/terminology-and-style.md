@@ -113,6 +113,7 @@ Keep an abbreviation only if the practice has one approved meaning, defines it a
 | APAP | write "acetaminophen" in full — APAP is not recognised by everyone who reads it |
 | cc (cubic centimeters) | write mL — cc is misread as U, turning a volume into units |
 | D/C | write "discharge" or "discontinue" — D/C is read as both |
+| bid (lower case) | write "twice daily" — bare "bid" is left alone because it is also an ordinary English word |
 
 ## Replace vague or unsafe phrases
 

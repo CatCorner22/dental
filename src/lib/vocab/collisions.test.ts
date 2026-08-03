@@ -55,7 +55,10 @@ const ALREADY_STANDARD: string[] = [
   "Fluoride varnish was applied to all erupted surfaces.",
   "The treatment plan was discussed and the patient elected to proceed.",
   "Continuing care was scheduled and the patient was given written instructions.",
-  "Endodontic treatment was recommended and the patient was referred."
+  "Endodontic treatment was recommended and the patient was referred.",
+  // The sentence the bid pattern was written to protect. It must come back
+  // unchanged: "a twice daily for the implant case" is the failure it prevents.
+  "The laboratory submitted a bid for the implant case."
 ];
 
 describe("already-correct prose survives the transformer untouched", () => {

@@ -61,7 +61,7 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
   },
   {
     id: "nad",
-    pattern: /\bNAD\b/g,
+    pattern: /\bNAD\b/gi,
     display: "NAD",
     replacement: "no acute distress observed, limited to the observation period",
     severityClass: "review"
@@ -110,14 +110,14 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
   },
   {
     id: "ivs",
-    pattern: /\bIVS\b/g,
+    pattern: /\bIVS\b/gi,
     display: "IVS",
     replacement: "intravenous sedation, with intended and achieved depth",
     severityClass: "review"
   },
   {
     id: "ebl",
-    pattern: /\bEBL\b/g,
+    pattern: /\bEBL\b/gi,
     display: "EBL",
     replacement: "estimated blood loss, with amount and unit",
     severityClass: "review"
@@ -212,7 +212,7 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
   },
   {
     id: "poi",
-    pattern: /\bPOI\b/g,
+    pattern: /\bPOI\b/gi,
     display: "POI",
     replacement: "postoperative instructions",
     severityClass: "style"
@@ -432,6 +432,37 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     pattern: /\bD\/C\b/gi,
     display: "D/C",
     replacement: 'write "discharge" or "discontinue" — D/C is read as both',
+    severityClass: "review"
+  },
+
+  {
+    // Bare lower-case "bid" produced NOTHING before this: no expansion and no
+    // flag. That silence is the worst of the three possible outcomes, and it fell
+    // on one of the most common dosing abbreviations in a prescription.
+    //
+    // The shorthand table refuses to expand it, deliberately and with a good
+    // comment: /\bbid\b/i turned "the lab submitted a bid for the case" into "a
+    // twice daily for the case", so its pattern requires the punctuated "b.i.d."
+    // or a shouted "BID". That decision is respected here rather than overruled —
+    // what changes is that the writer now gets asked instead of ignored, which is
+    // the same move made for EXT, NKA, GP and PA. Widen the question, never the
+    // rewrite.
+    // The discriminator is the determiner. The English noun essentially always
+    // takes one — "a bid", "the bid", "their bid" — and a sig code never does, so
+    // skipping a preceded article keeps "submitted a bid for the implant case"
+    // quiet while still asking about "600 mg bid" and "brushing bid". Verified
+    // both ways by the prose corpus in collisions.test.ts, which carries that
+    // exact sentence for this reason.
+    id: "bid-bare",
+    // The `(?<!\()` is not decoration. The first-use convention writes the
+    // expansion as "twice daily (bid)", so without it the tool flagged its own
+    // correct output: a writer accepted the expansion and was immediately told to
+    // go and fix "bid". reliability.test.ts now asserts no entry flags what the
+    // transformer itself produces, which is the property that catches this class.
+    pattern: /(?<!\()(?<!\b(?:a|an|the|any|no|our|your|their|his|her|its)\s)\bbid\b/g,
+    display: "bid (lower case)",
+    replacement:
+      'write "twice daily" — bare "bid" is left alone because it is also an ordinary English word',
     severityClass: "review"
   },
 

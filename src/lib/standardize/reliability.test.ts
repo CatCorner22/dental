@@ -76,6 +76,27 @@ describe("the standard form is a fixed point", () => {
   );
 });
 
+describe("the transformer does not flag its own output", () => {
+  // The other half of the fixed-point property, and the half that bites in the
+  // UI. Expanding "b.i.d." produces "twice daily (bid)" — and a bare-"bid" rule
+  // then flagged the parenthetical the tool had just written, so a writer who
+  // accepted the suggestion was immediately told to go and fix it. Nothing erodes
+  // trust faster than a tool disagreeing with itself in public.
+
+  it.each(EXPANDING_SHORTHAND.map((s) => [s.display, s] as const))(
+    "expanding %s does not raise a flag about the result",
+    (display, entry) => {
+      const seed = `Noted ${entry.display} on tooth 19 during the visit.`;
+      const before = standardize(seed).flags.map((f) => f.display).sort();
+      const after = standardize(standardize(seed).text).flags.map((f) => f.display).sort();
+      // The second pass may not raise a flag the first did not. Losing one is
+      // fine — that is the writer resolving something.
+      const raised = after.filter((f) => !before.includes(f));
+      expect(raised, `${display}: the expansion produced text the tool then flags`).toEqual([]);
+    }
+  );
+});
+
 describe("digits and negations survive the abbreviation table", () => {
   const digits = (s: string) => (s.match(/\d+/g) ?? []).sort().join(",");
   // "w/o" counts as a negation, because it IS one — that is the entire reason the

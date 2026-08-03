@@ -157,7 +157,7 @@ export const SHORTHAND: Shorthand[] = [
   { id: "rmgi", pattern: /\bRMGI\b/gi, display: "RMGI", expansion: "resin-modified glass ionomer", domain: "dental" },
   {
     id: "gi",
-    pattern: /\bGI\b/g,
+    pattern: /\bGI\b/gi,
     display: "GI",
     expansion: "glass ionomer",
     alternatives: ["glass ionomer", "gastrointestinal"],
@@ -173,7 +173,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "cr",
-    pattern: /\bCR\b/g,
+    pattern: /\bCR\b/gi,
     display: "CR",
     expansion: "composite resin",
     alternatives: ["composite resin", "centric relation"],
@@ -226,7 +226,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "pd",
-    pattern: /\bPD\b/g,
+    pattern: /\bPD\b/gi,
     display: "PD",
     expansion: "probing depth",
     alternatives: ["probing depth", "pocket depth", "partial denture", "periodontal disease"],
@@ -255,7 +255,7 @@ export const SHORTHAND: Shorthand[] = [
   { id: "ianb", pattern: /\bIANBs?\b/gi, display: "IANB", expansion: "inferior alveolar nerve block", pluralExpansion: "inferior alveolar nerve blocks", domain: "dental" },
   {
     id: "psa",
-    pattern: /\bPSA\b/g,
+    pattern: /\bPSA\b/gi,
     display: "PSA",
     expansion: "posterior superior alveolar nerve block",
     // In a medical history PSA is prostate-specific antigen. Expanding it turns
@@ -278,7 +278,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "la",
-    pattern: /\bLA\b/g,
+    pattern: /\bLA\b/gi,
     display: "LA",
     expansion: "local anesthetic",
     alternatives: ["local anesthetic", "local anesthesia"],
@@ -458,7 +458,7 @@ export const SHORTHAND: Shorthand[] = [
     // Two readings, and they are not close: a jaw position and a heart attack.
     // Both belong in a dental record and only the writer knows which they meant.
     id: "mi",
-    pattern: /\bMI\b/g,
+    pattern: /\bMI\b/gi,
     display: "MI",
     expansion: "maximum intercuspation",
     alternatives: ["maximum intercuspation (the jaw position)", "myocardial infarction (the cardiac event)"],
@@ -469,7 +469,7 @@ export const SHORTHAND: Shorthand[] = [
     // design in a crown workflow. The bare form is never expanded; CAD/CAM above
     // carries the restorative reading because the slash disambiguates it.
     id: "cad",
-    pattern: /\bCAD\b/g,
+    pattern: /\bCAD\b/gi,
     display: "CAD",
     expansion: "coronary artery disease",
     alternatives: ["coronary artery disease", "computer-aided design (write CAD/CAM)"],
@@ -513,7 +513,7 @@ export const SHORTHAND: Shorthand[] = [
     // Guessing between a systemic disease and an anaesthetic would be inventing
     // clinical content either way.
     id: "ra",
-    pattern: /\bRA\b/g,
+    pattern: /\bRA\b/gi,
     display: "RA",
     expansion: "rheumatoid arthritis",
     alternatives: ["rheumatoid arthritis", "relative analgesia (nitrous oxide)"],
@@ -548,7 +548,7 @@ export const SHORTHAND: Shorthand[] = [
   { id: "otc", pattern: /\bOTC\b/gi, display: "OTC", expansion: "over the counter", domain: "dosing" },
   { id: "nsaid", pattern: /\bNSAIDs?\b/gi, display: "NSAID", expansion: "nonsteroidal anti-inflammatory drug", pluralExpansion: "nonsteroidal anti-inflammatory drugs", domain: "dosing" },
   { id: "abx", pattern: /\bABX\b/gi, display: "ABX", expansion: "antibiotics", domain: "dosing" },
-  { id: "ga", pattern: /\bGA\b/g, display: "GA", expansion: "general anesthesia", domain: "medical" },
+  { id: "ga", pattern: /\bGA\b/gi, display: "GA", expansion: "general anesthesia", domain: "medical" },
   {
     // "cap" is a crown in a patient's vocabulary and a capsule in a pharmacist's.
     // On a dental note both readings are live, and one of them is a restoration

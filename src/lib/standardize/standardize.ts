@@ -389,6 +389,10 @@ export function standardize(raw: string): StandardizeResult {
     let first = true;
     let matchedFirst = "";
     let expandedTo = "";
+    // A token the plural rule below normalised but could not expand, kept so
+    // the change can still be REPORTED. See the `if (first)` branch after the
+    // replace for why an unreported edit is the thing to avoid here.
+    let normalizedOnly = "";
     text = text.replace(re, (m: string, ...rest: unknown[]) => {
       const offset = rest[rest.length - 2] as number;
       const src = rest[rest.length - 1] as string;
@@ -419,7 +423,9 @@ export function standardize(raw: string): StandardizeResult {
       // stays true so a later singular occurrence can carry the definition.
       const isPlural = /s$/i.test(m) && !/s$/i.test(sh.display);
       if (isPlural && !sh.pluralExpansion) {
-        return `${applyPlural(m, sh.display)}${tail}`;
+        const normalized = applyPlural(m, sh.display);
+        if (normalized !== m && !normalizedOnly) normalizedOnly = m;
+        return `${normalized}${tail}`;
       }
       first = false;
       matchedFirst = m;
@@ -428,9 +434,28 @@ export function standardize(raw: string): StandardizeResult {
         : `${sh.expansion} (${sh.display})`;
       return `${expandedTo}${tail}`;
     });
-    // Every occurrence was a plural this table cannot safely expand: nothing
-    // was defined, so there is nothing to report as a definition.
-    if (first) continue;
+    // Every occurrence was a plural this table cannot safely expand, so nothing
+    // was DEFINED and there is no definition to report.
+    //
+    // But the token may still have been rewritten — "cbcts" comes out "CBCTs" —
+    // and skipping straight past the reporting left that edit invisible: the
+    // text changed, `applied` stayed empty, and the panel said "tidied". The
+    // whole safety story on this screen is that a human reads the list of
+    // changes and accepts it, which requires the list to contain the changes.
+    // So a normalisation is reported as a normalisation, and says plainly why
+    // it stopped short of expanding.
+    if (first) {
+      if (normalizedOnly) {
+        bump(applied, (a) => `${a.kind}:${a.from}`, {
+          kind: "shorthand",
+          from: normalizedOnly,
+          to: applyPlural(normalizedOnly, sh.display),
+          count: 1,
+          why: `Spelling normalised only. "${sh.display}" has no plural form in the table, and inventing one could change a count.`
+        });
+      }
+      continue;
+    }
     // `from` is what the note ACTUALLY said, not the table's canonical spelling.
     // Reporting the canonical form made every variant substitution invisible in
     // review: a note reading "NKA" produced the entry "NKDA → no known drug

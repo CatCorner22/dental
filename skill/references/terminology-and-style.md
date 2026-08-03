@@ -198,36 +198,36 @@ Keeping the term and explaining it once clears the finding — write *periodonti
 | calculus | tartar — the hard deposit on the teeth |
 | lesion | say what it is and where — a sore, a patch, an area of decay |
 | abscess | a pocket of infection |
-| edema | swelling |
+| edema / oedema | swelling |
 | erythema | redness |
 | exudate | fluid or pus |
-| necrotic | the nerve inside the tooth has died |
-| pulp | the nerve and blood vessels inside the tooth |
+| necrotic / necrosis | the nerve inside the tooth has died |
+| pulp / pulpal / pulpitis | the nerve and blood vessels inside the tooth |
 | extraction | taking the tooth out |
 | restoration | a filling |
 | prophylaxis | a cleaning |
 | scaling and root planing | a deep cleaning below the gumline |
 | endodontic | root canal treatment |
-| anesthetic | numbing medicine |
+| anesthetic / anesthesia | numbing medicine |
 | analgesic | pain medicine |
 | suture | stitches |
-| palpation | pressing with the fingers to check |
+| palpation / palpate | pressing with the fingers to check |
 | percussion | tapping the tooth to check it |
 | pontic | the replacement tooth in a bridge |
 | abutment | the tooth or implant that holds the bridge |
 | prosthesis | a replacement for missing teeth — say denture, bridge, or implant |
 | edentulous | no natural teeth left in that area |
-| occlusion | the way the teeth meet when you bite |
+| occlusion / occlusal | the way the teeth meet when you bite |
 | dentition | your teeth |
-| maxillary | upper jaw |
-| mandibular | lower jaw |
+| maxillary / maxilla | upper jaw |
+| mandibular / mandible | lower jaw |
 | anterior | front |
 | posterior | back |
 | bilateral | both sides |
 | unilateral | one side — say which |
 | interproximal | between the teeth |
 | asymptomatic | nothing you would feel |
-| etiology | the cause |
+| etiology / aetiology | the cause |
 | sequelae | what can happen next |
 | contraindicated | not safe for you — and say why |
 | exacerbate | make worse |
@@ -236,9 +236,9 @@ Keeping the term and explaining it once clears the finding — write *periodonti
 | subsequent to | after |
 | administer | give, or gave |
 | discontinue | stop |
-| initiate | start |
+| initiate / commence | start |
 | in the event that | if |
-| at this point in time | now |
+| at this point in time / at this time | now |
 
 ## Adams-style ambiguity controls
 

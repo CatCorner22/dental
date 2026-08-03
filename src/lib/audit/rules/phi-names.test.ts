@@ -79,8 +79,84 @@ describe("bare names are seen", () => {
   });
 });
 
+describe("a name after a cue word needs no capital", () => {
+  // The rules above all require a capital letter, and clinicians type fast and
+  // lowercase. "patient john smith presented" was invisible to the whole
+  // screen — and because the Mask identifiers button replaces exactly what the
+  // screen matched, a name it could not see was a name masking silently left
+  // behind. The clinician clicked Mask, the phone and "John Smith" vanished,
+  // "patient john smith" stayed, and the note then LOOKED redacted. That is
+  // worse than no button, because it turns a visible problem into a hidden one.
+  it("catches lowercase names that follow a cue", () => {
+    for (const text of [
+      "patient john smith presented for a recall",
+      "pt john smith declined the radiograph",
+      "seen by john smith today",
+      "referred to sarah johnson",
+      "guardian maria garcia consented",
+      "spoke with karen mcdonald about cost",
+      "Pt john smith declined"
+    ]) {
+      expect(ids(text), text).toContain("phi.name-cued");
+    }
+  });
+
+  it("excludes the cue word from matchedText", () => {
+    // masking replaces matchedText literally. "patient" is not an identifier,
+    // and masking it away would damage the sentence for no privacy gain.
+    const f = bare("patient john smith presented")[0];
+    expect(f.matchedText).toBe("john smith");
+  });
+
+  it("reports one finding per name, not one per rule that saw it", () => {
+    // "patient John Smith" satisfies both the capitalized rule and the cued
+    // rule. Two rows saying the same thing is how a findings panel starts
+    // getting skimmed.
+    expect(bare("patient John Smith presented")).toHaveLength(1);
+    expect(ids("patient John Smith presented")).toContain("phi.name-bare");
+  });
+
+  it("stays quiet when the cue is followed by ordinary clinical words", () => {
+    for (const text of [
+      "patient reports pain on biting",
+      "patient declined the referral",
+      "patient states the crown feels high",
+      "parent consented to treatment",
+      "seen by hygienist for prophylaxis",
+      "referred to periodontist for evaluation",
+      "treated by the covering dentist",
+      "patient denies any allergy",
+      "assistant charted the findings"
+    ]) {
+      expect(bare(text), text).toEqual([]);
+    }
+  });
+
+  it("still respects the institution filter after a cue", () => {
+    // "Referred to Christian Dental Clinic" — the cue announces a name and
+    // "Christian" is one, but the next word says it went to an organization.
+    // The cry-wolf suite caught this regression before it shipped.
+    expect(bare("Referred to Christian Dental Clinic."), "institution").toEqual([]);
+    expect(bare("referred to grace family dentistry"), "lowercase institution").toEqual([]);
+  });
+});
+
 describe("the screen does not cry wolf", () => {
   const clean = (text: string) => expect(bare(text), text).toEqual([]);
+
+  it("leaves an imperative verb before a dental noun alone", () => {
+    // Sentence-initial position is what makes this class possible: the first
+    // word's capital carries no information there, so a given name that is
+    // also an ordinary verb reads as a name. Nobody is surnamed "Tooth".
+    clean("Mark Tooth 14 for extraction.");
+    clean("Mark Crown prep on 30.");
+    // The suppression list is dental STRUCTURE nouns only, and stays that way
+    // deliberately. Administrative prose ("Bill insurance for the implant")
+    // is written lowercase, so it never reaches this rule — and padding the
+    // list with every word I could invent a capitalized example for is how a
+    // targeted filter turns into whack-a-mole.
+    clean("Bill insurance for the implant.");
+  });
 
   it("leaves clinical capitalized pairs alone", () => {
     clean("Angle Class II malocclusion noted.");

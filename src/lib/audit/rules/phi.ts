@@ -151,8 +151,22 @@ const INSTITUTION_WORDS = new Set([
   // Dental supply houses whose names read exactly like a person's. "Henry
   // Schein" on a materials line is the single likeliest false positive in a
   // real note, and a flag on the supplier teaches staff to dismiss the flag.
-  "schein", "patterson", "benco", "darby", "ultradent", "dentsply"
+  "schein", "patterson", "benco", "darby", "ultradent", "dentsply",
+  // Dental structures and chart references. Nobody is surnamed "Tooth" or
+  // "Molar", and this domain capitalizes them constantly — "Mark Tooth 14 for
+  // extraction" is an imperative sentence, not a patient called Mark Tooth.
+  // Sentence-initial position is what makes this class possible at all: the
+  // first word's capital carries no information there, so a given name that is
+  // also an ordinary verb ("mark", "bill", "max", "don") reads as a name.
+  "tooth", "teeth", "crown", "bridge", "implant", "quadrant", "arch", "class",
+  "grade", "canal", "molar", "premolar", "incisor", "canine", "cusp",
+  "surface", "site", "sextant", "denture", "veneer", "onlay", "inlay"
 ]);
+
+// Words that ANNOUNCE a name, so the name after them needs no capital to be
+// worth flagging. This is the difference between a guess and evidence.
+const NAME_CUE =
+  /\b(?:patients?|pts?|guardians?|parents?|mother|father|caregiver|seen\s+by|referred\s+(?:to|by)|spoke\s+with|treated\s+by|assisted\s+by|dr\.?|doctor|dentist|hygienist|assistant)(\s+)([A-Za-z][A-Za-z'’-]{1,20})((?:\s+(?:[A-Za-z]\.\s+)?[A-Za-z][A-Za-z'’-]{1,24}(?:-[A-Za-z][A-Za-z'’-]{1,24})?)?)/gi;
 
 // "John Smith", "Karen McDonald", "Mary O'Brien", "Robert Smith-Jones",
 // "John Q. Smith".
@@ -234,6 +248,47 @@ function runBareNameRules(text: string): AuditFinding[] {
     commaSeen,
     "phi.name-comma",
     "This reads like a chart-header name (surname, given name). " + BARE_NAME_MESSAGE
+  );
+
+  // Cued names, in ANY case.
+  //
+  // The rules above all require a capital letter, and clinicians type fast and
+  // lowercase: "patient john smith presented" was invisible to the entire
+  // screen. That was not merely a missed flag. The Mask identifiers button
+  // replaces exactly what the screen matched, so a name it cannot see is a
+  // name masking silently leaves behind — the clinician clicks Mask, the
+  // phone number and "John Smith" disappear, "patient john smith" stays, and
+  // the note now LOOKS redacted. A remediation that quietly does half the job
+  // is worse than none, because it converts a visible problem into an
+  // invisible one.
+  //
+  // A cue word supplies the evidence that capitalization otherwise would, so
+  // no capital is required after one. The cue itself is NOT part of
+  // matchedText: "patient" is not an identifier, and masking it away would
+  // damage the sentence for no privacy gain.
+  const cuedSeen = new Map<string, number>();
+  for (const m of text.matchAll(NAME_CUE)) {
+    const given = m[2];
+    const trailing = m[3] ?? "";
+    if (!GIVEN_NAMES.has(given.toLowerCase())) continue;
+    // The institution filter has to apply here too. Without it "Referred to
+    // Christian Dental Clinic" reads as a patient — the cue announces a name,
+    // and "Christian" is one, but the word after it says the referral went to
+    // an organization. Caught by the existing cry-wolf test before this
+    // shipped, which is the test doing exactly its job.
+    const nextWord = trailing.trim().split(/[\s.]+/)[0]?.toLowerCase() ?? "";
+    if (nextWord && INSTITUTION_WORDS.has(nextWord)) continue;
+    const matched = given + trailing;
+    // Skip anything the capitalized rules already reported, so one name is one
+    // finding rather than two rows saying the same thing.
+    if (pairSeen.has(matched) || commaSeen.has(matched)) continue;
+    cuedSeen.set(matched, (cuedSeen.get(matched) ?? 0) + 1);
+  }
+  pushCounted(
+    findings,
+    cuedSeen,
+    "phi.name-cued",
+    "A name follows a word that announces one. " + BARE_NAME_MESSAGE
   );
 
   return findings;

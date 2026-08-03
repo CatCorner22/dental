@@ -1,0 +1,123 @@
+import { requireRole } from "@/lib/auth/guards";
+import { getDb } from "@/lib/db/client";
+import { listUsers } from "@/lib/db/repo/users";
+import { listAuditLog } from "@/lib/db/repo/auditLog";
+import { listAllSubmissions, listSubmissionsByUser } from "@/lib/db/repo/submissions";
+import { logAction } from "@/lib/db/repo/auditLog";
+import {
+  canManageUsers,
+  canReadAuditLog,
+  canSendResetLink,
+  ROLE_LABEL,
+  seesAllNotes
+} from "@/lib/auth/roles";
+import { csvFile, csvHeaders } from "@/lib/export/csv";
+import { formatTicket } from "@/lib/tickets/ticket";
+
+export const runtime = "nodejs";
+
+type Ctx = { params: Promise<{ table: string }> };
+
+// Export a table as CSV (opens directly in Excel).
+//
+// AUTHORIZATION MIRRORS THE SCREEN, NOT THE TABLE. Each export is gated by the
+// same predicate that gates the page showing the same data, and the row set is
+// scoped the same way — otherwise the export becomes a side door around a
+// carefully scoped view. Submissions in particular are scoped by seesAllNotes,
+// so a Team Member exports their own filed notes and nobody else's.
+//
+// NO NOTE CONTENT. The submissions export carries the STAMP — ticket,
+// submitter, time, audit status, ruleset version — and not the frozen note
+// body. A spreadsheet is the wrong container for a clinical record, it gets
+// mailed around, and the note is already downloadable one at a time from the
+// submission page with its audit report attached.
+export async function GET(_req: Request, { params }: Ctx): Promise<Response> {
+  const guard = await requireRole("readonly");
+  if (!guard.ok) return guard.response;
+  const { table } = await params;
+  const db = await getDb();
+  const now = new Date();
+
+  let file: { body: string; filename: string };
+
+  if (table === "users") {
+    if (!canManageUsers(guard.user.role)) {
+      return Response.json({ error: "You cannot export the user list." }, { status: 403 });
+    }
+    const users = await listUsers(db);
+    file = csvFile(
+      "users",
+      ["Username", "Display name", "Role", "Status", "Email", "Management group email", "Created"],
+      users.map((u) => [
+        u.username,
+        u.displayName,
+        ROLE_LABEL[u.role],
+        u.active ? "Active" : "Inactive",
+        // Same masking as the screen: an address is the delivery target for an
+        // account takeover, so it is only exported by someone who could already
+        // mail a reset link there.
+        canSendResetLink(guard.user.role, u.role) ? (u.email ?? "") : "",
+        canSendResetLink(guard.user.role, u.role) ? (u.groupEmail ?? "") : "",
+        u.createdAt.toISOString()
+      ]),
+      now
+    );
+  } else if (table === "audit-log") {
+    if (!canReadAuditLog(guard.user.role)) {
+      return Response.json({ error: "You cannot export the audit log." }, { status: 403 });
+    }
+    const log = await listAuditLog(db, 5000);
+    file = csvFile(
+      "audit-log",
+      ["When (UTC)", "Actor", "Action", "Target", "Detail"],
+      // The FROZEN actor name, matching the viewer: an export that resolved
+      // live names would let a rename rewrite history on its way out the door.
+      log.map((e) => [
+        e.at.toISOString(),
+        e.actorId ? (e.actorName ?? "unknown") : "system",
+        e.action,
+        e.target ?? "",
+        e.detail ?? ""
+      ]),
+      now
+    );
+  } else if (table === "submissions") {
+    const rows = seesAllNotes(guard.user.role)
+      ? await listAllSubmissions(db, { limit: 5000, offset: 0 })
+      : await listSubmissionsByUser(db, guard.user.id, { limit: 5000, offset: 0 });
+    file = csvFile(
+      "submissions",
+      [
+        "Ticket",
+        "Submitted by",
+        "Eastern time",
+        "Audit status",
+        "Ruleset version",
+        "Filename"
+      ],
+      rows.map((s) => [
+        formatTicket(s.id),
+        s.submittedByName,
+        s.submittedAtEt,
+        s.auditStatus,
+        s.ruleVersion,
+        s.filename
+      ]),
+      now
+    );
+  } else {
+    return Response.json({ error: "Unknown table." }, { status: 404 });
+  }
+
+  // An export is a bulk read of privileged data leaving the system. That is
+  // exactly the kind of event an audit log exists to record.
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "export.csv",
+    target: table,
+    detail: `${file.body.split("\r\n").length - 2} row(s)`
+  });
+
+  return new Response(file.body, { headers: csvHeaders(file.filename) });
+}

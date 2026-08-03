@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import { Dialog } from "@/components/ui/Dialog";
+import { ExportButton } from "@/components/export/ExportButton";
 import { generatePassword } from "@/lib/auth/genPassword";
 import { emailPolicyError } from "@/lib/auth/emails";
 import {
@@ -288,11 +289,14 @@ export function UserAdmin({
     <div>
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
         <h1 className="text-2xl font-bold">Users</h1>
-        {addableRoles.length > 0 && (
-          <button className="btn-primary" onClick={() => setShowAdd(true)}>
-            + Add user
-          </button>
-        )}
+        <div className="flex flex-wrap items-center gap-2">
+          <ExportButton table="users" />
+          {addableRoles.length > 0 && (
+            <button className="btn-primary" onClick={() => setShowAdd(true)}>
+              + Add user
+            </button>
+          )}
+        </div>
       </div>
       <p className="mb-4 text-sm text-slate-600">
         You are signed in as a <strong>{ROLE_LABEL[selfRole]}</strong>. You will only see actions

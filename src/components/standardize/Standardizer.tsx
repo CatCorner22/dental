@@ -136,11 +136,26 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
     setTimeout(() => inputRef.current?.focus(), 50);
   };
 
+  // The Curve Hero handoff. The single highest-consequence mistake this tool
+  // can enable is a perfect note pasted into the WRONG patient's chart — so
+  // the copy is gated on a two-identifier match confirmation, per the TN
+  // research recommendation ("match at least two patient identifiers against
+  // the open Curve chart before confirming the paste").
+  const [pasteConfirmOpen, setPasteConfirmOpen] = useState(false);
+  const [pasteChecked, setPasteChecked] = useState(false);
+
   const copy = async () => {
     if (!result) return;
+    if (!pasteConfirmOpen) {
+      setPasteConfirmOpen(true);
+      setPasteChecked(false);
+      return;
+    }
+    if (!pasteChecked) return;
     try {
       await navigator.clipboard.writeText(result.text);
       setCopied(true);
+      setPasteConfirmOpen(false);
       setTimeout(() => setCopied(false), 1800);
     } catch {
       setError("The clipboard is blocked in this browser. Select the text and copy it by hand.");
@@ -299,6 +314,26 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
               <p className="mt-2 text-xs text-slate-600" role="status">
                 {blockedExplanation(items)}
               </p>
+            )}
+            {allowed && pasteConfirmOpen && !copied && (
+              <div className="mt-2 rounded border border-blue-300 bg-blue-50 p-3">
+                <label className="flex items-start gap-2 text-xs text-blue-900">
+                  <input
+                    type="checkbox"
+                    className="mt-0.5"
+                    checked={pasteChecked}
+                    onChange={(e) => setPasteChecked(e.target.checked)}
+                  />
+                  <span>
+                    The correct chart is open in Curve Hero and I matched <strong>two</strong>{" "}
+                    identifiers there (for example name and date of birth). A perfect note in the
+                    wrong chart is a records error this tool cannot see — only you can.
+                  </span>
+                </label>
+                <button className="btn-primary mt-2 text-xs" onClick={copy} disabled={!pasteChecked}>
+                  Copy to clipboard
+                </button>
+              </div>
             )}
           </div>
         )}

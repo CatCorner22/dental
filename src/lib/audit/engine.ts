@@ -19,6 +19,7 @@ import { runRequiredRule } from "./rules/required";
 import { runMeasurementRule } from "./rules/measurement";
 import { runMedicationSafetyRules } from "./rules/medication-safety";
 import { runEffortRules } from "./rules/effort";
+import { runCompletenessRules } from "./rules/completeness";
 
 // Pure and isomorphic. The client runs the full audit live; the email route
 // re-runs the text audit server-side so a tampered client cannot bypass it.
@@ -32,7 +33,8 @@ export function runTextAudit(text: string): AuditFinding[] {
     ...runStigmatizingRule(text),
     ...runAnatomyTextRule(text),
     ...runMedicationSafetyRules(text),
-    ...runEffortRules(text)
+    ...runEffortRules(text),
+    ...runCompletenessRules(text)
   ];
 }
 

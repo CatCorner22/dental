@@ -136,6 +136,39 @@ export function wishError(input: WishInput): string | null {
 }
 
 /**
+ * Drift signal for the people who decide: which rules are being disputed, and
+ * how the disputes were settled. A rule with many open disagreements is either
+ * a rule that needs tuning or a team that needs the rule explained — either
+ * way, the person with authority should see the pattern, not just the pile.
+ * This is the calibration half of "no override": escalations are not noise to
+ * clear, they are the tool's own error signal.
+ */
+export interface RuleDisagreementStat {
+  rule: string;
+  open: number;
+  settled: number;
+}
+
+const RULE_TITLE_PREFIX = /^rule disagreement:\s*/i;
+
+export function ruleDisagreementStats<
+  T extends { category: string; status: string; title: string }
+>(rows: T[]): RuleDisagreementStat[] {
+  const byRule = new Map<string, { open: number; settled: number }>();
+  for (const row of rows) {
+    if (row.category !== "rule-disagreement") continue;
+    const rule = row.title.replace(RULE_TITLE_PREFIX, "").trim() || "(unnamed rule)";
+    const bucket = byRule.get(rule) ?? { open: 0, settled: 0 };
+    if (row.status === "done" || row.status === "declined") bucket.settled++;
+    else bucket.open++;
+    byRule.set(rule, bucket);
+  }
+  return [...byRule.entries()]
+    .map(([rule, counts]) => ({ rule, ...counts }))
+    .sort((a, b) => b.open - a.open || b.settled - a.settled || a.rule.localeCompare(b.rule));
+}
+
+/**
  * Sort for display: anything below standard first (regardless of age), then
  * newest. A safety observation must never be pushed off the bottom of the page
  * by a pile of feature ideas.

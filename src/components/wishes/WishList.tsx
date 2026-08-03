@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
   CATEGORY_LABEL,
+  ruleDisagreementStats,
   STATUS_LABEL,
   WISH_CATEGORIES,
   WISH_DETAIL_MAX,
@@ -60,6 +61,8 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
     (w) => w.category === "standards" && w.status !== "done" && w.status !== "declined"
   ).length;
 
+  const driftStats = useMemo(() => ruleDisagreementStats(wishes), [wishes]);
+
   return (
     <div className="space-y-4">
       <WishForm
@@ -82,6 +85,26 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
           {openStandards} open {openStandards === 1 ? "report" : "reports"} of something below
           standard.
         </p>
+      )}
+
+      {canDecide && driftStats.length > 0 && (
+        // The calibration panel: which Smile Notes rules staff are disputing.
+        // Visible only to the people who can settle a dispute — a rule with a
+        // pile of open disagreements either needs tuning (send it through the
+        // Gauntlet) or needs explaining (a training moment). Either way the
+        // pattern is the signal; this is how the tool learns without ever
+        // adjusting itself.
+        <div className="rounded border border-violet-300 bg-violet-50 px-3 py-2 text-sm text-violet-950">
+          <p className="font-medium">Rules staff are disputing</p>
+          <ul className="mt-1 space-y-0.5 text-xs">
+            {driftStats.slice(0, 5).map((s) => (
+              <li key={s.rule}>
+                <code className="rounded bg-white px-1">{s.rule}</code> — {s.open} open,{" "}
+                {s.settled} settled
+              </li>
+            ))}
+          </ul>
+        </div>
       )}
 
       <div className="flex flex-wrap gap-1.5">

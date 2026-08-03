@@ -4,6 +4,7 @@ import { useMemo, useRef, useState } from "react";
 import { SEVERITY_LABELS } from "@/lib/audit/types";
 import type { Severity } from "@/lib/audit/types";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
+import { BlockPicker } from "./BlockPicker";
 import {
   andon,
   ATTESTATION_RULE,
@@ -191,6 +192,16 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
             Clear
           </button>
         </div>
+
+        <BlockPicker
+          onInsert={(text) => {
+            setInput((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")}\n\n${text}` : text));
+            setNotice(
+              "Block inserted. Replace every <placeholder> with this visit's facts — the note stays blocked while any placeholder survives."
+            );
+            setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+        />
 
         {assistEnabled && (
           <div className="mt-3 rounded border border-violet-200 bg-violet-50 p-3">

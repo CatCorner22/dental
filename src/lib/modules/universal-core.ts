@@ -570,7 +570,7 @@ export const universalCore: ModuleDef = {
             "Nothing needed treatment at this visit. "
           ],
           helpText:
-            "Patients read their own notes by law. Write this the way you said it out loud. The tool checks it against a plain-word list instead of the clinical one, and the Standardize button is switched off here on purpose — it would turn your plain English back into clinical terms."
+            "Patients read their own notes by law. Write this the way you said it out loud. The tool checks this box against a plain-word list instead of the clinical one. Standardize still works here if you want it — it rewrites toward clinical wording, which is usually the wrong direction for this box, and Undo puts your words back."
         },
         {
           id: "patient-summary-delivery",

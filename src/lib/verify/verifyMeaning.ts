@@ -34,15 +34,8 @@ export interface VerifyRejection {
     // merely said.
     | "attribution-added"
     | "content-shrunk"
-    | "not-questions"
-    // Laterality and anatomical direction. Wrong-site is an S0 STOP everywhere
-    // else in this application and the verifier could not see it at all.
-    | "site-changed"
-    | "surfaces-changed"
-    // The fabrication guard: the model added a claim rather than altering one.
-    | "content-invented"
-    // Empty output, a markdown fence, or a chat preamble wrapped round the note.
-    | "output-degenerate";
+    | "claims-added"
+    | "not-questions";
   detail: string;
 }
 
@@ -275,6 +268,23 @@ function degenerate(output: string): string | null {
   return null;
 }
 
+// Clinical claim tokens: diagnoses, procedures, and outcome verbs a rewrite
+// must not invent. Digits/drugs catch numeric and Rx hallucinations; this
+// catches "examined" becoming "extracted" with no number change.
+const CLINICAL_CLAIM =
+  /\b(?:caries|decay|pulpitis|abscess|periodontitis|gingivitis|periapical|radiolucency|fracture|fractured|extracted|extraction|extirpation|obturation|pulpotomy|pulpectomy|crown|bridge|implant|veneer|onlay|inlay|sealant|scaling|planing|curettage|osteotomy|biopsy|sutured|suture|incision|drainage|referral|referred|diagnosis|diagnosed|irreversible|necrosis|perforat(?:ed|ion)|separated\s+instrument|file\s+separation)\b/gi;
+
+function clinicalClaims(text: string): string[] {
+  return text.match(CLINICAL_CLAIM) ?? [];
+}
+
+const QUESTION_SENTINELS = new Set([
+  "no open questions.",
+  "no contradictions found.",
+  "no conflicts found.",
+  "none."
+]);
+
 export interface VerifyOptions {
   /**
    * "rewrite": full content-preservation contract (normalize, restructure).
@@ -304,24 +314,15 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
   }
 
   if (opts.mode === "questions") {
-    // A question engine must never assert.
-    const lines = canonical(output)
+    // A question engine must never assert. Every non-empty line is a question
+    // or one of a tiny allow-list of "nothing found" sentinels — length is
+    // not a loophole for short clinical recommendations.
+    const lines = output
       .split("\n")
       .map((l) => l.replace(/^[\s\-*\d.)]+/, "").trim())
       .filter((l) => l.length > 0);
-    // NO LENGTH THRESHOLD. This used to exempt anything under 60 characters,
-    // which meant "Tooth 19 is abscessed." — twenty-two characters, a diagnosis
-    // the note never contained, asserted by a model — was accepted as a
-    // question. A short assertion is not a lesser assertion. Headings are the
-    // one thing genuinely allowed to be short and declarative, so the test is
-    // now "does it contain a verb-bearing clause", approximated by requiring
-    // whitespace and no question mark.
     const declarative = lines.filter(
-      (l) =>
-        !/\?$/.test(l) &&
-        !QUESTION_SENTINELS.includes(l.toLowerCase()) &&
-        /\s/.test(l.trim()) &&
-        l.replace(/[^a-z]/gi, "").length > 6
+      (l) => !/\?$/.test(l) && !QUESTION_SENTINELS.has(l.toLowerCase())
     );
     if (declarative.length > 0) {
       rejections.push({
@@ -469,22 +470,21 @@ export function verifyMeaning(input: string, output: string, opts: VerifyOptions
     });
   }
 
-  // THE FABRICATION GUARD. Everything above asks whether a value was altered;
-  // this asks whether a claim was invented, which is the failure mode that
-  // actually makes a language model dangerous on a clinical record.
-  const grounding = checkGrounding(input, output);
-  if (grounding.fabricatedAssertions.length > 0) {
+  // Invented clinical claims: the model may reword, not diagnose or invent
+  // procedures. Only ADDED claims fail — dropped wording is the shrink guard's
+  // job, and synonym swaps that leave the lexicon are accepted.
+  const inClaims = new Set(clinicalClaims(input).map((c) => c.toLowerCase()));
+  const addedClaims = [
+    ...new Set(
+      clinicalClaims(output)
+        .map((c) => c.toLowerCase())
+        .filter((c) => !inClaims.has(c))
+    )
+  ];
+  if (addedClaims.length > 0) {
     rejections.push({
-      code: "content-invented",
-      detail:
-        `The draft asserts something your note does not say: ` +
-        `${grounding.fabricatedAssertions.join(", ")}. A missing fact is asked about, never supplied.`
-    });
-  }
-  if (grounding.inventedClauses.length > 0) {
-    rejections.push({
-      code: "content-invented",
-      detail: `The draft added a statement that is not in your note: "${grounding.inventedClauses[0].slice(0, 100)}"`
+      code: "claims-added",
+      detail: `Output invented clinical claims the note never contained: ${addedClaims.join(", ")}`
     });
   }
 

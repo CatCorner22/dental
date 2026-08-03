@@ -10,4 +10,7 @@
 //         (gibberish, unprofessional tone), and anticipatory completeness
 //         rules (imaging interpretation, anesthetic amount, extraction
 //         outcome, prescription duration, consent decision).
-export const RULESET_VERSION = "2.2.0";
+// 2.3.0 — robotic-assisted surgery module; sedation module gains the
+//         monitors-in-use list and emergency-preparedness confirmation;
+//         opioid prescriptions require a documented CSMD/PMP check.
+export const RULESET_VERSION = "2.3.0";

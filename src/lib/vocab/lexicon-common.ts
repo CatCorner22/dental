@@ -89,7 +89,9 @@ tell temperature ten tender tenderness term terms test tested testing tests text
 that the their them themselves then there these they thick thin thing things think third
 thirty this those though thought three throat through throughout throbbing time times tired
 tissue tissues to today together told tomorrow tongue tonight too took tooth toothache
+tolerance tolerances
 toothbrush toothpaste top total touch touched toward towards trauma travel treat treated
+override overrides overridden
 treatment tried trigger triggered trouble true try trying turn turned twenty twice two type
 types under underneath understand understands understood unit until unusual up updated upon
 upper upset urgent us use used uses using usual usually value verified verify very visit

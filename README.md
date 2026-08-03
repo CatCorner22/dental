@@ -143,7 +143,7 @@ Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by 
 |---|---|
 | `src/` | Next.js 15 web app: note builder, standardizer with resolution queue, audit engine, AI assist, email export, reference pages |
 | `skill/` | **Retired** ChatGPT Custom GPT package, kept as historical reference — the reference pages and vocab tables in `src/` are the single terminology truth |
-| `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 30 add-ons), the guided staff process, and the formal audit pass |
+| `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 31 add-ons), the guided staff process, and the formal audit pass |
 | `knowledge/` | Research digests: Curve Hero benchmark, TN law, industry standards and medication safety, litigation patterns |
 | `public/brand/` | Original Smile Notes logomark and lockup (see `docs/brand.md`) |
 | `scripts/build-lexicon.mjs` | Regenerates the spelling lexicon from the skill documents |

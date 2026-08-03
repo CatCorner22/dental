@@ -47,6 +47,7 @@ transcranial transpharyngeal triazolam trigeminal trismus tuberosity ulcer ulcer
 unilateral veneer verrucous vestibule vestibuloplasty xerostomia zirconia
 injection injections saline irrigated granulation inferior superior anterior posterior
 periapical interim provisional palliative
+desensitizing efficacy protrusive whitening
 `;
 
 export const DENTAL_LEXICON: ReadonlySet<string> = new Set(

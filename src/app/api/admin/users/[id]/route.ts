@@ -13,6 +13,7 @@ import {
   canDeactivateOrDelete,
   canDeleteUser,
   canEditContact,
+  meetsRole,
   ROLE_LABEL,
   type Role
 } from "@/lib/auth/roles";
@@ -131,12 +132,28 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     patch.role = newRole;
   }
   if (typeof b.active === "boolean") patch.active = b.active;
-  // Scope of practice. Gated on canActOn like the other account fields — it is
-  // a statement about what someone may write in a clinical record, so it is not
-  // self-service the way an office assignment is. Nobody may set their own.
+  // Scope of practice. Not self-service the way an office assignment is —
+  // nobody may set their own — and, since PR review, not a Team Lead's to give
+  // either.
+  //
+  // canActOn alone was the wrong gate. A Team Lead cannot change anyone's
+  // system role at all (canAssignRole returns false for lead, unconditionally),
+  // yet this field decides who may author a diagnosis in a legal record, which
+  // is the greater authority of the two. A lead could set a brand-new
+  // assistant to "dentist" and permanently defeat the scope guard for that
+  // account. Licensure is a Hierarchy Manager's call.
   if (b.clinicalRole !== undefined) {
     if (!isClinicalRole(b.clinicalRole)) {
       return Response.json({ error: "Unknown clinical role." }, { status: 400 });
+    }
+    if (!meetsRole(guard.user.role, "manager")) {
+      return Response.json(
+        {
+          error:
+            "Only a Hierarchy Manager or the Smile Notes Developer may set a clinical role. It decides who may record a diagnosis."
+        },
+        { status: 403 }
+      );
     }
     patch.clinicalRole = b.clinicalRole;
   }

@@ -28,10 +28,18 @@ function ownerFor(severity: string): string {
 // All line endings collapse, and backticks are neutralized so no fence can
 // open from inside a cell.
 function cell(text: string): string {
-  return text
-    .replace(/\|/g, "\\|")
-    .replace(/[\r\n\u2028\u2029]+/g, " ")
-    .replace(/`/g, "'");
+  return (
+    text
+      .replace(/\|/g, "\\|")
+      .replace(/[\r\n\u2028\u2029]+/g, " ")
+      .replace(/`/g, "'")
+      // "<" was the gap. The duplicate-sentence rule copies up to 80
+      // characters of arbitrary note prose into the Location column, so a
+      // typed "<span style="display:none" >" rendered as a LIVE hidden span
+      // and the rest of the cell \u2014 the finding's own evidence \u2014 disappeared
+      // from the row meant to prove it.
+      .replace(/</g, "\\<")
+  );
 }
 
 export interface PhiAttestation {
@@ -50,7 +58,14 @@ function frozenLine(text: string): string {
   // "Reason given:" line renders blank — an attestation nobody can read is not
   // an attestation. The validator strips the same set, so what was checked is
   // what is written.
-  return visibleText(text).replace(/\s+/g, " ").replace(/\|/g, "\\|").trim().slice(0, 300);
+  const clean = visibleText(text).replace(/\s+/g, " ").replace(/\|/g, "\\|").replace(/</g, "\\<").trim();
+  // Truncation is MARKED. The submit route validates and logs 500 characters
+  // and this wrote 300 silently, so a long attestation appeared complete in
+  // the frozen record while saying something different from the audit log —
+  // and a reason tuned to end on a sentence boundary read as a whole, other
+  // statement. A record that quietly drops half a sworn statement is worse
+  // than one that admits the cut.
+  return clean.length > 300 ? `${clean.slice(0, 300)}… [truncated; full text in the audit log]` : clean;
 }
 
 // Matches the "Audit output" format in the formal audit pass

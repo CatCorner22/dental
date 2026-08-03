@@ -11,6 +11,9 @@ import {
 import { parsePageParams } from "@/lib/http/pagination";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
+import { checkScope } from "@/lib/schema/scopeGuard";
+import { activeModules } from "@/lib/modules";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { statusForNote } from "@/lib/status/statusForNote";
 import type { NoteState } from "@/lib/schema/types";
 
@@ -59,6 +62,29 @@ export async function POST(req: Request): Promise<Response> {
   if (b.note !== undefined) {
     const res = validateNoteState(b.note);
     if (!res.ok) return Response.json({ error: res.error }, { status: 400 });
+    // SCOPE OF PRACTICE, on the create path too.
+    //
+    // checkScope lived only in PATCH, so the Tennessee rule reserving
+    // diagnosis and treatment planning to the dentist was bypassable by
+    // choosing a different HTTP verb: POST the whole assessment at creation
+    // and every later PATCH compares equal and passes. The permanent record
+    // then documents an assistant as the author of a diagnosis — the exact act
+    // clinicalRoles.ts calls outside that person's scope.
+    //
+    // Compared against an EMPTY note because at creation every value is being
+    // authored for the first time; there is no previous state to carry.
+    const scope = checkScope(
+      (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset",
+      activeModules(res.value.selectedModuleIds),
+      res.value,
+      EMPTY
+    );
+    if (!scope.ok) {
+      return Response.json(
+        { error: scope.message, blockedFields: scope.blocked, reason: "scope" },
+        { status: 403 }
+      );
+    }
     note = res.value;
   }
   const db = await getDb();

@@ -125,7 +125,26 @@ function valueMatchesOptions(field: Field, v: FieldValue): boolean {
     if (v.kind !== "multiselect") return false;
     return v.values.every((x) => field.options.some((o) => o.value === x));
   }
-  return true;
+  // Every OTHER field type also has exactly one legal value kind, and until now
+  // nothing checked it. A `{kind:"text"}` value stored against a `measurement`
+  // field was accepted, rendered as an EMPTY number input (the renderer
+  // defends itself with `value?.kind === "measurement" ? value : undefined`),
+  // and still composed into the filed note — because composeNote switches on
+  // value.kind while the form switches on field.type. The two disagreed, so
+  // the clinician saw a blank box and the emailed record carried prose.
+  //
+  // Worse for the periodontal work specifically: runMeasurementRule skips any
+  // value whose kind is not "measurement", so the bounds check that was the
+  // entire point of making those fields measurements never ran.
+  const EXPECTED: Record<string, FieldValue["kind"]> = {
+    text: "text",
+    textarea: "text",
+    measurement: "measurement",
+    toothPicker: "teeth",
+    surfacePicker: "surfaces"
+  };
+  const expected = EXPECTED[field.type];
+  return expected === undefined || v.kind === expected;
 }
 
 export function validateNoteState(note: unknown): NoteStateResult {

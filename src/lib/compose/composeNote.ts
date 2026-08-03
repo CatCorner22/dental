@@ -10,17 +10,51 @@ import { formatSurfaces } from "@/lib/vocab/surfaces";
 // and required blanks surface as audit findings instead.
 
 // Neutralize markdown structure in user-entered free text so a typed
-// "## Submission record" or "---" can never forge a heading or thematic
-// break in the frozen note or audit report (the real stamp uses those exact
-// markers). Only leading structural tokens are escaped; ordinary content,
-// including dashes used as bullets mid-line, is untouched.
+// "## Submission record" can never forge a heading, a table, or a code fence
+// in the frozen note or audit report — the real stamp uses those exact
+// markers, and the frozen .md is EMAILED as an attachment and opened in real
+// markdown viewers, which is where a forgery would be believed.
+//
+// This used to escape leading "#" within 0-3 spaces, plus runs of 3+ -*_.
+// That is an allowlist of two against a grammar with a dozen block starters,
+// and it lost five ways, every one of them typable into an ordinary textarea:
+//
+//   FOUR SPACES   the escape window was 0-3, so one more space walked past it
+//                 - and inside the "- Label:" list item the extra indent put
+//                 "##" at relative column zero, a genuine H2.
+//   SETEXT        "Submission record" then "--" is an H2 in pure markdown.
+//                 The old rule needed 3+ dashes; a setext underline needs one.
+//   RAW HTML      nothing escaped "<" at all.
+//   <!--          an UNTERMINATED comment erases the entire rest of the
+//                 document: the allergy block, the diagnosis, the plan, and
+//                 the genuine Submission record all vanish from the rendered
+//                 attachment while the file still "contains" them.
+//   FENCES        an unterminated ``` or ~~~ swallows the rest as sample code,
+//                 which works even in renderers that strip HTML.
+//
+// So the rule is inverted: escape anything that can START a block, and escape
+// "<" everywhere. Ordinary prose and real bullet lists are left alone — a
+// leading "- " with content after it is a list item and harmless; what is
+// escaped is a line made ONLY of underline/rule characters.
 function sanitizeUserText(text: string): string {
   return text
     .split("\n")
     .map((line) => {
-      if (/^\s{0,3}#{1,6}(\s|$)/.test(line)) return line.replace(/^(\s{0,3})(#)/, "$1\\$2");
-      if (/^\s{0,3}([-*_])(\s*\1){2,}\s*$/.test(line)) return line.replace(/^(\s{0,3})([-*_])/, "$1\\$2");
-      return line;
+      // "<" first, and everywhere rather than only at line start: it is the
+      // one character that can erase the remainder of the document, and it
+      // does not need to be at the beginning of a line to do it.
+      let out = line.replace(/</g, "\\<");
+      // Indented code blocks need 4 spaces; three can never start a block, and
+      // clamping here is also what closes the "one more space" heading bypass.
+      out = out.replace(/^[ \t]+/, (ws) => " ".repeat(Math.min(3, ws.length)));
+      // Headings, blockquotes, table rows, and fences.
+      out = out.replace(/^( {0,3})([#>|]|`{3,}|~{3,})/, (_m, ws, tok) => `${ws}\\${tok}`);
+      // A line made only of underline or rule characters: setext H1 ("="),
+      // setext H2 ("-", any count), and thematic breaks.
+      out = out.replace(/^( {0,3})([=\-*_])([=\-*_\s]*)$/, (_m, ws, first, rest) =>
+        `${ws}\\${first}${rest}`
+      );
+      return out;
     })
     .join("\n");
 }

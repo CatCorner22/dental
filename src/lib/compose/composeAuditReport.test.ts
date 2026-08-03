@@ -62,7 +62,22 @@ describe("the frozen record shows the waiver", () => {
       attestedBy: "A B (ab)"
     });
     const line = out.split("\n").find((l) => l.startsWith("- Reason given:"))!;
-    expect(line.length).toBeLessThan(340);
+    expect(line.length).toBeLessThan(400);
+    // Bounded AND marked. The route validates and logs 500 characters while
+    // this wrote 300 silently, so a long attestation looked complete in the
+    // frozen record while differing from the audit log — and a reason tuned to
+    // end on a sentence boundary read as a whole, different statement.
+    expect(line).toContain("[truncated; full text in the audit log]");
+  });
+
+  it("does not mark a reason that fits", () => {
+    const out = composeAuditReport(stopReport(), [], "draft text", {
+      stops: 1,
+      reason: "These are tooth numbers, not a calendar date.",
+      attestedBy: "A B (ab)"
+    });
+    expect(out).toContain("- Reason given: These are tooth numbers, not a calendar date.");
+    expect(out).not.toContain("[truncated");
   });
 });
 

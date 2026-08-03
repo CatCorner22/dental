@@ -10,6 +10,21 @@ interface PhiPattern {
   pattern: RegExp;
   severity: "S0" | "S2";
   message: string;
+  /**
+   * Which capture group holds THE IDENTIFIER ITSELF. Defaults to 0 (the whole
+   * match).
+   *
+   * This exists because `matchedText` is not just a display string: the Mask
+   * identifiers button replaces it by literal substring. A rule whose match
+   * spans something other than the identifier therefore masks the wrong text —
+   * and worse, clears its own STOP while the identifier stays in the note.
+   * `phi.name-label` matched only the words "Patient name:", so one click
+   * deleted the label, left the name, and the re-audit reported AUDIT PASS.
+   *
+   * When the group is present but empty the whole match is used, so a bare
+   * "Patient name:" with nothing after it still stops the line.
+   */
+  captureGroup?: number;
 }
 
 const PHI_PATTERNS: PhiPattern[] = [
@@ -77,22 +92,51 @@ const PHI_PATTERNS: PhiPattern[] = [
     // The trailing token must look like an identifier (contains a digit), so
     // ordinary prose such as "the patient's account of the injury" is not a
     // stop. "account"/"acct" additionally require an explicit number cue.
+    // Separator class widened from [:#] to also accept "-" and "=", which the
+    // rule's own advertised format ("MRN: 4471902") differs from only by
+    // punctuation — "MRN - 4471902" was passing clean. "chart"/"record" no
+    // longer demand the word "number", and "patient id" is recognised, because
+    // a bare "Chart 4471902" is as much a record link as any other spelling.
+    //
+    // The separator is one character class rather than `\s*[:#]?\s*`: the old
+    // shape was ambiguous and backtracked quadratically on a long run of
+    // spaces followed by a long run of letters.
     id: "phi.mrn",
     pattern:
-      /\b(?:mrn|medical record|chart\s*(?:no\.?|number|#)|record\s*(?:no\.?|number|#)|(?:account|acct)\s*(?:no\.?|number|#))\s*[:#]?\s*(?=[\w-]*\d)[\w-]+/gi,
+      /\b(?:mrn|medical record|patient\s*id|chart\s*(?:no\.?|number|#)?|record\s*(?:no\.?|number|#)?|(?:account|acct)\s*(?:no\.?|number|#))[\s:#=-]*(?=[\w-]*\d)[\w-]+/gi,
     severity: "S0",
     message: "This looks like a record or account number. Remove it. Record links belong only in the EDR."
   },
   {
+    // The honorific announces the name; the CAPTURE is the name, so masking
+    // removes the identifier and leaves "Dr. [PERSON-XXXX]" reading sensibly.
+    //
+    // The old pattern was `[A-Z][a-z]+`, which stopped dead at an internal
+    // capital: "Dr. McDonald" matched only "Dr. Mc", so masking produced
+    // "[PERSON-XXXX]Donald" — a recoverable surname — and cleared the S0.
+    // "Dr. O'Brien" matched nothing at all, even though the bare-name rule
+    // below has always handled Mc/Mac/O' surnames. The strict S0 rule was the
+    // weaker of the two, because no test ever put an honorific in front of one.
+    //
+    // The honorific is spelled in both cases rather than using the /i flag:
+    // with /i the name class would match lowercase too and "Dr. the patient"
+    // would read as a name. ALL CAPS matters because that is how an EHR header
+    // pastes in — "DR. SMITH" was previously invisible.
     id: "phi.name",
-    pattern: /\b(?:Mr|Mrs|Ms|Miss|Dr)\.?\s+[A-Z][a-z]+/g,
+    pattern:
+      /\b(?:Mr|Mrs|Ms|Miss|Dr|Doctor|MR|MRS|MS|MISS|DR|DOCTOR)\.?\s+((?:Mc|Mac|O['’]|D['’])?[A-Z][A-Za-z'’]{0,24}(?:-[A-Z][A-Za-z'’]{0,24})?)\b/g,
+    captureGroup: 1,
     severity: "S0",
     message:
       "This looks like a person's name. Use a role instead (for example, the treating dentist, the referring provider)."
   },
   {
+    // Capture what FOLLOWS the label, because that is the identifier. The rule
+    // used to match "Patient name:" alone, so the mask button deleted the
+    // label and left the patient's name in a note that then audited clean.
     id: "phi.name-label",
-    pattern: /\b(?:patient|guardian|parent)\s+name\s*[:=]/gi,
+    pattern: /\b(?:patient|guardian|parent)\s+name\s*[:=]\s*([^\n,;.|]{0,60})/gi,
+    captureGroup: 1,
     severity: "S0",
     message: "Do not enter names. Identity belongs only in the EDR."
   },
@@ -151,8 +195,33 @@ const INSTITUTION_WORDS = new Set([
   // Dental supply houses whose names read exactly like a person's. "Henry
   // Schein" on a materials line is the single likeliest false positive in a
   // real note, and a flag on the supplier teaches staff to dismiss the flag.
-  "schein", "patterson", "benco", "darby", "ultradent", "dentsply"
+  "schein", "patterson", "benco", "darby", "ultradent", "dentsply",
+  // Dental structures and chart references. Nobody is surnamed "Tooth" or
+  // "Molar", and this domain capitalizes them constantly — "Mark Tooth 14 for
+  // extraction" is an imperative sentence, not a patient called Mark Tooth.
+  // Sentence-initial position is what makes this class possible at all: the
+  // first word's capital carries no information there, so a given name that is
+  // also an ordinary verb ("mark", "bill", "max", "don") reads as a name.
+  "tooth", "teeth", "crown", "bridge", "implant", "quadrant", "arch", "class",
+  "grade", "canal", "molar", "premolar", "incisor", "canine", "cusp",
+  "surface", "site", "sextant", "denture", "veneer", "onlay", "inlay",
+  // ALL-CAPS dental charting is full of two-word phrases whose first word is
+  // also a given name: "IAN BLOCK" (inferior alveolar nerve block), "MAX LEFT
+  // QUADRANT", "X-RAY SERIES", "Grace Period" on a billing note. Flagging
+  // those is the cry-wolf failure this file's own header calls worse than no
+  // screen — and it is worse than that here, because the Mask button acts on
+  // S2 findings too, so one click rewrote the anaesthesia record of a legal
+  // document and the re-audit called the result AUDIT PASS.
+  "block", "series", "taken", "left", "right", "upper", "lower", "anterior",
+  "posterior", "buccal", "lingual", "mesial", "distal", "occlusal", "period",
+  "exam", "recall", "prophy", "scaled", "given", "administered", "completed",
+  "placed", "prep", "noted", "assessed", "carpules", "carpule"
 ]);
+
+// Words that ANNOUNCE a name, so the name after them needs no capital to be
+// worth flagging. This is the difference between a guess and evidence.
+const NAME_CUE =
+  /\b(?:patients?|pts?|guardians?|parents?|mother|father|caregiver|seen\s+by|referred\s+(?:to|by)|spoke\s+with|treated\s+by|assisted\s+by|dr\.?|doctor|dentist|hygienist|assistant)(\s+)([A-Za-z][A-Za-z'’-]{1,20})((?:\s+(?:[A-Za-z]\.\s+)?[A-Za-z][A-Za-z'’-]{1,24}(?:-[A-Za-z][A-Za-z'’-]{1,24})?)?)/gi;
 
 // "John Smith", "Karen McDonald", "Mary O'Brien", "Robert Smith-Jones",
 // "John Q. Smith".
@@ -170,11 +239,14 @@ const INSTITUTION_WORDS = new Set([
 // EXACT source text: the masking pass replaces by literal substring, and a
 // normalized "John Smith" would silently fail to replace a "John  Smith" that
 // really had two spaces, leaving the identifier in the note.
+// The `(?<![-\w])` guard is why "X-Ray Series" is not a patient called Ray.
+// `\b` fires after a hyphen, so the given name "ray" matched inside "X-Ray",
+// and masking then rewrote the radiograph line to "X-[PERSON-XXXX]".
 const NAME_PAIR =
-  /\b([A-Z][a-z]{1,20})(\s+(?:[A-Z]\.\s+)?)(?=((?:Mc|Mac|O['’]|D['’])?[A-Z][a-z]{1,24}(?:-[A-Z][a-z]{1,24})?)\b)/g;
+  /(?<![-\w])([A-Z][a-z]{1,20})(\s+(?:[A-Z]\.\s+)?)(?=((?:Mc|Mac|O['’]|D['’])?[A-Z][a-z]{1,24}(?:-[A-Z][a-z]{1,24})?)\b)/g;
 
 // The same pair in ALL CAPS — how an EHR chart header usually pastes in.
-const NAME_PAIR_CAPS = /\b([A-Z]{2,20})(\s+(?:[A-Z]\.\s+)?)(?=([A-Z][A-Z'’-]{1,24})\b)/g;
+const NAME_PAIR_CAPS = /(?<![-\w])([A-Z]{2,20})(\s+(?:[A-Z]\.\s+)?)(?=([A-Z][A-Z'’-]{1,24})\b)/g;
 
 // Chart-header order: "Smith, John" and "SMITH, JOHN". High signal — prose
 // rarely puts a capitalized word, a comma, and a given name in a row for any
@@ -236,6 +308,47 @@ function runBareNameRules(text: string): AuditFinding[] {
     "This reads like a chart-header name (surname, given name). " + BARE_NAME_MESSAGE
   );
 
+  // Cued names, in ANY case.
+  //
+  // The rules above all require a capital letter, and clinicians type fast and
+  // lowercase: "patient john smith presented" was invisible to the entire
+  // screen. That was not merely a missed flag. The Mask identifiers button
+  // replaces exactly what the screen matched, so a name it cannot see is a
+  // name masking silently leaves behind — the clinician clicks Mask, the
+  // phone number and "John Smith" disappear, "patient john smith" stays, and
+  // the note now LOOKS redacted. A remediation that quietly does half the job
+  // is worse than none, because it converts a visible problem into an
+  // invisible one.
+  //
+  // A cue word supplies the evidence that capitalization otherwise would, so
+  // no capital is required after one. The cue itself is NOT part of
+  // matchedText: "patient" is not an identifier, and masking it away would
+  // damage the sentence for no privacy gain.
+  const cuedSeen = new Map<string, number>();
+  for (const m of text.matchAll(NAME_CUE)) {
+    const given = m[2];
+    const trailing = m[3] ?? "";
+    if (!GIVEN_NAMES.has(given.toLowerCase())) continue;
+    // The institution filter has to apply here too. Without it "Referred to
+    // Christian Dental Clinic" reads as a patient — the cue announces a name,
+    // and "Christian" is one, but the word after it says the referral went to
+    // an organization. Caught by the existing cry-wolf test before this
+    // shipped, which is the test doing exactly its job.
+    const nextWord = trailing.trim().split(/[\s.]+/)[0]?.toLowerCase() ?? "";
+    if (nextWord && INSTITUTION_WORDS.has(nextWord)) continue;
+    const matched = given + trailing;
+    // Skip anything the capitalized rules already reported, so one name is one
+    // finding rather than two rows saying the same thing.
+    if (pairSeen.has(matched) || commaSeen.has(matched)) continue;
+    cuedSeen.set(matched, (cuedSeen.get(matched) ?? 0) + 1);
+  }
+  pushCounted(
+    findings,
+    cuedSeen,
+    "phi.name-cued",
+    "A name follows a word that announces one. " + BARE_NAME_MESSAGE
+  );
+
   return findings;
 }
 
@@ -244,7 +357,12 @@ export function runPhiRule(text: string): AuditFinding[] {
   for (const p of PHI_PATTERNS) {
     const seen = new Map<string, number>();
     for (const m of text.matchAll(p.pattern)) {
-      seen.set(m[0], (seen.get(m[0]) ?? 0) + 1);
+      // The identifier, not the whole match — see PhiPattern.captureGroup. A
+      // present-but-empty group falls back to the full match so a bare
+      // "Patient name:" prompt still stops the line.
+      const captured = p.captureGroup ? m[p.captureGroup]?.trim() : "";
+      const identifier = captured && captured.length > 0 ? captured : m[0];
+      seen.set(identifier, (seen.get(identifier) ?? 0) + 1);
     }
     for (const [matched, count] of seen) {
       findings.push({

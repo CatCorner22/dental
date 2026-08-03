@@ -263,8 +263,16 @@ export const STIGMATIZING_PHRASES: VaguePhrase[] = [
     // Anchored to the patient so the module named "Refusal and Incomplete
     // Care" and the field "Consent or refusal form status" are untouched:
     // those name a category, they do not describe a person.
+    //
+    // "tx" is in the object list because the standardizer expands tx ->
+    // treatment. Without it, "Refused tx." was clean, the clinician pressed
+    // Standardize, and the tool flagged the wording it had just written itself
+    // - advice about words the user never typed. Flagging the shorthand form
+    // too makes the finding identical before and after the round trip. The
+    // same self-referential loop the abbreviation rule already fixed once with
+    // definedInText.
     pattern:
-      /\b(?:patient|pt)\s+refus(?:ed|es)\b|\brefus(?:ed|es)\s+(?:treatment|care|the\s+(?:procedure|radiograph|referral|appointment))\b/gi,
+      /\b(?:patient|pt)\s+refus(?:ed|es)\b|\brefus(?:ed|es)\s+(?:treatment|tx|care|the\s+(?:procedure|radiograph|referral|appointment))\b/gi,
     display: "patient refused",
     replacement: "declined — and state what was declined and what was discussed"
   },

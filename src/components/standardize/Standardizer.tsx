@@ -33,6 +33,15 @@ interface Result {
   flags: RaisedFlag[];
   clean: boolean;
   findings: FindingLike[];
+  /**
+   * Deterministic SOAP sectioning, when the note had enough shape to sort. Null
+   * when the pass declined — too few sentences, or everything landing in one
+   * section — because five headings around two lines reads worse than two lines.
+   *
+   * Separate from `text` on purpose: reordering is a bigger claim than
+   * substituting a word, so a person chooses it by name.
+   */
+  soap: { text: string; sections: string[] } | null;
 }
 
 const ANDON_CLASS: Record<string, string> = {
@@ -198,6 +207,29 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
           >
             Clear
           </button>
+          {result?.soap && (
+            /* Always available, unlike the AI button further down — this pass needs
+               no model, which matters because AI is off by default and this is the
+               deployment a practice actually gets. Loading the sectioned text back
+               into the box rather than copying it straight out keeps the resolution
+               queue in charge: the note is re-checked and Copy stays locked until
+               the queue is clear. */
+            <button
+              className="btn-secondary"
+              disabled={busy}
+              title="Group the sentences under Safety, Subjective, Objective, Assessment and Plan. No AI, and no sentence is reworded."
+              onClick={() => {
+                setInput(result.soap!.text);
+                setResult(null);
+                setItems([]);
+                setNotice(
+                  `Sorted into ${result.soap!.sections.join(", ")}. Every sentence was moved, none reworded — check it, then re-check to unlock Copy.`
+                );
+              }}
+            >
+              Structure as SOAP
+            </button>
+          )}
         </div>
 
         <BlockPicker

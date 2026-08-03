@@ -36,6 +36,20 @@ describe("PHI gate", () => {
     if (!out.ok) expect(out.code).toBe("phi-blocked");
     expect(called).toBe(false);
   });
+
+  it("blocks probable bare names even when they are only S2 for filing", async () => {
+    let called = false;
+    const spy: GenerateFn = async ({ prompt }) => {
+      called = true;
+      return prompt;
+    };
+    // Bare personal names are S2 REVIEW in the in-app audit, but an AI
+    // provider is off-server — any phi category finding must stop the call.
+    const out = await runAssist("normalize", "John Smith presented for recall today.", spy);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("phi-blocked");
+    expect(called).toBe(false);
+  });
 });
 
 describe("verifier gate on rewrites", () => {

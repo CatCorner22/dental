@@ -100,10 +100,22 @@ describe("the store", () => {
     expect(req.ok).toBe(true);
     const id = req.ok ? req.redemption.id : 0;
 
-    const noNote = await decideRedemption(db, { id, approve: false, decidedByName: "Lead", note: "  " });
+    const noNote = await decideRedemption(db, {
+      id,
+      approve: false,
+      decidedById: "lead-1",
+      decidedByName: "Lead",
+      note: "  "
+    });
     expect(noNote.ok).toBe(false);
 
-    const declined = await decideRedemption(db, { id, approve: false, decidedByName: "Lead", note: "Out of stock this week." });
+    const declined = await decideRedemption(db, {
+      id,
+      approve: false,
+      decidedById: "lead-1",
+      decidedByName: "Lead",
+      note: "Out of stock this week."
+    });
     expect(declined.ok).toBe(true);
     expect(await balanceFor(db, "u2")).toBe(600); // refunded by a new row
     const rows = await listRedemptions(db, "u2");
@@ -117,8 +129,54 @@ describe("the store", () => {
     const coffee = (await listStoreItems(db)).find((i) => i.tier === 1)!;
     const req = await requestRedemption(db, { userId: "u3", userName: "U Three (u3)", itemId: coffee.id });
     const id = req.ok ? req.redemption.id : 0;
-    expect((await decideRedemption(db, { id, approve: true, decidedByName: "Lead", note: "" })).ok).toBe(true);
-    expect((await decideRedemption(db, { id, approve: false, decidedByName: "Lead", note: "no" })).ok).toBe(false);
+    expect(
+      (await decideRedemption(db, { id, approve: true, decidedById: "lead-1", decidedByName: "Lead", note: "" })).ok
+    ).toBe(true);
+    expect(
+      (await decideRedemption(db, { id, approve: false, decidedById: "lead-1", decidedByName: "Lead", note: "no" })).ok
+    ).toBe(false);
+  });
+
+  it("a lead cannot approve their own redemption", async () => {
+    await seedStoreIfEmpty(db, STARTER_STORE);
+    await awardOnce(db, { userId: "lead-self", refType: "badge", refId: "seed", points: 600, reason: "seed" });
+    const coffee = (await listStoreItems(db)).find((i) => i.tier === 1)!;
+    const req = await requestRedemption(db, {
+      userId: "lead-self",
+      userName: "Lead Self (lead-self)",
+      itemId: coffee.id
+    });
+    const id = req.ok ? req.redemption.id : 0;
+    const self = await decideRedemption(db, {
+      id,
+      approve: true,
+      decidedById: "lead-self",
+      decidedByName: "Lead Self",
+      note: ""
+    });
+    expect(self.ok).toBe(false);
+    if (!self.ok) expect(self.error).toMatch(/own store request/i);
+  });
+
+  it("concurrent redemptions cannot overspend the same balance", async () => {
+    await seedStoreIfEmpty(db, STARTER_STORE);
+    const coffee = (await listStoreItems(db)).find((i) => i.tier === 1)!;
+    await awardOnce(db, {
+      userId: "race",
+      refType: "badge",
+      refId: "seed",
+      points: coffee.cost,
+      reason: "seed"
+    });
+    const [a, b] = await Promise.all([
+      requestRedemption(db, { userId: "race", userName: "R (race)", itemId: coffee.id }),
+      requestRedemption(db, { userId: "race", userName: "R (race)", itemId: coffee.id })
+    ]);
+    const wins = [a, b].filter((r) => r.ok).length;
+    const losses = [a, b].filter((r) => !r.ok).length;
+    expect(wins).toBe(1);
+    expect(losses).toBe(1);
+    expect(await balanceFor(db, "race")).toBe(0);
   });
 
   it("upsert edits an item in place", async () => {

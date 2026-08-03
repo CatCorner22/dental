@@ -54,3 +54,37 @@ export function deriveInsights(rows: SubmissionStatRow[], windowDays = 30, now =
   }
   return lines;
 }
+
+/**
+ * Lead-facing coaching tip: qualitative only. Numeric averages stay on the
+ * person's own dashboard — the team page's privacy contract is bands + tip,
+ * never a peer score percentage embedded in the tip text.
+ */
+export function deriveLeadCoachingTip(
+  rows: SubmissionStatRow[],
+  windowDays = 30,
+  now = new Date()
+): string | null {
+  const cutoff = now.getTime() - windowDays * 86_400_000;
+  const graded = rows.filter(
+    (r) => r.gpaSubscores && r.submittedAtUtc.getTime() >= cutoff
+  );
+  if (graded.length < 3) return null;
+
+  const sums: Record<string, { total: number; n: number }> = {};
+  for (const r of graded) {
+    for (const [axis, score] of Object.entries(r.gpaSubscores!)) {
+      const bucket = sums[axis] ?? { total: 0, n: 0 };
+      bucket.total += score;
+      bucket.n++;
+      sums[axis] = bucket;
+    }
+  }
+  const averages = Object.entries(sums)
+    .map(([axis, { total, n }]) => ({ axis, avg: total / n }))
+    .filter((a) => AXIS_LABEL[a.axis])
+    .sort((a, b) => a.avg - b.avg);
+  const worst = averages[0];
+  if (!worst || worst.avg >= 0.85) return null;
+  return `Most room: ${AXIS_LABEL[worst.axis]} — ${AXIS_TIP[worst.axis]}.`;
+}

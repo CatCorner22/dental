@@ -105,10 +105,10 @@ export async function POST(req: Request): Promise<Response> {
     }
   );
 
-  // Provenance, when the caller is working a draft: one audit row per
-  // successful assist naming the capability, prompt version, and retrieved
-  // sources — identifiers only, never text. The submit route folds these
-  // into the frozen filing so a reviewer can see which AI touched what.
+  // Provenance, when the caller owns a draft: one audit row per successful
+  // assist naming the capability, prompt version, and retrieved sources —
+  // identifiers only, never text. Ownership is checked so a caller cannot
+  // stamp assist.used onto a colleague's draft id.
   const draftId = typeof parsed.value.draftId === "string" ? parsed.value.draftId.slice(0, 64) : "";
   const actor = {
     actorId: guard.user.id,

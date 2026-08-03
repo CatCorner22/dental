@@ -164,7 +164,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // AI provenance: every assist event recorded against this draft, folded in
   // as identifiers (capability, prompt version, sources). Empty means no AI
   // touched this note's text — which is itself a statement worth freezing.
-  const assistEvents = await assistEventsForDraft(db, draft.id);
+  const assistEvents = await assistEventsForDraft(db, draft.id, guard.user.id);
   const assistProvenance =
     assistEvents.length > 0
       ? { events: assistEvents, gpaVersion: grade.gpaVersion }

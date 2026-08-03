@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { runTextAudit } from "@/lib/audit/engine";
-import { isScenarioComplete, SCENARIO_BY_ID } from "@/lib/training/scenarios";
+import { isScenarioComplete, matchesScenarioEvidence, SCENARIO_BY_ID } from "@/lib/training/scenarios";
 import { awardOnce } from "@/lib/db/repo/gamify";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
@@ -38,6 +38,22 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
   await recordFailure(db, key, now, 60);
+
+  // Case identity first: a clean unrelated note must not farm the bounty.
+  if (!matchesScenarioEvidence(scenario, text)) {
+    return Response.json({
+      complete: false,
+      findings: [
+        {
+          ruleId: "training.wrong-case",
+          severity: "S1",
+          message:
+            "This repair does not look like the practice case — keep the same clinical situation and fill in the missing specifics.",
+          suggestion: null
+        }
+      ]
+    });
+  }
 
   const findings = runTextAudit(text);
   if (!isScenarioComplete(findings)) {

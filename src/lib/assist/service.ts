@@ -99,10 +99,10 @@ export async function runAssist(
 ): Promise<AssistOutcome> {
   const input = text.slice(0, MAX_INPUT);
 
-  // PHI gate. S0 identifier findings block the call outright: the privacy
-  // design of this app is that clinical prose never leaves the server, and
-  // an AI provider is exactly the kind of leaving that matters.
-  const phi = runPhiRule(input).filter((f) => f.severity === "S0");
+  // PHI gate. ANY phi finding blocks the call — not only S0. Bare-name hits
+  // are S2 for the in-app audit (review, not hard-stop on filing), but an AI
+  // provider is off-server: probable patient names must never leave either.
+  const phi = runPhiRule(input).filter((f) => f.category === "phi");
   if (phi.length > 0) {
     return {
       ok: false,

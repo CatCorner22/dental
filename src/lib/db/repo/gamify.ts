@@ -112,6 +112,22 @@ export async function upsertStoreItem(
 }
 
 /**
+ * Hash a user id into a 32-bit advisory-lock key. Same user always locks the
+ * same key; different users almost never collide. Used to serialize spend
+ * checks that are otherwise a classic read-sum-then-insert race.
+ */
+function userSpendLockKey(userId: string): number {
+  // Stable FNV-1a 32-bit — no crypto needed; collisions only hurt throughput.
+  let h = 0x811c9dc5;
+  for (let i = 0; i < userId.length; i++) {
+    h ^= userId.charCodeAt(i);
+    h = Math.imul(h, 0x01000193);
+  }
+  // Postgres advisory locks take signed int4; keep the high bit clear.
+  return h & 0x7fffffff;
+}
+
+/**
  * Request a redemption: the points leave the balance NOW (a negative ledger
  * row in the same transaction), so two simultaneous requests cannot both
  * spend the same points. A decline refunds by appending — never by deleting;
@@ -122,6 +138,9 @@ export async function requestRedemption(
   args: { userId: string; userName: string; itemId: number }
 ): Promise<{ ok: true; redemption: RedemptionRow } | { ok: false; error: string }> {
   return db.transaction(async (tx) => {
+    // Serialize per-user spend: two concurrent POSTs both reading the same
+    // pre-debit sum would otherwise both pass and drive the balance negative.
+    await tx.execute(sql`SELECT pg_advisory_xact_lock(${userSpendLockKey(args.userId)})`);
     const [item] = await tx.select().from(storeItems).where(eq(storeItems.id, args.itemId)).limit(1);
     if (!item || !item.active) return { ok: false as const, error: "That item is not available." };
     const [bal] = await tx
@@ -155,18 +174,34 @@ export async function requestRedemption(
 
 export async function decideRedemption(
   db: Db,
-  args: { id: number; approve: boolean; decidedByName: string; note: string }
+  args: {
+    id: number;
+    approve: boolean;
+    decidedByName: string;
+    note: string;
+    /** Actor deciding — used to block self-approval. */
+    decidedById: string;
+  }
 ): Promise<{ ok: boolean; error?: string }> {
   return db.transaction(async (tx) => {
     const [row] = await tx.select().from(redemptions).where(eq(redemptions.id, args.id)).limit(1);
     if (!row) return { ok: false, error: "Not found." };
     if (row.status !== "requested") return { ok: false, error: "Already decided." };
+    if (row.userId === args.decidedById) {
+      return {
+        ok: false,
+        error: "A Team Lead cannot approve or decline their own store request — ask another lead."
+      };
+    }
     if (!args.approve && args.note.trim().length === 0) {
       // The wish-list rule, for the same reason: a named person asked; a
       // decline with no reason teaches people to stop asking.
       return { ok: false, error: "Declining needs a short note back to the person who asked." };
     }
-    await tx
+    // Conditional transition: only the first decider wins. Without this, two
+    // concurrent declines can both append refunds, or an approve/decline race
+    // can leave an approved row that was also refunded.
+    const updated = await tx
       .update(redemptions)
       .set({
         status: args.approve ? "approved" : "declined",
@@ -174,9 +209,13 @@ export async function decideRedemption(
         decidedNote: args.note.trim() || null,
         decidedAt: new Date()
       })
-      .where(eq(redemptions.id, args.id));
+      .where(and(eq(redemptions.id, args.id), eq(redemptions.status, "requested")))
+      .returning();
+    if (updated.length === 0) return { ok: false, error: "Already decided." };
     if (!args.approve) {
       // Refund by APPENDING — the spend happened, and so did the refund.
+      // Unique positive-ref index does not cover refunds; the conditional
+      // update above is what makes the refund happen at most once.
       await tx.insert(pointsLedger).values({
         userId: row.userId,
         delta: row.cost,

@@ -21,6 +21,7 @@ import { formatEasternTime } from "@/lib/tickets/etTime";
 import { slugifyTitle } from "@/lib/tickets/slug";
 import { composeStamp } from "@/lib/tickets/stamp";
 import { RULESET_VERSION } from "@/lib/version";
+import { checkFilingAuthority } from "@/lib/auth/approval";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
 import { sparkleLine } from "@/lib/stats/sparkle";
 
@@ -100,6 +101,20 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // Server composes and runs the FULL audit — the client is never trusted.
   const note = draft.noteState;
   const modules = activeModules(note.selectedModuleIds);
+
+  // Approve & Lock: a sedation or robotic record, or a note carrying a
+  // dentist's assessment/plan, is FILED by a dentist — the filer's name is
+  // what freezes onto the legal record as the licensed approver. The author
+  // transfers the draft; the transfer rail keeps their authorship on the
+  // record. Checked before any gate so the person hears the real reason, not
+  // a downstream symptom.
+  const filing = checkFilingAuthority(guard.user.clinicalRole, modules, note);
+  if (!filing.allowed) {
+    return Response.json(
+      { error: filing.message, code: "dentist-filing-required" },
+      { status: 403 }
+    );
+  }
   // Resolved ONCE, here, and frozen below. Reading the office name at file
   // time is what makes it a fact about the encounter rather than a live lookup
   // that a later rename would silently rewrite.

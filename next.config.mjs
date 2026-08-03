@@ -45,8 +45,20 @@ const csp = [
   "frame-ancestors 'none'",
   "frame-src 'none'",
   "worker-src 'self' blob:",
-  "manifest-src 'self'",
-  ...(isDev ? [] : ["upgrade-insecure-requests"])
+  "manifest-src 'self'"
+  // NO upgrade-insecure-requests. It was here and it broke everything served
+  // over plain HTTP: the directive rewrites every http:// request to https://,
+  // so a build running on http://127.0.0.1:3000 — CI, a local run, or a
+  // practice's internal box before TLS is set up — fails with
+  // ERR_SSL_PROTOCOL_ERROR and never finishes navigating. Chromium and WebKit
+  // apply it to loopback; Firefox exempts loopback, which is why only two of
+  // the three browsers caught it.
+  //
+  // It also buys nothing here. The directive exists to upgrade http:// SUBRESOURCE
+  // URLs embedded in a page, and this app embeds none — default-src and
+  // connect-src are both 'self', there is no CDN, no external font, no remote
+  // image. HSTS below is what actually forces HTTPS on a real deployment, and
+  // it does so without breaking one that has not got TLS yet.
 ].join("; ");
 
 const securityHeaders = [

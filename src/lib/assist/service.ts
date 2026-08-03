@@ -57,6 +57,16 @@ export type AssistOutcome =
       /** Cold logic for the user: what stopped the call and what to do. */
       message: string;
       rejections?: VerifyRejection[];
+      /**
+       * Machine-readable reasons, uniform across every failure kind: verifier
+       * rejection codes, or the PHI rule ids that blocked the call.
+       *
+       * Exists so the drift log has one field to read instead of a switch. These
+       * are all constants from this codebase — rule names — and never anything
+       * derived from the text, which is what keeps the "no note content is ever
+       * logged" contract true while still making the signal legible.
+       */
+      codes: string[];
     };
 
 const MAX_INPUT = 20000;
@@ -92,6 +102,7 @@ export async function runAssist(
     return {
       ok: false,
       code: "phi-blocked",
+      codes: [...new Set(phi.map((f) => f.ruleId))].sort(),
       message:
         `The AI was not called. ${phi.length} possible identifier${phi.length === 1 ? "" : "s"} ` +
         `must be removed or masked first — de-identified text is the condition for any AI ` +
@@ -118,6 +129,7 @@ export async function runAssist(
     return {
       ok: false,
       code: "model-error",
+      codes: [],
       message: "The AI service did not answer. The deterministic tools still work — continue without it."
     };
   }
@@ -129,6 +141,7 @@ export async function runAssist(
     return {
       ok: false,
       code: "verifier-rejected",
+      codes: [...new Set(verdict.rejections.map((r) => r.code))].sort(),
       message:
         `The AI's draft was refused before you saw it: it differed from your note in clinical ` +
         `substance (${verdict.rejections.map((r) => r.code).join(", ")}). This is the check ` +

@@ -5,7 +5,12 @@ import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 import { getAssistConfig, runAssist } from "@/lib/assist/service";
 import { logAction } from "@/lib/db/repo/auditLog";
-import { ASSIST_CAPABILITIES, type AssistCapability } from "@/lib/assist/prompts";
+import {
+  ASSIST_CAPABILITIES,
+  ASSIST_PROMPT_VERSION,
+  type AssistCapability
+} from "@/lib/assist/prompts";
+import { encodeDriftDetail } from "@/lib/assist/drift";
 
 export const runtime = "nodejs";
 
@@ -84,6 +89,37 @@ export async function POST(req: Request): Promise<Response> {
       detail: `${outcome.capability} v${outcome.promptVersion}${outcome.retrievedSources.length ? ` [${outcome.retrievedSources.join(", ")}]` : ""}`
     });
   }
+
+  // DRIFT ROW — every outcome, including the refusals.
+  //
+  // Only successes were recorded before, which threw away the entire signal.
+  // Each refusal is a labelled example of the model misbehaving, produced free
+  // of charge by a deterministic judge at the moment it happened, and it is the
+  // only way to answer the one question that matters about a language model in
+  // production: is it getting worse? One fabricated sentence is an event and
+  // invisible. `content-invented` climbing from 2% to 30% across a thousand calls
+  // is a provider quietly changing the model behind a version name.
+  //
+  // Logged unconditionally, unlike the provenance row above, because a refusal
+  // from the standalone standardizer counts exactly as much as one from a draft.
+  //
+  // NOT ONE CHARACTER OF NOTE TEXT. The capability, the prompt version, the model
+  // identity, and the rejection codes — all constants from this codebase, none
+  // derived from anything anyone typed. The model identity is the load-bearing
+  // field: "anthropic/claude-sonnet-4.5" is a pointer, not a version.
+  await logAction(db, {
+    actorId: guard.user.id,
+    actorName: `${guard.user.displayName} (${guard.user.username})`,
+    action: "assist.drift",
+    target: draftId || null,
+    detail: encodeDriftDetail({
+      outcome: outcome.ok ? "ok" : outcome.code,
+      capability: capability as AssistCapability,
+      promptVersion: ASSIST_PROMPT_VERSION,
+      model: config.model,
+      codes: outcome.ok ? [] : outcome.codes
+    })
+  });
 
   if (!outcome.ok) {
     // 422: the request was understood and refused for a stated reason. The

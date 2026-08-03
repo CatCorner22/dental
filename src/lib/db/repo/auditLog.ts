@@ -74,6 +74,31 @@ export async function assistEventsForDraft(db: Db, draftId: string): Promise<str
   return rows.map((r) => r.detail ?? "").filter(Boolean);
 }
 
+/**
+ * Rows for ONE action, newest first.
+ *
+ * Separate from listAuditLog because the drift panel needs a much deeper window
+ * than the visible table — a refusal rate computed over "the last 300 events"
+ * is a rate over whatever happened to be recent, and drift is a trend. Reading
+ * 2,000 mixed rows to find the few dozen drift rows among them worked and was
+ * wasteful; letting Postgres do the filtering keeps the deep window cheap.
+ *
+ * Indexed by `audit_log_at_idx`, so this stays an ordered index scan with a
+ * bound on it however large the log gets.
+ */
+export async function listAuditLogByAction(
+  db: Db,
+  action: string,
+  limit = 2000
+): Promise<AuditLogRow[]> {
+  return db
+    .select()
+    .from(auditLog)
+    .where(eq(auditLog.action, action))
+    .orderBy(desc(auditLog.at), desc(auditLog.id))
+    .limit(limit);
+}
+
 export async function listAuditLog(
   db: Db,
   limit = 200,

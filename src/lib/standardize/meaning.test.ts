@@ -156,3 +156,49 @@ describe("no crash and no hang on hostile input", () => {
     expect(typeof r.text).toBe("string");
   });
 });
+
+// Regression: the pattern VARIANTS that broke idempotency.
+//
+// Several shorthand patterns match more than their canonical spelling — BWX,
+// FMS, pano, VDO, and the dotted dosing forms. The definition used to be
+// written with the matched text while the already-defined guard looked for the
+// canonical form, so a second pass produced
+// "bitewing radiograph (bitewing radiograph (BWX))".
+//
+// These are kept as their own block because a new entry in SHORTHAND with an
+// optional group or a character class reintroduces exactly this bug, and the
+// generic idempotency tests above all happen to use canonical spellings.
+describe("regression — pattern variants stay idempotent", () => {
+  const VARIANTS = [
+    "4 x-rays and a BWX taken; PANO reviewed. FMS from last visit compared.",
+    "BWX taken of the posterior teeth.",
+    "FMS compared with the previous series.",
+    "pano reviewed.",
+    "VDO measured at the try-in.",
+    "Amoxicillin 500 mg b.i.d. for seven days.",
+    "Ibuprofen 600 mg t.i.d. as tolerated.",
+    "Ibuprofen p.r.n. pain."
+  ];
+
+  it.each(VARIANTS)("twice equals once: %j", (input) => {
+    const once = standardize(input).text;
+    const twice = standardize(once).text;
+    expect(twice, `NOT IDEMPOTENT: ${input}`).toBe(once);
+  });
+
+  it("never nests a definition inside a definition", () => {
+    for (const v of VARIANTS) {
+      const out = standardize(standardize(v).text).text;
+      // "expansion (expansion (ABBR))" is the exact shape of the old bug.
+      expect(out, v).not.toMatch(/\([^()]*\([^()]*\)/);
+    }
+  });
+
+  it("normalizes a variant to the canonical spelling", () => {
+    // Standardizing is the job: BWX and b.i.d. come out as the one spelling
+    // the practice agreed on, not as whatever was typed.
+    expect(standardize("BWX taken.").text).toContain("(BW)");
+    expect(standardize("FMS compared.").text).toContain("(FMX)");
+    expect(standardize("Amoxicillin b.i.d.").text).toContain("(bid)");
+  });
+});

@@ -185,7 +185,7 @@ Do not convert between cartridges, milliliters, milligrams, or micrograms unless
 
 Only the fields marked as written for the patient are checked against this list — the summary the patient reads, not the clinical record. Patients have routine access to their notes under the 21st Century Cures Act, and a summary written for a colleague is not one the patient can act on.
 
-This table runs the opposite way to the shorthand table above, on purpose. The record wants "radiograph"; the patient wants "x-ray". Both are right for their own reader, and the audit only applies each list where it belongs. Nothing here is ever rewritten automatically, and the Standardize button is switched off on these fields: a plainer word can carry a different clinical claim, and choosing the wording that stays true is the clinician’s call.
+This table runs the opposite way to the shorthand table above, on purpose. The record wants "radiograph"; the patient wants "x-ray". Both are right for their own reader, and the audit only applies each list where it belongs. Nothing here is ever rewritten automatically: a plainer word can carry a different clinical claim, and choosing the wording that stays true is the clinician’s call. Standardize still works on these fields — it warns first that it rewrites toward clinical wording, and Undo restores what you typed in one click.
 
 Keeping the term and explaining it once clears the finding — write *periodontitis (gum disease that has reached the bone)* and the rule stays quiet.
 

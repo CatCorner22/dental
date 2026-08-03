@@ -168,13 +168,25 @@ function PhraseChips({ phrases, onInsert }: { phrases: string[]; onInsert: (phra
 // leaves the page.
 function StandardizeField({
   text,
-  onApply
+  onApply,
+  caution
 }: {
   text: string;
   onApply: (next: string) => void;
+  /** Shown before the button is pressed, when this field is a poor fit for it. */
+  caution?: string;
 }) {
   const [note, setNote] = useState<string | null>(null);
+  // What the writer had before the button rewrote it, and what the button
+  // produced. Both, because Undo is only offered while the field still holds
+  // exactly what was produced — see below.
+  const [prior, setPrior] = useState<{ before: string; after: string } | null>(null);
   if (!text.trim()) return null;
+
+  // The writer has typed since the rewrite, so their newer words are what is in
+  // the box. Restoring `before` now would throw those away, which is the same
+  // kind of unasked-for edit Undo exists to reverse. The offer simply expires.
+  const canUndo = prior !== null && text === prior.after;
 
   const run = () => {
     const r = standardize(text);
@@ -187,7 +199,10 @@ function StandardizeField({
       setNote("⚠ too long to standardize — nothing was changed. Shorten the field or standardize it in sections.");
       return;
     }
-    if (r.text !== text) onApply(r.text);
+    if (r.text !== text) {
+      setPrior({ before: text, after: r.text });
+      onApply(r.text);
+    }
     const parts: string[] = [];
     // Loudest first: something was LOST, which matters more than what changed.
     const changes = r.applied.filter((a) => a.kind !== "formatting").length;
@@ -215,10 +230,57 @@ function StandardizeField({
       >
         ✨ Standardize
       </button>
+      {/*
+        The way back.
+
+        This is a controlled input, so a programmatic rewrite wipes the
+        browser's own undo stack — Ctrl-Z could not recover what the writer
+        typed, and nothing else offered to. A clinician who pressed the button
+        and disliked the result had to retype the field from memory, which is
+        both a bad experience and a quiet invitation to accept wording they
+        would not have chosen.
+
+        Restoring a person's own words can never be the dangerous option, so
+        this needs no confirmation and no attestation. It stays available until
+        they type again, at which point their newer words take precedence.
+      */}
+      {canUndo && (
+        <button
+          type="button"
+          className="chip"
+          title="Put back exactly what you typed before Standardize ran"
+          onClick={() => {
+            onApply(prior.before);
+            setPrior(null);
+            setNote("your wording is back");
+            setTimeout(() => setNote(null), 6000);
+          }}
+        >
+          ↩ Undo
+        </button>
+      )}
       {note && (
         <span className="text-xs text-slate-600" role="status">
           {note}
         </span>
+      )}
+      {/*
+        A caution, not a lock.
+
+        This field was shipped with the button REMOVED, on the reasoning that
+        standardizing patient-facing prose runs it the wrong way — "x-ray"
+        becomes "radiograph" in the one box written for the person who had it
+        taken. That reasoning still holds, and it is now stated here instead of
+        enforced: taking a control away decides for the clinician, and a
+        clinician who pasted clinical shorthand into this box and wants it
+        expanded first has a perfectly good reason to press it.
+
+        The bar for removing a choice is that the choice is dangerous or
+        meaningless. This one is neither — it is merely usually wrong, which is
+        what a sentence of warning is for. Undo covers the rest.
+      */}
+      {caution && (
+        <span className="basis-full text-xs text-amber-700">{caution}</span>
       )}
     </div>
   );
@@ -247,20 +309,22 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
       {/*
-        No Standardize on patient-facing text. The standardizer's whole job is
-        to move prose TOWARD the clinical register — "x-ray" becomes
-        "radiograph", "tx" becomes "treatment" — and on a paragraph written for
-        the person in the chair that is a one-click jargon generator. The plain
-        rule flags the same field in the opposite direction, so offering the
-        button here would let one press of it manufacture the findings the other
-        rule then reports.
+        The standardizer's whole job is to move prose TOWARD the clinical
+        register — "x-ray" becomes "radiograph", "tx" becomes "treatment" — so
+        on a paragraph written for the person in the chair it usually runs the
+        wrong way. That earns a warning, not a locked door: the writer may have
+        pasted clinical shorthand in and want it expanded before rewriting, and
+        Undo puts their words back either way.
       */}
-      {field.audience !== "patient" && (
-        <StandardizeField
-          text={value?.value ?? ""}
-          onApply={(next) => onChange({ kind: "text", value: next })}
-        />
-      )}
+      <StandardizeField
+        text={value?.value ?? ""}
+        onApply={(next) => onChange({ kind: "text", value: next })}
+        caution={
+          field.audience === "patient"
+            ? "Heads up: this rewrites toward clinical wording — the opposite of what this box is for. Undo puts your words back."
+            : undefined
+        }
+      />
     </div>
   );
 }
@@ -288,20 +352,22 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
       {/*
-        No Standardize on patient-facing text. The standardizer's whole job is
-        to move prose TOWARD the clinical register — "x-ray" becomes
-        "radiograph", "tx" becomes "treatment" — and on a paragraph written for
-        the person in the chair that is a one-click jargon generator. The plain
-        rule flags the same field in the opposite direction, so offering the
-        button here would let one press of it manufacture the findings the other
-        rule then reports.
+        The standardizer's whole job is to move prose TOWARD the clinical
+        register — "x-ray" becomes "radiograph", "tx" becomes "treatment" — so
+        on a paragraph written for the person in the chair it usually runs the
+        wrong way. That earns a warning, not a locked door: the writer may have
+        pasted clinical shorthand in and want it expanded before rewriting, and
+        Undo puts their words back either way.
       */}
-      {field.audience !== "patient" && (
-        <StandardizeField
-          text={value?.value ?? ""}
-          onApply={(next) => onChange({ kind: "text", value: next })}
-        />
-      )}
+      <StandardizeField
+        text={value?.value ?? ""}
+        onApply={(next) => onChange({ kind: "text", value: next })}
+        caution={
+          field.audience === "patient"
+            ? "Heads up: this rewrites toward clinical wording — the opposite of what this box is for. Undo puts your words back."
+            : undefined
+        }
+      />
     </div>
   );
 }

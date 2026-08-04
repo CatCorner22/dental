@@ -73,5 +73,5 @@ export function detectEscape(text: string): EscapeHit[] {
   return hits;
 }
 
-/** How many escape events in a window trip the soft silent lock. */
-export const ESCAPE_TRIP_THRESHOLD = 3;
+/** Model-originated escapes only — used by the warn → reset → perma ladder. */
+export const MODEL_ESCAPE_ORIGIN = "origin=model";

@@ -1,50 +1,49 @@
 "use client";
 
-import { useEffect, useMemo, useState, useTransition } from "react";
+import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
 import { ByteStarFace } from "./ByteStar";
 import { BenchmarkRails } from "./BenchmarkRails";
+import { NorthStarCompass } from "./NorthStarCompass";
 import { measureBenchmarks } from "@/lib/bytestar/benchmarks";
-import {
-  BYTESTAR_DISCLAIMER,
-  optInByteStar,
-  optOutByteStar,
-  readByteStarPrefs,
-  type ByteStarPrefs
-} from "@/lib/bytestar/prefs";
-import type { ByteStarSuggestion } from "@/lib/bytestar/schemas";
+import { BYTESTAR_DISCLAIMER } from "@/lib/bytestar/prefs";
+import { BYTESTAR_ONE_WAY_NOTICE } from "@/lib/bytestar/one-way";
 
-// BYTESTAR PANEL — optional pioneer advisor.
-//
-// READ-ONLY BY ARCHITECTURE. Suggestions never write into the note. The only
-// buttons here are opt-in / opt-out / ask ByteStar / rotate tips. Applying a
-// rewrite is a human copy action, never an automatic mutation.
-//
-// Local benchmarks always render (deterministic). Model suggestions appear
-// only after deployment enablement + user opt-in + disclaimer ack.
+// BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: ByteStar gives staff
+// objective language and graphics; staff never prompt, copy, or send feedback
+// back. Auto-observe on debounced draft text; display-only panel.
+
+interface Observation {
+  kind: string;
+  say: string;
+  why: string;
+  question?: string;
+  source: string;
+}
 
 type DeployStatus = "unknown" | "off" | "on";
 
-export function ByteStarAdvisor({ text }: { text: string }) {
-  const [prefs, setPrefs] = useState<ByteStarPrefs>({ optedIn: false, disclaimerAcked: false, ackedAt: null });
-  const [deploy, setDeploy] = useState<DeployStatus>("unknown");
-  const [suggestions, setSuggestions] = useState<ByteStarSuggestion[]>([]);
-  const [tipIndex, setTipIndex] = useState(0);
-  const [error, setError] = useState<string | null>(null);
-  const [pending, startTransition] = useTransition();
-  const [ackChecked, setAckChecked] = useState(false);
+const OBSERVE_DEBOUNCE_MS = 1800;
+const ROTATE_MS = 8000;
 
-  const benchmarks = useMemo(() => measureBenchmarks(text), [text]);
+export function ByteStarAdvisor({ text }: { text: string }) {
+  const deferred = useDeferredValue(text);
+  const [deploy, setDeploy] = useState<DeployStatus>("unknown");
+  const [observations, setObservations] = useState<Observation[]>([]);
+  const [tipIndex, setTipIndex] = useState(0);
+  const [observing, setObserving] = useState(false);
+  const lastFetched = useRef("");
+
+  const benchmarks = useMemo(() => measureBenchmarks(deferred), [deferred]);
   const mood =
     benchmarks.onCourse >= 0.75
       ? "happy"
       : benchmarks.onCourse >= 0.4
         ? "thinking"
-        : text.trim()
+        : deferred.trim()
           ? "concerned"
           : "idle";
 
   useEffect(() => {
-    setPrefs(readByteStarPrefs());
     let cancelled = false;
     fetch("/api/bytestar")
       .then((r) => r.json())
@@ -59,159 +58,124 @@ export function ByteStarAdvisor({ text }: { text: string }) {
     };
   }, []);
 
-  const tip = suggestions[Math.min(tipIndex, Math.max(0, suggestions.length - 1))];
+  // Auto-observe — no staff interaction. Debounced draft in, observations out.
+  useEffect(() => {
+    if (deploy !== "on" || !deferred.trim() || deferred.length < 24) {
+      setObservations([]);
+      return;
+    }
+    const t = window.setTimeout(() => {
+      if (lastFetched.current === deferred) return;
+      lastFetched.current = deferred;
+      setObserving(true);
+      void fetch("/api/bytestar", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ text: deferred })
+      })
+        .then((r) => r.json())
+        .then((d: { observations?: Observation[]; unavailable?: boolean }) => {
+          if (d.unavailable) {
+            setObservations([]);
+            return;
+          }
+          setObservations(Array.isArray(d.observations) ? d.observations : []);
+          setTipIndex(0);
+        })
+        .catch(() => setObservations([]))
+        .finally(() => setObserving(false));
+    }, OBSERVE_DEBOUNCE_MS);
+    return () => window.clearTimeout(t);
+  }, [deferred, deploy]);
 
-  const logPrefs = (action: "opt-in" | "opt-out") => {
-    void fetch("/api/bytestar", {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ action })
-    });
-  };
+  // Rotate observations without user clicks — the panel is not a conversation.
+  useEffect(() => {
+    if (observations.length <= 1) return;
+    const id = window.setInterval(() => {
+      setTipIndex((i) => (i + 1) % observations.length);
+    }, ROTATE_MS);
+    return () => window.clearInterval(id);
+  }, [observations.length]);
 
-  const handleOptIn = () => {
-    if (!ackChecked) return;
-    const next = optInByteStar();
-    setPrefs(next);
-    logPrefs("opt-in");
-  };
-
-  const handleOptOut = () => {
-    const next = optOutByteStar();
-    setPrefs(next);
-    setSuggestions([]);
-    setAckChecked(false);
-    logPrefs("opt-out");
-  };
-
-  const ask = () => {
-    setError(null);
-    startTransition(async () => {
-      try {
-        const res = await fetch("/api/bytestar", {
-          method: "POST",
-          headers: { "content-type": "application/json" },
-          body: JSON.stringify({ text })
-        });
-        const data = await res.json();
-        if (!res.ok) {
-          setSuggestions([]);
-          setError(typeof data.error === "string" ? data.error : "ByteStar is unavailable right now.");
-          return;
-        }
-        setSuggestions(Array.isArray(data.suggestions) ? data.suggestions : []);
-        setTipIndex(0);
-      } catch {
-        setError("ByteStar could not be reached. Your note is unchanged.");
-      }
-    });
-  };
+  const tip = observations[Math.min(tipIndex, Math.max(0, observations.length - 1))];
 
   return (
     <section
-      aria-label="ByteStar, optional pioneer advisor"
-      className="rounded-xl bg-gradient-to-b from-amber-50/80 to-white p-3 ring-1 ring-amber-200/80"
+      aria-label="ByteStar observational pioneer"
+      className="bytestar-panel select-none rounded-xl bg-gradient-to-br from-amber-50/90 via-white to-teal-50/40 p-3 ring-1 ring-amber-300/60"
+      onCopy={(e) => e.preventDefault()}
+      onCut={(e) => e.preventDefault()}
+      onContextMenu={(e) => e.preventDefault()}
     >
       <div className="flex items-start gap-3">
-        <ByteStarFace mood={mood} />
+        <div className="relative">
+          <ByteStarFace mood={mood} />
+          <div className="absolute -bottom-1 -right-1 rounded bg-amber-900/90 px-1 py-px text-[0.55rem] font-bold uppercase tracking-wider text-amber-100">
+            observe
+          </div>
+        </div>
         <div className="min-w-0 flex-1">
-          <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-bold text-brand-navy">ByteStar</h3>
-            <span className="text-[0.65rem] uppercase tracking-wide text-amber-800/70">
-              pioneer · optional · reads only
-            </span>
+          <div className="flex items-start justify-between gap-2">
+            <div>
+              <h3 className="text-sm font-bold text-brand-navy">ByteStar</h3>
+              <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/60">
+                gives you feedback · you do not give it feedback
+              </p>
+            </div>
+            <NorthStarCompass onCourse={benchmarks.onCourse} />
           </div>
 
-          {!prefs.optedIn ? (
-            <div className="mt-2 space-y-2">
-              <p className="text-xs leading-relaxed text-slate-700">{BYTESTAR_DISCLAIMER}</p>
-              <label className="flex items-start gap-2 text-xs text-slate-700">
-                <input
-                  type="checkbox"
-                  className="mt-0.5"
-                  checked={ackChecked}
-                  onChange={(e) => setAckChecked(e.target.checked)}
-                />
-                <span>I have read the disclaimer. I remain responsible for my notes.</span>
-              </label>
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs"
-                  disabled={!ackChecked || deploy === "off"}
-                  onClick={handleOptIn}
-                >
-                  Enable ByteStar on this device
-                </button>
-                {deploy === "off" && (
-                  <span className="self-center text-[0.65rem] text-slate-500">
-                    Not enabled on this deployment.
-                  </span>
-                )}
-              </div>
-            </div>
-          ) : (
-            <div className="mt-1 space-y-2">
-              <p className="text-[0.65rem] leading-relaxed text-slate-500">{BYTESTAR_DISCLAIMER}</p>
-              {tip ? (
-                <div className="rounded-lg rounded-tl-none bg-white p-2.5 ring-1 ring-amber-200/70">
-                  <p className="text-[0.65rem] uppercase tracking-wide text-amber-800/80">{tip.kind}</p>
-                  <p className="text-sm font-medium text-slate-900">{tip.say}</p>
-                  <p className="mt-1 text-xs leading-relaxed text-slate-600">{tip.why}</p>
-                  {tip.rewrite && (
-                    <p className="mt-1 rounded bg-slate-50 p-1.5 text-xs text-slate-700">
-                      Suggested wording (not applied): <span className="font-medium">{tip.rewrite}</span>
-                    </p>
-                  )}
-                  {tip.question && (
-                    <p className="mt-1 text-xs font-medium text-brand-navy">{tip.question}</p>
-                  )}
-                  <p className="mt-1.5 border-t border-amber-100 pt-1 text-[0.65rem] text-slate-400">
-                    Source: {tip.source}
-                  </p>
-                  {suggestions.length > 1 && (
-                    <button
-                      type="button"
-                      className="mt-1 text-xs font-medium text-brand-blue underline decoration-dotted underline-offset-2"
-                      onClick={() => setTipIndex((i) => (i + 1) % suggestions.length)}
-                    >
-                      Next suggestion ({(tipIndex % suggestions.length) + 1} of {suggestions.length})
-                    </button>
-                  )}
-                </div>
-              ) : (
-                <p className="text-xs text-slate-500">
-                  Benchmarks update as you type. Ask ByteStar when you want pioneer suggestions —
-                  answers come back as guidance, never as edits.
+          <p className="mt-2 text-[0.65rem] font-medium leading-relaxed text-amber-950/80">
+            {BYTESTAR_ONE_WAY_NOTICE}
+          </p>
+          <p className="mt-1 text-[0.65rem] leading-relaxed text-slate-600">{BYTESTAR_DISCLAIMER}</p>
+
+          {deploy === "off" ? (
+            <p className="mt-2 text-xs text-slate-500">
+              Pioneer observation is not enabled on this deployment. Local drift gauges still update as you type.
+            </p>
+          ) : tip ? (
+            <div
+              className="relative mt-2 overflow-hidden rounded-lg bg-white/90 p-2.5 ring-1 ring-amber-200/80"
+              aria-live="polite"
+              aria-atomic
+            >
+              <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
+              <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/70">{tip.kind}</p>
+              <p className="text-sm font-medium text-slate-900">{tip.say}</p>
+              <p className="mt-1 text-xs leading-relaxed text-slate-600">{tip.why}</p>
+              {tip.question && (
+                <p className="mt-1 text-xs font-medium text-brand-navy">{tip.question}</p>
+              )}
+              <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-400">
+                Source: {tip.source}
+              </p>
+              {observations.length > 1 && (
+                <p className="mt-1 text-[0.6rem] tabular-nums text-slate-400">
+                  Observation {(tipIndex % observations.length) + 1} of {observations.length} · rotates automatically
                 </p>
               )}
-              {error && <p className="text-xs text-slate-700">{error}</p>}
-              <div className="flex flex-wrap gap-2">
-                <button
-                  type="button"
-                  className="btn-secondary text-xs"
-                  disabled={pending || !text.trim() || deploy !== "on"}
-                  onClick={ask}
-                >
-                  {pending ? "ByteStar is thinking…" : "Ask ByteStar"}
-                </button>
-                <button type="button" className="text-xs text-slate-500 underline" onClick={handleOptOut}>
-                  Turn off on this device
-                </button>
-              </div>
             </div>
+          ) : (
+            <p className="mt-2 text-xs text-slate-500">
+              {observing
+                ? "ByteStar is reading the draft…"
+                : deferred.trim().length < 24
+                  ? "Keep typing — objective observations appear here when the draft is long enough to analyze."
+                  : "No pioneer observations for this draft right now. Drift gauges below stay live."}
+            </p>
           )}
         </div>
       </div>
 
       {benchmarks.gauges.words > 0 && (
-        <div className="mt-3">
+        <div className="mt-3 border-t border-amber-200/50 pt-3">
           <div className="flex items-baseline justify-between">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Drift to target
+              Drift to NorthStar
             </h4>
             <span className="text-[0.65rem] tabular-nums text-slate-500">
-              {Math.round(benchmarks.onCourse * 100)}% of gauges on course
+              {Math.round(benchmarks.onCourse * 100)}% on course
             </span>
           </div>
           <BenchmarkRails readings={benchmarks.readings} />

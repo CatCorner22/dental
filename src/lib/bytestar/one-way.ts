@@ -1,0 +1,32 @@
+// ONE-WAY FEEDBACK — ByteStar → staff, never staff → ByteStar.
+//
+// ByteStar gives feedback through objective language (observations) and
+// graphics (NorthStar compass, drift-to-target rails, mood). Staff cannot
+// prompt it, rate it, copy from it, or send any signal back that could train
+// or steer the model. The only POST body staff may send is de-identified
+// draft text for passive observation; Team Lead may clear a perma-kill latch.
+
+export const BYTESTAR_ONE_WAY_NOTICE =
+  "ByteStar gives you objective feedback here — language and graphics only. You cannot prompt ByteStar, copy its text, or send it feedback.";
+
+/** Actions staff must never use to talk TO ByteStar. Enforced in the API route. */
+export const BYTESTAR_FORBIDDEN_USER_ACTIONS = [
+  "feedback",
+  "rate",
+  "thumbs-up",
+  "thumbs-down",
+  "train",
+  "opt-in",
+  "opt-out",
+  "chat",
+  "prompt"
+] as const;
+
+export type ForbiddenUserAction = (typeof BYTESTAR_FORBIDDEN_USER_ACTIONS)[number];
+
+export function isForbiddenUserAction(action: unknown): action is ForbiddenUserAction {
+  return (
+    typeof action === "string" &&
+    (BYTESTAR_FORBIDDEN_USER_ACTIONS as readonly string[]).includes(action)
+  );
+}

@@ -6,14 +6,16 @@
 export type ByteStarLogOutcome =
   | "ok"
   | "unavailable"
+  | "perma-killed"
+  | "perma-kill"
+  | "perma-clear"
   | "phi-blocked"
   | "escape"
-  | "soft-killed"
+  | "escape-input"
+  | "escape-model"
   | "verifier-rejected"
   | "model-error"
-  | "invalid-shape"
-  | "opt-in"
-  | "opt-out";
+  | "invalid-shape";
 
 export interface ByteStarLogEvent {
   outcome: ByteStarLogOutcome;

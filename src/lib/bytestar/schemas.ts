@@ -35,7 +35,7 @@ export const BYTESTAR_SCHEMA = {
   properties: {
     suggestions: {
       type: "array",
-      maxItems: 5,
+      maxItems: 3,
       items: {
         type: "object",
         additionalProperties: false,
@@ -68,7 +68,7 @@ function asTrimmed(v: unknown, max: number): string | null {
 export function validateByteStarResponse(raw: unknown): ByteStarResponse | null {
   if (!raw || typeof raw !== "object") return null;
   const suggestions = (raw as { suggestions?: unknown }).suggestions;
-  if (!Array.isArray(suggestions) || suggestions.length > 5) return null;
+  if (!Array.isArray(suggestions) || suggestions.length > 3) return null;
   const out: ByteStarSuggestion[] = [];
   for (const item of suggestions) {
     if (!item || typeof item !== "object") return null;

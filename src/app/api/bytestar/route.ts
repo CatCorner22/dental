@@ -1,35 +1,35 @@
 import { generateObject, jsonSchema } from "ai";
 import { requireRole } from "@/lib/auth/guards";
+import { meetsRole } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
-import { logAction, listAuditLogByAction } from "@/lib/db/repo/auditLog";
+import { logAction } from "@/lib/db/repo/auditLog";
 import { BYTESTAR_UNAVAILABLE, getByteStarConfig } from "@/lib/bytestar/config";
-import { runByteStar } from "@/lib/bytestar/service";
-import { BYTESTAR_PROMPT_VERSION } from "@/lib/bytestar/prompts";
+import { MODEL_ESCAPE_ORIGIN } from "@/lib/bytestar/escape";
+import { ladderStageForEscape } from "@/lib/bytestar/ladder";
 import { encodeByteStarDetail } from "@/lib/bytestar/log";
+import { BYTESTAR_PROMPT_VERSION } from "@/lib/bytestar/prompts";
+import { toObservationalSuggestion } from "@/lib/bytestar/public";
+import { runByteStar } from "@/lib/bytestar/service";
+import { isByteStarPermaKilled, modelEscapeHistory } from "@/lib/bytestar/state";
+import { isForbiddenUserAction } from "@/lib/bytestar/one-way";
 import { RULESET_VERSION } from "@/lib/version";
 
 export const runtime = "nodejs";
 
 const MAX_INPUT = 20000;
-const FREE_RUNS = 30;
-const ESCAPE_WINDOW_MS = 60 * 60 * 1000;
-
-async function recentEscapeCount(db: Awaited<ReturnType<typeof getDb>>): Promise<number> {
-  const rows = await listAuditLogByAction(db, "bytestar.escape", 50);
-  const since = Date.now() - ESCAPE_WINDOW_MS;
-  return rows.filter((r) => r.at.getTime() >= since).length;
-}
+/** Auto-observe cadence is debounced client-side; cap server runs per user. */
+const FREE_RUNS = 60;
 
 export async function GET(): Promise<Response> {
-  // Status only — Team Lead chrome and the opt-in panel ask "is the pioneer
-  // door even on this deployment?" without spending a model call. Never
-  // reveals whether the silent kill is the reason; callers see enabled=false.
   const config = getByteStarConfig();
+  const db = await getDb();
+  const perma = await isByteStarPermaKilled(db);
   return Response.json({
-    enabled: config.enabled,
-    promptVersion: BYTESTAR_PROMPT_VERSION
+    enabled: config.enabled && !perma,
+    promptVersion: BYTESTAR_PROMPT_VERSION,
+    mode: "observe-only"
   });
 }
 
@@ -38,60 +38,66 @@ export async function POST(req: Request): Promise<Response> {
   if (!guard.ok) return guard.response;
 
   const config = getByteStarConfig();
+  const db = await getDb();
   const parsed = await readJsonRecord(req);
   if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });
   }
 
-  // Opt-in / opt-out acknowledgments — transparent, no note content. Logged
-  // even when the pioneer door is closed so Team Lead can see who tried.
   const action = parsed.value.action;
-  if (action === "opt-in" || action === "opt-out") {
-    const db = await getDb();
+
+  if (isForbiddenUserAction(action)) {
+    return Response.json({ error: BYTESTAR_UNAVAILABLE }, { status: 403 });
+  }
+
+  // Team Lead may clear a ladder perma-kill after review — cage maintenance,
+  // not feedback to the model.
+  if (action === "perma-clear") {
+    if (!meetsRole(guard.user.role, "lead")) {
+      return Response.json({ error: "Team Lead access required." }, { status: 403 });
+    }
     await logAction(db, {
       actorId: guard.user.id,
       actorName: `${guard.user.displayName} (${guard.user.username})`,
-      action: action === "opt-in" ? "bytestar.opt-in" : "bytestar.opt-out",
+      action: "bytestar.perma-clear",
       detail: encodeByteStarDetail({
-        outcome: action === "opt-in" ? "opt-in" : "opt-out",
+        outcome: "perma-clear",
         promptVersion: BYTESTAR_PROMPT_VERSION,
         model: config.model,
         tokens: 0
       })
     });
-    return Response.json({ ok: true, action });
+    return Response.json({ ok: true, action: "perma-clear" });
   }
 
-  // Bland. No mention of BYTESTAR_KILL, soft-kill, or any cage detail.
-  if (!config.enabled) {
+  const permaKilled = await isByteStarPermaKilled(db);
+  if (!config.enabled || permaKilled) {
     return Response.json({ error: BYTESTAR_UNAVAILABLE, code: "unavailable" }, { status: 503 });
   }
 
   const raw = typeof parsed.value.text === "string" ? parsed.value.text : "";
   if (!raw.trim()) {
-    return Response.json({ error: "Paste some text first." }, { status: 400 });
+    return Response.json({ benchmarks: null, observations: [] });
   }
   if (raw.length > MAX_INPUT) {
     return Response.json(
-      { error: `That is longer than ${MAX_INPUT.toLocaleString()} characters. Work in sections.` },
+      { error: `That is longer than ${MAX_INPUT.toLocaleString()} characters.` },
       { status: 413 }
     );
   }
 
-  const db = await getDb();
   const now = new Date();
   const key = `bytestar:${guard.user.id}`;
   const meter = await checkThrottle(db, key, now);
   if (meter.locked) {
     return Response.json(
-      { error: `Too many ByteStar runs just now. Try again in ${meter.retryAfterSec} seconds.` },
+      { error: BYTESTAR_UNAVAILABLE, benchmarks: null, observations: [] },
       { status: 429, headers: { "retry-after": String(meter.retryAfterSec) } }
     );
   }
   await recordFailure(db, key, now, FREE_RUNS);
 
   let usedTokens = 0;
-  const escapes = await recentEscapeCount(db);
   const actor = {
     actorId: guard.user.id,
     actorName: `${guard.user.displayName} (${guard.user.username})`
@@ -110,14 +116,13 @@ export async function POST(req: Request): Promise<Response> {
       usedTokens += (res.usage?.inputTokens ?? 0) + (res.usage?.outputTokens ?? 0);
       return res.object;
     },
-    { config, recentEscapeCount: escapes }
+    { config, permaKilled }
   );
 
   const onCoursePct = outcome.benchmarks
     ? Math.round(outcome.benchmarks.onCourse * 100)
     : undefined;
 
-  // Transparent log — every call, every outcome. Codes/versions/tokens only.
   await logAction(db, {
     ...actor,
     action: "bytestar.drift",
@@ -133,18 +138,34 @@ export async function POST(req: Request): Promise<Response> {
     })
   });
 
-  if (!outcome.ok && outcome.code === "escape") {
+  if (!outcome.ok && outcome.code === "escape-model") {
+    const prior = await modelEscapeHistory(db);
+    const stage = ladderStageForEscape(prior, now.getTime());
     await logAction(db, {
       ...actor,
       action: "bytestar.escape",
-      detail: encodeByteStarDetail({
+      detail: `${encodeByteStarDetail({
         outcome: "escape",
         promptVersion: BYTESTAR_PROMPT_VERSION,
         model: config.model,
         tokens: usedTokens,
         codes: outcome.codes
-      })
+      })} ${MODEL_ESCAPE_ORIGIN} stage=${stage}`
     });
+    if (stage === "perma-kill") {
+      await logAction(db, {
+        actorId: null,
+        actorName: "ByteStar ladder",
+        action: "bytestar.perma-kill",
+        detail: encodeByteStarDetail({
+          outcome: "perma-kill",
+          promptVersion: BYTESTAR_PROMPT_VERSION,
+          model: config.model,
+          tokens: 0,
+          codes: outcome.codes
+        })
+      });
+    }
   }
 
   if (!outcome.ok && (outcome.code === "phi-blocked" || outcome.code === "verifier-rejected")) {
@@ -155,29 +176,20 @@ export async function POST(req: Request): Promise<Response> {
     });
   }
 
+  const benchmarks = outcome.benchmarks ?? null;
+
   if (!outcome.ok) {
-    const status =
-      outcome.code === "unavailable" || outcome.code === "soft-killed"
-        ? 503
-        : outcome.code === "model-error"
-          ? 502
-          : 422;
-    return Response.json(
-      {
-        error: outcome.message,
-        code: outcome.code,
-        // Benchmarks still travel on refusal so the drift graphics stay live
-        // even when the pioneer is dark — they are local, not model output.
-        benchmarks: outcome.benchmarks ?? null
-      },
-      { status }
-    );
+    return Response.json({
+      observations: [],
+      benchmarks,
+      unavailable: true
+    });
   }
 
   return Response.json({
-    suggestions: outcome.suggestions,
-    refused: outcome.refused,
-    benchmarks: outcome.benchmarks,
-    promptVersion: outcome.promptVersion
+    observations: outcome.suggestions.map(toObservationalSuggestion),
+    benchmarks,
+    promptVersion: outcome.promptVersion,
+    unavailable: false
   });
 }

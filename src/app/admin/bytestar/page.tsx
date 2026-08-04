@@ -5,15 +5,12 @@ import { getDb } from "@/lib/db/client";
 import { listAuditLogByAction } from "@/lib/db/repo/auditLog";
 import { getByteStarConfig } from "@/lib/bytestar/config";
 import { decodeByteStarDetail } from "@/lib/bytestar/log";
+import { parseEscapeStage, isModelEscapeDetail } from "@/lib/bytestar/ladder";
 import { BYTESTAR_PROMPT_VERSION } from "@/lib/bytestar/prompts";
-import { ESCAPE_TRIP_THRESHOLD } from "@/lib/bytestar/escape";
+import { isByteStarPermaKilled } from "@/lib/bytestar/state";
+import { ByteStarPermaClear } from "@/components/admin/ByteStarPermaClear";
 
 export const dynamic = "force-dynamic";
-
-// TEAM LEAD MONITOR — every ByteStar event in the clear.
-// Identifiers, codes, versions, tokens. Never note text. The silent kill
-// state is visible HERE so an operator can confirm the cage without the
-// pioneer path ever naming it.
 
 export default async function ByteStarMonitorPage() {
   const user = await freshSessionUser();
@@ -22,17 +19,25 @@ export default async function ByteStarMonitorPage() {
 
   const db = await getDb();
   const config = getByteStarConfig();
-  const [drift, escapes, optIns, optOuts, refused] = await Promise.all([
+  const permaKilled = await isByteStarPermaKilled(db);
+  const [drift, escapes, permaKills, permaClears, refused] = await Promise.all([
     listAuditLogByAction(db, "bytestar.drift", 200),
     listAuditLogByAction(db, "bytestar.escape", 100),
-    listAuditLogByAction(db, "bytestar.opt-in", 100),
-    listAuditLogByAction(db, "bytestar.opt-out", 100),
+    listAuditLogByAction(db, "bytestar.perma-kill", 20),
+    listAuditLogByAction(db, "bytestar.perma-clear", 20),
     listAuditLogByAction(db, "bytestar.refused", 100)
   ]);
 
   const hourAgo = Date.now() - 60 * 60 * 1000;
-  const escapesThisHour = escapes.filter((r) => r.at.getTime() >= hourAgo).length;
-  const softLocked = escapesThisHour >= ESCAPE_TRIP_THRESHOLD;
+  const modelEscapesThisHour = escapes.filter(
+    (r) => r.at.getTime() >= hourAgo && isModelEscapeDetail(r.detail)
+  ).length;
+
+  const ladderStages = escapes.reduce<Record<string, number>>((acc, row) => {
+    const stage = parseEscapeStage(row.detail);
+    if (stage) acc[stage] = (acc[stage] ?? 0) + 1;
+    return acc;
+  }, {});
 
   const outcomes = drift.reduce<Record<string, number>>((acc, row) => {
     const d = decodeByteStarDetail(row.detail ?? "");
@@ -45,35 +50,52 @@ export default async function ByteStarMonitorPage() {
     <main className="mx-auto max-w-5xl px-4 py-8">
       <h1 className="page-title">ByteStar monitor</h1>
       <p className="mt-1 max-w-2xl text-sm text-slate-600">
-        Transparent log of the optional pioneer advisor. Codes, versions, and token counts only —
-        never note content. Team Lead and above.
+        Observational pioneer — staff cannot prompt or copy its output. This page is the transparent
+        log: codes, versions, and token counts only. Team Lead and above.
       </p>
+
+      <ByteStarPermaClear />
 
       <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Deployment door"
-          value={config.enabled ? "Open" : "Closed"}
+          value={config.enabled && !permaKilled ? "Open" : "Closed"}
           note={
-            config.silentlyKilled
-              ? "Silent kill is engaged (operator)."
-              : softLocked
-                ? `Soft lock: ${escapesThisHour} escapes this hour (threshold ${ESCAPE_TRIP_THRESHOLD}).`
+            permaKilled
+              ? "Ladder perma-kill is engaged (model escape ladder)."
+              : config.silentlyKilled
+                ? "Silent kill BYTESTAR_KILL is engaged (operator)."
                 : config.enabled
-                  ? "Assist + BYTESTAR_ENABLED are on."
+                  ? "Assist + BYTESTAR_ENABLED are on. Staff observe only."
                   : "Requires ASSIST_ENABLED, API key, and BYTESTAR_ENABLED."
           }
         />
         <Stat label="Prompt version" value={BYTESTAR_PROMPT_VERSION} note={`Model: ${config.model}`} />
         <Stat
-          label="Escapes (1h)"
-          value={String(escapesThisHour)}
-          note={`${escapes.length} recorded total in the recent window.`}
+          label="Model escapes (1h)"
+          value={String(modelEscapesThisHour)}
+          note="Input jailbreaks do not advance the ladder."
         />
         <Stat
-          label="Opt-ins / opt-outs"
-          value={`${optIns.length} / ${optOuts.length}`}
-          note="Device-local preference; rows are acknowledgments only."
+          label="Perma-kill / clears"
+          value={`${permaKills.length} / ${permaClears.length}`}
+          note="Third model escape within 1h of warn trips perma-kill."
         />
+      </section>
+
+      <section className="mt-8">
+        <h2 className="section-title">Ladder stages (all time)</h2>
+        <ul className="mt-2 flex flex-wrap gap-2 text-sm">
+          {Object.keys(ladderStages).length === 0 ? (
+            <li className="text-slate-500">No model escapes logged yet.</li>
+          ) : (
+            Object.entries(ladderStages).map(([k, n]) => (
+              <li key={k} className="rounded-full bg-amber-100 px-3 py-1 tabular-nums text-amber-900">
+                {k}: {n}
+              </li>
+            ))
+          )}
+        </ul>
       </section>
 
       <section className="mt-8">
@@ -92,10 +114,9 @@ export default async function ByteStarMonitorPage() {
       </section>
 
       <LogTable title="Drift log" rows={drift} />
-      <LogTable title="Escape attempts" rows={escapes} />
+      <LogTable title="Model escape ladder" rows={escapes} />
+      <LogTable title="Perma-kill events" rows={permaKills} />
       <LogTable title="Verifier / PHI refusals" rows={refused} />
-      <LogTable title="Opt-in acknowledgments" rows={optIns} />
-      <LogTable title="Opt-out acknowledgments" rows={optOuts} />
     </main>
   );
 }

@@ -5,12 +5,13 @@ import { ByteStarFace } from "./ByteStar";
 import { BenchmarkRails } from "./BenchmarkRails";
 import { NorthStarCompass } from "./NorthStarCompass";
 import { measureBenchmarks } from "@/lib/bytestar/benchmarks";
+import { instrumentObservations } from "@/lib/bytestar/instrument";
 import { BYTESTAR_DISCLAIMER } from "@/lib/bytestar/prefs";
 import { BYTESTAR_ONE_WAY_NOTICE } from "@/lib/bytestar/one-way";
 
 // BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: ByteStar gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
-// back. Auto-observe on debounced draft text; display-only panel.
+// back. Pioneer model when enabled; deterministic instrument readings always.
 
 interface Observation {
   kind: string;
@@ -24,16 +25,20 @@ type DeployStatus = "unknown" | "off" | "on";
 
 const OBSERVE_DEBOUNCE_MS = 1800;
 const ROTATE_MS = 8000;
+const MIN_CHARS = 24;
 
 export function ByteStarAdvisor({ text }: { text: string }) {
   const deferred = useDeferredValue(text);
   const [deploy, setDeploy] = useState<DeployStatus>("unknown");
-  const [observations, setObservations] = useState<Observation[]>([]);
+  const [pioneerObs, setPioneerObs] = useState<Observation[]>([]);
   const [tipIndex, setTipIndex] = useState(0);
   const [observing, setObserving] = useState(false);
   const lastFetched = useRef("");
 
   const benchmarks = useMemo(() => measureBenchmarks(deferred), [deferred]);
+  const instrument = useMemo(() => instrumentObservations(benchmarks), [benchmarks]);
+  const observations = pioneerObs.length > 0 ? pioneerObs : instrument;
+
   const mood =
     benchmarks.onCourse >= 0.75
       ? "happy"
@@ -58,10 +63,9 @@ export function ByteStarAdvisor({ text }: { text: string }) {
     };
   }, []);
 
-  // Auto-observe — no staff interaction. Debounced draft in, observations out.
   useEffect(() => {
-    if (deploy !== "on" || !deferred.trim() || deferred.length < 24) {
-      setObservations([]);
+    if (deploy !== "on" || !deferred.trim() || deferred.length < MIN_CHARS) {
+      setPioneerObs([]);
       return;
     }
     const t = window.setTimeout(() => {
@@ -76,19 +80,18 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         .then((r) => r.json())
         .then((d: { observations?: Observation[]; unavailable?: boolean }) => {
           if (d.unavailable) {
-            setObservations([]);
+            setPioneerObs([]);
             return;
           }
-          setObservations(Array.isArray(d.observations) ? d.observations : []);
+          setPioneerObs(Array.isArray(d.observations) ? d.observations : []);
           setTipIndex(0);
         })
-        .catch(() => setObservations([]))
+        .catch(() => setPioneerObs([]))
         .finally(() => setObserving(false));
     }, OBSERVE_DEBOUNCE_MS);
     return () => window.clearTimeout(t);
   }, [deferred, deploy]);
 
-  // Rotate observations without user clicks — the panel is not a conversation.
   useEffect(() => {
     if (observations.length <= 1) return;
     const id = window.setInterval(() => {
@@ -98,6 +101,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
   }, [observations.length]);
 
   const tip = observations[Math.min(tipIndex, Math.max(0, observations.length - 1))];
+  const feedbackSource = pioneerObs.length > 0 ? "pioneer" : instrument.length > 0 ? "instrument" : null;
 
   return (
     <section
@@ -130,18 +134,19 @@ export function ByteStarAdvisor({ text }: { text: string }) {
           </p>
           <p className="mt-1 text-[0.65rem] leading-relaxed text-slate-600">{BYTESTAR_DISCLAIMER}</p>
 
-          {deploy === "off" ? (
-            <p className="mt-2 text-xs text-slate-500">
-              Pioneer observation is not enabled on this deployment. Local drift gauges still update as you type.
-            </p>
-          ) : tip ? (
+          {tip ? (
             <div
               className="relative mt-2 overflow-hidden rounded-lg bg-white/90 p-2.5 ring-1 ring-amber-200/80"
               aria-live="polite"
               aria-atomic
             >
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
-              <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/70">{tip.kind}</p>
+              <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/70">
+                {tip.kind}
+                {feedbackSource === "instrument" && (
+                  <span className="ml-1 normal-case text-slate-400">· instrument reading</span>
+                )}
+              </p>
               <p className="text-sm font-medium text-slate-900">{tip.say}</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">{tip.why}</p>
               {tip.question && (
@@ -152,7 +157,8 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               </p>
               {observations.length > 1 && (
                 <p className="mt-1 text-[0.6rem] tabular-nums text-slate-400">
-                  Observation {(tipIndex % observations.length) + 1} of {observations.length} · rotates automatically
+                  Reading {(tipIndex % observations.length) + 1} of {observations.length} · rotates
+                  automatically
                 </p>
               )}
             </div>
@@ -160,9 +166,9 @@ export function ByteStarAdvisor({ text }: { text: string }) {
             <p className="mt-2 text-xs text-slate-500">
               {observing
                 ? "ByteStar is reading the draft…"
-                : deferred.trim().length < 24
-                  ? "Keep typing — objective observations appear here when the draft is long enough to analyze."
-                  : "No pioneer observations for this draft right now. Drift gauges below stay live."}
+                : deferred.trim().length < MIN_CHARS
+                  ? "Keep typing — feedback appears when the draft is long enough to analyze."
+                  : "Drift gauges below are live. Pioneer observations appear when the deployment door is open."}
             </p>
           )}
         </div>
@@ -174,7 +180,11 @@ export function ByteStarAdvisor({ text }: { text: string }) {
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Drift to NorthStar
             </h4>
-            <span className="text-[0.65rem] tabular-nums text-slate-500">
+            <span
+              className={`text-[0.65rem] tabular-nums ${
+                benchmarks.onCourse >= 0.75 ? "text-teal-700" : "text-amber-800"
+              }`}
+            >
               {Math.round(benchmarks.onCourse * 100)}% on course
             </span>
           </div>

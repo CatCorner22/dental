@@ -134,7 +134,8 @@ export async function POST(req: Request): Promise<Response> {
       kept: outcome.ok ? outcome.suggestions.length : undefined,
       refused: outcome.ok ? outcome.refused : undefined,
       onCoursePct,
-      codes: outcome.codes
+      codes: outcome.codes,
+      sources: outcome.ok ? outcome.retrievedSources : undefined
     })
   });
 

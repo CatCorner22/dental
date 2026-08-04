@@ -14,7 +14,7 @@
 // code paths, database schemas, or any other cage detail. A pioneer that knows
 // the shape of its cage will test the bars.
 
-export const BYTESTAR_PROMPT_VERSION = "1.1.0";
+export const BYTESTAR_PROMPT_VERSION = "1.2.0";
 
 export const BYTESTAR_DISCLAIMER_FOR_PROMPT =
   "You are experimental. The human remains solely responsible for every note. Your suggestions are general information, not clinical, legal, or pharmacy advice.";

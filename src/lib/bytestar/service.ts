@@ -1,6 +1,7 @@
 import { runPhiRule } from "@/lib/audit/rules/phi";
 import { verifyMeaning } from "@/lib/verify/verifyMeaning";
 import type { GenerateListFn } from "@/lib/assist/service";
+import { retrieveContext } from "@/lib/assist/retrieval";
 import { BYTESTAR_UNAVAILABLE, getByteStarConfig, type ByteStarConfig } from "./config";
 import { detectEscape, type EscapeHit } from "./escape";
 import { measureBenchmarks, type BenchmarkReport } from "./benchmarks";
@@ -27,6 +28,7 @@ export type ByteStarOutcome =
       benchmarks: BenchmarkReport;
       promptVersion: string;
       codes: string[];
+      retrievedSources: string[];
     }
   | {
       ok: false;
@@ -120,9 +122,14 @@ export async function runByteStar(
   }
 
   let raw: unknown;
+  const retrieved = retrieveContext(input);
+  const system = retrieved.text
+    ? `${BYTESTAR_SYSTEM_PROMPT}\n\n--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}`
+    : BYTESTAR_SYSTEM_PROMPT;
+
   try {
     raw = await generateList({
-      system: BYTESTAR_SYSTEM_PROMPT,
+      system,
       prompt: `De-identified draft note:\n\n${input}\n\nReturn up to three objective observations that move this draft toward active voice, Curve Hero–ready standardized language, and Tennessee-required documentation completeness. Use questions for any missing fact. Do not address the writer directly; state what the record shows and what remains open.`,
       schemaName: "bytestar",
       schema: BYTESTAR_SCHEMA as unknown as Record<string, unknown>
@@ -199,6 +206,7 @@ export async function runByteStar(
     refused: parsed.suggestions.length - kept.length,
     benchmarks,
     promptVersion: BYTESTAR_PROMPT_VERSION,
-    codes
+    codes,
+    retrievedSources: retrieved.sources
   };
 }

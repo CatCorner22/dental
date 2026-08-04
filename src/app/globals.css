@@ -571,3 +571,46 @@
     animation: none;
   }
 }
+
+/* ByteStar panel: feedback is read-only — reinforce no-copy at the CSS layer. */
+.bytestar-panel,
+.bytestar-panel * {
+  -webkit-user-select: none;
+  user-select: none;
+}
+
+@keyframes bytestar-scan {
+  0% {
+    opacity: 0.03;
+  }
+  50% {
+    opacity: 0.08;
+  }
+  100% {
+    opacity: 0.03;
+  }
+}
+.bytestar-panel {
+  position: relative;
+  overflow: hidden;
+}
+.bytestar-panel::after {
+  content: "";
+  pointer-events: none;
+  position: absolute;
+  inset: 0;
+  background: repeating-linear-gradient(
+    0deg,
+    transparent,
+    transparent 2px,
+    rgba(201, 162, 39, 0.04) 2px,
+    rgba(201, 162, 39, 0.04) 4px
+  );
+  animation: bytestar-scan 6s ease-in-out infinite;
+}
+@media (prefers-reduced-motion: reduce) {
+  .bytestar-panel::after {
+    animation: none;
+    opacity: 0.04;
+  }
+}

@@ -2,7 +2,7 @@
 
 **Status:** Gate 0 shipped (prompting + RAG-over-tables + verifier rails). No learned parameters in-repo.
 **Skill protocol:** bespoke-llm-architect-skills v2026.08
-**Last reviewed:** 2026-08-04 against `BYTESTAR_PROMPT_VERSION` 1.0.0 / `RULESET_VERSION` 2.14.0
+**Last reviewed:** 2026-08-04 against `BYTESTAR_PROMPT_VERSION` 1.2.0 / `RULESET_VERSION` 2.14.0
 
 This is the mandatory Self-Audit Report for the optional pioneer path. It does not
 authorize PEFT, SFT, or training on filed notes. Those remain ruled out by
@@ -14,13 +14,9 @@ authorize PEFT, SFT, or training on filed notes. Those remain ruled out by
 
 | Variable | Value |
 |---|---|
-| Primary users | Dental staff below Team Lead (opt-in); Team Lead monitors |
-| Primary tasks | Active-voice coaching; Curve Hero–ready standardized language; TN-required gap questions; drift-to-benchmark graphics |
-| Prohibited | Writing the note; accessing engine/code; receiving PII; inventing clinical facts; computing patient-specific doses; citing non-TN law as controlling |
-| Control level | Level 0 (prompt templates + schemas + routing) over the existing AI Gateway |
-| Knowledge boundary | USA reputable clinical/pharmacy sources; Tennessee statutes & Board of Dentistry Rules for law |
-| Human control | Device opt-in + exact experimental disclaimer; suggestions never auto-apply |
-| Kill path | Silent `BYTESTAR_KILL=1` + soft lock after escape threshold; model never told either exists |
+| Primary users | Dental staff (observe only); Team Lead monitors and clears perma-kill |
+| Human control | One-way feedback only — staff never prompt, rate, or copy; deployment gate + disclaimer |
+| Kill path | Silent `BYTESTAR_KILL=1` + model escape ladder (warn → reset → perma-kill within 1h) |
 
 ---
 

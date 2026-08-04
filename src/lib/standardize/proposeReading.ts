@@ -92,6 +92,96 @@ const FAMILIES: Array<{ displays: RegExp; alts: AltCues[] }> = [
       { alt: /posterior superior alveolar/i, cues: [/\b(?:block|anesthet|maxillary|molar)\b/i] },
       { alt: /prostate-specific/i, cues: [/\b(?:lab|ng\/mL|prostate|PSA level)\b/i] }
     ]
+  },
+  {
+    displays: /^PD$/i,
+    alts: [
+      {
+        alt: /probing depth|pocket depth/i,
+        cues: [/\b(?:mm|probing|BOP|bleeding on probing|periodont|pockets?)\b/i]
+      },
+      {
+        alt: /partial denture/i,
+        cues: [/\b(?:denture|framework|clasp|try-?in|retention|acrylic)\b/i]
+      },
+      {
+        alt: /periodontal disease/i,
+        cues: [/\b(?:periodontal disease|periodontitis|stage|grade)\b/i]
+      }
+    ]
+  },
+  {
+    displays: /^PPD$/i,
+    alts: [
+      { alt: /probing pocket depth/i, cues: [/\b(?:mm|probing|periodont|pocket)\b/i] },
+      {
+        alt: /purified protein derivative|tuberculin/i,
+        cues: [/\b(?:TB|tuberculin|PPD skin|latent|quantiferon)\b/i]
+      }
+    ]
+  },
+  {
+    displays: /^MI$/i,
+    alts: [
+      {
+        alt: /maximum intercuspation/i,
+        cues: [/\b(?:occlusion|bite|excursions?|intercusp|articulat|MIP)\b/i]
+      },
+      {
+        alt: /myocardial infarction/i,
+        cues: [/\b(?:cardiac|cardiology|heart attack|chest pain|history of MI|hx of MI)\b/i]
+      }
+    ]
+  },
+  {
+    displays: /^CAD$/i,
+    alts: [
+      {
+        alt: /coronary artery disease/i,
+        cues: [/\b(?:cardiac|heart|medical history|cardiology|stent)\b/i]
+      },
+      {
+        alt: /computer-aided design|CAD\/CAM/i,
+        cues: [/\b(?:CAD\/CAM|milled|ceramic|crown design|lab scan)\b/i]
+      }
+    ]
+  },
+  {
+    displays: /^RA$/i,
+    alts: [
+      {
+        alt: /rheumatoid arthritis/i,
+        cues: [/\b(?:arthritis|joints?|autoimmune|methotrexate|medical history)\b/i]
+      },
+      {
+        alt: /relative analgesia/i,
+        cues: [/\b(?:nitrous|N2O|oxygen|sedation)\b|\d+\s*%/i]
+      }
+    ]
+  },
+  {
+    displays: /^cap$/i,
+    alts: [
+      { alt: /capsule/i, cues: [/\b(?:mg|dose|take|rx|capsule|po)\b/i] },
+      { alt: /crown/i, cues: [/\b(?:tooth|#\d|prep|temp|cement|crown)\b/i] }
+    ]
+  },
+  {
+    displays: /^ASA$/i,
+    alts: [
+      {
+        alt: /anterior superior alveolar/i,
+        cues: [/\b(?:block|anesthet|infiltrat|nerve)\b/i]
+      },
+      {
+        alt: /American Society of Anesthesiologists|physical status/i,
+        cues: [/\b(?:ASA\s*[IV]+|physical status|sedation consult|medical risk)\b/i]
+      },
+      {
+        alt: /acetylsalicylic|aspirin/i,
+        cues: [/\b(?:aspirin|81\s*mg|blood thinner|antiplatelet)\b/i]
+      }
+    ]
   }
 ];
 

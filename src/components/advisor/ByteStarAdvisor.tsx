@@ -9,6 +9,7 @@ import { instrumentObservations, type InstrumentObservation } from "@/lib/bytest
 import { BYTESTAR_DISCLAIMER } from "@/lib/bytestar/prefs";
 import { BYTESTAR_ONE_WAY_NOTICE } from "@/lib/bytestar/one-way";
 import { TrendSpark, type TrendSample } from "./TrendSpark";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 // BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: ByteStar gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
@@ -140,7 +141,14 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <h3 className="text-sm font-bold text-brand-navy">ByteStar</h3>
+              <div className="flex items-center gap-1.5">
+                <h3 className="text-sm font-bold text-brand-navy">ByteStar</h3>
+                <HelpTip label="What ByteStar does">
+                  One-way observations only. You cannot prompt it, rate it, or copy its text into
+                  the note. When the pioneer model is off, the gauges still run locally from the
+                  same rules Byte uses.
+                </HelpTip>
+              </div>
               <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/60">
                 gives you feedback · you do not give it feedback
               </p>
@@ -201,8 +209,13 @@ export function ByteStarAdvisor({ text }: { text: string }) {
       {benchmarks.gauges.words > 0 && (
         <div className="mt-3 border-t border-amber-200/50 pt-3">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h4 className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
               Drift to NorthStar
+              <HelpTip label="About drift gauges" side="top">
+                Each rail shows how this draft sits against practice targets (read coverage, active
+                voice, defensibility pillars, TN cues). Toward / on-target / away is computed
+                locally — not a model score.
+              </HelpTip>
             </h4>
             <div className="flex items-center gap-2">
               <TrendSpark samples={trend} />

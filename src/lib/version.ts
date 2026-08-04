@@ -53,4 +53,19 @@
 //         EXPANDED, because expanding a dangerous abbreviation launders it.
 //         Ambiguous additions (MI, CAD, RA, cap, ac/pc) ask rather than guess.
 //         See knowledge/sources/dental-abbreviation-preload.md.
-export const RULESET_VERSION = "2.8.0";
+// 2.9.0 — text-to-STRUCTURE. A read-only extraction layer (src/lib/extract)
+//         parses clauses into clinical facts — tooth sites with surfaces,
+//         procedures with a coarse category — and a ConText assertion layer
+//         decides whether the note affirmed or denied each one. New controlled
+//         vocabulary: vocab/procedures.ts.
+//
+//         Stamped because the facts a note yields are now part of what the
+//         ruleset means: a chart drawn from this, or a consistency finding
+//         raised by it, has to be reproducible against the version that ran.
+//
+//         Extraction NEVER edits a note. It returns spans into the input and
+//         values from controlled tables, so the meaning-preservation contract
+//         in standardize.ts is untouched by construction. Negation is assigned
+//         (the algorithm measures 97/97); temporality is only ever hinted (67%
+//         recall on "historical" is below this product's bar for deciding).
+export const RULESET_VERSION = "2.9.0";

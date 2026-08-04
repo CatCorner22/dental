@@ -79,7 +79,7 @@ export const sedationAnesthesia: ModuleDef = {
         {
           id: "asa-exam",
           type: "text",
-          label: "ASA class and focused physical examination",
+          label: "American Society of Anesthesiologists (ASA) physical status class and focused physical examination",
           required: true,
           placeholderHint: "<clinician-supplied facts>"
         },
@@ -125,7 +125,7 @@ export const sedationAnesthesia: ModuleDef = {
             "blood pressure",
             "heart rate",
             "respiratory rate",
-            "capnography (ETCO2)",
+            "end-tidal carbon dioxide capnography (ETCO2)",
             "ECG",
             "direct observation of consciousness"
           ),

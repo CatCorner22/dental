@@ -13,6 +13,7 @@ import { isFieldVisible } from "@/lib/schema/conditions";
 import { runPhiRule } from "./rules/phi";
 import { runResidueRule } from "./rules/residue";
 import { runAbbreviationRule, runStigmatizingRule, runVaguePhraseRule } from "./rules/terminology";
+import { runShorthandGate } from "./rules/shorthand-gate";
 import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
 import { newSpellingBudget, runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
@@ -31,6 +32,11 @@ export function runTextAudit(text: string): AuditFinding[] {
     ...runPhiRule(text),
     ...runResidueRule(text),
     ...runAbbreviationRule(text),
+    // The tiered filing gate. Separate from runAbbreviationRule because the two
+    // answer different questions: that one advises on wording, this one decides
+    // what may not be FILED. Keeping them apart is what lets "X-ray" stay a
+    // style note while "10U" stops the note leaving the tool.
+    ...runShorthandGate(text),
     ...runVaguePhraseRule(text),
     ...runStigmatizingRule(text),
     ...runAnatomyTextRule(text),

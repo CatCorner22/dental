@@ -1,0 +1,121 @@
+import { redirect } from "next/navigation";
+import { meetsRole } from "@/lib/auth/roles";
+import { freshSessionUser } from "@/lib/auth/freshUser";
+import { getDb } from "@/lib/db/client";
+import { listSubmissionsForDigest } from "@/lib/db/repo/submissions";
+import { buildDigest } from "@/lib/digest/digest";
+import { deriveNoteType, type FiledNote } from "@/lib/digest/metrics";
+
+export const runtime = "nodejs";
+export const metadata = { title: "Documentation digest" };
+
+// THE TEAM LEAD DIGEST, as a page.
+//
+// Gated to Team Lead and above, because it names individuals. Everything on it
+// is derived from notes the practice already stores; nothing new is logged to
+// produce it.
+//
+// WHAT THIS PAGE DELIBERATELY IS NOT: a scoreboard. There is no ranking, no
+// leaderboard, no per-person score, and no history of who was mentioned last
+// month. The digest reports patterns over a period and then stops, because a
+// running tally is how a quality tool becomes a performance-management tool,
+// and staff who believe they are being scored write the shortest note that
+// clears the gates — which is the exact outcome this product exists to prevent.
+
+const PERIOD_DAYS = 30;
+
+export default async function DigestPage() {
+  const user = await freshSessionUser();
+  if (!user) redirect("/login");
+  if (!meetsRole(user.role, "lead")) redirect("/");
+
+  const since = new Date(Date.now() - PERIOD_DAYS * 24 * 60 * 60 * 1000);
+  const db = await getDb();
+  const rows = await listSubmissionsForDigest(db, since);
+
+  const notes: FiledNote[] = rows.map((row) => ({
+    submissionId: row.id,
+    authorId: row.submittedById,
+    authorName: row.submittedByName,
+    filedAtIso: row.submittedAtEt,
+    markdown: row.noteMarkdown,
+    auditReportJson: row.auditReport,
+    noteType: deriveNoteType(row.noteMarkdown)
+  }));
+
+  const digest = buildDigest(notes, since.toISOString().slice(0, 10), new Date().toISOString().slice(0, 10));
+  const practice = digest.signals.filter((s) => s.scope === "practice");
+  const people = digest.signals.filter((s) => s.scope === "person");
+
+  return (
+    <div>
+      <h1 className="page-title">Documentation digest</h1>
+      <p className="mt-1 max-w-3xl text-sm text-slate-600">
+        The last {PERIOD_DAYS} days: {digest.notesReviewed}{" "}
+        {digest.notesReviewed === 1 ? "note" : "notes"} from {digest.authorsReviewed}{" "}
+        {digest.authorsReviewed === 1 ? "person" : "people"}. Built from notes already on file — nothing
+        extra is recorded to produce this.
+      </p>
+      <p className="mt-2 max-w-3xl text-xs text-slate-600">
+        Patterns over a period, never a verdict on one note, and never a score. Anything most of the
+        practice would be flagged for is reported as a finding about the tool or the template instead,
+        because a standard nobody meets is a badly set standard.
+      </p>
+
+      {digest.notesReviewed === 0 ? (
+        <p className="mt-6 rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+          No notes filed in the last {PERIOD_DAYS} days, so there is nothing to review.
+        </p>
+      ) : digest.allClear ? (
+        <div className="card-note mt-6">
+          <p className="font-semibold text-brand-navy">Nothing to raise this period.</p>
+          <p className="mt-1 text-sm text-slate-700">
+            No pattern crossed a reporting threshold across {digest.notesReviewed} notes. That is a
+            result, not an absence of one.
+          </p>
+        </div>
+      ) : (
+        <div className="mt-6 space-y-6">
+          {practice.length > 0 && (
+            <section>
+              <h2 className="section-title">The tool and the templates</h2>
+              <p className="mb-2 text-xs text-slate-600">
+                Findings that belong to Smile Notes or to a shared template rather than to any one
+                person. These are listed first on purpose.
+              </p>
+              <ul className="space-y-3">
+                {practice.map((s) => (
+                  <li key={s.id} className="card-inset">
+                    <p className="font-semibold text-slate-900">{s.headline}</p>
+                    <p className="mt-1 text-sm text-slate-700">{s.detail}</p>
+                    <p className="mt-1 text-xs text-slate-500">Based on {s.sample} notes.</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+
+          {people.length > 0 && (
+            <section>
+              <h2 className="section-title">Worth one conversation</h2>
+              <p className="mb-2 max-w-3xl text-xs text-slate-600">
+                Each of these compares someone against the practice median for the same kind of note,
+                over at least ten of their own notes. They are starting points for a conversation, not
+                conclusions — the person writing the notes knows things this tool does not.
+              </p>
+              <ul className="space-y-3">
+                {people.map((s) => (
+                  <li key={s.id} className="card-inset">
+                    <p className="font-semibold text-slate-900">{s.headline}</p>
+                    <p className="mt-1 text-sm text-slate-700">{s.detail}</p>
+                    <p className="mt-1 text-xs text-slate-500">Based on {s.sample} of their notes.</p>
+                  </li>
+                ))}
+              </ul>
+            </section>
+          )}
+        </div>
+      )}
+    </div>
+  );
+}

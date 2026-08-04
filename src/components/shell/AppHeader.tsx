@@ -37,6 +37,11 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                     ? [{ href: "/standardize", label: "Standardize" }]
                     : []),
                   { href: "/history", label: "History" },
+                  // Team Lead and above. Named "Digest" rather than "Quality"
+                  // or "Review": those words describe judging people, and this
+                  // page reports patterns and explicitly re-scopes anything
+                  // most of the practice would be flagged for onto the tool.
+                  ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }] : []),
                   ...(meetsRole(user.role, "user") ? [{ href: "/store", label: "Store" }] : []),
                   { href: "/wishes", label: "Wish list" },
                   ...(canManageUsers(user.role)

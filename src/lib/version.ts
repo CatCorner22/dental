@@ -88,4 +88,22 @@
 //         an allergy is the most dangerous inference available to this parser,
 //         so the term's own meaning overrides surrounding cues rather than
 //         combining with them.
-export const RULESET_VERSION = "2.10.0";
+// 2.11.0 — the tiered shorthand filing gate (audit/rules/shorthand-gate.ts).
+//         Ambiguous shorthand, shorthand no table can read, and Joint
+//         Commission / ISMP do-not-use constructs now raise S1 and stop FILING.
+//         Shorthand the tables can already expand is untouched and still costs
+//         the writer nothing, because a gate that stops "BW" and "10U" with the
+//         same force teaches people to clear both with the same reflex.
+//
+//         Four false positives found by the existing suite while building it,
+//         each of which would have been enough on its own to get the gate
+//         switched off: units of measurement ("5 mm" blocked a note for
+//         containing a millimetre), Roman numerals ("ASA II"), the tool's own
+//         PHI masks (blocking a note BECAUSE it had been redacted), and
+//         alphanumeric terms truncated at the first digit ("ETCO2" reported as
+//         "ETCO"). All four are now pinned regression tests.
+//
+//         New controlled vocabulary: ETCO2, SpO2, ECG/EKG, NIBP. The sedation
+//         module's own labels were rewritten to define ASA and ETCO2 on first
+//         use, because the app failing its own gate is a real finding.
+export const RULESET_VERSION = "2.11.0";

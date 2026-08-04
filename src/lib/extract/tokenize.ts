@@ -1,6 +1,6 @@
 // TOKENIZER — a note becomes a flat list of spans with types.
 //
-// Deliberately dumb. It knows about letters, digits and punctuation, and it
+// Deliberately simple. It knows about letters, digits and punctuation, and it
 // knows nothing about teeth, drugs or procedures. Every clinical judgement
 // lives in the parser and the controlled tables, so that this file can never
 // be the thing that decides "14" is a tooth.

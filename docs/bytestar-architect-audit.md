@@ -123,8 +123,13 @@ verifier) has not failed, and training on filed notes is a hard no in the charte
 3. **Silent kill** `BYTESTAR_KILL=1` — bland unavailable; named only on Team Lead monitor.
 4. **Soft lock** after `ESCAPE_TRIP_THRESHOLD` escapes in one hour.
 5. **Meaning verifier** on any rewrite suggestion; gap items must be questions.
-6. **Transparent logs** `bytestar.drift|escape|refused|opt-in|opt-out` — codes/versions/tokens only.
+6. **Transparent logs** `bytestar.drift|escape|refused` — codes/versions/tokens only.
 7. **Human escalation** — Team Lead monitor; staff remain responsible per disclaimer.
+8. **Language vigilance** — every staff-facing string the advisor layer ships (Byte
+   knowledge, ByteStar prompt and notices, gauge notes, instrument readings, severity
+   vocabulary) is screened in CI against the practice's loaded-phrase catalog
+   (`src/lib/language/loaded-phrases.ts`), with clinical terms of art exempt by
+   construction. The tool's own mouth is held to the standard the tool teaches.
 
 ---
 

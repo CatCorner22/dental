@@ -156,7 +156,16 @@ export async function POST(req: Request): Promise<Response> {
       tokens: usedTokens,
       // On the ok path, extract's per-fact refusal codes still land here — a
       // climbing per-fact refusal rate is drift even when every call "succeeds".
-      codes: outcome.ok ? (outcome.codes ?? []) : outcome.codes
+      codes: outcome.ok ? (outcome.codes ?? []) : outcome.codes,
+      ...(outcome.ok && outcome.extraction
+        ? {
+            facts: {
+              pinned: outcome.extraction.pinned.length,
+              refused: outcome.extraction.refused.length,
+              questions: outcome.extraction.questions.length
+            }
+          }
+        : {})
     })
   });
 

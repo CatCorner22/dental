@@ -487,7 +487,7 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                         “{f.quote}”
                       </span>
                     </p>
-                    <div className="mt-1.5">
+                    <div className="mt-1.5 flex gap-2">
                       <button
                         className="btn-secondary text-xs"
                         onClick={() => {
@@ -497,9 +497,57 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                           setNotice(
                             "Fact added as a line in your note. It goes through the same check and queue as anything you type."
                           );
+                          // The human half of the precision loop: one count-only
+                          // beacon, fire-and-forget. A failed beacon must never
+                          // cost the user their click, so nothing awaits it and
+                          // nothing reports it.
+                          void fetch("/api/assist/feedback", {
+                            method: "POST",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ decision: "accepted" })
+                          }).catch(() => {});
                         }}
                       >
                         Add to note
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Select the quoted evidence in your note, using the browser's own selection."
+                        onClick={() => {
+                          // Native selection IS the highlight: no overlay div
+                          // mirroring a textarea, no styling that can drift out
+                          // of sync with the text. The scrollTop estimate puts
+                          // the selection on screen; the selection makes it
+                          // unmistakable.
+                          const el = inputRef.current;
+                          if (!el) return;
+                          // Offsets were computed against the text as it was
+                          // when the facts were pinned. An edit since then
+                          // makes them stale, and selecting the wrong words
+                          // while calling them evidence would be worse than
+                          // refusing — so the quote is re-verified first.
+                          let start = f.start;
+                          let end = f.end;
+                          if (el.value.slice(start, end) !== f.quote) {
+                            const idx = el.value.indexOf(f.quote);
+                            if (idx < 0) {
+                              setNotice(
+                                "That quoted evidence is no longer in the note — the text was edited since these facts were pinned. Run Pin facts again."
+                              );
+                              return;
+                            }
+                            start = idx;
+                            end = idx + f.quote.length;
+                          }
+                          el.focus();
+                          el.setSelectionRange(start, end);
+                          const before = el.value.slice(0, start);
+                          const lines = before.split("\n").length - 1;
+                          const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+                          el.scrollTop = Math.max(0, lines * lineHeight - el.clientHeight / 2);
+                        }}
+                      >
+                        Show in note
                       </button>
                     </div>
                   </li>

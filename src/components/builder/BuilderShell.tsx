@@ -33,6 +33,7 @@ import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -405,16 +406,60 @@ export function BuilderShell({
           <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
         )}
       </div>
-      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
-          {copied ? "Copied ✓" : "Copy"}
+      <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
+        <button
+          className="btn-secondary"
+          disabled={!hasContent || !gates.exportAllowed}
+          aria-disabled={!hasContent || !gates.exportAllowed}
+          aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
+          title={
+            !hasContent
+              ? "Add note content before copying"
+              : gates.exportAllowed
+                ? "Copy the composed note"
+                : "Resolve every STOP finding before copy or download"
+          }
+          onClick={copy}
+        >
+          {copied ? "Copied ✓" : !gates.exportAllowed && hasContent ? "🔒 Copy locked" : "Copy"}
         </button>
-        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
+        <button
+          className="btn-secondary"
+          disabled={!hasContent || !gates.exportAllowed}
+          aria-disabled={!hasContent || !gates.exportAllowed}
+          aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
+          title={
+            !hasContent
+              ? "Add note content before downloading"
+              : gates.exportAllowed
+                ? "Download as Markdown"
+                : "Resolve every STOP finding before copy or download"
+          }
+          onClick={() => download(`${filename}.md`, markdown)}
+        >
           Download .md
         </button>
-        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}>
+        <button
+          className="btn-secondary"
+          disabled={!hasContent || !gates.exportAllowed}
+          aria-disabled={!hasContent || !gates.exportAllowed}
+          aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
+          title={
+            !hasContent
+              ? "Add note content before downloading"
+              : gates.exportAllowed
+                ? "Download as plain text"
+                : "Resolve every STOP finding before copy or download"
+          }
+          onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}
+        >
           Download .txt
         </button>
+        <HelpTip label="About copy and download">
+          Copy and download stay locked while any STOP finding is open. A privacy STOP can be
+          attested; other STOPs must be fixed in the note. Required fields block Submit but not
+          copy.
+        </HelpTip>
         {report.phiStops.length > 0 && !overrideActive && (
           <button
             type="button"
@@ -428,6 +473,15 @@ export function BuilderShell({
           </button>
         )}
       </div>
+      {hasContent && !gates.exportAllowed && (
+        <p id="builder-export-locked" className="mt-2 text-xs text-rose-800" role="status">
+          Copy and download are locked until every STOP is fixed
+          {report.phiStops.length > 0 && !overrideActive
+            ? " (or a privacy stop is attested)"
+            : ""}
+          . Open findings are listed in the audit panel.
+        </p>
+      )}
     </>
   );
 
@@ -485,6 +539,12 @@ export function BuilderShell({
               <button
                 className="btn-primary"
                 disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+                aria-disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+                aria-describedby={
+                  canEdit && hasContent && !gates.emailAllowed && liveStatus !== "submitted"
+                    ? "builder-submit-blocked"
+                    : undefined
+                }
                 title={
                   liveStatus === "submitted"
                     ? "Already submitted — edit the note to submit again"
@@ -496,6 +556,10 @@ export function BuilderShell({
               >
                 Submit
               </button>
+              <HelpTip label="About Submit">
+                Submit files the note to the office. It stays off until every STOP and every
+                REQUIRED field is clear. Already submitted notes need an edit before a new submit.
+              </HelpTip>
             </>
           )}
         </div>
@@ -511,6 +575,7 @@ export function BuilderShell({
           panel so the two cannot disagree. */}
       {canEdit && hasContent && !gates.emailAllowed && liveStatus !== "submitted" && (
         <p
+          id="builder-submit-blocked"
           className="mb-4 rounded border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900"
           role="status"
         >

@@ -9,6 +9,7 @@ import {
   SEVERITY_ORDER,
   STATUS_CLASS
 } from "@/lib/audit/types";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 
 function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () => void }) {
@@ -93,8 +94,15 @@ export function AuditPanel({
 }) {
   return (
     <div>
-      <div className={`mb-3 rounded border px-3 py-2 text-sm font-semibold ${STATUS_CLASS[report.status]}`}>
-        {report.status}
+      <div className="mb-3 flex items-center gap-1.5">
+        <div className={`flex-1 rounded border px-3 py-2 text-sm font-semibold ${STATUS_CLASS[report.status]}`}>
+          {report.status}
+        </div>
+        <HelpTip label="How to read the audit">
+          STOP blocks copy and filing until fixed or (for privacy stops) attested. REQUIRED blocks
+          filing only. Advice never stops the line. Tap a finding with a field link to jump there.
+          Nothing here is applied to the note for you.
+        </HelpTip>
       </div>
       <p className="mb-3 text-xs text-slate-500">
         Deterministic checks only — this audit never scores the note or replaces clinician review.

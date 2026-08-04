@@ -182,4 +182,11 @@
 //         PHI patterns (email/MRN/street/ZIP) merged before assist/ByteStar
 //         calls; learning-ledger surface-variant clustering; Byte next-action
 //         + gauge explanations; TN license-scope retrieval cue.
-export const RULESET_VERSION = "2.17.0";
+// 2.18.0 — frozen disambiguation + unread-routing evals (charter §4.1/§4.2
+//         gates); expanded proposeReading cue families (PD/PPD/MI/CAD/RA/cap/ASA);
+//         grammar-growth digest by unread category.
+// 2.19.0 — reading-proposer injection seam (eval-only encoder slot); dental
+//         synonym map for learning-ledger clusters; more proposeReading cues
+//         (qd/qod/ac-pc) + restorative context boost; staff HelpTips on
+//         Dashboard / Builder / Audit / TN law banner; visible export-lock copy.
+export const RULESET_VERSION = "2.19.0";

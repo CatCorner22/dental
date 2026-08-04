@@ -4,6 +4,8 @@
 // This is retrieval-side only: it decides which proposals are the same
 // proposal. It never writes clinical claims or touches filed note meaning.
 
+import { areDentalSynonyms } from "./synonyms";
+
 export function normalizeSubject(token: string): string {
   return token
     .toLowerCase()
@@ -59,8 +61,9 @@ export function clusterTokens(
     let placed = false;
     for (const c of clusters) {
       const sameNorm = normalizeSubject(token) === normalizeSubject(c.canonical);
+      const sameSynonym = areDentalSynonyms(token, c.canonical);
       const sim = bigramSimilarity(token, c.canonical);
-      if (sameNorm || sim >= similarityThreshold) {
+      if (sameNorm || sameSynonym || sim >= similarityThreshold) {
         c.members.push(token);
         // Prefer the longer surface form as the display subject.
         if (token.length > c.canonical.length) c.canonical = token;

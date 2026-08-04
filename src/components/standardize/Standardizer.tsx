@@ -10,6 +10,7 @@ import { BlockPicker } from "./BlockPicker";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { TextDiff } from "@/components/diff/TextDiff";
+import { HelpTip } from "@/components/ui/HelpTip";
 import type { VerifiedExtraction } from "@/lib/assist/extraction";
 import {
   andon,
@@ -254,9 +255,16 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
   return (
     <div className="grid gap-6 lg:grid-cols-2">
       <div>
-        <label className="field-label" htmlFor="std-in">
-          Paste your note
-        </label>
+        <div className="flex items-center gap-1.5">
+          <label className="field-label" htmlFor="std-in">
+            Paste your note
+          </label>
+          <HelpTip label="How Standardize works">
+            Standardize expands safe shorthand and flags judgment calls. It never invents clinical
+            facts. Copy stays locked until every blocking item in the queue is fixed, attested, or
+            escalated. De-identified text only — no names, exact dates, or record numbers.
+          </HelpTip>
+        </div>
         <textarea
           id="std-in"
           ref={inputRef}
@@ -281,12 +289,23 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
           {input.length.toLocaleString()} characters · Ctrl+Enter to check. Nothing you type here is
           saved — the text is standardized in memory and returned.
         </p>
-        <div className="mt-3 flex flex-wrap gap-2">
-          <button className="btn-primary" onClick={run} disabled={busy || !input.trim()}>
+        <div className="mt-3 flex flex-wrap items-center gap-2">
+          <button
+            type="button"
+            className="btn-primary min-h-11 px-4"
+            onClick={run}
+            disabled={busy || !input.trim()}
+            aria-describedby={!input.trim() ? "std-run-disabled" : undefined}
+          >
             {busy ? "Checking…" : result ? "Re-check" : "Standardize"}
           </button>
+          <HelpTip label="About Standardize / Re-check">
+            Runs the deterministic pass and rebuilds the resolution queue. Re-check after you edit
+            so fixed items clear and Copy can unlock.
+          </HelpTip>
           <button
-            className="btn-secondary"
+            type="button"
+            className="btn-secondary min-h-11 px-4"
             onClick={() => {
               setInput("");
               setResult(null);
@@ -307,9 +326,10 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                queue in charge: the note is re-checked and Copy stays locked until
                the queue is clear. */
             <button
-              className="btn-secondary"
+              type="button"
+              className="btn-secondary min-h-11 px-4"
               disabled={busy}
-              title="Group the sentences under Safety, Subjective, Objective, Assessment and Plan. No AI, and no sentence is reworded."
+              aria-describedby="std-soap-help"
               onClick={() => {
                 setInput(result.soap!.text);
                 setResult(null);
@@ -323,6 +343,16 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
             </button>
           )}
         </div>
+        {!input.trim() && (
+          <p id="std-run-disabled" className="mt-1 text-xs text-slate-600" role="status">
+            Paste or type a note to enable Standardize.
+          </p>
+        )}
+        {result?.soap && (
+          <p id="std-soap-help" className="mt-1 text-xs text-slate-600">
+            SOAP grouping moves sentences only — no AI and no rewording. Re-check afterward.
+          </p>
+        )}
 
         <BlockPicker
           onInsert={(text) => {
@@ -336,16 +366,22 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
 
         {assistEnabled && (
           <div className="mt-3 rounded border border-violet-200 bg-violet-50 p-3">
-            <p className="mb-2 text-xs font-semibold text-violet-900">
+            <p className="mb-2 flex flex-wrap items-center gap-1.5 text-xs font-semibold text-violet-900">
               AI assist — every AI draft is checked against your text for changed numbers,
               negations, drugs, and attributions before you see it, and still goes through the
               queue. It rewrites wording, never facts.
+              <HelpTip label="AI assist safety">
+                PHI blocks the call before any provider. verifyMeaning refuses changed numbers,
+                teeth, drugs, or negations. You still resolve the queue by hand.
+              </HelpTip>
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" aria-describedby={!input.trim() ? "std-ai-disabled" : undefined}>
               <button
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("normalize")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "normalize" ? "Working…" : "Tighten the wording"}
               </button>
@@ -353,6 +389,8 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("soap")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "soap" ? "Working…" : "Structure as SOAP"}
               </button>
@@ -360,6 +398,8 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("interrogate")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "interrogate" ? "Working…" : "What is this note missing?"}
               </button>
@@ -367,6 +407,8 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("conflicts")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "conflicts" ? "Working…" : "Check for contradictions"}
               </button>
@@ -374,11 +416,23 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("extract")}
                 disabled={!input.trim() || aiBusy !== null}
-                title="The model proposes structured facts; each must quote your text verbatim, a deterministic check refuses anything unsupported, and you accept or reject what remains one fact at a time."
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={
+                  !input.trim()
+                    ? "Paste a note first"
+                    : aiBusy
+                      ? "Wait for the current request"
+                      : "The model proposes structured facts; each must quote your text verbatim, a deterministic check refuses anything unsupported, and you accept or reject what remains one fact at a time."
+                }
               >
                 {aiBusy === "extract" ? "Working…" : "Pin facts to evidence"}
               </button>
             </div>
+            {!input.trim() && (
+              <p id="std-ai-disabled" className="mt-1 text-xs text-slate-600" role="status">
+                Paste or type a note to enable AI assist buttons.
+              </p>
+            )}
           </div>
         )}
 

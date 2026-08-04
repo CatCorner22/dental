@@ -148,53 +148,37 @@ reflex. Three candidates, in order of how well they survive the guide's gates.
 
 ### 4.1 Ambiguity disambiguation — an encoder, not a generator
 
-**The gap.** The vocabulary tables refuse to expand ambiguous shorthand: `CR` is
-composite resin and centric relation, `GP` is gutta-percha and general
-practitioner, `mod` is mesio-occluso-distal and moderate. Today the writer is
-asked. That is correct and safe, and it is also friction on every occurrence.
+**Shipped (deterministic).** `proposeReading()` + Standardizer “Suggested reading
+(not applied)” hints from surrounding cues. The writer still types the words.
+Frozen eval: `src/lib/standardize/disambiguation-eval.ts` (CI ratchet ≥ 80%).
+Injection seam: `readingProposer.ts` — product path always uses the heuristic;
+encoder candidates may be passed into `runDisambiguationEval(cases, fn)` only.
 
-**The candidate.** A small **encoder-only classifier** over the surrounding
-clause that *proposes* a reading with a confidence. The guide is explicit that
-encoder-only models are "often the correct tool for a narrow prediction task"
-and that generation should not be used where classification suffices.
-
-**Why it survives the gates.** It is a bounded classification with a closed
-label set, the training data is the practice's own ratified vocabulary
-decisions, and — critically — **it proposes, a human confirms, and the
-deterministic layer writes.** The model never touches the note. Its worst case
-is a wrong suggestion that a person declines, which is the same worst case the
-current ambiguity prompt already has.
-
-**What would have to be true first.** A frozen disambiguation eval set with
-per-term accuracy, measured against the current behaviour (ask every time) and
-against a simple deterministic context heuristic. If a hand-written heuristic
-gets most of the way, the model does not earn its slot.
+**The remaining candidate.** A small **encoder-only classifier** over the
+surrounding clause that *proposes* a reading. It earns a product slot only if
+it beats the frozen heuristic eval above on the same cases. Until then, grow
+the cue families — the model does not earn its slot while the heuristic holds.
 
 ### 4.2 Clause routing for the unread 5.4% — also an encoder
 
-**The gap.** Unparsed clauses are reported honestly but generically.
+**Shipped (deterministic).** `classifyUnparsedClause()` labels unread phrases
+in Note readback; Team Lead digest ranks grammar-growth categories via
+`grammarGrowthFromNotes()`. Frozen eval: `src/lib/extract/unparsed-routing-eval.ts`
+(CI ratchet ≥ 90%).
 
-**The candidate.** A classifier that labels an unread clause with a probable
-*category* — "this looks like a medication statement" — so the prompt to the
-writer is specific rather than generic, and so the grammar's growth queue is
-ranked by category rather than by frequency alone.
-
-**The hard constraint.** It labels a *question*, never a fact. Nothing it
-outputs may enter the chart or the audit as an assertion.
+**The hard constraint (unchanged).** Labels are questions, never chart facts.
+An encoder earns a slot only if it beats the frozen routing eval.
 
 ### 4.3 Embeddings for the learning ledger — retrieval, not generation
 
-**The gap.** `src/lib/learning/` clusters proposals by exact token match, so
-`post-op instr`, `postop instructions` and `POI` are three separate proposals
-that each independently fail the threshold.
+**Shipped (deterministic).** `clusterTokens()` / bigram similarity merge surface
+variants (`postop` / `post-op`) before proposal thresholds, plus a small dental
+synonym map (`learning/synonyms.ts`) for true clinical synonym families the
+bigram pass still splits.
 
-**The candidate.** A sentence-embedding model to cluster surface variants of one
-underlying term before the threshold is applied.
-
-**Why it is the safest of the three.** It touches no note and produces no
-clinical claim; it only decides which proposals are the same proposal. The
-guide's §15.3 reasoning applies directly — retrieval for what is changeable and
-attributable.
+**The remaining candidate.** A sentence-embedding model if clustering still
+splits true synonyms after the corpus grows. It still must touch no note text
+as a clinical claim — retrieval for what is changeable and attributable only.
 
 ---
 

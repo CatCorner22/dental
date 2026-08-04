@@ -11,6 +11,7 @@ import {
 import { AuthorityMap } from "@/components/law/AuthorityMap";
 import { LicenseScopeCharts } from "@/components/law/LicenseScopeCharts";
 import { LawWatchPanel } from "@/components/law/LawWatchPanel";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 export const metadata = { title: "Tennessee law" };
 
@@ -28,10 +29,16 @@ export default async function Page() {
   const byCategory = authoritiesByCategory();
   return (
     <div className="space-y-8">
-      <div className="max-w-3xl rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
-        Internal training summary — not legal advice. Every entry links its primary source;
-        verify the current Tennessee Code, the Secretary of State Rule 0460 index, and Board
-        notices before relying on any item.
+      <div className="flex max-w-3xl items-start gap-2 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-xs text-amber-900">
+        <p className="min-w-0 flex-1">
+          Internal training summary — not legal advice. Every entry links its primary source;
+          verify the current Tennessee Code, the Secretary of State Rule 0460 index, and Board
+          notices before relying on any item.
+        </p>
+        <HelpTip label="About this law page">
+          Charts and library entries cite TCA and Board Rules. They train the team and explain what
+          the app enforces — they are not a substitute for counsel or the official text.
+        </HelpTip>
       </div>
 
       <section>

@@ -6,6 +6,8 @@ import { listSubmissionsForDigest } from "@/lib/db/repo/submissions";
 import { buildDigest } from "@/lib/digest/digest";
 import { deriveNoteType, type FiledNote } from "@/lib/digest/metrics";
 import { proposalsFromNotes } from "@/lib/learning/proposals";
+import { grammarGrowthFromNotes } from "@/lib/learning/grammarGrowth";
+import { UNPARSED_CATEGORY_LABEL } from "@/lib/extract/classifyUnparsed";
 import { unknownAbbreviations } from "@/lib/vocab/unknownAbbreviations";
 
 export const runtime = "nodejs";
@@ -55,10 +57,16 @@ export default async function DigestPage() {
   // blocks a note containing shorthand no table can read, and a block with no
   // route out is a dead end — a writer stopped by a word the practice uses
   // forty times a month, and nothing ever changing. This is the route.
+  const sightings = notes.map((n) => ({
+    text: n.markdown,
+    authorId: n.authorId,
+    filedAt: n.filedAtIso
+  }));
   const proposals = proposalsFromNotes(
-    notes.map((n) => ({ text: n.markdown, authorId: n.authorId, filedAt: n.filedAtIso })),
+    sightings,
     unknownAbbreviations(notes.map((n) => n.markdown))
   );
+  const grammarGrowth = grammarGrowthFromNotes(sightings);
 
   return (
     <div>
@@ -112,6 +120,33 @@ export default async function DigestPage() {
             </a>{" "}
             to add one, and it ships with the next ruleset version.
           </p>
+        </section>
+      )}
+
+      {grammarGrowth.length > 0 && (
+        <section className="mt-6">
+          <h2 className="section-title">Phrase shapes the parser cannot read yet</h2>
+          <p className="mb-2 max-w-3xl text-xs text-slate-600">
+            Unread clauses grouped by category (medication, imaging, procedure, and so on) when at
+            least two authors leave the same kind of gap. These are grammar-growth candidates — labels
+            are questions for the tables, never invented chart facts.
+          </p>
+          <ul className="space-y-3">
+            {grammarGrowth.map((g) => (
+              <li key={g.category} className="card-inset">
+                <p className="font-semibold text-slate-900">
+                  <span className="rounded bg-white px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide">
+                    {UNPARSED_CATEGORY_LABEL[g.category]}
+                  </span>{" "}
+                  <span className="font-normal text-slate-700">
+                    — {g.occurrences} unread phrases across {g.notes} notes by {g.authors} people
+                  </span>
+                </p>
+                <p className="mt-1 font-mono text-xs text-slate-600">e.g. “{g.sample}”</p>
+                <p className="mt-1 text-sm text-slate-700">{g.effect}</p>
+              </li>
+            ))}
+          </ul>
         </section>
       )}
 

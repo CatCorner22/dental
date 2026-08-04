@@ -27,6 +27,18 @@ export const config = {
     // /reset and /api/reset MUST be public: the entire point of a reset link is
     // that someone who cannot sign in can use it. The token in the URL is the
     // credential, and the POST handler is what judges it.
-    "/((?!login(?:/|$)|setup(?:/|$)|reset(?:/|$)|api/auth(?:/|$)|api/setup(?:/|$)|api/reset(?:/|$)|_next/static|_next/image|favicon\\.ico$|icon\\.svg$).*)"
+    //
+    // /fonts MUST be public, and the bug that taught us was a good one. The
+    // login page uses the self-hosted typeface, the person on the login page is
+    // by definition not signed in, so the middleware 307'd the .woff2 request
+    // to /login — and Firefox's font sanitizer then reported the LOGIN PAGE'S
+    // HTML, served where a font should be, as "downloadable font: rejected by
+    // sanitizer". Chromium and WebKit swallow a failed font without a console
+    // error, so CI's cross-browser smoke caught it in exactly one browser and
+    // the file itself was blameless: byte-identical to the official release
+    // and accepted by every sanitizer once it actually arrived. A font file
+    // carries no PHI; gating it behind auth broke only the login page's own
+    // typography.
+    "/((?!login(?:/|$)|setup(?:/|$)|reset(?:/|$)|api/auth(?:/|$)|api/setup(?:/|$)|api/reset(?:/|$)|_next/static|_next/image|fonts/|favicon\\.ico$|icon\\.svg$).*)"
   ]
 };

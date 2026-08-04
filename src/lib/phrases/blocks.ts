@@ -353,6 +353,92 @@ export const VERIFIED_BLOCKS: VerifiedBlock[] = [
       "A responsible adult actually received this patient, and I will name that arrangement.",
       "I will paste this under the correct dated visit in Curve, which supplies the date of service."
     ]
+  },
+  {
+    id: "des12-master",
+    title: "General encounter (DES-12 master)",
+    purpose:
+      "The full twelve-block encounter sequence: facts before diagnosis, diagnosis before consent, consent before treatment, treatment before outcome.",
+    // The owner's master template, with the standard adaptations (no date or
+    // timestamp lines — Curve's visit and the filing stamp carry those; no
+    // template-version line — version provenance is the renderer's job, not
+    // text a writer retypes) and the section order kept exactly, because the
+    // order IS the argument: it makes the record's logic visible to whoever
+    // reads it in three years.
+    body:
+      "VISIT TYPE: <visit type>\n" +
+      "AUTHOR: <author name and role>\n" +
+      "TREATING PROVIDER: <treating provider>\n" +
+      "SUPERVISING DENTIST: <supervising dentist, or state not applicable>\n" +
+      "SUPERVISION: <direct - dentist on premises, or general - authorized in advance>\n" +
+      "PATIENT STATUS: <new patient or established patient>\n\n" +
+      "REASON FOR VISIT / PATIENT GOAL:\n" +
+      "<the patient's reason, in their own de-identified words>\n" +
+      "<the patient's goal>\n\n" +
+      "MEDICAL SAFETY REVIEW:\n" +
+      "Medical and dental history reviewed with patient: <yes, or the reason it could not be>\n" +
+      "Changes since previous visit: <the changes, or that the patient reported none>\n" +
+      "Current medications: <medications as reported>\n" +
+      "Allergies and adverse reactions: <allergy status as verified with the patient>\n" +
+      "Vital signs: <values, or the reason not taken>\n" +
+      "Precautions, premedication, pregnancy status, consultations, or clearance:\n<details, or state none apply>\n\n" +
+      "SUBJECTIVE:\n" +
+      "<symptoms as the patient reports them>\n" +
+      "Onset and duration: <details>\n" +
+      "Location: <details>\n" +
+      "Severity, quality, and triggers: <details>\n" +
+      "Prior treatment or self-care: <details, or that the patient reported none>\n" +
+      "Additional patient concerns: <concerns, or that the patient raised none>\n\n" +
+      "OBJECTIVE:\n" +
+      "Clinical findings:\n<what was observed on examination>\n\n" +
+      "Dental and periodontal findings:\n<findings>\n\n" +
+      "Diagnostic tests:\n<tests and results, or state none performed>\n\n" +
+      "Images acquired:\n<number, type, and region, or state none this visit>\n\n" +
+      "Image interpretation by <interpreting dentist>:\n<findings as stated by the dentist, or pending with a named owner>\n\n" +
+      "HYGIENE ASSESSMENT, IF APPLICABLE:\n<hygienist's assessment, or state not applicable>\n\n" +
+      "DENTIST ASSESSMENT / DIAGNOSIS:\n<diagnosis as stated by the dentist>\n" +
+      "Clinical rationale, differential, and prognosis:\n<the dentist's stated reasoning>\n\n" +
+      "RECOMMENDATIONS / CONSENT / REFUSAL:\n" +
+      "Recommended care:\n<recommendation>\n\n" +
+      "Benefits, material risks, alternatives, and consequences of no treatment discussed:\n" +
+      "<the ones actually discussed with this patient, not a standard list>\n\n" +
+      "Patient questions and responses:\n<questions and answers, or that the patient asked none>\n\n" +
+      "Patient decision: <consented, refused, or deferred - in the patient's words>\n" +
+      "Decision-maker, interpreter, or consent-form details: <details, or state not applicable>\n\n" +
+      "TREATMENT / PROCEDURE:\n" +
+      "Tooth/site/surface: <location, or state no treatment this visit>\n" +
+      "Anesthetic and medications: <agent, concentration, amount, route, and administrator>\n" +
+      "Isolation and protective measures: <details>\n" +
+      "Materials, shade, devices, or lot numbers when pertinent: <details>\n" +
+      "Procedure performed:\n<the steps, attributed to who performed each>\n" +
+      "Deviations from planned treatment: <affirmatively state none occurred, or the specifics>\n\n" +
+      "OUTCOME / PATIENT RESPONSE:\n" +
+      "Clinical result: <result>\n" +
+      "Patient response: <observed response>\n" +
+      "Complications: <affirmatively state none were observed, or the specific event>\n" +
+      "Corrective action, disclosure, and disposition: <details, or state none was required>\n\n" +
+      "EDUCATION / POSTOPERATIVE INSTRUCTIONS:\n" +
+      "<instructions actually given>\n" +
+      "Warning signs discussed: <signs stated to the patient>\n" +
+      "Written or electronic material provided: <material and language>\n" +
+      "Understanding assessed by: <teach-back, show-me, or questions>\n" +
+      "Patient response: <what the patient explained back>\n\n" +
+      "PLAN / FOLLOW-UP:\n" +
+      "Next step: <next step>\n" +
+      "Timeframe: <interval>\n" +
+      "Referral: <recipient, reason, and urgency, or state none made>\n" +
+      "Unresolved or pending items: <items with a named owner, or state none remain>\n\n" +
+      "AUTHENTICATION:\n" +
+      "Entered by: <author and role>\n" +
+      "Treatment performed by: <performers>\n" +
+      "Images interpreted by: <interpreting dentist, or state no images>\n" +
+      "Reviewed and confirmed by: <reviewing dentist>",
+    verify: [
+      "The sections will be completed in this order because it mirrors what happened: facts, then judgement, then consent, then treatment.",
+      "Every dentist-labelled line will carry the dentist's own stated words, not my summary of them.",
+      "Every absence I record will be an affirmative statement, never a blank left to imply one.",
+      "I will paste this under the correct dated visit in Curve, which supplies the date of service."
+    ]
   }
 ];
 

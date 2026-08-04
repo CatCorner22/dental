@@ -113,4 +113,21 @@
 //         them in would put a claim on the chart the note never made. A region
 //         is dropped when the note also named teeth inside it, because the
 //         teeth are the more specific statement.
-export const RULESET_VERSION = "2.12.0";
+// 2.13.0 — local anaesthetic maximum-dose arithmetic (rules/anesthetic-dose.ts).
+//         The first rule in this product that only exists because the
+//         transformer READS notes: "2 carp lido 2%" contains no "mg", so no
+//         regex over milligrams can reach it. The dose is implied by three
+//         conventions -- 1.8 mL per carpule, 2% = 20 mg/mL -- and getting to a
+//         number needs structured facts.
+//
+//         S2, never blocking, and that is a safety decision rather than
+//         caution: a note is a RECORD, and if more than the maximum was given
+//         the note MUST say so. A gate refusing to file it would suppress the
+//         documentation of the event it was worried about, and teach staff to
+//         under-record doses to get the note out.
+//
+//         Fires only on exceedance, never on approaching a limit, and only
+//         when volume and concentration are both stated. An incomplete dose is
+//         silent: an earlier version blamed the writer for a complete note the
+//         extractor could not assemble across a clause boundary.
+export const RULESET_VERSION = "2.13.0";

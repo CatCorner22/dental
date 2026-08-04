@@ -14,6 +14,7 @@ import { runPhiRule } from "./rules/phi";
 import { runResidueRule } from "./rules/residue";
 import { runAbbreviationRule, runStigmatizingRule, runVaguePhraseRule } from "./rules/terminology";
 import { runShorthandGate } from "./rules/shorthand-gate";
+import { runAnaestheticDoseRule } from "./rules/anesthetic-dose";
 import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
 import { newSpellingBudget, runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
@@ -41,6 +42,10 @@ export function runTextAudit(text: string): AuditFinding[] {
     ...runStigmatizingRule(text),
     ...runAnatomyTextRule(text),
     ...runMedicationSafetyRules(text),
+    // The first rule in the product that is only possible because the
+    // transformer reads notes rather than rewriting them: a carpule count
+    // carries no "mg", so no regex over milligrams can reach it.
+    ...runAnaestheticDoseRule(text),
     ...runEffortRules(text),
     ...runCompletenessRules(text),
     ...runJustificationRules(text)

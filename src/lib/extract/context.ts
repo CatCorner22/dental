@@ -218,7 +218,7 @@ const ALL_RULES: ContextRule[] = [...PSEUDO, ...NEGATION, ...TERMINATORS, ...TEM
     (a.direction === "pseudo" ? -1 : 0) - (b.direction === "pseudo" ? -1 : 0)
 );
 
-interface Match {
+export interface Match {
   rule: ContextRule;
   from: number;
   to: number;
@@ -235,21 +235,59 @@ interface Match {
  */
 const DEFINITE = new Set(["the", "his", "her", "their", "its", "this", "that", "these", "those"]);
 
-/** Find every rule match inside a token range, resolving overlaps longest-first. */
-function findMatches(tokens: Token[], from: number, to: number): Match[] {
+/** Apostrophes are punctuation to the tokenizer, so comparison ignores them. */
+const bare = (s: string): string => s.replace(/['\u2019]/g, "");
+
+/**
+ * Rules bucketed by their first token, longest literal first inside a bucket.
+ *
+ * MEASURED, not assumed. Profiling the extractor on a loaded note put 75% of
+ * its runtime in this function, because the shape it replaces scanned all ~150
+ * rules across every position of every clause. Most words begin no rule at all,
+ * and a Map lookup that misses is the cheapest possible way to learn that.
+ *
+ * Built once at module load. The buckets inherit ALL_RULES' longest-first
+ * ordering, which is what makes "no evidence of" win over "no" and keeps the
+ * pseudo-rule tie-break that stops "no increase" being beaten by an
+ * equal-length trigger.
+ */
+const RULES_BY_FIRST_TOKEN: Map<string, ContextRule[]> = (() => {
+  const index = new Map<string, ContextRule[]>();
+  for (const rule of ALL_RULES) {
+    const key = bare(rule.literal[0]);
+    const bucket = index.get(key);
+    if (bucket) bucket.push(rule);
+    else index.set(key, [rule]);
+  }
+  return index;
+})();
+
+/**
+ * Find every rule match inside a token range.
+ *
+ * EXPORTED so a caller can compute it ONCE PER CLAUSE. It used to be called
+ * from inside `assertionFor`, so a clause containing five facts scanned the
+ * same tokens five times, and the extractor runs inside the per-keystroke
+ * audit.
+ *
+ * Leftmost-longest: positions are visited in order and the longest rule
+ * starting at each unconsumed position wins. That is the standard lexing
+ * discipline, and it is what the previous longest-rule-first scan was
+ * approximating.
+ */
+export function findMatches(tokens: Token[], from: number, to: number): Match[] {
   const matches: Match[] = [];
   const consumed = new Set<number>();
-  for (const r of ALL_RULES) {
-    const len = r.literal.length;
-    for (let i = from; i + len <= to; i++) {
-      if (consumed.has(i)) continue;
+  for (let i = from; i < to; i++) {
+    if (consumed.has(i)) continue;
+    const candidates = RULES_BY_FIRST_TOKEN.get(bare(tokens[i].lower));
+    if (!candidates) continue;
+    for (const r of candidates) {
+      const len = r.literal.length;
+      if (i + len > to) continue;
       let ok = true;
-      for (let k = 0; k < len; k++) {
-        // Apostrophes and slashes are punctuation to the tokenizer, so a
-        // literal written "h o" matches "h/o" and "mother's" matches the word
-        // token "mother's" — whichever way the writer typed it.
-        const tok = tokens[i + k];
-        if (tok.lower.replace(/['’]/g, "") !== r.literal[k].replace(/['’]/g, "")) {
+      for (let k = 1; k < len; k++) {
+        if (bare(tokens[i + k].lower) !== bare(r.literal[k])) {
           ok = false;
           break;
         }
@@ -257,9 +295,10 @@ function findMatches(tokens: Token[], from: number, to: number): Match[] {
       if (!ok) continue;
       for (let k = 0; k < len; k++) consumed.add(i + k);
       matches.push({ rule: r, from: i, to: i + len });
+      break;
     }
   }
-  return matches.sort((a, b) => a.from - b.from);
+  return matches;
 }
 
 /**
@@ -270,9 +309,11 @@ export function assertionFor(
   tokens: Token[],
   clause: { from: number; to: number },
   targetFrom: number,
-  targetTo: number
+  targetTo: number,
+  /** Precomputed clause matches. Recomputed when omitted, for callers with one target. */
+  precomputed?: Match[]
 ): Assertion {
-  const matches = findMatches(tokens, clause.from, clause.to);
+  const matches = precomputed ?? findMatches(tokens, clause.from, clause.to);
   const result: Assertion = { polarity: "affirmed", experiencer: "patient" };
 
   const asTrigger = (m: Match): Trigger => ({

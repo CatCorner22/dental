@@ -3,6 +3,7 @@ import {
   driftVerdict,
   fabricationRate,
   summarize,
+  summarizeExtraction,
   type DriftEvent
 } from "@/lib/assist/drift";
 
@@ -32,6 +33,10 @@ const LEVEL_STYLE = {
 // verifier can actually emit; anything unmapped falls back to its own id, which
 // is honest rather than blank.
 const CODE_LABEL: Record<string, string> = {
+  "extract.quote-not-found": "Cited text that is not in the note",
+  "extract.invented-number": "Proposed a number the quote does not contain",
+  "extract.ungrounded": "Proposed more than the quoted words support",
+  "extract.polarity-conflict": "Proposed a fact its own quote denies",
   "content-invented": "Tried to add a claim the note did not contain",
   "attribution-added": "Turned an examiner's finding into a patient report",
   "attribution-dropped": "Dropped a patient attribution",
@@ -48,8 +53,16 @@ const CODE_LABEL: Record<string, string> = {
   "output-degenerate": "Returned an empty note, a code fence, or chat preamble"
 };
 
-export function DriftPanel({ events }: { events: DriftEvent[] }) {
+export function DriftPanel({
+  events,
+  factAcceptances = 0
+}: {
+  events: DriftEvent[];
+  /** Count of assist.fact-decision accepted rows in the same window. */
+  factAcceptances?: number;
+}) {
   const window = summarize(events);
+  const extraction = summarizeExtraction(events, factAcceptances);
   const answered = window.accepted + window.refused;
   const verdict = driftVerdict(window);
   const style = LEVEL_STYLE[verdict.level];
@@ -137,6 +150,43 @@ export function DriftPanel({ events }: { events: DriftEvent[] }) {
               </li>
             ))}
           </ul>
+        </div>
+      )}
+
+      {extraction.calls > 0 && (
+        /* THE TWO NUMBERS WITH TWO FAILURE DIRECTIONS. Per-fact refusal rate is
+           the machine-precision proxy: what share of the model's proposals
+           could not survive the deterministic verifier — rising means the model
+           or a silent provider swap is drifting toward fabrication. Acceptance
+           is the human half: of the facts that DID survive, how many a
+           clinician actually used — falling means the survivors are technically
+           grounded but clinically useless, a failure the verifier cannot see. */
+        <div>
+          <h3 className="mb-1.5 text-sm font-semibold text-slate-800">
+            Evidence-pinned extraction
+          </h3>
+          <p className="mb-1.5 max-w-3xl text-xs text-slate-500">
+            {extraction.calls} extraction {extraction.calls === 1 ? "call" : "calls"}:{" "}
+            {extraction.factsPinned} facts pinned to evidence, {extraction.factsRefused} refused by
+            the deterministic check ({pct(extraction.perFactRefusalRate)} of proposals),{" "}
+            {extraction.questions} demoted to questions.{" "}
+            {extraction.factsPinned > 0 && (
+              <>
+                Clinicians added {extraction.humanAccepted} of the pinned facts to notes (
+                {pct(extraction.acceptanceRate)}).
+              </>
+            )}
+          </p>
+          {extraction.byCode.length > 0 && (
+            <ul className="space-y-1">
+              {extraction.byCode.map((c) => (
+                <li key={c.code} className="text-sm">
+                  <span className="text-slate-700">{CODE_LABEL[c.code] ?? c.code}</span>
+                  <span className="text-slate-500"> — {c.count}</span>
+                </li>
+              ))}
+            </ul>
+          )}
         </div>
       )}
 

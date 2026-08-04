@@ -56,6 +56,13 @@ export interface DriftEvent {
    * asymmetry is itself worth seeing.
    */
   tokens: number;
+  /**
+   * Fact counts for the extract capability, whose refusals are PER FACT inside
+   * a successful call. COUNTS ONLY — the facts themselves are clinical content
+   * and never touch a log. Absent for every other capability, and absent on
+   * rows written before this field existed, which the decoder tolerates.
+   */
+  facts?: { pinned: number; refused: number; questions: number };
   at: Date;
 }
 
@@ -71,14 +78,16 @@ export interface DriftEvent {
  * format nothing can read is a format that rots.
  */
 export function encodeDriftDetail(e: Omit<DriftEvent, "at">): string {
+  const facts = e.facts ? ` facts=${e.facts.pinned}/${e.facts.refused}/${e.facts.questions}` : "";
   const codes = e.codes.length > 0 ? ` codes=${e.codes.join("+")}` : "";
-  return `${e.outcome} cap=${e.capability} prompt=${e.promptVersion} model=${e.model} tokens=${e.tokens}${codes}`;
+  return `${e.outcome} cap=${e.capability} prompt=${e.promptVersion} model=${e.model} tokens=${e.tokens}${facts}${codes}`;
 }
 
 export function decodeDriftDetail(detail: string): Omit<DriftEvent, "at"> | null {
-  const m = /^(\S+) cap=(\S+) prompt=(\S+) model=(\S+?)(?: tokens=(\d+))?(?: codes=(\S+))?$/.exec(
-    detail.trim()
-  );
+  const m =
+    /^(\S+) cap=(\S+) prompt=(\S+) model=(\S+?)(?: tokens=(\d+))?(?: facts=(\d+)\/(\d+)\/(\d+))?(?: codes=(\S+))?$/.exec(
+      detail.trim()
+    );
   if (!m) return null;
   const outcome = m[1] as DriftOutcome;
   if (
@@ -92,7 +101,10 @@ export function decodeDriftDetail(detail: string): Omit<DriftEvent, "at"> | null
     promptVersion: m[3],
     model: m[4],
     tokens: m[5] ? Number(m[5]) : 0,
-    codes: m[6] ? m[6].split("+").filter(Boolean) : []
+    ...(m[6] !== undefined
+      ? { facts: { pinned: Number(m[6]), refused: Number(m[7]), questions: Number(m[8]) } }
+      : {}),
+    codes: m[9] ? m[9].split("+").filter(Boolean) : []
   };
 }
 
@@ -255,5 +267,84 @@ export function driftVerdict(window: DriftWindow): {
   return {
     level: "quiet",
     reason: `${Math.round(window.refusalRate * 100)}% of answered calls refused, across ${answered}. Normal.`
+  };
+}
+
+// ===========================================================================
+// EXTRACTION HEALTH — the sampled-precision loop, done the zero-persistence way.
+//
+// E-discovery earns the right to use probabilistic classification in front of
+// courts by MEASURING error with statistical sampling. This product's twist is
+// that nothing extracted is ever stored, so there is no corpus to sample after
+// the fact — and there does not need to be, because every extraction decision
+// already passes a human at the moment it exists. The measurements fall out of
+// counts the log already holds:
+//
+//   MACHINE PRECISION PROXY: per-fact refusal rate. What share of the model's
+//   proposals could not survive the deterministic verifier. Rising = the model
+//   (or a silent provider swap) is drifting toward fabrication.
+//
+//   HUMAN ACCEPTANCE: of the facts that DID survive the verifier, how many did
+//   a clinician actually add to a note. Falling = the surviving facts are
+//   technically grounded but clinically useless — a failure mode the verifier
+//   cannot see and the only person who can is the one clicking.
+//
+// Two numbers, two failure directions, no note content anywhere.
+// ===========================================================================
+
+export interface ExtractionWindow {
+  /** Extract calls that reached the model and returned a valid shape. */
+  calls: number;
+  factsPinned: number;
+  factsRefused: number;
+  questions: number;
+  /** refused / (pinned + refused). The machine-precision proxy. */
+  perFactRefusalRate: number;
+  /** Facts a human clicked into a note, from the count-only decision beacon. */
+  humanAccepted: number;
+  /** humanAccepted / factsPinned, capped at 1 — see the note in summarizeExtraction. */
+  acceptanceRate: number;
+  /** Refusal code -> count, most frequent first. */
+  byCode: { code: string; count: number }[];
+}
+
+export function summarizeExtraction(events: DriftEvent[], humanAccepted: number): ExtractionWindow {
+  let calls = 0;
+  let pinned = 0;
+  let refused = 0;
+  let questions = 0;
+  const codes = new Map<string, number>();
+
+  for (const e of events) {
+    if (e.capability !== "extract") continue;
+    if (e.outcome !== "ok") continue;
+    calls++;
+    if (e.facts) {
+      pinned += e.facts.pinned;
+      refused += e.facts.refused;
+      questions += e.facts.questions;
+    }
+    // On the ok path, codes are the PER-FACT refusal codes — the general
+    // summarize() ignores them there, and this is the aggregation that reads
+    // them.
+    for (const c of e.codes) codes.set(c, (codes.get(c) ?? 0) + 1);
+  }
+
+  const proposed = pinned + refused;
+  return {
+    calls,
+    factsPinned: pinned,
+    factsRefused: refused,
+    questions,
+    perFactRefusalRate: proposed === 0 ? 0 : Math.round((refused / proposed) * 1000) / 1000,
+    humanAccepted,
+    // Capped, and the cap is honesty rather than cosmetics: the beacon and the
+    // drift rows are written by different requests, so a window boundary can
+    // catch an acceptance whose pinning landed in the previous window. A rate
+    // over 1 would read as data corruption when it is only clock skew.
+    acceptanceRate: pinned === 0 ? 0 : Math.min(1, Math.round((humanAccepted / pinned) * 1000) / 1000),
+    byCode: [...codes.entries()]
+      .map(([code, count]) => ({ code, count }))
+      .sort((a, b) => b.count - a.count || a.code.localeCompare(b.code))
   };
 }

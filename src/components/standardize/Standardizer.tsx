@@ -8,6 +8,7 @@ import { runTextAudit } from "@/lib/audit/engine";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
 import { TextDiff } from "@/components/diff/TextDiff";
+import type { VerifiedExtraction } from "@/lib/assist/extraction";
 import {
   andon,
   ATTESTATION_RULE,
@@ -70,6 +71,11 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
   const [busy, setBusy] = useState(false);
   const [aiBusy, setAiBusy] = useState<string | null>(null);
   const [aiQuestions, setAiQuestions] = useState<{ title: string; lines: string[] } | null>(null);
+  // The span-verified extraction: pinned facts with their evidence, demoted
+  // questions, and per-fact refusals. Held for review — nothing here touches
+  // the note until a person adds it, and whatever they add goes through the
+  // same live check and queue as hand-typed text.
+  const [aiFacts, setAiFacts] = useState<VerifiedExtraction | null>(null);
   // An AI rewrite is a PROPOSAL, held here until the writer accepts it.
   //
   // It used to go straight into the input box. The note said "nothing is
@@ -116,7 +122,9 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
   // the input box and goes through the same deterministic check and the same
   // resolution queue as hand-typed text. Question capabilities return
   // questions only — the verifier refuses anything that asserts.
-  const runAssist = async (capability: "normalize" | "soap" | "interrogate" | "conflicts") => {
+  const runAssist = async (
+    capability: "normalize" | "soap" | "interrogate" | "conflicts" | "extract"
+  ) => {
     setAiBusy(capability);
     setError("");
     setNotice("");
@@ -129,10 +137,14 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
       const data = (await res.json().catch(() => ({}))) as {
         text?: string;
         items?: string[];
+        extraction?: VerifiedExtraction;
         error?: string;
       };
-      if (!res.ok || !data.text) {
+      if (!res.ok || (capability !== "extract" && !data.text)) {
         setError(data.error ?? "The AI service did not answer. Everything else still works.");
+      } else if (capability === "extract") {
+        setAiFacts(data.extraction ?? { pinned: [], questions: [], refused: [] });
+        setAiQuestions(null);
       } else if (capability === "interrogate" || capability === "conflicts") {
         // Rendered from the VALIDATED array, not by splitting prose. Splitting
         // on newlines turned a wrapped line into two questions and a preamble
@@ -147,7 +159,9 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
           capability,
           label: capability === "normalize" ? "Tightened wording" : "Restructured as SOAP",
           before: input,
-          after: data.text
+          // The guard above ensured text is present for the rewrite
+          // capabilities; the fallback only satisfies the type-narrowing.
+          after: data.text ?? ""
         });
         setAiQuestions(null);
       }
@@ -354,6 +368,14 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
               >
                 {aiBusy === "conflicts" ? "Working…" : "Check for contradictions"}
               </button>
+              <button
+                className="btn-secondary text-xs"
+                onClick={() => runAssist("extract")}
+                disabled={!input.trim() || aiBusy !== null}
+                title="The model proposes structured facts; each must quote your text verbatim, a deterministic check refuses anything unsupported, and you accept or reject what remains one fact at a time."
+              >
+                {aiBusy === "extract" ? "Working…" : "Pin facts to evidence"}
+              </button>
             </div>
           </div>
         )}
@@ -407,6 +429,167 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 Keep mine
               </button>
             </div>
+          </div>
+        )}
+
+        {/* THE EVIDENCE-PINNED FACTS, one decision per fact.
+            The acceptance test this screen exists to satisfy, from the owner's
+            blueprint: no AI-generated clinical fact is finalized without
+            visible source evidence or affirmative clinician confirmation. The
+            evidence is the quoted line under each fact; the confirmation is
+            the button; and everything a person adds still goes through the
+            same live check and resolution queue as hand-typed text. */}
+        {aiFacts && (
+          <div
+            className="mt-3 rounded border border-violet-300 bg-white p-3"
+            role="region"
+            aria-label="Evidence-pinned facts"
+          >
+            <div className="mb-1 flex items-center justify-between">
+              <h2 className="text-sm font-semibold text-violet-900">
+                Facts pinned to your own words
+              </h2>
+              <button className="text-xs text-slate-500 underline" onClick={() => setAiFacts(null)}>
+                Dismiss
+              </button>
+            </div>
+
+            {aiFacts.pinned.length === 0 && aiFacts.questions.length === 0 && (
+              <p className="text-sm text-slate-600">
+                Nothing could be pinned to your text
+                {aiFacts.refused.length > 0
+                  ? " — every proposal was refused by the deterministic check. Your note is untouched."
+                  : ". The note may not contain extractable facts yet."}
+              </p>
+            )}
+
+            {aiFacts.pinned.length > 0 && (
+              <ul className="space-y-2">
+                {aiFacts.pinned.map((f, i) => (
+                  <li key={i} className="rounded border border-slate-200 p-2">
+                    <div className="flex flex-wrap items-baseline gap-2">
+                      <span className="rounded-full bg-violet-100 px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-violet-900">
+                        {f.kind}
+                      </span>
+                      <span className="text-sm font-medium text-slate-900">{f.statement}</span>
+                      {f.parserAgrees && (
+                        <span
+                          className="text-xs text-teal-700"
+                          title="The deterministic parser independently read a fact of this kind in the same words — a second reader that shares nothing with the model."
+                        >
+                          ✓ parser agrees
+                        </span>
+                      )}
+                    </div>
+                    <p className="mt-1 text-xs text-slate-600">
+                      Evidence, from your text:{" "}
+                      <span className="rounded bg-amber-50 px-1 font-mono text-slate-800">
+                        “{f.quote}”
+                      </span>
+                    </p>
+                    <div className="mt-1.5 flex gap-2">
+                      <button
+                        className="btn-secondary text-xs"
+                        onClick={() => {
+                          setInput((prev) => `${prev.replace(/\s+$/, "")}\n${f.statement}`);
+                          setResult(null);
+                          setItems([]);
+                          setNotice(
+                            "Fact added as a line in your note. It goes through the same check and queue as anything you type."
+                          );
+                          // The human half of the precision loop: one count-only
+                          // beacon, fire-and-forget. A failed beacon must never
+                          // cost the user their click, so nothing awaits it and
+                          // nothing reports it.
+                          void fetch("/api/assist/feedback", {
+                            method: "POST",
+                            headers: { "content-type": "application/json" },
+                            body: JSON.stringify({ decision: "accepted" })
+                          }).catch(() => {});
+                        }}
+                      >
+                        Add to note
+                      </button>
+                      <button
+                        className="btn-secondary text-xs"
+                        title="Select the quoted evidence in your note, using the browser's own selection."
+                        onClick={() => {
+                          // Native selection IS the highlight: no overlay div
+                          // mirroring a textarea, no styling that can drift out
+                          // of sync with the text. The scrollTop estimate puts
+                          // the selection on screen; the selection makes it
+                          // unmistakable.
+                          const el = inputRef.current;
+                          if (!el) return;
+                          // Offsets were computed against the text as it was
+                          // when the facts were pinned. An edit since then
+                          // makes them stale, and selecting the wrong words
+                          // while calling them evidence would be worse than
+                          // refusing — so the quote is re-verified first.
+                          let start = f.start;
+                          let end = f.end;
+                          if (el.value.slice(start, end) !== f.quote) {
+                            const idx = el.value.indexOf(f.quote);
+                            if (idx < 0) {
+                              setNotice(
+                                "That quoted evidence is no longer in the note — the text was edited since these facts were pinned. Run Pin facts again."
+                              );
+                              return;
+                            }
+                            start = idx;
+                            end = idx + f.quote.length;
+                          }
+                          el.focus();
+                          el.setSelectionRange(start, end);
+                          const before = el.value.slice(0, start);
+                          const lines = before.split("\n").length - 1;
+                          const lineHeight = parseFloat(getComputedStyle(el).lineHeight) || 20;
+                          el.scrollTop = Math.max(0, lines * lineHeight - el.clientHeight / 2);
+                        }}
+                      >
+                        Show in note
+                      </button>
+                    </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+
+            {aiFacts.questions.length > 0 && (
+              <div className="mt-2 rounded bg-violet-50 p-2">
+                <p className="text-xs font-semibold text-violet-900">
+                  Too uncertain to state — confirm these yourself:
+                </p>
+                <ul className="mt-1 list-disc space-y-0.5 pl-5 text-xs text-slate-800">
+                  {aiFacts.questions.map((q, i) => (
+                    <li key={i}>{q}</li>
+                  ))}
+                </ul>
+              </div>
+            )}
+
+            {aiFacts.refused.length > 0 && (
+              /* Shown, not hidden. A refusal the user can read is the check
+                 working in public — and the fastest cure for over-trusting
+                 the model is watching it get caught. */
+              <details className="mt-2">
+                <summary className="cursor-pointer text-xs font-medium text-slate-700">
+                  Refused by the deterministic check ({aiFacts.refused.length})
+                </summary>
+                <ul className="mt-1 space-y-1 text-xs text-slate-700">
+                  {aiFacts.refused.map((r, i) => (
+                    <li key={i} className="rounded border border-red-100 bg-red-50/60 px-2 py-1">
+                      <span className="font-mono">{r.code}</span> — “{r.statement}”: {r.reason}
+                    </li>
+                  ))}
+                </ul>
+              </details>
+            )}
+
+            <p className="mt-2 border-t border-slate-100 pt-2 text-xs text-slate-500">
+              Every fact above quotes your own words, located and checked deterministically. Nothing
+              enters the note without your click, and what you add is re-checked like anything typed.
+            </p>
           </div>
         )}
 

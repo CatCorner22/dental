@@ -154,7 +154,18 @@ export async function POST(req: Request): Promise<Response> {
       promptVersion: ASSIST_PROMPT_VERSION,
       model: config.model,
       tokens: usedTokens,
-      codes: outcome.ok ? [] : outcome.codes
+      // On the ok path, extract's per-fact refusal codes still land here — a
+      // climbing per-fact refusal rate is drift even when every call "succeeds".
+      codes: outcome.ok ? (outcome.codes ?? []) : outcome.codes,
+      ...(outcome.ok && outcome.extraction
+        ? {
+            facts: {
+              pinned: outcome.extraction.pinned.length,
+              refused: outcome.extraction.refused.length,
+              questions: outcome.extraction.questions.length
+            }
+          }
+        : {})
     })
   });
 
@@ -183,6 +194,10 @@ export async function POST(req: Request): Promise<Response> {
     // Present for the list capabilities: the validated array, so the browser
     // never has to re-derive structure by splitting the text back apart.
     ...(outcome.items ? { items: outcome.items } : {}),
+    // The span-verified extraction: pinned facts with evidence offsets, demoted
+    // questions, and per-fact refusals with their reasons. The browser renders
+    // this; it never re-derives structure from text.
+    ...(outcome.extraction ? { extraction: outcome.extraction } : {}),
     capability: outcome.capability,
     promptVersion: outcome.promptVersion
   });

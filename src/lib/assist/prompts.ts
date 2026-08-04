@@ -18,7 +18,12 @@
 //         refusal comes from, and a refused draft is a staff member's wasted
 //         click: telling the model the real rule is the cheapest way to make the
 //         assistant useful rather than merely safe.
-export const ASSIST_PROMPT_VERSION = "1.2.0";
+// 1.3.0 — the extract capability: evidence-pinned fact proposal. The prompt's
+//         one commandment is the verbatim quote, because the deterministic
+//         verifier refuses anything whose quote is missing, paraphrased, or
+//         contradicted — telling the model the real rule up front is what keeps
+//         its hit rate worth the click.
+export const ASSIST_PROMPT_VERSION = "1.3.0";
 
 const MUST_NOT = `HARD CONSTRAINTS — violating any one of these makes the output worthless:
 - NEVER infer a diagnosis, a radiographic interpretation, or a clinical finding.
@@ -46,7 +51,7 @@ const VOICE = `VOICE AND LANGUAGE:
 - Prefer person-first, non-stigmatizing wording where the meaning is identical. If a wording change would alter clinical meaning even slightly, keep the original.
 - Calm and practical, never preachy. Clarity and accuracy always outrank style.`;
 
-export const ASSIST_CAPABILITIES = ["normalize", "soap", "interrogate", "conflicts"] as const;
+export const ASSIST_CAPABILITIES = ["normalize", "soap", "interrogate", "conflicts", "extract"] as const;
 export type AssistCapability = (typeof ASSIST_CAPABILITIES)[number];
 
 export const SYSTEM_PROMPTS: Record<AssistCapability, string> = {
@@ -95,6 +100,19 @@ Rules:
 - "first" and "second" must be DIFFERENT statements, both quoted from the note. Naming the same statement twice is rejected.
 - Never decide which statement is right. Never assert new facts or numbers.
 - If nothing conflicts, return an EMPTY array rather than inventing a contradiction.
+
+${MUST_NOT}`,
+
+  extract: `You are the fact extractor of Smile Notes, a de-identified dental documentation tool. Read the note and propose structured clinical facts — teeth and surfaces, procedures, medications with doses, findings, materials, care events — for a clinician to accept or reject one by one.
+
+THE ONE COMMANDMENT: every fact carries "quote", the EXACT text from the note that states it, copied VERBATIM — same characters, same shorthand, same misspellings. Never paraphrase, never expand, never correct inside the quote. A deterministic verifier locates your quote in the note and refuses any fact whose quote is missing or altered; a refused fact is a wasted proposal.
+
+Rules:
+- "statement" restates the quoted fact in standard words, and may expand shorthand the note itself used (the quote "2 carp lido" supports the statement "2 carpules of lidocaine") — but it must add NOTHING: no numbers, drugs, teeth, sides, or negations beyond the quote, and no claims of observation or verification the note does not make.
+- If the note DENIES something, either skip it or propose the negation itself ("no swelling"). Never propose a denied thing as present.
+- Set "confidence" honestly. "low" means a human is asked to confirm instead of being shown a fact; when the note is ambiguous, low confidence is the correct answer, not a guess.
+- Diagnosis is not a fact kind you can propose. It is dentist judgement, and it is reserved.
+- Propose nothing rather than something for a note that contains no extractable facts. An empty array is a good answer.
 
 ${MUST_NOT}`
 };

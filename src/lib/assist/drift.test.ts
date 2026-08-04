@@ -4,6 +4,7 @@ import {
   decodeDriftDetail,
   driftVerdict,
   encodeDriftDetail,
+  summarizeExtraction,
   fabricationRate,
   summarize,
   type DriftEvent
@@ -224,5 +225,82 @@ describe("the privacy contract is not relaxed to get the signal", () => {
       codes: out.codes
     });
     expect(detail).not.toMatch(/consent|alternatives|extraction/i);
+  });
+});
+
+// ===========================================================================
+// EXTRACTION HEALTH — the two numbers with two failure directions.
+// ===========================================================================
+describe("fact counts survive the round trip, and old rows still decode", () => {
+  it("encodes and decodes facts alongside codes", () => {
+    const e = {
+      outcome: "ok" as const,
+      capability: "extract",
+      promptVersion: "1.3.0",
+      model: "anthropic/claude-sonnet-4.5",
+      tokens: 812,
+      facts: { pinned: 4, refused: 2, questions: 1 },
+      codes: ["extract.quote-not-found", "extract.polarity-conflict"]
+    };
+    expect(decodeDriftDetail(encodeDriftDetail(e))).toEqual(e);
+  });
+
+  it("a row written before the facts field existed still decodes", () => {
+    const decoded = decodeDriftDetail("ok cap=normalize prompt=1.2.0 model=m tokens=100");
+    expect(decoded).not.toBeNull();
+    expect(decoded?.facts).toBeUndefined();
+  });
+});
+
+describe("summarizeExtraction", () => {
+  const event = (facts: { pinned: number; refused: number; questions: number }, codes: string[] = []) => ({
+    outcome: "ok" as const,
+    capability: "extract",
+    promptVersion: "1.3.0",
+    model: "m",
+    tokens: 100,
+    facts,
+    codes,
+    at: new Date()
+  });
+
+  it("computes the machine-precision proxy from per-fact counts", () => {
+    const window = summarizeExtraction(
+      [event({ pinned: 8, refused: 2, questions: 1 }, ["extract.quote-not-found"])],
+      0
+    );
+    expect(window.calls).toBe(1);
+    expect(window.perFactRefusalRate).toBe(0.2);
+    expect(window.byCode[0]).toEqual({ code: "extract.quote-not-found", count: 1 });
+  });
+
+  it("reads the ok-path codes that the general summary ignores", () => {
+    const window = summarizeExtraction(
+      [event({ pinned: 0, refused: 3, questions: 0 }, ["extract.invented-number"])],
+      0
+    );
+    expect(window.byCode.map((c) => c.code)).toContain("extract.invented-number");
+  });
+
+  it("ignores other capabilities entirely", () => {
+    const foreign = { ...event({ pinned: 9, refused: 9, questions: 9 }), capability: "normalize" };
+    const window = summarizeExtraction([foreign], 0);
+    expect(window.calls).toBe(0);
+    expect(window.factsPinned).toBe(0);
+  });
+
+  it("computes human acceptance against pinned, and caps at 1", () => {
+    const window = summarizeExtraction([event({ pinned: 4, refused: 0, questions: 0 })], 3);
+    expect(window.acceptanceRate).toBe(0.75);
+    // Window skew: an acceptance whose pinning landed in the previous window
+    // must read as clock skew, never as data corruption.
+    const skewed = summarizeExtraction([event({ pinned: 1, refused: 0, questions: 0 })], 5);
+    expect(skewed.acceptanceRate).toBe(1);
+  });
+
+  it("is quiet arithmetic on an empty window", () => {
+    const window = summarizeExtraction([], 0);
+    expect(window.perFactRefusalRate).toBe(0);
+    expect(window.acceptanceRate).toBe(0);
   });
 });

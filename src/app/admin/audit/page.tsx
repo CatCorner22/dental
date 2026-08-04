@@ -35,7 +35,8 @@ const ACTION_LABEL: Record<string, string> = {
   "submit.no-email": "Note submitted (email off)",
   "submit.phi-override": "Privacy stop overridden (attested)",
   "assist.used": "AI assist used",
-  "assist.drift": "AI assist outcome (drift monitor)"
+  "assist.drift": "AI assist outcome (drift monitor)",
+  "assist.fact-decision": "Pinned fact accepted into a note (count only)"
 };
 
 const FILTERS: { key: AuditFilter; label: string }[] = [
@@ -55,13 +56,16 @@ export default async function AuditLogPage({
   const { filter: raw } = await searchParams;
   const filter: AuditFilter = raw === "auth" || raw === "security" ? raw : "all";
   const db = await getDb();
-  const [log, users, driftRows] = await Promise.all([
+  const [log, users, driftRows, factDecisionRows] = await Promise.all([
     listAuditLog(db, 300, filter),
     listUsers(db),
     // A far wider window than the visible table, and filtered in SQL: a refusal
     // rate computed over "the last 300 events" is a rate over whatever happened
     // to be recent, and drift is a trend.
-    listAuditLogByAction(db, "assist.drift", 2000)
+    listAuditLogByAction(db, "assist.drift", 2000),
+    // The human half of the extraction-precision loop: count-only acceptance
+    // beacons, aggregated into the panel's acceptance rate.
+    listAuditLogByAction(db, "assist.fact-decision", 2000)
   ]);
   const nameById = new Map(users.map((u) => [u.id, `${u.displayName} (${u.username})`]));
 
@@ -82,7 +86,7 @@ export default async function AuditLogPage({
         Sign-ins, user-management, and submission events, newest first. This log supports
         traceability; it contains no patient data.
       </p>
-      <DriftPanel events={driftEvents} />
+      <DriftPanel events={driftEvents} factAcceptances={factDecisionRows.length} />
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
         {FILTERS.map((f) => (
           <a

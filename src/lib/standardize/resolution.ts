@@ -55,6 +55,11 @@ export interface Concern {
   attestable: boolean;
   /** False where sending the content to a wish would itself be wrong (PHI fragments). */
   escalatable: boolean;
+  /**
+   * Suggested reading for ambiguous shorthand — display only. The writer must
+   * still type the expansion; nothing here is applied to the note.
+   */
+  proposal?: { suggested: string; rationale: string };
 }
 
 export type ResolutionState =
@@ -136,7 +141,15 @@ export function buildConcerns(
       how: flag.guidance,
       occurrences: flag.count,
       attestable: !truncated,
-      escalatable: !truncated
+      escalatable: !truncated,
+      ...(flag.proposal
+        ? {
+            proposal: {
+              suggested: flag.proposal.suggested,
+              rationale: flag.proposal.rationale
+            }
+          }
+        : {})
     });
   }
 

@@ -24,6 +24,8 @@ export interface Advice {
   say: string;
   why: string;
   source: string;
+  /** Concrete next step — never applied to the note. */
+  nextAction?: string;
 }
 
 /**
@@ -52,6 +54,13 @@ export interface DoseGauge {
   fraction: number;
 }
 
+export interface GaugeNote {
+  /** Why this gauge sits where it does right now. */
+  why: string;
+  /** Optional next move if the gauge is short of target. */
+  next?: string;
+}
+
 export interface AdvisorGauges {
   /** Share of clauses the deterministic parser could read, 0..1. */
   readCoverage: number;
@@ -62,6 +71,13 @@ export interface AdvisorGauges {
   pillars: DefensibilityPillars;
   /** Present only when a computable anesthetic dose is on the note. */
   dose?: DoseGauge;
+  /** Plain explanations for each live gauge. */
+  notes: {
+    read: GaugeNote;
+    density: GaugeNote;
+    pillars: GaugeNote;
+    dose: GaugeNote;
+  };
 }
 
 export type ByteMood = "idle" | "happy" | "thinking" | "concerned";
@@ -159,16 +175,72 @@ export function advise(text: string): AdvisorReport {
     id: e.id,
     say: e.say,
     why: e.why,
-    source: e.source
+    source: e.source,
+    ...(e.nextAction ? { nextAction: e.nextAction } : {})
   }));
 
+  const readCoverage = parseCoverage(extraction);
+  const density = words === 0 ? 0 : Math.round(((facts.length / words) * 100) * 10) / 10;
+  const pillars = pillarsOf(facts, lower);
+  const dose = doseGauge(facts);
+  const unread = extraction.unparsed.length;
+  const missingPillars = (
+    [
+      ["consent", pillars.consent],
+      ["outcome", pillars.outcome],
+      ["instructions", pillars.instructions],
+      ["follow-up", pillars.followUp]
+    ] as const
+  )
+    .filter(([, present]) => !present)
+    .map(([name]) => name);
+
   const gauges: AdvisorGauges = {
-    readCoverage: parseCoverage(extraction),
-    density: words === 0 ? 0 : Math.round(((facts.length / words) * 100) * 10) / 10,
+    readCoverage,
+    density,
     words,
     facts: facts.length,
-    pillars: pillarsOf(facts, lower),
-    ...(doseGauge(facts) ? { dose: doseGauge(facts) } : {})
+    pillars,
+    ...(dose ? { dose } : {}),
+    notes: {
+      read: {
+        why:
+          unread === 0
+            ? "Every phrase in this draft was recognized by the practice grammar."
+            : `${unread} phrase${unread === 1 ? "" : "s"} still unread — they stay off the chart until rewritten in plain clinical words.`,
+        ...(unread > 0
+          ? { next: "Tap an unread phrase in the readback panel and rewrite it in full words." }
+          : {})
+      },
+      density: {
+        why:
+          words === 0
+            ? "No words yet."
+            : density < 8
+              ? "Sparse for this length — add concrete teeth, findings, or doses if they happened."
+              : density > 60
+                ? "Very dense — check for pasted boilerplate that does not belong to this visit."
+                : "Fact density is in a useful band for a clinical note."
+      },
+      pillars: {
+        why: !pillars.applicable
+          ? "Defensibility pillars apply once treatment is documented."
+          : missingPillars.length === 0
+            ? "Consent, outcome, instructions, and follow-up are all visible."
+            : `Still missing: ${missingPillars.join(", ")}.`,
+        ...(pillars.applicable && missingPillars.length > 0
+          ? { next: `Add the missing pillar in one short sentence: ${missingPillars[0]}.` }
+          : {})
+      },
+      dose: {
+        why: dose
+          ? `${dose.mg} mg ${dose.drug} documented against a ${dose.maxMg} mg absolute ceiling.`
+          : "Shows when volume and concentration are both stated.",
+        ...(dose && dose.fraction >= 0.8
+          ? { next: "Confirm concentration and patient weight if you are near a published ceiling." }
+          : {})
+      }
+    }
   };
 
   // The mood follows the numbers, not vibes: concerned only when a

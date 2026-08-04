@@ -1,4 +1,5 @@
 import { runPhiRule } from "@/lib/audit/rules/phi";
+import { scanPhiForProvider } from "@/lib/audit/rules/phi-secondary";
 import { retrieveContext } from "./retrieval";
 import { verifyMeaning, type VerifyRejection } from "@/lib/verify/verifyMeaning";
 import {
@@ -131,7 +132,11 @@ export async function runAssist(
   // PHI gate. ANY phi finding blocks the call — not only S0. Bare-name hits
   // are S2 for the in-app audit (review, not hard-stop on filing), but an AI
   // provider is off-server: probable patient names must never leave either.
-  const phi = runPhiRule(input).filter((f) => f.category === "phi");
+  // Second-line patterns (email, MRN, street) add blocks only; they never clear
+  // a primary hit. Model-scan injection lives on ByteStar's opts seam so this
+  // signature stays note-text-only (see non-goals.test.ts).
+  const primary = runPhiRule(input).filter((f) => f.category === "phi");
+  const phi = scanPhiForProvider(input, primary);
   if (phi.length > 0) {
     const stops = phi.filter((f) => f.severity === "S0").length;
     return {

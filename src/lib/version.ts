@@ -176,4 +176,10 @@
 //         remaining adversarial shape (an unbroken wall with no punctuation).
 //         Found by a hostile stress battery, not by a user — which is the
 //         only acceptable way to find a 12-second keystroke.
-export const RULESET_VERSION = "2.16.0";
+// 2.17.0 — staff-adoption + Gate-1 follow-ons without learned weights:
+//         ambiguous-shorthand reading proposals (display-only); unread-clause
+//         category router for the readback panel; provider-only second-line
+//         PHI patterns (email/MRN/street/ZIP) merged before assist/ByteStar
+//         calls; learning-ledger surface-variant clustering; Byte next-action
+//         + gauge explanations; TN license-scope retrieval cue.
+export const RULESET_VERSION = "2.17.0";

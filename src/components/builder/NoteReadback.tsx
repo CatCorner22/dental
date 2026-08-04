@@ -4,6 +4,11 @@ import { useMemo } from "react";
 import { Odontogram } from "./Odontogram";
 import { chartMarks, chartRegions, contradictions } from "@/lib/extract/chart";
 import { coverage, extractFacts } from "@/lib/extract/extract";
+import {
+  classifyUnparsedSpans,
+  UNPARSED_CATEGORY_LABEL
+} from "@/lib/extract/classifyUnparsed";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 // THE READBACK PANEL — what the app understood, said back to the writer.
 //
@@ -34,6 +39,10 @@ export function NoteReadback({ text, onJumpTo }: { text: string; onJumpTo?: (off
   const marks = useMemo(() => chartMarks(result), [result]);
   const regions = useMemo(() => chartRegions(result), [result]);
   const conflicts = useMemo(() => contradictions(result), [result]);
+  const unread = useMemo(
+    () => classifyUnparsedSpans(text, result.unparsed),
+    [text, result.unparsed]
+  );
   const read = Math.round(coverage(result) * 100);
   const understood = result.clauseCount - result.unparsed.length;
 
@@ -109,30 +118,42 @@ export function NoteReadback({ text, onJumpTo }: { text: string; onJumpTo?: (off
           percentage alone, because "78%" invites a reader to round it up to
           "basically all of it" and "11 of 14" does not. */}
       <div className="card-inset">
-        <p className="text-slate-800">
+        <p className="flex flex-wrap items-center gap-1.5 text-slate-800">
           <strong>
             Read {understood} of {result.clauseCount} {result.clauseCount === 1 ? "phrase" : "phrases"}
           </strong>
-          {result.clauseCount > 0 && ` (${read}%).`}{" "}
+          {result.clauseCount > 0 && ` (${read}%).`}
+          <HelpTip label="About unread phrases">
+            Unread phrases stay off the chart. Category labels are questions for you — never
+            invented facts. Rewrite the phrase in plain clinical words so the tool can read it.
+          </HelpTip>
+        </p>
+        <p className="mt-1 text-xs text-slate-600">
           {result.unparsed.length > 0
             ? "The rest is kept exactly as you wrote it and is not shown on the chart above."
             : "Everything in this note was recognised."}
         </p>
-        {result.unparsed.length > 0 && (
-          <ul className="mt-2 space-y-0.5 text-xs text-slate-600">
-            {result.unparsed.slice(0, 6).map((span, i) => (
-              <li key={i}>
-                <button
-                  type="button"
-                  onClick={() => jump(span.start)}
-                  className="text-left underline decoration-dotted underline-offset-2"
-                >
-                  “{text.slice(span.start, Math.min(span.end, span.start + 70))}
-                  {span.end - span.start > 70 ? "…" : ""}”
-                </button>
+        {unread.length > 0 && (
+          <ul className="mt-2 space-y-2 text-xs text-slate-700">
+            {unread.slice(0, 6).map((item, i) => (
+              <li key={i} className="rounded border border-slate-200 bg-white/80 px-2 py-1.5">
+                <div className="flex flex-wrap items-baseline gap-2">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600">
+                    {UNPARSED_CATEGORY_LABEL[item.category]}
+                  </span>
+                  <button
+                    type="button"
+                    onClick={() => jump(item.span.start)}
+                    className="text-left font-medium text-brand-navy underline decoration-dotted underline-offset-2"
+                  >
+                    “{text.slice(item.span.start, Math.min(item.span.end, item.span.start + 70))}
+                    {item.span.end - item.span.start > 70 ? "…" : ""}”
+                  </button>
+                </div>
+                <p className="mt-0.5 text-slate-600">{item.ask}</p>
               </li>
             ))}
-            {result.unparsed.length > 6 && <li>…and {result.unparsed.length - 6} more.</li>}
+            {unread.length > 6 && <li>…and {unread.length - 6} more.</li>}
           </ul>
         )}
       </div>

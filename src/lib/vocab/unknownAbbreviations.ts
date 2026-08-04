@@ -174,7 +174,7 @@ function isKnownWord(token: string): boolean {
  * nobody will be able to read in five years, and the counter is the route by
  * which that shorthand gets added to the tables so the next occurrence is free.
  * If the two disagreed, a writer could be blocked on a token the practice's own
- * vocabulary process was blind to — a dead end with no way out.
+ * vocabulary process never saw — a dead end with no way out.
  */
 export function looksLikeShorthand(token: string): boolean {
   if (!abbreviationShaped(token)) return false;

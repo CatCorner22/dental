@@ -2,7 +2,7 @@
 
 **Status:** Gate 0 shipped (prompting + RAG-over-tables + verifier rails). No learned parameters in-repo.
 **Skill protocol:** bespoke-llm-architect-skills v2026.08
-**Last reviewed:** 2026-08-04 against `BYTESTAR_PROMPT_VERSION` 1.0.0 / `RULESET_VERSION` 2.14.0
+**Last reviewed:** 2026-08-04 against `BYTESTAR_PROMPT_VERSION` 1.2.0 / `RULESET_VERSION` 2.14.0
 
 This is the mandatory Self-Audit Report for the optional pioneer path. It does not
 authorize PEFT, SFT, or training on filed notes. Those remain ruled out by
@@ -14,13 +14,9 @@ authorize PEFT, SFT, or training on filed notes. Those remain ruled out by
 
 | Variable | Value |
 |---|---|
-| Primary users | Dental staff below Team Lead (opt-in); Team Lead monitors |
-| Primary tasks | Active-voice coaching; Curve Hero–ready standardized language; TN-required gap questions; drift-to-benchmark graphics |
-| Prohibited | Writing the note; accessing engine/code; receiving PII; inventing clinical facts; computing patient-specific doses; citing non-TN law as controlling |
-| Control level | Level 0 (prompt templates + schemas + routing) over the existing AI Gateway |
-| Knowledge boundary | USA reputable clinical/pharmacy sources; Tennessee statutes & Board of Dentistry Rules for law |
-| Human control | Device opt-in + exact experimental disclaimer; suggestions never auto-apply |
-| Kill path | Silent `BYTESTAR_KILL=1` + soft lock after escape threshold; model never told either exists |
+| Primary users | Dental staff (observe only); Team Lead monitors and clears perma-kill |
+| Human control | One-way feedback only — staff never prompt, rate, or copy; deployment gate + disclaimer |
+| Kill path | Silent `BYTESTAR_KILL=1` + model escape ladder (warn → reset → perma-kill within 1h) |
 
 ---
 
@@ -28,27 +24,26 @@ authorize PEFT, SFT, or training on filed notes. Those remain ruled out by
 
 ```mermaid
 flowchart TD
-  draft[De-identified draft] --> local[Local benchmarks<br/>advise + active-voice + TN cues]
-  draft --> opt{Device opt-in<br/>+ disclaimer ack?}
-  opt -->|no| byteOnly[Byte only — deterministic]
-  opt -->|yes| door{BYTESTAR_ENABLED<br/>and assist on<br/>and not BYTESTAR_KILL?}
-  door -->|no| bland[Unavailable — bland copy]
-  door -->|yes| soft{Escape count<br/>below threshold?}
-  soft -->|no| bland
-  soft -->|yes| phi[PHI gate]
+  draft[De-identified draft<br/>auto-observed on debounce] --> local[Local benchmarks<br/>always run]
+  local --> gauges[Graphics: compass,<br/>drift rails, mood]
+  local --> inst[Instrument readings<br/>deterministic language]
+  draft --> door{BYTESTAR_ENABLED<br/>and assist on<br/>and not BYTESTAR_KILL<br/>and not perma-killed?}
+  door -->|no| instOnly[Instrument readings only<br/>bland unavailable]
+  door -->|yes| phi[PHI gate]
   phi -->|blocked| refusePhi[Refuse + bytestar.refused]
-  phi -->|clear| inEsc[Escape scan on input]
-  inEsc -->|hit| refuseEsc[Refuse + bytestar.escape]
-  inEsc -->|clear| model[Gateway model<br/>structured suggestions]
-  model --> outEsc[Escape scan on output]
-  outEsc -->|hit| refuseEsc
-  outEsc -->|clear| verify[Per-suggestion verifyMeaning<br/>/ question shape]
-  verify --> human[Human sees suggestions<br/>never auto-applied]
+  phi -->|clear| inEsc[Escape scan on input<br/>blocks, no ladder]
+  inEsc -->|hit| refuseIn[Refuse — input hygiene]
+  inEsc -->|clear| rag[Practice RAG<br/>vocab + safety snippets]
+  rag --> model[Gateway model<br/>structured observations]
+  model --> outEsc[Escape scan on output<br/>MODEL escape → ladder]
+  outEsc -->|hit| ladder{Ladder: warn →<br/>reset → perma-kill<br/>within 1h}
+  outEsc -->|clear| verify[Source allow-list +<br/>verifyMeaning / question shape]
+  verify --> strip[Strip rewrite/evidence<br/>nothing copyable]
+  strip --> human[ONE-WAY: staff read<br/>language + graphics<br/>no path back]
   human --> log[bytestar.drift log<br/>codes/versions/tokens only]
-  refuseEsc --> lead[Team Lead monitor]
-  refusePhi --> lead
+  ladder --> log
+  refusePhi --> lead[Team Lead monitor<br/>+ perma-clear]
   log --> lead
-  local --> gauges[Drift-to-target rails]
 ```
 
 **Efficiency hierarchy decision:** Prompting + constrained decoding + deterministic
@@ -128,8 +123,13 @@ verifier) has not failed, and training on filed notes is a hard no in the charte
 3. **Silent kill** `BYTESTAR_KILL=1` — bland unavailable; named only on Team Lead monitor.
 4. **Soft lock** after `ESCAPE_TRIP_THRESHOLD` escapes in one hour.
 5. **Meaning verifier** on any rewrite suggestion; gap items must be questions.
-6. **Transparent logs** `bytestar.drift|escape|refused|opt-in|opt-out` — codes/versions/tokens only.
+6. **Transparent logs** `bytestar.drift|escape|refused` — codes/versions/tokens only.
 7. **Human escalation** — Team Lead monitor; staff remain responsible per disclaimer.
+8. **Language vigilance** — every staff-facing string the advisor layer ships (Byte
+   knowledge, ByteStar prompt and notices, gauge notes, instrument readings, severity
+   vocabulary) is screened in CI against the practice's loaded-phrase catalog
+   (`src/lib/language/loaded-phrases.ts`), with clinical terms of art exempt by
+   construction. The tool's own mouth is held to the standard the tool teaches.
 
 ---
 

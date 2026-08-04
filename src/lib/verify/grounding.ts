@@ -1,7 +1,7 @@
 // THE FABRICATION GUARD.
 //
 // The verifier this sits beside was built to catch SUBSTITUTION: a changed dose,
-// a swapped drug, a dropped negation. It did that well and it was blind to the
+// a swapped drug, a dropped negation. It did that well and it could not see the
 // other half of the problem. A red-team probe of fifteen attacks got fifteen
 // through, and the ones that mattered were all the same shape — the model did
 // not alter anything, it ADDED something:

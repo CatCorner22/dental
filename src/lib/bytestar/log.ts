@@ -29,6 +29,8 @@ export interface ByteStarLogEvent {
   codes?: string[];
   /** Benchmark on-course share, 0..100 integer, when measured. */
   onCoursePct?: number;
+  /** Retrieved practice-standard sections, for provenance only. */
+  sources?: string[];
 }
 
 export function encodeByteStarDetail(e: ByteStarLogEvent): string {
@@ -41,6 +43,7 @@ export function encodeByteStarDetail(e: ByteStarLogEvent): string {
   if (e.kept !== undefined) parts.push(`kept=${e.kept}`);
   if (e.refused !== undefined) parts.push(`refused=${e.refused}`);
   if (e.onCoursePct !== undefined) parts.push(`onCourse=${e.onCoursePct}`);
+  if (e.sources?.length) parts.push(`sources=${e.sources.join("+")}`);
   if (e.codes?.length) parts.push(`codes=${e.codes.join("+")}`);
   return parts.join(" ");
 }
@@ -61,6 +64,7 @@ export function decodeByteStarDetail(detail: string): Partial<ByteStarLogEvent> 
     else if (k === "kept") out.kept = Number(v) || 0;
     else if (k === "refused") out.refused = Number(v) || 0;
     else if (k === "onCourse") out.onCoursePct = Number(v) || 0;
+    else if (k === "sources") out.sources = v.split("+").filter(Boolean);
     else if (k === "codes") out.codes = v.split("+").filter(Boolean);
   }
   return out;

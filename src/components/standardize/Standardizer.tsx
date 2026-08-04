@@ -7,6 +7,8 @@ import { standardize } from "@/lib/standardize/standardize";
 import { runTextAudit } from "@/lib/audit/engine";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
+import { BatchCheck } from "./BatchCheck";
+import { DictationButton } from "./DictationButton";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { TextDiff } from "@/components/diff/TextDiff";
@@ -318,6 +320,12 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
           >
             Clear
           </button>
+          <DictationButton
+            disabled={busy}
+            onText={(t) =>
+              setInput((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${t}` : t))
+            }
+          />
           {result?.soap && (
             /* Always available, unlike the AI button further down — this pass needs
                no model, which matters because AI is off by default and this is the
@@ -360,6 +368,16 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
             setNotice(
               "Block inserted. Replace every <placeholder> with this visit's facts — the note stays blocked while any placeholder survives."
             );
+            setTimeout(() => inputRef.current?.focus(), 50);
+          }}
+        />
+
+        <BatchCheck
+          onLoad={(text) => {
+            setInput(text);
+            setResult(null);
+            setItems([]);
+            setNotice("Loaded from the batch. Standardize to build its resolution queue.");
             setTimeout(() => inputRef.current?.focus(), 50);
           }}
         />

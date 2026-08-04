@@ -24,10 +24,12 @@ const emptyChecklist = Object.fromEntries(CHECKLIST.map((c) => [c.id, false])) a
   boolean
 >;
 
-export function GauntletForm() {
+export function GauntletForm({ initialSummary = "" }: { initialSummary?: string }) {
   const [step, setStep] = useState(0); // 0..4 cycles, 5 = pre-flight, 6 = report
   const [form, setForm] = useState<GauntletAnswers>({
-    summary: "",
+    // Pre-filled from the digest's evidence when the request starts there —
+    // the writer still walks every sterilization cycle by hand.
+    summary: initialSummary,
     changeType: "",
     answers: emptyAnswers,
     checklist: emptyChecklist,

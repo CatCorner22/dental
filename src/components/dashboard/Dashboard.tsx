@@ -12,6 +12,7 @@ import { Character } from "@/components/mascot/Sparkle";
 import { STATUS_META } from "@/lib/status/draftStatus";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { OnboardingChecklist } from "./OnboardingChecklist";
 
 interface DraftRow {
   id: string;
@@ -26,12 +27,15 @@ interface DraftRow {
 export function Dashboard({
   role,
   displayName,
+  username,
   canEdit,
   drafts,
   totalDrafts
 }: {
   role: string;
   displayName: string;
+  /** Stable key for per-user client-side state (onboarding checklist). */
+  username: string;
   canEdit: boolean;
   drafts: DraftRow[];
   // How many drafts exist in total, versus the page actually rendered.
@@ -104,6 +108,7 @@ export function Dashboard({
 
   return (
     <div className="space-y-6">
+      {canEdit && <OnboardingChecklist username={username} />}
       <div className="flex flex-wrap items-end justify-between gap-3">
         <div className="flex items-center gap-3">
           <Character id="sparkle" size="lg" />

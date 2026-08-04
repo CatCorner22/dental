@@ -110,6 +110,16 @@ export default async function DigestPage() {
                   </ul>
                 )}
                 <p className="mt-1 text-sm text-slate-700">{p.effect}</p>
+                {/* One click carries the evidence into the gauntlet — the
+                    five sterilization cycles still run in full. */}
+                <a
+                  className="btn-secondary mt-2 inline-block text-xs"
+                  href={`/requests?summary=${encodeURIComponent(
+                    `Add vocabulary entry for "${p.subject}" — ${p.evidence.occurrences} uses across ${p.evidence.notes} notes by ${p.evidence.authors} people (digest evidence).`
+                  )}`}
+                >
+                  Raise a change request for this word
+                </a>
               </li>
             ))}
           </ul>

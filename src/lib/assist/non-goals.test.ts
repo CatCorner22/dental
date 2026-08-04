@@ -22,8 +22,11 @@ describe("the non-goals are documented, not folklore", () => {
 });
 
 describe("no capability reads a patient record, because there is none", () => {
-  it("offers exactly four capabilities, none of them a history lookup", () => {
-    expect([...ASSIST_CAPABILITIES]).toEqual(["normalize", "soap", "interrogate", "conflicts"]);
+  it("offers exactly five capabilities, none of them a history lookup", () => {
+    // "extract" joined 2026-08-04 after the owner approved the evidence-pinned
+    // design. It reads only the submitted text — every fact it proposes must
+    // quote that text verbatim, which is the opposite of a history lookup.
+    expect([...ASSIST_CAPABILITIES]).toEqual(["normalize", "soap", "interrogate", "conflicts", "extract"]);
   });
 
   it("takes only note text — the signature has nowhere to put a patient", () => {

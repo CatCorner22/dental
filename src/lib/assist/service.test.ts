@@ -202,3 +202,111 @@ describe("echo model", () => {
     expect(out.ok).toBe(true);
   });
 });
+
+// ===========================================================================
+// THE EXTRACT CAPABILITY, under adversarial models. The acceptance test, from
+// the owner's blueprint: no AI-generated clinical fact without visible source
+// evidence. These doubles are models that try to spend facts they never earned.
+// ===========================================================================
+describe("extract capability under adversarial models", () => {
+  const NOTE = "Pt c/o pain UR quad. #3 perc +, no swelling. 2 carp lido 2% w epi. RCT #3 started.";
+  const echo: GenerateFn = async () => "unused";
+  const listOf =
+    (facts: unknown): GenerateListFn =>
+    async () => ({ facts });
+
+  it("never calls the model when PHI is present — the gate is before the wire", async () => {
+    let called = false;
+    const spy: GenerateListFn = async () => {
+      called = true;
+      return { facts: [] };
+    };
+    const out = await runAssist("extract", "John Smith, #3 perc +.", echo, spy);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("phi-blocked");
+    expect(called).toBe(false);
+  });
+
+  it("a fabricating adversary gets every fact refused, and the call still succeeds", async () => {
+    // Per-fact refusal inside an ok outcome IS the design: the human sees what
+    // was refused and why, and the drift row gets the codes.
+    const out = await runAssist(
+      "extract",
+      NOTE,
+      echo,
+      listOf([
+        { kind: "medication", statement: "4 carpules of articaine", quote: "not in the note", confidence: "high" },
+        { kind: "finding", statement: "swelling present", quote: "no swelling", confidence: "high" }
+      ])
+    );
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.extraction?.pinned).toEqual([]);
+      expect(out.extraction?.refused).toHaveLength(2);
+      expect(out.codes).toContain("extract.quote-not-found");
+      expect(out.codes).toContain("extract.polarity-conflict");
+    }
+  });
+
+  it("an honest model gets facts pinned with evidence offsets", async () => {
+    const out = await runAssist(
+      "extract",
+      NOTE,
+      echo,
+      listOf([
+        {
+          kind: "medication",
+          statement: "2 carpules of lidocaine 2% with epinephrine",
+          quote: "2 carp lido 2% w epi",
+          confidence: "high"
+        }
+      ])
+    );
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.extraction?.pinned).toHaveLength(1);
+      const pinned = out.extraction!.pinned[0];
+      expect(NOTE.slice(pinned.start, pinned.end)).toBe("2 carp lido 2% w epi");
+      expect(out.codes).toEqual([]);
+    }
+  });
+
+  it("a shape-breaking adversary is a stated refusal, not a crash or a render", async () => {
+    const out = await runAssist("extract", NOTE, echo, async () => ({ facts: "lots of them" }));
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("invalid-shape");
+  });
+
+  it("a diagnosis smuggled as a fact kind is refused at the shape", async () => {
+    const out = await runAssist(
+      "extract",
+      NOTE,
+      echo,
+      listOf([{ kind: "diagnosis", statement: "irreversible pulpitis", quote: "perc +", confidence: "high" }])
+    );
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("invalid-shape");
+  });
+
+  it("low confidence becomes a question for a human, never a fact", async () => {
+    const out = await runAssist(
+      "extract",
+      NOTE,
+      echo,
+      listOf([
+        { kind: "procedure", statement: "root canal therapy started on tooth 3", quote: "RCT #3 started", confidence: "low" }
+      ])
+    );
+    expect(out.ok).toBe(true);
+    if (out.ok) {
+      expect(out.extraction?.pinned).toEqual([]);
+      expect(out.extraction?.questions).toHaveLength(1);
+    }
+  });
+
+  it("a missing structured binding is a stated model error", async () => {
+    const out = await runAssist("extract", NOTE, echo, undefined);
+    expect(out.ok).toBe(false);
+    if (!out.ok) expect(out.code).toBe("model-error");
+  });
+});

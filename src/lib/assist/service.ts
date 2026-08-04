@@ -13,6 +13,12 @@ import {
   validateConflicts,
   validateQuestions
 } from "./schemas";
+import {
+  EXTRACTION_SCHEMA,
+  validateExtraction,
+  verifyExtraction,
+  type VerifiedExtraction
+} from "./extraction";
 
 // The assist service: one narrow doorway through which every AI call passes.
 //
@@ -80,6 +86,19 @@ export type AssistOutcome =
        * string somebody has to split again.
        */
       items?: string[];
+      /**
+       * Set for the extract capability: the span-verified result. Per-fact
+       * refusals live INSIDE a successful outcome — refusing one fabricated
+       * fact while pinning four honest ones is the design, not a failure.
+       */
+      extraction?: VerifiedExtraction;
+      /**
+       * Refusal codes that occurred within a successful outcome (extract's
+       * per-fact refusals), so the drift row has its one field to read on the
+       * ok path too. A climbing per-fact refusal rate is the earliest sign a
+       * model revision changed under the practice.
+       */
+      codes?: string[];
     }
   | {
       ok: false;
@@ -141,6 +160,60 @@ export async function runAssist(
   const system = retrieved.text
     ? `${SYSTEM_PROMPTS[capability]}\n\n--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}`
     : SYSTEM_PROMPTS[capability];
+
+  // EXTRACT SHORT-CIRCUITS THE SHARED TAIL, deliberately. Its verifier is
+  // per-fact and stricter than verifyMeaning — every statement must ground in
+  // its own verbatim quote, a SUBSET of the input — and running the whole-text
+  // verifier over a fact list would refuse honest extractions for "dropping"
+  // the rest of the note, which is what an extraction is FOR.
+  if (capability === "extract") {
+    if (!generateList) {
+      return {
+        ok: false,
+        code: "model-error",
+        codes: [],
+        message:
+          "This capability needs the structured model binding, which this deployment did not provide. The deterministic tools still work."
+      };
+    }
+    let value: unknown;
+    try {
+      value = await generateList({
+        system,
+        prompt: input,
+        schemaName: "ExtractedFacts",
+        schema: EXTRACTION_SCHEMA
+      });
+    } catch {
+      return {
+        ok: false,
+        code: "model-error",
+        codes: [],
+        message:
+          "The AI service did not answer. The deterministic tools still work — continue without it."
+      };
+    }
+    const parsed = validateExtraction(value);
+    if (!parsed.ok) {
+      return {
+        ok: false,
+        code: "invalid-shape",
+        codes: [],
+        message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
+      };
+    }
+    const extraction = verifyExtraction(input, parsed.facts);
+    return {
+      ok: true,
+      // One pinned statement per line, so plain-text consumers keep working.
+      text: extraction.pinned.map((f) => f.statement).join("\n"),
+      capability,
+      promptVersion: ASSIST_PROMPT_VERSION,
+      retrievedSources: retrieved.sources,
+      extraction,
+      codes: [...new Set(extraction.refused.map((r) => r.code))].sort()
+    };
+  }
 
   const isList = capability === "interrogate" || capability === "conflicts";
 

@@ -51,7 +51,7 @@ describe("the wire format survives a round trip", () => {
       outcome: "ok" as const,
       capability: "soap",
       promptVersion: "1.2.0",
-      model: "openai/gpt-5",
+      model: "acme/clinical-writer",
       tokens: 0,
       codes: []
     };

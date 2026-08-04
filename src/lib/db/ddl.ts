@@ -183,6 +183,16 @@ export const SCHEMA_STATEMENTS: string[] = [
      "created_at" timestamp with time zone NOT NULL DEFAULT now(),
      "updated_at" timestamp with time zone NOT NULL DEFAULT now()
    );`,
+  // Personal saved blocks: each writer's own starting text for visits they
+  // chart often. Private to the owner; de-identified like every draft.
+  `CREATE TABLE IF NOT EXISTS "user_blocks" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "owner_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,
+     "title" text NOT NULL,
+     "body" text NOT NULL,
+     "created_at" timestamp with time zone DEFAULT now() NOT NULL
+   );`,
+  `CREATE INDEX IF NOT EXISTS "user_blocks_owner_idx" ON "user_blocks" ("owner_id", "created_at" DESC);`,
   `CREATE TABLE IF NOT EXISTS "password_reset_tokens" (
      "id" text PRIMARY KEY NOT NULL,
      "user_id" text NOT NULL REFERENCES "users"("id") ON DELETE CASCADE,

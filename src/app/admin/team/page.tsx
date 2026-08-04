@@ -3,7 +3,8 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { canManageUsers } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import { listUsers } from "@/lib/db/repo/users";
-import { statRowsForUser } from "@/lib/db/repo/submissions";
+import { officeAnalytics, statRowsForUser } from "@/lib/db/repo/submissions";
+import { OfficeAnalyticsPanel } from "@/components/admin/OfficeAnalyticsPanel";
 import { listRedemptions, seedStoreIfEmpty } from "@/lib/db/repo/gamify";
 import { STARTER_STORE } from "@/lib/gamify/economy";
 import { computeStats } from "@/lib/stats/computeStats";
@@ -35,6 +36,12 @@ export default async function TeamPage() {
   // being used last year is not a gap in the vocabulary any more.
   const noteTexts = await recentNoteTexts(db, 200);
   const localVocabulary = unknownAbbreviations(noteTexts, { minNotes: 2, limit: 15 });
+
+  const OFFICE_WINDOW_DAYS = 90;
+  const officeRows = await officeAnalytics(
+    db,
+    new Date(Date.now() - OFFICE_WINDOW_DAYS * 24 * 60 * 60 * 1000)
+  );
 
   let pendingAfterHours = 0;
   const timeToFile: number[] = [];
@@ -80,6 +87,7 @@ export default async function TeamPage() {
         not name people or grade them — coaching stays a conversation, not a dashboard band.
       </p>
       <TeamDashboard view={view} />
+      <OfficeAnalyticsPanel rows={officeRows} windowDays={OFFICE_WINDOW_DAYS} />
       <LocalVocabularyPanel entries={localVocabulary} notesScanned={noteTexts.length} />
     </div>
   );

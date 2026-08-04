@@ -34,6 +34,9 @@ export function toObservationalSuggestion(s: {
   why: string;
   question?: string;
   source: string;
+  corroboration?: { seen: number; reads: number };
+  /** Deterministic strong-claim-without-authority label; shown to staff. */
+  tentative?: boolean;
   /** Stripped before the client sees the observation. */
   rewrite?: string;
   evidence?: string;
@@ -43,6 +46,8 @@ export function toObservationalSuggestion(s: {
     say: s.say,
     why: s.why,
     ...(s.question ? { question: s.question } : {}),
-    source: s.source
+    source: s.source,
+    ...(s.corroboration ? { corroboration: s.corroboration } : {}),
+    ...(s.tentative ? { tentative: true } : {})
   };
 }

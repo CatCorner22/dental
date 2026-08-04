@@ -249,6 +249,27 @@ export async function countAllSubmissions(db: Db): Promise<number> {
   return rows[0]?.n ?? 0;
 }
 
+/**
+ * Per-office filing volume and audit-status mix over a window — office-level
+ * on purpose, never per-person: the digest's no-scoreboard rule applies to
+ * locations' staff too, and a location aggregate cannot name anyone.
+ */
+export async function officeAnalytics(
+  db: Db,
+  since: Date
+): Promise<{ officeName: string; total: number; status: string }[]> {
+  const rows = await db
+    .select({
+      officeName: sql<string>`coalesce(${submissions.officeName}, '(no office recorded)')`,
+      status: submissions.auditStatus,
+      total: sql<number>`count(*)::int`
+    })
+    .from(submissions)
+    .where(gte(submissions.submittedAtUtc, since))
+    .groupBy(sql`coalesce(${submissions.officeName}, '(no office recorded)')`, submissions.auditStatus);
+  return rows.map((r) => ({ officeName: r.officeName, total: r.total, status: r.status }));
+}
+
 
 // The viewer's own most recent graded filings, for the dashboard ledger.
 export async function recentGradedForUser(

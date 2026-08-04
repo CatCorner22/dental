@@ -174,7 +174,10 @@ export async function POST(req: Request): Promise<Response> {
       refused: outcome.ok ? outcome.refused : undefined,
       onCoursePct,
       codes: outcome.codes,
-      sources: outcome.ok ? outcome.retrievedSources : undefined
+      sources: outcome.ok ? outcome.retrievedSources : undefined,
+      // Which cage configuration ran — Team Leads see the router's decision.
+      modes: outcome.ok ? outcome.modes : undefined,
+      profile: outcome.ok ? outcome.profile : undefined
     })
   });
 
@@ -230,6 +233,9 @@ export async function POST(req: Request): Promise<Response> {
     observations: outcome.suggestions.map(toObservationalSuggestion),
     benchmarks,
     promptVersion: outcome.promptVersion,
-    unavailable: false
+    unavailable: false,
+    modes: outcome.modes,
+    profile: outcome.profile,
+    ...(outcome.jurisdictionNotice ? { jurisdictionNotice: outcome.jurisdictionNotice } : {})
   });
 }

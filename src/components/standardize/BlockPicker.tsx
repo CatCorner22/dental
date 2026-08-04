@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { VERIFIED_BLOCKS, type VerifiedBlock } from "@/lib/phrases/blocks";
 
 // The verified-block picker: pre-loaded text that cannot be lazily clicked in.
@@ -40,7 +40,158 @@ export function BlockPicker({ onInsert }: { onInsert: (text: string) => void }) 
           </li>
         ))}
       </ul>
+      <MyBlocks onInsert={onInsert} />
     </details>
+  );
+}
+
+interface MyBlock {
+  id: number;
+  title: string;
+  body: string;
+}
+
+// PERSONAL BLOCKS — the writer's own starting text, saved to their account.
+//
+// Different trust model from the verified blocks above: these are the
+// writer's OWN words, so there is no assertion checklist — but the server
+// refuses to save one containing an identifier, and whatever is inserted
+// still faces the full audit and resolution queue like hand-typed text.
+function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
+  const [blocks, setBlocks] = useState<MyBlock[] | null>(null);
+  const [title, setTitle] = useState("");
+  const [body, setBody] = useState("");
+  const [error, setError] = useState("");
+  const [saving, setSaving] = useState(false);
+  const [formOpen, setFormOpen] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/me/blocks")
+      .then((r) => r.json())
+      .then((d: { blocks?: MyBlock[] }) => {
+        if (!cancelled) setBlocks(Array.isArray(d.blocks) ? d.blocks : []);
+      })
+      .catch(() => {
+        if (!cancelled) setBlocks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  const save = async () => {
+    setSaving(true);
+    setError("");
+    try {
+      const res = await fetch("/api/me/blocks", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ title, body })
+      });
+      const data = (await res.json().catch(() => ({}))) as { block?: MyBlock; error?: string };
+      if (!res.ok || !data.block) {
+        setError(data.error ?? "Could not save the block.");
+      } else {
+        setBlocks((prev) => [data.block!, ...(prev ?? [])]);
+        setTitle("");
+        setBody("");
+        setFormOpen(false);
+      }
+    } catch {
+      setError("Could not reach the server — try again.");
+    } finally {
+      setSaving(false);
+    }
+  };
+
+  const remove = async (id: number) => {
+    setBlocks((prev) => (prev ?? []).filter((b) => b.id !== id));
+    // Optimistic: a failed delete resurfaces on the next page load, which is
+    // the right failure mode for a personal convenience list.
+    void fetch(`/api/me/blocks/${id}`, { method: "DELETE" }).catch(() => undefined);
+  };
+
+  return (
+    <div className="mt-3 border-t border-slate-200 pt-3">
+      <div className="flex items-baseline justify-between gap-2">
+        <p className="text-xs font-semibold text-slate-700">My blocks — your own starting text</p>
+        <button
+          type="button"
+          className="text-xs text-blue-700 underline"
+          onClick={() => setFormOpen((v) => !v)}
+        >
+          {formOpen ? "Cancel" : "+ Save a new block"}
+        </button>
+      </div>
+      {formOpen && (
+        <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2">
+          <input
+            className="field-input py-1 text-xs"
+            placeholder="Block name (for example: My adult recall opener)"
+            value={title}
+            maxLength={80}
+            onChange={(e) => setTitle(e.target.value)}
+            aria-label="New block title"
+          />
+          <textarea
+            className="field-input mt-1.5 min-h-[5rem] font-mono text-xs"
+            placeholder="De-identified starting text. Identifiers are refused — a saved block would repeat them into every future note."
+            value={body}
+            maxLength={4000}
+            onChange={(e) => setBody(e.target.value)}
+            aria-label="New block text"
+          />
+          <button
+            type="button"
+            className="btn-primary mt-1.5 text-xs"
+            disabled={saving || !title.trim() || !body.trim()}
+            onClick={() => void save()}
+          >
+            {saving ? "Saving…" : "Save block"}
+          </button>
+          {error && (
+            <p className="mt-1 text-xs text-red-700" role="alert">
+              {error}
+            </p>
+          )}
+        </div>
+      )}
+      {blocks === null ? (
+        <p className="mt-1.5 text-xs text-slate-400">Loading…</p>
+      ) : blocks.length === 0 ? (
+        !formOpen && (
+          <p className="mt-1.5 text-xs text-slate-500">
+            None yet. Save the openings you retype most — a recall visit, your op-note skeleton —
+            and start 80% written.
+          </p>
+        )
+      ) : (
+        <ul className="mt-1.5 space-y-1">
+          {blocks.map((b) => (
+            <li
+              key={b.id}
+              className="flex items-center justify-between gap-2 rounded border border-slate-200 px-2.5 py-1.5"
+            >
+              <span className="min-w-0 flex-1 truncate text-xs font-medium text-slate-800" title={b.body}>
+                {b.title}
+              </span>
+              <button type="button" className="btn-secondary shrink-0 text-xs" onClick={() => onInsert(b.body)}>
+                Insert
+              </button>
+              <button
+                type="button"
+                className="shrink-0 text-xs text-slate-400 underline hover:text-rose-700"
+                onClick={() => void remove(b.id)}
+                aria-label={`Delete block "${b.title}"`}
+              >
+                Delete
+              </button>
+            </li>
+          ))}
+        </ul>
+      )}
+    </div>
   );
 }
 

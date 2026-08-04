@@ -644,3 +644,44 @@ body {
     opacity: 0.04;
   }
 }
+
+/* --------------------------------------------------------------------------
+ * PRINT — the reference pages are used chairside and as laminated handouts.
+ * Chrome (header, nav, footer, buttons, help bulbs) disappears; the content
+ * column takes the full width; links keep their text but stop pretending to
+ * be clickable. Body text goes to a serif-free 11pt that survives a laser
+ * printer's dot gain better than the screen sizes do.
+ * -------------------------------------------------------------------------- */
+@media print {
+  header,
+  nav,
+  footer,
+  button,
+  [role="tooltip"],
+  .print-hidden {
+    display: none !important;
+  }
+  main {
+    max-width: none !important;
+    padding: 0 !important;
+  }
+  body {
+    background: #fff !important;
+    color: #000;
+    font-size: 11pt;
+  }
+  a {
+    color: #000 !important;
+    text-decoration: none !important;
+  }
+  .card,
+  .card-inset {
+    box-shadow: none !important;
+    border: 1px solid #ccc;
+    break-inside: avoid;
+  }
+  pre {
+    white-space: pre-wrap;
+    word-break: break-word;
+  }
+}

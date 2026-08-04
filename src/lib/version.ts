@@ -189,4 +189,9 @@
 //         synonym map for learning-ledger clusters; more proposeReading cues
 //         (qd/qod/ac-pc) + restorative context boost; staff HelpTips on
 //         Dashboard / Builder / Audit / TN law banner; visible export-lock copy.
-export const RULESET_VERSION = "2.19.0";
+// 2.20.0 — the web app is the only runtime, in the vocabulary too: the
+//         spelling lexicon regenerated from the scrubbed skill/ docs (the
+//         "chatgpt" token and retired-assistant deployment doc are gone).
+//         Same bump covers the personal-blocks PHI refusal at save — a new
+//         place the identifier rules run, not a change to what they match.
+export const RULESET_VERSION = "2.20.0";

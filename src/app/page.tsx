@@ -43,6 +43,7 @@ export default async function DashboardPage() {
       <Dashboard
         role={user.role}
         displayName={user.displayName}
+        username={user.username}
         canEdit={user.role !== "readonly"}
         drafts={rows.map((d) => ({
           id: d.id,

@@ -22,11 +22,14 @@ import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { isValueEmpty } from "@/lib/schema/conditions";
+import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { useAutosave } from "@/lib/client/useAutosave";
+import { isDirty } from "@/lib/client/autosaveMachine";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
 import { NoteForm } from "./NoteForm";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
+import { PriorNotes } from "./PriorNotes";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { SaveIndicator } from "./SaveIndicator";
@@ -34,6 +37,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -94,7 +98,7 @@ export function BuilderShell({
   // Has this session made a real edit yet? Distinguishes "nothing has happened"
   // from "something happened and was reverted" — see the autosave effect.
   const hasEdited = useRef(false);
-  const [tab, setTab] = useState<"audit" | "chart" | "byte" | "bytestar" | "preview">("audit");
+  const [tab, setTab] = useState<"audit" | "chart" | "byte" | "bytestar" | "prior" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
@@ -258,6 +262,73 @@ export function BuilderShell({
     markEdited(state, title, officeId);
   }, [state, title, officeId, canEdit, markEdited, initialNote, initialTitle, initialOfficeId]);
 
+  // OFFLINE SAFETY NET — a same-device mirror of unsaved work.
+  //
+  // The autosave chain stops on the first network error and waits for the next
+  // edit; if the tab dies during that window (battery, crash, closed laptop in
+  // an operatory with bad wifi), the work was gone. The mirror holds exactly
+  // what the draft already holds — de-identified note state — and is deleted
+  // the moment the server confirms a save.
+  const backupKey = `smile-notes.draft-backup.${draftId}`;
+  const [backupOffer, setBackupOffer] = useState<{
+    note: NoteState;
+    title: string;
+    officeId: string | null;
+    at: number;
+  } | null>(null);
+
+  useEffect(() => {
+    if (!canEdit) return;
+    try {
+      const raw = window.localStorage.getItem(backupKey);
+      if (!raw) return;
+      const parsed = JSON.parse(raw) as {
+        note?: unknown;
+        title?: unknown;
+        officeId?: unknown;
+        at?: unknown;
+      };
+      // The mirror is client storage, so it gets the same suspicion as any
+      // client payload: full schema validation before it may touch the note.
+      const valid = validateNoteState(parsed.note);
+      if (!valid.ok || typeof parsed.at !== "number") {
+        window.localStorage.removeItem(backupKey);
+        return;
+      }
+      if (JSON.stringify(parsed.note) === JSON.stringify(initialNote)) {
+        // Mirror equals the server copy: a stale leftover, not lost work.
+        window.localStorage.removeItem(backupKey);
+        return;
+      }
+      setBackupOffer({
+        note: parsed.note as NoteState,
+        title: typeof parsed.title === "string" ? parsed.title : initialTitle,
+        officeId: typeof parsed.officeId === "string" ? parsed.officeId : initialOfficeId,
+        at: parsed.at
+      });
+    } catch {
+      // An unreadable mirror is a missing mirror.
+    }
+    // Mount-only: the offer describes the state of the world when the page opened.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  useEffect(() => {
+    if (!canEdit || !hasEdited.current) return;
+    try {
+      if (isDirty(autosave.state)) {
+        window.localStorage.setItem(
+          backupKey,
+          JSON.stringify({ note: state, title, officeId, at: Date.now() })
+        );
+      } else if (autosave.state.status === "saved") {
+        window.localStorage.removeItem(backupKey);
+      }
+    } catch {
+      // Quota or private mode: the net is absent, autosave still runs.
+    }
+  }, [state, title, officeId, autosave.state, canEdit, backupKey]);
+
   const filename = suggestedFilename(state, ALL_MODULES);
 
   // Submit is only offered when every local edit is on the server — the
@@ -372,8 +443,13 @@ export function BuilderShell({
           </p>
         </div>
       </div>
+      {/* The writer's own TN scope, one click away — advisory here; the
+          Assessment/Plan scope-lock does the enforcing. */}
+      <div className="mb-3">
+        <LicenseScopeCard clinicalRole={clinicalRole} />
+      </div>
       <div className="mb-3 flex gap-1">
-        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "ByteStar"], ["preview", "Preview"]] as const).map(([t, label]) => (
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "ByteStar"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -395,6 +471,10 @@ export function BuilderShell({
           <ByteAdvisor text={markdown} />
         ) : tab === "bytestar" ? (
           <ByteStarAdvisor text={markdown} />
+        ) : tab === "prior" ? (
+          /* A frozen filed note beside the draft — for checking against the
+             last visit, never for copying it forward. */
+          <PriorNotes />
         ) : tab === "chart" ? (
           /* Fed the COMPOSED note rather than any single field, because a
              tooth named in one field and a procedure named in another are one
@@ -622,6 +702,50 @@ export function BuilderShell({
         <p className="mb-4 rounded border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700">
           You have read-only access. You can view this note but not edit or submit it.
         </p>
+      )}
+
+      {/* The offline mirror found unsaved work from a previous session. Offered,
+          never auto-applied: the writer decides which copy is the truth. */}
+      {canEdit && backupOffer && (
+        <div
+          className="mb-4 rounded border border-sky-300 bg-sky-50 px-3 py-2 text-sm text-sky-900"
+          role="status"
+        >
+          <p>
+            <strong>Unsaved work from a previous session was found on this device</strong> (
+            {new Date(backupOffer.at).toLocaleString()}). It never reached the server — restore it
+            here, or keep the server copy and discard it.
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            <button
+              type="button"
+              className="btn-primary text-xs"
+              onClick={() => {
+                dispatch({ type: "restore", state: backupOffer.note });
+                setTitle(backupOffer.title);
+                setOfficeId(backupOffer.officeId);
+                setBackupOffer(null);
+                setToast({ text: "Local backup restored — it will autosave like any edit.", tone: "success" });
+              }}
+            >
+              Restore local backup
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => {
+                try {
+                  window.localStorage.removeItem(backupKey);
+                } catch {
+                  // Removal failing just means the offer reappears next open.
+                }
+                setBackupOffer(null);
+              }}
+            >
+              Keep server copy, discard backup
+            </button>
+          </div>
+        </div>
       )}
 
       {/* Mobile/tablet audit bar. Below `lg` the module rail, form, and

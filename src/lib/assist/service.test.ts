@@ -16,7 +16,9 @@ describe("config", () => {
 
   it("has a default model and honors the override", () => {
     expect(getAssistConfig({}).model).toBeTruthy();
-    expect(getAssistConfig({ ASSIST_MODEL: "openai/gpt-5" }).model).toBe("openai/gpt-5");
+    expect(getAssistConfig({ ASSIST_MODEL: "acme/clinical-writer" }).model).toBe(
+      "acme/clinical-writer"
+    );
   });
 });
 

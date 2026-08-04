@@ -3,6 +3,8 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { meetsRole } from "@/lib/auth/roles";
 import { TRAINING_SCENARIOS } from "@/lib/training/scenarios";
 import { TrainingArena } from "@/components/training/TrainingArena";
+import { SYNTHETIC_TRAINING_NOTES } from "@/lib/training/synthetic-notes";
+import { StandardizeDrill } from "@/components/training/StandardizeDrill";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Training arena" };
@@ -20,6 +22,7 @@ export default async function TrainingPage() {
         comes back clean.
       </p>
       <TrainingArena scenarios={TRAINING_SCENARIOS} />
+      <StandardizeDrill notes={[...SYNTHETIC_TRAINING_NOTES]} />
     </div>
   );
 }

@@ -3,8 +3,7 @@
 A standardized, de-identified dental-note platform for a Tennessee dental office. Every team
 member composes notes from the same modular templates, with the same controlled vocabulary, in
 the same order — and a deterministic audit pass stops the line before a defective or
-identifying draft leaves the tool. The web app is the only runtime: the previous companion
-ChatGPT Skill is retired (see `skill/CHATGPT_SETUP.md`).
+identifying draft leaves the tool. The web app is the only runtime.
 
 **No patient identifier ever enters this tool or any AI platform.** Drafts are de-identified by
 construction; identities, exact dates, signatures, permits, and codes are completed only in the
@@ -158,7 +157,7 @@ Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by 
 | Path | What it is |
 |---|---|
 | `src/` | Next.js 15 web app: note builder, standardizer with resolution queue, audit engine, AI assist, email export, reference pages |
-| `skill/` | **Retired** ChatGPT Custom GPT package, kept as historical reference — the reference pages and vocab tables in `src/` are the single terminology truth |
+| `skill/` | Source markdown for the reference pages (templates, terminology, law summary, deployment guidance) — the vocab tables in `src/` are the single terminology truth |
 | `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 31 add-ons), the guided staff process, and the formal audit pass |
 | `knowledge/` | Research digests: Curve Hero benchmark, TN law, industry standards and medication safety, litigation patterns |
 | `public/brand/` | Original Smile Notes logomark and lockup (see `docs/brand.md`) |
@@ -166,10 +165,9 @@ Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by 
 
 ## The platform decision
 
-**The web app is the only runtime.** The staged plan (ChatGPT project first, web app second)
-served its purpose during template development and is retired: chat instructions cannot enforce
-anything, and every capability the skill provided now exists in the app with enforcement —
-plus AI assist that is actually safe to use on clinical text:
+**The web app is the only runtime.** Chat instructions cannot enforce anything; every
+capability this product offers exists in the app with enforcement — plus AI assist that is
+actually safe to use on clinical text:
 
 - **One shared URL.** No per-seat AI accounts, no prompt discipline required.
 - **Poka-yoke by construction.** Dropdowns limited to controlled vocabulary; the surface
@@ -260,6 +258,10 @@ Open `/setup` to create the first admin, or set `ADMIN_USERNAME` / `ADMIN_PASSWO
 4. Optionally set `ADMIN_USERNAME` / `ADMIN_PASSWORD` to seed the first admin; otherwise use
    `/setup`. Enable Vercel Deployment Protection so only the team can reach the app, and treat the
    corporate inbox as inside the practice's HIPAA boundary.
+5. Optional — weekly legal-watch email: set `CRON_SECRET` (any long random string). The
+   `vercel.json` cron calls `/api/law-watch/alert` Mondays at 13:00 UTC; with email configured it
+   mails the practice inbox when an official TN source shows dental-relevant signals. Deterministic
+   keyword signals only — the scheduled job never spends AI tokens.
 
 See `.env.example` for the full list. Do **not** run without `POSTGRES_URL` in production —
 PGlite's per-instance storage does not persist across serverless cold starts (the app logs a loud

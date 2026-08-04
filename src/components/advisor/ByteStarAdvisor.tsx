@@ -22,6 +22,8 @@ interface Observation {
   question?: string;
   source: string;
   corroboration?: { seen: number; reads: number };
+  /** Deterministic label: strong claim without a named authority behind it. */
+  tentative?: boolean;
 }
 
 type DeployStatus = "unknown" | "off" | "on";
@@ -38,6 +40,9 @@ export function ByteStarAdvisor({ text }: { text: string }) {
   const [observing, setObserving] = useState(false);
   const lastFetched = useRef("");
   const [trend, setTrend] = useState<TrendSample[]>([]);
+  const [profile, setProfile] = useState<string | null>(null);
+  const [readModes, setReadModes] = useState<string[]>([]);
+  const [jurisdictionNotice, setJurisdictionNotice] = useState<string | null>(null);
 
   const benchmarks = useMemo(() => measureBenchmarks(deferred), [deferred]);
 
@@ -98,14 +103,30 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         body: JSON.stringify({ text: deferred })
       })
         .then((r) => r.json())
-        .then((d: { observations?: Observation[]; unavailable?: boolean }) => {
-          if (d.unavailable) {
-            setPioneerObs([]);
-            return;
+        .then(
+          (d: {
+            observations?: Observation[];
+            unavailable?: boolean;
+            modes?: string[];
+            profile?: string;
+            jurisdictionNotice?: string;
+          }) => {
+            if (d.unavailable) {
+              setPioneerObs([]);
+              setProfile(null);
+              setReadModes([]);
+              setJurisdictionNotice(null);
+              return;
+            }
+            setPioneerObs(Array.isArray(d.observations) ? d.observations : []);
+            setProfile(typeof d.profile === "string" ? d.profile : null);
+            setReadModes(Array.isArray(d.modes) ? d.modes : []);
+            setJurisdictionNotice(
+              typeof d.jurisdictionNotice === "string" ? d.jurisdictionNotice : null
+            );
+            setTipIndex(0);
           }
-          setPioneerObs(Array.isArray(d.observations) ? d.observations : []);
-          setTipIndex(0);
-        })
+        )
         .catch(() => setPioneerObs([]))
         .finally(() => setObserving(false));
     }, OBSERVE_DEBOUNCE_MS);
@@ -152,9 +173,27 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/60">
                 gives you feedback · you do not give it feedback
               </p>
+              {profile && profile !== "documentation" && (
+                /* Which cage configuration read this draft. Strict reads run
+                   more passes, demand unanimity, and refuse rewrites — worth a
+                   visible chip so staff know why observations went quieter. */
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-rose-900 ring-1 ring-rose-300">
+                  {readModes.filter((m) => m !== "documentation").join(" + ")} — strict read
+                  <HelpTip label="About strict reads">
+                    This draft touches a higher-risk domain, so ByteStar read it under a stricter
+                    profile: unanimous independent reads, no rewrites, named authorities only.
+                    Fewer observations here is the system working.
+                  </HelpTip>
+                </span>
+              )}
             </div>
             <NorthStarCompass onCourse={benchmarks.onCourse} />
           </div>
+          {jurisdictionNotice && (
+            <p className="mt-2 rounded border border-slate-300 bg-slate-50 px-2 py-1 text-[0.65rem] leading-relaxed text-slate-700">
+              {jurisdictionNotice}
+            </p>
+          )}
 
           <p className="mt-2 text-[0.65rem] font-medium leading-relaxed text-amber-950/80">
             {BYTESTAR_ONE_WAY_NOTICE}
@@ -172,6 +211,13 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 {tip.kind}
                 {feedbackSource === "instrument" && (
                   <span className="ml-1 normal-case text-slate-400">· instrument reading</span>
+                )}
+                {"tentative" in tip && tip.tentative && (
+                  /* Assigned by deterministic code (strong claim, no named
+                     authority) — never by the model grading itself. */
+                  <span className="ml-1.5 rounded bg-orange-100 px-1.5 py-px normal-case font-semibold text-orange-900 ring-1 ring-orange-300">
+                    Tentative — requires clinician review
+                  </span>
                 )}
               </p>
               <p className="text-sm font-medium text-slate-900">{tip.say}</p>

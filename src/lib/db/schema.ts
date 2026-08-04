@@ -214,6 +214,21 @@ export type PointsLedgerRow = typeof pointsLedger.$inferSelect;
 export type StoreItemRow = typeof storeItems.$inferSelect;
 export type RedemptionRow = typeof redemptions.$inferSelect;
 
+// Personal saved blocks — each writer's own reusable starting text. Owner-
+// private by query (every repo function filters on ownerId), de-identified by
+// the same PHI screen that guards drafts.
+export const userBlocks = pgTable("user_blocks", {
+  id: serial("id").primaryKey(),
+  ownerId: text("owner_id")
+    .notNull()
+    .references(() => users.id, { onDelete: "cascade" }),
+  title: text("title").notNull(),
+  body: text("body").notNull(),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export type UserBlockRow = typeof userBlocks.$inferSelect;
+
 export const auditLog = pgTable("audit_log", {
   id: serial("id").primaryKey(),
   at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),

@@ -9,6 +9,7 @@ import {
   CATEGORY_ORDER
 } from "@/lib/law/tn-law";
 import { AuthorityMap } from "@/components/law/AuthorityMap";
+import { LicenseScopeCharts } from "@/components/law/LicenseScopeCharts";
 import { LawWatchPanel } from "@/components/law/LawWatchPanel";
 
 export const metadata = { title: "Tennessee law" };
@@ -37,6 +38,13 @@ export default async function Page() {
         <p className="eyebrow">How the authorities fit together</p>
         <h1 className="page-title mb-3">Tennessee law and Rules for dental practice</h1>
         <AuthorityMap />
+      </section>
+
+      <section aria-labelledby="license-scope-heading">
+        <h2 id="license-scope-heading" className="sr-only">
+          License scope charts
+        </h2>
+        <LicenseScopeCharts />
       </section>
 
       {user && meetsRole(user.role, "lead") && <LawWatchPanel />}

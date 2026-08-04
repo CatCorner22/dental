@@ -5,11 +5,13 @@ import { getDb } from "@/lib/db/client";
 import { getDraft, setDraftStatus } from "@/lib/db/repo/drafts";
 import { fileSubmissionAtomic } from "@/lib/db/repo/submissions";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { runPhiRule } from "@/lib/audit/rules/phi";
 import { activeModules } from "@/lib/modules";
 import { composeNote, composeNoteText } from "@/lib/compose/composeNote";
 import { officeNameFor } from "@/lib/db/repo/offices";
 import { composeAuditReport } from "@/lib/compose/composeAuditReport";
 import {
+  buildReport,
   computeGates,
   isValidPhiAttestation,
   PHI_ATTESTATION_RULE,
@@ -126,7 +128,32 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // that a later rename would silently rewrite.
   const officeName = await officeNameFor(db, draft.officeId);
   const markdown = composeNote(note, modules, { officeName });
-  const report = runAudit({ note, modules, composedText: markdown });
+  const baseReport = runAudit({ note, modules, composedText: markdown });
+
+  // THE TITLE IS PART OF THE RECORD, and it was the one free-text field the
+  // screen never saw.
+  //
+  // runAudit reads the composed note, and the title is not in the composed
+  // note — it is draft metadata. But `slugifyTitle(draft.title)` becomes the
+  // filename of the emailed attachment, so a note titled with a patient's name
+  // left the building as "john-smith-crown-seat-SN-0001.md" while the note
+  // itself reported AUDIT PASS. The most careful de-identification in the body
+  // is worth nothing if the envelope is addressed with the name.
+  //
+  // Folded into the SAME report rather than gated separately: the S0 stop, the
+  // attested override, and the findings panel all already do the right thing
+  // with a phi finding. The title simply was never handed to them.
+  // Rebuilt into the SAME `report` name every gate below already reads, rather
+  // than added as a second variable — a second report is how half the checks
+  // end up looking at the old one.
+  const titleFindings = runPhiRule(draft.title).map((f) => ({
+    ...f,
+    message: `In the note title, which becomes the emailed filename: ${f.message}`
+  }));
+  const report =
+    titleFindings.length > 0
+      ? buildReport([...baseReport.findings, ...titleFindings])
+      : baseReport;
   // The reason is validated HERE, not just in the dialog. The browser-side
   // minimum was the only check before, so a tampered client could waive every
   // privacy stop with `{confirmed:true}` and no reason, and the note filed

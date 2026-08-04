@@ -29,4 +29,16 @@
 //         version that does not describe the rules that ran. That is the exact
 //         failure this constant exists to prevent, and the CI guard added in
 //         2.4.0 is what stops it happening again.
-export const RULESET_VERSION = "2.5.0";
+// 2.6.0 — the privacy screen, corrected in both directions at once.
+//         Catches: a name announced by a chained cue ("referred to dr. john
+//         smith" was missed entirely, by this rule and by phi.name both), four
+//         more date formats (YYYY/MM/DD, MM.DD.YYYY, "2 August 2026",
+//         02-AUG-2026), and the note TITLE, which was never screened at all
+//         while becoming the emailed attachment filename.
+//         Stops crying wolf about: "MS Contin" (morphine sulfate, previously S0
+//         — a blocked opioid entry), "MR Imaging", "DR Sensor", "IAN
+//         INJECTION", "FRANK PUS", "MAX CENTRAL".
+//         Both directions in one version on purpose: a screen that misses real
+//         names is useless, and one that blocks real clinical terms gets muted,
+//         which is the same failure a step later.
+export const RULESET_VERSION = "2.6.0";

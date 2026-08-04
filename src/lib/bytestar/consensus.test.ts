@@ -157,10 +157,25 @@ describe("the deterministic parse rides the prompt", () => {
 
 describe("the canary eval — rail survival with a denominator", () => {
   it("passes end to end with a compliant model double", async () => {
-    const generate: GenerateListFn = async ({ prompt }) => {
+    const generate: GenerateListFn = async ({ system, prompt }) => {
       // Ground the observation in whatever draft arrived, like an honest model.
       const draft = /note:\n\n([\s\S]*?)\n\nReturn/.exec(prompt)?.[1] ?? "";
       const sentence = draft.split(". ").find((s) => s.length > 10) ?? draft;
+      // A compliant model under a legal STRICT READ cites named authority and
+      // asks — house style would be refused by the router's verifier.
+      if (system.includes("STRICT READ") && /legal/.test(system)) {
+        return {
+          suggestions: [
+            {
+              kind: "completeness",
+              say: "Was the supervising dentist identified by role?",
+              why: "Supervision statements are read against the responsible dentist.",
+              question: "Was the supervising dentist identified by role?",
+              source: "TN Board of Dentistry Rules"
+            }
+          ]
+        };
+      }
       return {
         suggestions: [
           {

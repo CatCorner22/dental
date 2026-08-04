@@ -31,6 +31,10 @@ export interface ByteStarLogEvent {
   onCoursePct?: number;
   /** Retrieved practice-standard sections, for provenance only. */
   sources?: string[];
+  /** Router modes for the read (documentation/sedation/imaging/legal). */
+  modes?: string[];
+  /** Strictness profile the read ran under. */
+  profile?: string;
 }
 
 export function encodeByteStarDetail(e: ByteStarLogEvent): string {
@@ -44,6 +48,8 @@ export function encodeByteStarDetail(e: ByteStarLogEvent): string {
   if (e.refused !== undefined) parts.push(`refused=${e.refused}`);
   if (e.onCoursePct !== undefined) parts.push(`onCourse=${e.onCoursePct}`);
   if (e.sources?.length) parts.push(`sources=${e.sources.join("+")}`);
+  if (e.modes?.length) parts.push(`modes=${e.modes.join("+")}`);
+  if (e.profile) parts.push(`profile=${e.profile}`);
   if (e.codes?.length) parts.push(`codes=${e.codes.join("+")}`);
   return parts.join(" ");
 }
@@ -65,6 +71,8 @@ export function decodeByteStarDetail(detail: string): Partial<ByteStarLogEvent> 
     else if (k === "refused") out.refused = Number(v) || 0;
     else if (k === "onCourse") out.onCoursePct = Number(v) || 0;
     else if (k === "sources") out.sources = v.split("+").filter(Boolean);
+    else if (k === "modes") out.modes = v.split("+").filter(Boolean);
+    else if (k === "profile") out.profile = v;
     else if (k === "codes") out.codes = v.split("+").filter(Boolean);
   }
   return out;

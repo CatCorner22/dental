@@ -23,7 +23,13 @@
 //         voice / TN gaps / Curve-ready wording) so majority vote is not the
 //         same sample echoed; dental-domain canaries and dual PHI scan land
 //         in the same revision.
-export const BYTESTAR_PROMPT_VERSION = "1.4.0";
+// 1.5.0 — deterministic mode router (documentation / sedation / imaging /
+//         legal): strict profiles append a STRICT READ addendum and the
+//         verifier enforces what it asks (no rewrites, named authority,
+//         unanimous reads). Strong claims without authority are labeled
+//         tentative BY CODE; out-of-jurisdiction drafts have TN-law
+//         observations withheld. The model is never told it was routed.
+export const BYTESTAR_PROMPT_VERSION = "1.5.0";
 
 export const BYTESTAR_DISCLAIMER_FOR_PROMPT =
   "You are experimental. The human remains solely responsible for every note. Your suggestions are general information, not clinical, legal, or pharmacy advice.";

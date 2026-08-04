@@ -11,6 +11,19 @@ import { measureBenchmarks, type BenchmarkReport } from "./benchmarks";
 import { BYTESTAR_PROMPT_VERSION, BYTESTAR_SYSTEM_PROMPT } from "./prompts";
 import { isAllowedSource } from "./public";
 import {
+  detectForeignJurisdiction,
+  hasStrongClaim,
+  isRegulatorySource,
+  isTennesseeSource,
+  jurisdictionNoticeFor,
+  resolveModes,
+  resolveProfile,
+  strictPromptAddendum,
+  type ByteStarMode,
+  type ByteStarProfileId,
+  type ModeProfile
+} from "./router";
+import {
   BYTESTAR_SCHEMA,
   validateByteStarResponse,
   type ByteStarSuggestion
@@ -40,6 +53,11 @@ import {
 export interface CorroboratedSuggestion extends ByteStarSuggestion {
   /** Present when multiple reads ran: how many independent reads produced it. */
   corroboration?: { seen: number; reads: number };
+  /**
+   * Set DETERMINISTICALLY when strong-claim language lacks a named authority.
+   * The model never labels its own confidence; code assigns this.
+   */
+  tentative?: boolean;
 }
 
 export type ByteStarOutcome =
@@ -53,6 +71,12 @@ export type ByteStarOutcome =
       retrievedSources: string[];
       /** How many independent model reads contributed. */
       reads: number;
+      /** Risk modes the deterministic router classified for this draft. */
+      modes: ByteStarMode[];
+      /** Strictness profile the read ran under. */
+      profile: ByteStarProfileId;
+      /** Present when TN-law observations were withheld for another state. */
+      jurisdictionNotice?: string;
     }
   | {
       ok: false;
@@ -74,8 +98,19 @@ export type ByteStarOutcome =
 /** Kinds that comment on text that already exists — these must quote it. */
 const EVIDENCE_REQUIRED_KINDS = new Set(["active-voice", "standardize", "clarity"]);
 
-function verifySuggestion(input: string, s: ByteStarSuggestion): string | null {
+function verifySuggestion(
+  input: string,
+  s: ByteStarSuggestion,
+  profile: ModeProfile,
+  foreignJurisdiction: string | null
+): string | null {
   if (!isAllowedSource(s.source)) return "source-not-allowed";
+  // Strict profiles refuse rewrites outright and demand named authority —
+  // enforcement, not a prompt request. Out-of-jurisdiction drafts get no
+  // Tennessee-law observations at all: narrowing, never a generic mode.
+  if (profile.forbidRewrites && s.rewrite) return "rewrite-in-strict-mode";
+  if (profile.regulatorySourcesOnly && !isRegulatorySource(s.source)) return "source-not-regulatory";
+  if (foreignJurisdiction && isTennesseeSource(s.source)) return "out-of-jurisdiction";
   if (s.kind === "completeness" || s.kind === "tn-required") {
     if (s.rewrite) return "gap-with-rewrite";
     const q = s.question || s.say;
@@ -218,17 +253,26 @@ export async function runByteStar(
     };
   }
 
+  // Deterministic mode routing — strictness is a property of the TEXT, not a
+  // model opinion. Multi-high-risk drafts escalate to the legal profile.
+  const modes = resolveModes(input);
+  const profile = resolveProfile(modes);
+  const foreignJurisdiction = detectForeignJurisdiction(input);
+
   const retrieved = retrieveContext(input);
   const parseContext = parseContextFor(input);
+  const strictAddendum = strictPromptAddendum(profile, modes);
   const system = [
     BYTESTAR_SYSTEM_PROMPT,
+    strictAddendum,
     retrieved.text ? `--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}` : "",
     parseContext ? `--- ${parseContext}` : ""
   ]
     .filter(Boolean)
     .join("\n\n");
 
-  const reads = opts.reads ?? resolveReads(opts.env);
+  // Strict profiles raise the read floor; the existing ceiling still caps cost.
+  const reads = Math.max(opts.reads ?? resolveReads(opts.env), profile.minReads);
   const results = await Promise.all(
     Array.from({ length: reads }, (_, i) =>
       readOnce(input, system, generateList, READ_LENSES[i % READ_LENSES.length]!)
@@ -263,10 +307,12 @@ export async function runByteStar(
 
   // Majority vote across the reads that succeeded. With one read everything
   // "wins" its vote; with two or three, a suggestion must appear in a strict
-  // majority. The FIRST occurrence's wording ships — reads are peers, and
-  // picking a canonical wording deterministically keeps the outcome stable.
+  // majority — or in EVERY read under a strict profile, where a single
+  // dissenting read is reason enough to stay silent. The FIRST occurrence's
+  // wording ships — reads are peers, and picking a canonical wording
+  // deterministically keeps the outcome stable.
   const n = successful.length;
-  const needed = Math.floor(n / 2) + 1;
+  const needed = profile.unanimous ? n : Math.floor(n / 2) + 1;
   const byKey = new Map<string, { s: ByteStarSuggestion; seen: number }>();
   for (const read of successful) {
     const seenThisRead = new Set<string>();
@@ -289,13 +335,21 @@ export async function runByteStar(
       codes.push("no-consensus");
       continue;
     }
-    const reason = verifySuggestion(input, s);
+    const reason = verifySuggestion(input, s, profile, foreignJurisdiction);
     if (reason) {
       refused += 1;
       codes.push(reason);
       continue;
     }
-    kept.push(n > 1 ? { ...s, corroboration: { seen, reads: n } } : s);
+    const out: CorroboratedSuggestion =
+      n > 1 ? { ...s, corroboration: { seen, reads: n } } : { ...s };
+    // Strong-claim language without named authority is shown, but labeled by
+    // CODE as tentative — the model cannot award itself certainty.
+    if (hasStrongClaim(s.say, s.why) && !isRegulatorySource(s.source)) {
+      out.tentative = true;
+      codes.push("tentative-strong-claim");
+    }
+    kept.push(out);
     if (kept.length >= 3) break;
   }
 
@@ -317,6 +371,11 @@ export async function runByteStar(
     promptVersion: BYTESTAR_PROMPT_VERSION,
     codes,
     retrievedSources: retrieved.sources,
-    reads: n
+    reads: n,
+    modes,
+    profile: profile.id,
+    ...(foreignJurisdiction
+      ? { jurisdictionNotice: jurisdictionNoticeFor(foreignJurisdiction) }
+      : {})
   };
 }

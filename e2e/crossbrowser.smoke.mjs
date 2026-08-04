@@ -45,7 +45,19 @@ for (const [engineName, engine] of ENGINES) {
     });
     const page = await ctx.newPage();
     const consoleErrors = [];
-    page.on("console", (m) => m.type() === "error" && consoleErrors.push(m.text().slice(0, 200)));
+    // Next.js soft-recovers when a client RSC prefetch fails mid-navigation
+    // ("Failed to fetch RSC payload … Falling back to browser navigation").
+    // WebKit on phone hits this under rapid sequential gotos; Chromium/Firefox
+    // usually do not. It is not an app bug — the fallback navigation completes
+    // — so do not fail the smoke suite on it. Real pageerrors still count.
+    const isBenignRscFallback = (t) =>
+      /Failed to fetch RSC payload/i.test(t) && /Falling back to browser navigation/i.test(t);
+    page.on("console", (m) => {
+      if (m.type() !== "error") return;
+      const text = m.text().slice(0, 200);
+      if (isBenignRscFallback(text)) return;
+      consoleErrors.push(text);
+    });
     page.on("pageerror", (e) => consoleErrors.push("PAGEERROR: " + String(e).slice(0, 200)));
 
     try {

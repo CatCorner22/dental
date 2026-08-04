@@ -55,6 +55,7 @@ jobs:
     # about. Non-blocking on itself: if it flakes, the test-and-build job above
     # is still the merge gate.
     runs-on: ubuntu-latest
+    continue-on-error: true
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

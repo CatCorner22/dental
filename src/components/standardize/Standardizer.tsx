@@ -9,7 +9,6 @@ import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
 import { TextDiff } from "@/components/diff/TextDiff";
 import type { VerifiedExtraction } from "@/lib/assist/extraction";
-import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import {
   andon,
   ATTESTATION_RULE,

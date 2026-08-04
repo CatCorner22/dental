@@ -26,6 +26,23 @@ interface PhiPattern {
    * "Patient name:" with nothing after it still stops the line.
    */
   captureGroup?: number;
+  /**
+   * Drop the finding when the captured word is clinical vocabulary rather than
+   * a surname.
+   *
+   * The honorific rule reads "<title> <Capitalized>" as a person, and the
+   * ALL-CAPS titles collide head-on with everyday clinical initialisms: MS is
+   * morphine sulfate, MR is magnetic resonance, DR is direct radiography. So
+   * "MS Contin 15 mg" — a controlled-substance entry — was S0 BLOCKED, and the
+   * Mask button rewrote it to "MS [PERSON-XXXX]", destroying the drug name in a
+   * legal document while the re-audit reported clean.
+   *
+   * Checked against the same INSTITUTION_WORDS the bare-name rules already use,
+   * so the two halves of this file cannot disagree about what a person is. The
+   * lookup happens inside runPhiRule rather than here, which is what lets a
+   * `const` declared further down the file be referenced at all.
+   */
+  suppressClinicalCapture?: boolean;
 }
 
 const PHI_PATTERNS: PhiPattern[] = [
@@ -82,6 +99,50 @@ const PHI_PATTERNS: PhiPattern[] = [
       "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
   },
   {
+    // Year first, with either separator: 2026/08/02 and 2026.08.02.
+    // phi.date-iso already covers the hyphenated ISO form; these two are what a
+    // person types when they are not thinking about ISO at all.
+    id: "phi.date-ymd",
+    pattern: /\b(?:19|20)\d{2}([/.])(?:0?[1-9]|1[0-2])\1(?:0?[1-9]|[12]\d|3[01])\b/g,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
+    // Dot-separated M.D.Y — common in European-influenced charting and in
+    // anything pasted out of a spreadsheet.
+    //
+    // Requires BOTH dots and a real month and day, so "1.5 mm" and a decimal
+    // dose cannot match. The year is 2-4 digits like phi.date, so 08.02.26 is
+    // caught too.
+    id: "phi.date-dotted",
+    pattern: /\b(?:0?[1-9]|1[0-2])\.(?:0?[1-9]|[12]\d|3[01])\.\d{2,4}\b/g,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
+    // Day first, month spelled out, with a year: "2 August 2026", "2 Aug 2026".
+    // phi.date-name is month-first and stops at the day, so this whole shape
+    // passed the screen untouched.
+    id: "phi.date-day-month",
+    pattern:
+      /\b\d{1,2}(?:st|nd|rd|th)?\s+(?:january|february|march|april|may|june|july|august|september|october|november|december|jan|feb|mar|apr|jun|jul|aug|sept?|oct|nov|dec)\.?,?\s+(?:19|20)?\d{2}\b/gi,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
+    // The EHR export format: 02-AUG-2026. Hyphens with a spelled month, which
+    // the numeric hyphen rule cannot see and the month-name rule does not reach.
+    id: "phi.date-mon-abbrev",
+    pattern:
+      /\b\d{1,2}-(?:jan|feb|mar|apr|may|jun|jul|aug|sept?|oct|nov|dec)[a-z]*-\d{2,4}\b/gi,
+    severity: "S0",
+    message:
+      "This looks like an exact date. Use a relative interval and enter exact dates only in the EDR."
+  },
+  {
     id: "phi.email",
     // Quantifiers are bounded (RFC-plausible maximums) so a long run of word
     // characters with no "@" fails fast instead of backtracking quadratically.
@@ -103,8 +164,21 @@ const PHI_PATTERNS: PhiPattern[] = [
     // shape was ambiguous and backtracked quadratically on a long run of
     // spaces followed by a long run of letters.
     id: "phi.mrn",
+    // Two alternatives, because the QUALIFIER is the evidence.
+    //
+    // "chart" and "record" had an optional qualifier, so a bare "chart" plus
+    // any digit matched — and "Perio chart 4/5/4 on the mesial" is ordinary
+    // periodontal charting, not a record number. That S0 hard-blocked a
+    // legitimate perio note, the same cry-wolf failure as "MS Contin" one rule
+    // over.
+    //
+    // With an explicit qualifier ("chart no. 12345", "MRN 4483920", "patient
+    // id ABC-123") the cue carries the signal and any following token counts.
+    // Bare "chart 4483920" still matches, but now the NUMBER has to look like a
+    // record number — four or more digits — because nothing else in the phrase
+    // says it is one. Perio numbers are one or two digits; MRNs are not.
     pattern:
-      /\b(?:mrn|medical record|patient\s*id|chart\s*(?:no\.?|number|#)?|record\s*(?:no\.?|number|#)?|(?:account|acct)\s*(?:no\.?|number|#))[\s:#=-]*(?=[\w-]*\d)[\w-]+/gi,
+      /\b(?:(?:mrn|medical record|patient\s*id|(?:chart|record)\s*(?:no\.?|number|#)|(?:account|acct)\s*(?:no\.?|number|#))[\s:#=-]*(?=[\w-]*\d)[\w-]+|(?:chart|record)\b[\s:#=-]*(?=[\w-]*\d{4})[\w-]+)/gi,
     severity: "S0",
     message: "This looks like a record or account number. Remove it. Record links belong only in the EDR."
   },
@@ -127,6 +201,7 @@ const PHI_PATTERNS: PhiPattern[] = [
     pattern:
       /\b(?:Mr|Mrs|Ms|Miss|Dr|Doctor|MR|MRS|MS|MISS|DR|DOCTOR)\.?\s+((?:Mc|Mac|O['’]|D['’])?[A-Z][A-Za-z'’]{0,24}(?:-[A-Z][A-Za-z'’]{0,24})?)\b/g,
     captureGroup: 1,
+    suppressClinicalCapture: true,
     severity: "S0",
     message:
       "This looks like a person's name. Use a role instead (for example, the treating dentist, the referring provider)."
@@ -277,13 +352,38 @@ const INSTITUTION_WORDS = new Set([
   "block", "series", "taken", "left", "right", "upper", "lower", "anterior",
   "posterior", "buccal", "lingual", "mesial", "distal", "occlusal", "period",
   "exam", "recall", "prophy", "scaled", "given", "administered", "completed",
-  "placed", "prep", "noted", "assessed", "carpules", "carpule"
+  "placed", "prep", "noted", "assessed", "carpules", "carpule",
+  // The ALL-CAPS collisions that were still live, each reproduced from a real
+  // note before being added here. "IAN INJECTION" is the inferior alveolar
+  // nerve; "FRANK PUS" is a clinical adjective for frank suppuration; "MAX
+  // CENTRAL" is the maxillary central incisor. In every case the FIRST word is
+  // genuinely a given name (Ian, Frank, Max), which is exactly why the pair
+  // rule fires and exactly why the second word has to be the one that decides.
+  "injection", "pus", "central", "lateral", "nerve", "root", "pulp", "apex",
+  // Product names the honorific rule reads as surnames, because the ALL-CAPS
+  // titles MS, MR and DR are also clinical initialisms. "MS Contin" is
+  // morphine sulfate extended-release; "DR Sensor" is a direct-radiography
+  // sensor. Sourced from real product vocabulary, not invented to pass a test.
+  "contin", "sensor"
 ]);
 
 // Words that ANNOUNCE a name, so the name after them needs no capital to be
 // worth flagging. This is the difference between a guess and evidence.
+// The cue is a LOOKBEHIND, and that is the whole trick — the same one the
+// surname lookahead below uses, for the same reason.
+//
+// Consuming the cue meant one cue could swallow the next. On "referred to dr.
+// john smith" the alternation matched "referred to", captured "dr" as the given
+// name, failed the dictionary check, and `matchAll` resumed PAST the real name.
+// "seen by dr. john smith" failed identically. Two cues stacked is the ordinary
+// way a referral is written, and the name between them was never examined by
+// this rule — while phi.name missed it too, because that rule needs a capital
+// after the honorific. Two rules, one gap, and a real name walked between them.
+//
+// Matching zero-width means the scan re-enters at every position, so a chained
+// cue cannot hide the name behind it.
 const NAME_CUE =
-  /\b(?:patients?|pts?|guardians?|parents?|mother|father|caregiver|seen\s+by|referred\s+(?:to|by)|spoke\s+with|treated\s+by|assisted\s+by|dr\.?|doctor|dentist|hygienist|assistant)(\s+)([A-Za-z][A-Za-z'’-]{1,20})((?:\s+(?:[A-Za-z]\.\s+)?[A-Za-z][A-Za-z'’-]{1,24}(?:-[A-Za-z][A-Za-z'’-]{1,24})?)?)/gi;
+  /(?<=\b(?:patients?|pts?|guardians?|parents?|mother|father|caregiver|seen\s+by|referred\s+(?:to|by)|spoke\s+with|treated\s+by|assisted\s+by|dr\.?|doctor|dentist|hygienist|assistant)\s+)([A-Za-z][A-Za-z'’-]{1,20})((?:\s+(?:[A-Za-z]\.\s+)?[A-Za-z][A-Za-z'’-]{1,24}(?:-[A-Za-z][A-Za-z'’-]{1,24})?)?)/gi;
 
 // "John Smith", "Karen McDonald", "Mary O'Brien", "Robert Smith-Jones",
 // "John Q. Smith".
@@ -388,8 +488,11 @@ function runBareNameRules(text: string): AuditFinding[] {
   // damage the sentence for no privacy gain.
   const cuedSeen = new Map<string, number>();
   for (const m of text.matchAll(NAME_CUE)) {
-    const given = m[2];
-    const trailing = m[3] ?? "";
+    // Group indices moved down by one when the cue became a lookbehind: the
+    // cue and its whitespace are no longer captured, because they are no
+    // longer consumed.
+    const given = m[1];
+    const trailing = m[2] ?? "";
     if (!GIVEN_NAMES.has(given.toLowerCase())) continue;
     // The institution filter has to apply here too. Without it "Referred to
     // Christian Dental Clinic" reads as a patient — the cue announces a name,
@@ -424,6 +527,9 @@ export function runPhiRule(text: string): AuditFinding[] {
       // "Patient name:" prompt still stops the line.
       const captured = p.captureGroup ? m[p.captureGroup]?.trim() : "";
       const identifier = captured && captured.length > 0 ? captured : m[0];
+      // See PhiPattern.suppressClinicalCapture: "MS Contin" is a drug, not a
+      // person, and blocking it costs more than the flag was ever worth.
+      if (p.suppressClinicalCapture && INSTITUTION_WORDS.has(identifier.toLowerCase())) continue;
       seen.set(identifier, (seen.get(identifier) ?? 0) + 1);
     }
     for (const [matched, count] of seen) {

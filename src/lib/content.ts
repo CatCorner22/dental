@@ -1,8 +1,9 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 
-// Single source of truth: the app renders the same markdown files the
-// ChatGPT Skill ships with. Allowlist only — never a caller-supplied path.
+// Single source of truth: the app renders the source markdown in skill/
+// directly, so the reference pages and the docs can never disagree.
+// Allowlist only — never a caller-supplied path.
 const DOCS = {
   templates: "skill/assets/dental-note-templates.md",
   terminology: "skill/references/terminology-and-style.md",

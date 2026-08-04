@@ -5,9 +5,9 @@ import { BANNED_ABBREVIATIONS } from "@/lib/vocab/abbreviations";
 //
 // The corpus worth retrieving from is not a vector store of documents; it is
 // the practice's OWN controlled vocabulary and safety rules, which live in
-// code and are therefore always current. The retired ChatGPT skill drifted
-// from the app within weeks (the FMS/NKA conflation) precisely because it was
-// a copy; this module cannot drift because it reads the same tables the
+// code and are therefore always current. An early external copy of these
+// tables drifted from the app within weeks (the FMS/NKA conflation) precisely
+// because it was a copy; this module cannot drift because it reads the same tables the
 // deterministic pass enforces. When the practice's knowledge corpus outgrows
 // what keyword selection can serve, THAT is the moment for embeddings — not
 // before.

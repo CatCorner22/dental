@@ -24,27 +24,26 @@ authorize PEFT, SFT, or training on filed notes. Those remain ruled out by
 
 ```mermaid
 flowchart TD
-  draft[De-identified draft] --> local[Local benchmarks<br/>advise + active-voice + TN cues]
-  draft --> opt{Device opt-in<br/>+ disclaimer ack?}
-  opt -->|no| byteOnly[Byte only — deterministic]
-  opt -->|yes| door{BYTESTAR_ENABLED<br/>and assist on<br/>and not BYTESTAR_KILL?}
-  door -->|no| bland[Unavailable — bland copy]
-  door -->|yes| soft{Escape count<br/>below threshold?}
-  soft -->|no| bland
-  soft -->|yes| phi[PHI gate]
+  draft[De-identified draft<br/>auto-observed on debounce] --> local[Local benchmarks<br/>always run]
+  local --> gauges[Graphics: compass,<br/>drift rails, mood]
+  local --> inst[Instrument readings<br/>deterministic language]
+  draft --> door{BYTESTAR_ENABLED<br/>and assist on<br/>and not BYTESTAR_KILL<br/>and not perma-killed?}
+  door -->|no| instOnly[Instrument readings only<br/>bland unavailable]
+  door -->|yes| phi[PHI gate]
   phi -->|blocked| refusePhi[Refuse + bytestar.refused]
-  phi -->|clear| inEsc[Escape scan on input]
-  inEsc -->|hit| refuseEsc[Refuse + bytestar.escape]
-  inEsc -->|clear| model[Gateway model<br/>structured suggestions]
-  model --> outEsc[Escape scan on output]
-  outEsc -->|hit| refuseEsc
-  outEsc -->|clear| verify[Per-suggestion verifyMeaning<br/>/ question shape]
-  verify --> human[Human sees suggestions<br/>never auto-applied]
+  phi -->|clear| inEsc[Escape scan on input<br/>blocks, no ladder]
+  inEsc -->|hit| refuseIn[Refuse — input hygiene]
+  inEsc -->|clear| rag[Practice RAG<br/>vocab + safety snippets]
+  rag --> model[Gateway model<br/>structured observations]
+  model --> outEsc[Escape scan on output<br/>MODEL escape → ladder]
+  outEsc -->|hit| ladder{Ladder: warn →<br/>reset → perma-kill<br/>within 1h}
+  outEsc -->|clear| verify[Source allow-list +<br/>verifyMeaning / question shape]
+  verify --> strip[Strip rewrite/evidence<br/>nothing copyable]
+  strip --> human[ONE-WAY: staff read<br/>language + graphics<br/>no path back]
   human --> log[bytestar.drift log<br/>codes/versions/tokens only]
-  refuseEsc --> lead[Team Lead monitor]
-  refusePhi --> lead
+  ladder --> log
+  refusePhi --> lead[Team Lead monitor<br/>+ perma-clear]
   log --> lead
-  local --> gauges[Drift-to-target rails]
 ```
 
 **Efficiency hierarchy decision:** Prompting + constrained decoding + deterministic

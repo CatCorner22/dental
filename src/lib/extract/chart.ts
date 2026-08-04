@@ -33,7 +33,8 @@
 //     The chart is not a record of the mouth; it is a record of this note.
 
 import type { Surface, ToothId } from "@/lib/schema/types";
-import type { ClinicalFact, ExtractionResult, ProcedureCategory, Span } from "./facts";
+import { sitesOfFact } from "./facts";
+import type { ExtractionResult, ProcedureCategory, Span } from "./facts";
 
 export interface ChartMark {
   toothId: ToothId;
@@ -73,8 +74,11 @@ const CATEGORY_RANK: Record<ProcedureCategory, number> = {
 export function chartMarks(result: ExtractionResult): ChartMark[] {
   const byTooth = new Map<ToothId, ChartMark>();
 
-  const sitesOf = (fact: ClinicalFact) =>
-    fact.kind === "tooth-site" ? [fact.site] : fact.kind === "procedure" ? fact.sites : [];
+  // Shared with affirmedSites rather than reimplemented here. The local copy
+  // this replaces knew only about tooth-site and procedure facts, so the day
+  // findings and materials started carrying sites, "no caries #14" silently
+  // stopped reaching the chart at all.
+  const sitesOf = sitesOfFact;
 
   for (const fact of result.facts) {
     // A finding about the patient's father is not a finding about this mouth.

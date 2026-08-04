@@ -92,6 +92,7 @@ export const PROCEDURE_TERMS: ProcedureTerm[] = [
   term("proc.srp.abbr", "srp", "scaling and root planing", "periodontal"),
   term("proc.gingivectomy", "gingivectomy", "gingivectomy", "periodontal"),
   term("proc.perio.maint", "periodontal maintenance", "periodontal maintenance", "periodontal"),
+  term("proc.perio.maint.abbr", "perio maintenance", "periodontal maintenance", "periodontal"),
   term("proc.osseous", "osseous surgery", "osseous surgery", "periodontal"),
   term("proc.debridement", "debridement", "full-mouth debridement", "periodontal"),
 
@@ -114,7 +115,37 @@ export const PROCEDURE_TERMS: ProcedureTerm[] = [
   term("proc.partial", "partial denture", "partial denture", "prosthodontic"),
   term("proc.post.core", "post and core", "post and core", "prosthodontic"),
 
+  // --- Operative STEPS, added after measuring coverage against real shorthand.
+  //
+  // These are not billable procedures; they are the steps a note records to show
+  // the procedure was done properly, and they were most of the parser's blind
+  // spot. "Flap raised", "socket curetted", "cord packed" are what an insurer or
+  // an attorney reads to decide whether the work described actually happened.
+  term("proc.flap", "flap raised", "flap reflection", "surgical"),
+  term("proc.flap.reflected", "flap reflected", "flap reflection", "surgical"),
+  term("proc.bone.removal", "bone removed", "bone removal", "surgical"),
+  term("proc.sectioned", "sectioned", "tooth sectioning", "surgical"),
+  term("proc.socket.curetted", "socket curetted", "socket curettage", "surgical"),
+  term("proc.curetted", "curetted", "curettage", "surgical"),
+  term("proc.irrigated", "irrigated", "irrigation", "surgical"),
+  term("proc.sutures.placed", "sutures placed", "suture placement", "surgical"),
+  term("proc.sutures.removed", "sutures removed", "suture removal", "surgical"),
+  term("proc.caries.excavated", "caries excavated", "caries excavation", "restorative"),
+  term("proc.excavated", "excavated", "caries excavation", "restorative"),
+  term("proc.pulp.amputated", "pulp amputated", "pulp amputation", "endodontic"),
+  term("proc.prep.refined", "prep refined", "preparation refinement", "prosthodontic"),
+  term("proc.cord.packed", "cord packed", "retraction cord placement", "prosthodontic"),
+  term("proc.impression", "impression taken", "impression", "prosthodontic"),
+  term("proc.cemented", "cemented", "cementation", "prosthodontic"),
+  term("proc.isolated", "isolated", "isolation", "restorative"),
+  term("proc.etched", "etched", "acid etch", "restorative"),
+  term("proc.bonded", "bonded", "bonding", "restorative"),
+  term("proc.smoothed", "smoothed", "selective smoothing", "restorative"),
+  term("proc.calculus.removed", "calculus removed", "calculus removal", "periodontal"),
+  term("proc.polished", "polished", "coronal polishing", "preventive"),
+
   // --- Diagnostic. ---
+  term("proc.fms", "fms", "full-mouth radiographic series", "diagnostic"),
   term("proc.exam.comp", "comprehensive exam", "comprehensive oral evaluation", "diagnostic"),
   term("proc.exam.periodic", "periodic exam", "periodic oral evaluation", "diagnostic"),
   term("proc.exam.limited", "limited exam", "limited oral evaluation", "diagnostic"),

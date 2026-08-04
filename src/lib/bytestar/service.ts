@@ -2,6 +2,8 @@ import { runPhiRule } from "@/lib/audit/rules/phi";
 import { verifyMeaning } from "@/lib/verify/verifyMeaning";
 import type { GenerateListFn } from "@/lib/assist/service";
 import { retrieveContext } from "@/lib/assist/retrieval";
+import { extractFacts } from "@/lib/extract/extract";
+import { sitesOfFact } from "@/lib/extract/facts";
 import { BYTESTAR_UNAVAILABLE, getByteStarConfig, type ByteStarConfig } from "./config";
 import { detectEscape, type EscapeHit } from "./escape";
 import { measureBenchmarks, type BenchmarkReport } from "./benchmarks";
@@ -13,22 +15,43 @@ import {
   type ByteStarSuggestion
 } from "./schemas";
 
-// BYTESTAR SERVICE — observational pioneer only.
+// BYTESTAR SERVICE — observational pioneer, v1.3.
 //
-// Staff never prompt ByteStar. The host auto-calls on debounced draft text.
-// Output is display-only: no rewrites or evidence reach the client (nothing
-// to copy into the note). Model escapes are flagged for the ladder in the
-// route; input jailbreaks block without advancing the ladder.
+// Staff never prompt ByteStar; the host auto-calls on debounced draft text and
+// the output is display-only. This revision raises the epistemics without
+// touching the cage:
+//
+//   GROUNDED   — observations about existing text must quote it verbatim, and
+//                the quote is checked against the input deterministically.
+//                Chain-of-verification, with the verification half determinist.
+//   INFORMED   — the model receives the deterministic parser's reading of the
+//                draft as trusted context, so its observations align with what
+//                the chart and the audit already established.
+//   CORROBORATED — with BYTESTAR_READS > 1, the draft is read independently
+//                several times and only observations a MAJORITY of reads agree
+//                on survive. Self-consistency is the cheapest honest
+//                hallucination filter: a fabrication rarely repeats.
+//
+// A corroboration count ("seen in 3 of 3 reads") is a fact about sampling,
+// not a probability about truth — which is why it is allowed to exist while
+// confidence percentages remain a stated non-goal.
+
+export interface CorroboratedSuggestion extends ByteStarSuggestion {
+  /** Present when multiple reads ran: how many independent reads produced it. */
+  corroboration?: { seen: number; reads: number };
+}
 
 export type ByteStarOutcome =
   | {
       ok: true;
-      suggestions: ByteStarSuggestion[];
+      suggestions: CorroboratedSuggestion[];
       refused: number;
       benchmarks: BenchmarkReport;
       promptVersion: string;
       codes: string[];
       retrievedSources: string[];
+      /** How many independent model reads contributed. */
+      reads: number;
     }
   | {
       ok: false;
@@ -47,6 +70,9 @@ export type ByteStarOutcome =
       benchmarks?: BenchmarkReport;
     };
 
+/** Kinds that comment on text that already exists — these must quote it. */
+const EVIDENCE_REQUIRED_KINDS = new Set(["active-voice", "standardize", "clarity"]);
+
 function verifySuggestion(input: string, s: ByteStarSuggestion): string | null {
   if (!isAllowedSource(s.source)) return "source-not-allowed";
   if (s.kind === "completeness" || s.kind === "tn-required") {
@@ -55,13 +81,89 @@ function verifySuggestion(input: string, s: ByteStarSuggestion): string | null {
     if (!/\?/.test(q)) return "gap-not-question";
     return null;
   }
+  // An observation about existing wording must point at the wording. A claim
+  // with no quote is unfalsifiable, and unfalsifiable is how drift starts.
+  if (EVIDENCE_REQUIRED_KINDS.has(s.kind) && !s.evidence) return "missing-evidence";
+  if (s.evidence && !input.includes(s.evidence)) return "ungrounded-evidence";
   if (s.rewrite) {
     const basis = s.evidence && input.includes(s.evidence) ? s.evidence : input;
     const v = verifyMeaning(basis, s.rewrite, { mode: "rewrite" });
     if (!v.ok) return v.rejections[0]?.code ?? "verifier-rejected";
   }
-  if (s.evidence && !input.includes(s.evidence)) return "ungrounded-evidence";
   return null;
+}
+
+/**
+ * The deterministic parser's reading of the draft, summarized for the prompt.
+ * Marked trusted: the model is told what the practice's own extraction already
+ * established, so it observes against the same facts the chart draws. Values
+ * come from controlled tables and spans — nothing here is model-generated.
+ */
+export function parseContextFor(input: string): string {
+  const { facts } = extractFacts(input);
+  if (facts.length === 0) return "";
+  const teeth = new Set<string>();
+  const meds: string[] = [];
+  const denied: string[] = [];
+  for (const f of facts) {
+    for (const site of sitesOfFact(f)) teeth.add(String(site.toothId));
+    if (f.kind === "medication" && f.assertion.polarity === "affirmed") {
+      meds.push(f.drug + (f.concentrationPercent !== undefined ? ` ${f.concentrationPercent}%` : ""));
+    }
+    if (f.assertion.polarity === "negated") {
+      const label =
+        f.kind === "finding" ? f.finding : f.kind === "procedure" ? f.procedure : f.kind;
+      denied.push(label);
+    }
+  }
+  const lines: string[] = [`- facts read: ${facts.length}`];
+  if (teeth.size > 0) lines.push(`- teeth referenced: ${[...teeth].join(", ")}`);
+  if (meds.length > 0) lines.push(`- medications affirmed: ${[...new Set(meds)].join("; ")}`);
+  if (denied.length > 0)
+    lines.push(`- explicitly DENIED by the note (never treat as present): ${[...new Set(denied)].join("; ")}`);
+  return `DETERMINISTIC PARSE OF THIS DRAFT (trusted; produced by the practice's own extraction):\n${lines.join("\n")}`;
+}
+
+/** Stable identity for majority voting across independent reads. */
+function consensusKey(s: ByteStarSuggestion): string {
+  const anchor = (s.evidence ?? s.question ?? s.say).toLowerCase().replace(/\s+/g, " ").trim();
+  return `${s.kind}|${anchor.slice(0, 60)}`;
+}
+
+export function resolveReads(env: Record<string, string | undefined> = process.env): number {
+  const n = Number(env.BYTESTAR_READS);
+  if (!Number.isInteger(n)) return 1;
+  return Math.min(3, Math.max(1, n));
+}
+
+type ReadResult =
+  | { ok: true; suggestions: ByteStarSuggestion[] }
+  | { ok: false; code: "escape-model" | "invalid-shape" | "model-error"; hits?: EscapeHit[]; codes: string[] };
+
+async function readOnce(
+  input: string,
+  system: string,
+  generateList: GenerateListFn
+): Promise<ReadResult> {
+  let raw: unknown;
+  try {
+    raw = await generateList({
+      system,
+      prompt: `De-identified draft note:\n\n${input}\n\nReturn up to three objective observations that move this draft toward active voice, Curve Hero–ready standardized language, and Tennessee-required documentation completeness. Every observation about existing wording must include the exact quote in "evidence". Use questions for any missing fact. Do not address the writer directly.`,
+      schemaName: "bytestar",
+      schema: BYTESTAR_SCHEMA as unknown as Record<string, unknown>
+    });
+  } catch {
+    return { ok: false, code: "model-error", codes: ["model-error"] };
+  }
+
+  const outputHits = detectEscape(JSON.stringify(raw));
+  if (outputHits.length > 0) {
+    return { ok: false, code: "escape-model", hits: outputHits, codes: outputHits.map((h) => h.signal) };
+  }
+  const parsed = validateByteStarResponse(raw);
+  if (!parsed) return { ok: false, code: "invalid-shape", codes: ["invalid-shape"] };
+  return { ok: true, suggestions: parsed.suggestions.slice(0, 3) };
 }
 
 export async function runByteStar(
@@ -72,41 +174,24 @@ export async function runByteStar(
     config?: ByteStarConfig;
     /** Set when the deployment-wide perma-kill latch is engaged. */
     permaKilled?: boolean;
+    /** Independent reads for self-consistency; defaults from BYTESTAR_READS. */
+    reads?: number;
   } = {}
 ): Promise<ByteStarOutcome> {
   const config = opts.config ?? getByteStarConfig(opts.env);
   const benchmarks = measureBenchmarks(text);
 
   if (opts.permaKilled || config.silentlyKilled) {
-    return {
-      ok: false,
-      code: "perma-killed",
-      message: BYTESTAR_UNAVAILABLE,
-      codes: ["perma-killed"],
-      benchmarks
-    };
+    return { ok: false, code: "perma-killed", message: BYTESTAR_UNAVAILABLE, codes: ["perma-killed"], benchmarks };
   }
-
   if (!config.enabled) {
-    return {
-      ok: false,
-      code: "unavailable",
-      message: BYTESTAR_UNAVAILABLE,
-      codes: ["not-enabled"],
-      benchmarks
-    };
+    return { ok: false, code: "unavailable", message: BYTESTAR_UNAVAILABLE, codes: ["not-enabled"], benchmarks };
   }
 
   const input = text.slice(0, 20_000);
   const phi = runPhiRule(input).filter((f) => f.category === "phi");
   if (phi.length > 0) {
-    return {
-      ok: false,
-      code: "phi-blocked",
-      message: BYTESTAR_UNAVAILABLE,
-      codes: phi.map((f) => f.ruleId),
-      benchmarks
-    };
+    return { ok: false, code: "phi-blocked", message: BYTESTAR_UNAVAILABLE, codes: phi.map((f) => f.ruleId), benchmarks };
   }
 
   const inputHits = detectEscape(input);
@@ -121,76 +206,86 @@ export async function runByteStar(
     };
   }
 
-  let raw: unknown;
   const retrieved = retrieveContext(input);
-  const system = retrieved.text
-    ? `${BYTESTAR_SYSTEM_PROMPT}\n\n--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}`
-    : BYTESTAR_SYSTEM_PROMPT;
+  const parseContext = parseContextFor(input);
+  const system = [
+    BYTESTAR_SYSTEM_PROMPT,
+    retrieved.text ? `--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}` : "",
+    parseContext ? `--- ${parseContext}` : ""
+  ]
+    .filter(Boolean)
+    .join("\n\n");
 
-  try {
-    raw = await generateList({
-      system,
-      prompt: `De-identified draft note:\n\n${input}\n\nReturn up to three objective observations that move this draft toward active voice, Curve Hero–ready standardized language, and Tennessee-required documentation completeness. Use questions for any missing fact. Do not address the writer directly; state what the record shows and what remains open.`,
-      schemaName: "bytestar",
-      schema: BYTESTAR_SCHEMA as unknown as Record<string, unknown>
-    });
-  } catch {
-    return {
-      ok: false,
-      code: "model-error",
-      message: BYTESTAR_UNAVAILABLE,
-      codes: ["model-error"],
-      benchmarks
-    };
-  }
+  const reads = opts.reads ?? resolveReads(opts.env);
+  const results = await Promise.all(
+    Array.from({ length: reads }, () => readOnce(input, system, generateList))
+  );
 
-  const outputHits = detectEscape(JSON.stringify(raw));
-  if (outputHits.length > 0) {
+  // A model escape on ANY read refuses the whole turn and feeds the ladder —
+  // one read trying the bars is the event, not the average.
+  const escaped = results.find((r): r is Extract<ReadResult, { ok: false }> => !r.ok && r.code === "escape-model");
+  if (escaped) {
     return {
       ok: false,
       code: "escape-model",
       message: BYTESTAR_UNAVAILABLE,
-      codes: outputHits.map((h) => h.signal),
-      escapeHits: outputHits,
+      codes: escaped.codes,
+      escapeHits: escaped.hits,
       benchmarks
     };
   }
 
-  const parsed = validateByteStarResponse(raw);
-  if (!parsed) {
+  const successful = results.filter((r): r is Extract<ReadResult, { ok: true }> => r.ok);
+  if (successful.length === 0) {
+    const first = results[0] as Extract<ReadResult, { ok: false }>;
     return {
       ok: false,
-      code: "invalid-shape",
+      code: first.code === "invalid-shape" ? "invalid-shape" : "model-error",
       message: BYTESTAR_UNAVAILABLE,
-      codes: ["invalid-shape"],
+      codes: first.codes,
       benchmarks
     };
   }
 
-  const kept: ByteStarSuggestion[] = [];
+  // Majority vote across the reads that succeeded. With one read everything
+  // "wins" its vote; with two or three, a suggestion must appear in a strict
+  // majority. The FIRST occurrence's wording ships — reads are peers, and
+  // picking a canonical wording deterministically keeps the outcome stable.
+  const n = successful.length;
+  const needed = Math.floor(n / 2) + 1;
+  const byKey = new Map<string, { s: ByteStarSuggestion; seen: number }>();
+  for (const read of successful) {
+    const seenThisRead = new Set<string>();
+    for (const s of read.suggestions) {
+      const key = consensusKey(s);
+      if (seenThisRead.has(key)) continue; // a read votes once per observation
+      seenThisRead.add(key);
+      const existing = byKey.get(key);
+      if (existing) existing.seen += 1;
+      else byKey.set(key, { s, seen: 1 });
+    }
+  }
+
+  const kept: CorroboratedSuggestion[] = [];
   const codes: string[] = [];
-  for (const s of parsed.suggestions.slice(0, 3)) {
-    const hits = detectEscape(`${s.say}\n${s.why}\n${s.rewrite ?? ""}\n${s.question ?? ""}`);
-    if (hits.length > 0) {
-      codes.push(...hits.map((h) => h.signal));
-      return {
-        ok: false,
-        code: "escape-model",
-        message: BYTESTAR_UNAVAILABLE,
-        codes,
-        escapeHits: hits,
-        benchmarks
-      };
+  let refused = 0;
+  for (const { s, seen } of byKey.values()) {
+    if (seen < needed) {
+      refused += 1;
+      codes.push("no-consensus");
+      continue;
     }
     const reason = verifySuggestion(input, s);
     if (reason) {
+      refused += 1;
       codes.push(reason);
       continue;
     }
-    kept.push(s);
+    kept.push(n > 1 ? { ...s, corroboration: { seen, reads: n } } : s);
+    if (kept.length >= 3) break;
   }
 
-  if (kept.length === 0 && parsed.suggestions.length > 0) {
+  if (kept.length === 0 && byKey.size > 0) {
     return {
       ok: false,
       code: "verifier-rejected",
@@ -203,10 +298,11 @@ export async function runByteStar(
   return {
     ok: true,
     suggestions: kept,
-    refused: parsed.suggestions.length - kept.length,
+    refused,
     benchmarks,
     promptVersion: BYTESTAR_PROMPT_VERSION,
     codes,
-    retrievedSources: retrieved.sources
+    retrievedSources: retrieved.sources,
+    reads: n
   };
 }

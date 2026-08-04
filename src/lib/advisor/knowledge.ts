@@ -108,6 +108,49 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       ctx.kinds.has("medication") &&
       !mentions(ctx, "allerg", "nkda", "nka")
   },
+  {
+    id: "byte.opioid-pmp",
+    say: "An opioid prescription — the CSMD check belongs in the note.",
+    why:
+      "Tennessee requires checking the Controlled Substance Monitoring Database before " +
+      "prescribing opioids, and a check that is not documented is a check that did not happen, " +
+      "as far as any reviewer is concerned. One line — CSMD checked, date, no concerning " +
+      "findings or what was found — makes the compliance visible.",
+    source: "Tenn. Code Ann. § 53-10-310 (CSMD check); TN Dept. of Health opioid guidance",
+    priority: 88,
+    when: (ctx) =>
+      mentions(ctx, "hydrocodone", "oxycodone", "codeine", "tramadol", "opioid", "percocet", "lortab", "norco") &&
+      !mentions(ctx, "csmd", "pmp", "monitoring database")
+  },
+  {
+    id: "byte.premedication-check",
+    say: "This history mentions a joint replacement or cardiac condition — was prophylaxis considered?",
+    why:
+      "The American Heart Association narrowed antibiotic prophylaxis to specific cardiac " +
+      "conditions, and current orthopaedic and dental guidance no longer recommends it " +
+      "routinely for most joint replacements. Either way, the note should say what was decided " +
+      "and why — \"premedication not indicated per current guidance\" is one sentence and " +
+      "settles the question the chart would otherwise ask.",
+    source: "American Heart Association endocarditis-prevention guidance; ADA/AAOS appropriate-use criteria",
+    priority: 78,
+    when: (ctx) =>
+      mentions(ctx, "joint replacement", "prosthetic joint", "heart valve", "endocarditis", "prosthetic valve") &&
+      !mentions(ctx, "premed", "prophyla", "amoxicillin 2 g", "not indicated")
+  },
+  {
+    id: "byte.nitrous-record",
+    say: "Nitrous is on board — the record wants concentration, duration, and recovery.",
+    why:
+      "A nitrous administration is defensible when the note shows percent concentration, " +
+      "duration, and that the patient recovered on 100% oxygen before leaving the chair. " +
+      "\"N2O administered\" alone documents that something happened; the three numbers document " +
+      "that it happened safely.",
+    source: "Tenn. Comp. R. 0460-02-.07 (sedation records); AAPD nitrous oxide guideline",
+    priority: 82,
+    when: (ctx) =>
+      mentions(ctx, "nitrous", "n2o") &&
+      !(/\d+\s*%/.test(ctx.text) && mentions(ctx, "oxygen", "recover", "100%"))
+  },
 
   // --- Tennessee law and the record ---------------------------------------
   {
@@ -170,6 +213,48 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
     priority: 65,
     when: (ctx) =>
       mentions(ctx, "consent") && !mentions(ctx, "risk", "alternative", "question", "declined", "option")
+  },
+  {
+    id: "byte.informed-refusal",
+    say: "A declined recommendation deserves the same documentation as an accepted one.",
+    why:
+      "Refusal cases are lost on silence: the chart shows the recommendation and then nothing. " +
+      "What was recommended, what the patient was told could happen without it, and their " +
+      "decision in their own words — that is informed refusal, and it protects the patient's " +
+      "autonomy and the practice in the same three sentences.",
+    source: "CNA/Dentist's Advantage informed-refusal guidance; owner's litigation research",
+    priority: 68,
+    when: (ctx) =>
+      mentions(ctx, "refused", "declined", "does not want", "deferred treatment") &&
+      !mentions(ctx, "explained", "informed of", "advised of", "understands", "consequence")
+  },
+  {
+    id: "byte.referral-loop",
+    say: "A referral is documented — the loop closes when the note says to whom and why.",
+    why:
+      "\"Referred to oral surgery\" leaves three questions the record should answer: to whom, " +
+      "for what, and with what urgency. Named recipient, stated reason, and a timeframe turn a " +
+      "referral from a hand-off into a traceable act of care — and unfollowed referrals are a " +
+      "recurring theme in delayed-diagnosis claims.",
+    source: "D'Amour (Mass. 1991) delayed-diagnosis lesson; CNA referral documentation guidance",
+    priority: 60,
+    when: (ctx) =>
+      hasCareEvent(ctx, "referral") &&
+      !mentions(ctx, " dr", "oral surge", "endodontist", "periodontist", "orthodont", "specialist for")
+  },
+  {
+    id: "byte.amendment-not-erasure",
+    say: "Correcting the record? Tennessee wants an addendum, never an erasure.",
+    why:
+      "A dental record is corrected by adding a dated, signed addendum that identifies what it " +
+      "corrects — never by rewriting the original. An altered record is treated as consciousness " +
+      "of wrongdoing in litigation even when the underlying care was fine. The addendum template " +
+      "in verified blocks does this correctly.",
+    source: "Tenn. Comp. R. 0460-02-.12; spoliation doctrine in the owner's litigation research",
+    priority: 74,
+    when: (ctx) =>
+      mentions(ctx, "correction", "corrected note", "amend", "addendum", "revise the note") &&
+      !mentions(ctx, "original entry remains", "not backdated")
   },
 
   // --- Craft: the writing itself -------------------------------------------

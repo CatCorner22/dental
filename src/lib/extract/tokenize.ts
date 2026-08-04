@@ -34,6 +34,15 @@ export interface Token {
    * a tooth number rather than a shrug.
    */
   digits?: string;
+  /**
+   * At least one line break sits between this token and the previous one.
+   * The clause splitter treats that as a boundary: staff shorthand puts one
+   * statement per line, and a "no" on one line must never negate a finding
+   * three lines down. Found the hard way — a 1,500-line note parsed as ONE
+   * clause, which made assertion scoping quadratic (12 seconds on a paste
+   * that should cost 20 ms) and let negation scope leak across lines.
+   */
+  newline?: true;
   start: number;
   end: number;
 }
@@ -47,17 +56,25 @@ const WORD_INNER = /[\p{L}\p{Nd}'’-]/u;
 export function tokenize(text: string): Token[] {
   const tokens: Token[] = [];
   let i = 0;
+  let sawNewline = false;
+
+  const mark = <T extends Token>(t: T): T => {
+    if (sawNewline && tokens.length > 0) t.newline = true;
+    sawNewline = false;
+    return t;
+  };
 
   while (i < text.length) {
     const ch = text[i];
 
     if (/\s/.test(ch)) {
+      if (ch === "\n" || ch === "\r") sawNewline = true;
       i++;
       continue;
     }
 
     if (ch === "#") {
-      tokens.push({ kind: "hash", text: "#", lower: "#", start: i, end: i + 1 });
+      tokens.push(mark({ kind: "hash", text: "#", lower: "#", start: i, end: i + 1 }));
       i++;
       continue;
     }
@@ -74,14 +91,16 @@ export function tokenize(text: string): Token[] {
         while (i < text.length && DIGIT_CHAR.test(text[i])) i++;
       }
       const raw = text.slice(start, i);
-      tokens.push({
-        kind: "number",
-        text: raw,
-        lower: raw.toLowerCase(),
-        digits: foldDigits(raw),
-        start,
-        end: i
-      });
+      tokens.push(
+        mark({
+          kind: "number",
+          text: raw,
+          lower: raw.toLowerCase(),
+          digits: foldDigits(raw),
+          start,
+          end: i
+        })
+      );
       continue;
     }
 
@@ -93,11 +112,11 @@ export function tokenize(text: string): Token[] {
       // follows, not to the word: "patient-" is the word "patient".
       while (i > start + 1 && /['’-]/.test(text[i - 1])) i--;
       const raw = text.slice(start, i);
-      tokens.push({ kind: "word", text: raw, lower: raw.toLowerCase(), start, end: i });
+      tokens.push(mark({ kind: "word", text: raw, lower: raw.toLowerCase(), start, end: i }));
       continue;
     }
 
-    tokens.push({ kind: "punct", text: ch, lower: ch, start: i, end: i + 1 });
+    tokens.push(mark({ kind: "punct", text: ch, lower: ch, start: i, end: i + 1 }));
     i++;
   }
 
@@ -163,11 +182,41 @@ const LOCATION_ISH = (t: Token | undefined): boolean => {
   return QUADRANT_START.has(t.lower);
 };
 
+/**
+ * Defensive ceiling on tokens per clause. No real clinical clause approaches
+ * it — the longest clause across the whole shorthand corpus is under 40
+ * tokens — but a pasted wall of text with no punctuation and no line breaks
+ * would otherwise become one clause, and assertion scoping inside a clause is
+ * O(facts × cues): quadratic on exactly the input an adversary would choose.
+ * Splitting an oversized clause loses nothing clinical (the content was
+ * never a clause) and keeps the per-keystroke path linear no matter what is
+ * pasted into it.
+ */
+const MAX_CLAUSE_TOKENS = 250;
+
 export function clauseRanges(tokens: Token[]): Array<{ from: number; to: number }> {
   const ranges: Array<{ from: number; to: number }> = [];
   let from = 0;
+  const push = (to: number) => {
+    // The oversized-clause guard, applied at the single point every clause
+    // passes through.
+    let start = from;
+    while (to - start > MAX_CLAUSE_TOKENS) {
+      ranges.push({ from: start, to: start + MAX_CLAUSE_TOKENS });
+      start += MAX_CLAUSE_TOKENS;
+    }
+    if (to > start) ranges.push({ from: start, to });
+  };
   for (let i = 0; i < tokens.length; i++) {
     const t = tokens[i];
+    // A line break is a clause boundary before anything else is considered:
+    // staff shorthand is one statement per line, and negation must not leak
+    // across lines. The boundary sits BEFORE this token, so the previous
+    // clause ends at i and the new one starts here (no separator to skip).
+    if (t.newline && i > from) {
+      push(i);
+      from = i;
+    }
     if (t.kind !== "punct") continue;
     let isBreak = t.text === ";" || t.text === "." || t.text === "!" || t.text === "?";
     if (t.text === ",") {
@@ -175,10 +224,10 @@ export function clauseRanges(tokens: Token[]): Array<{ from: number; to: number 
       isBreak = !insideToothList && !LOCATION_ISH(tokens[i + 1]);
     }
     if (isBreak) {
-      if (i > from) ranges.push({ from, to: i });
+      if (i > from) push(i);
       from = i + 1;
     }
   }
-  if (from < tokens.length) ranges.push({ from, to: tokens.length });
+  if (from < tokens.length) push(tokens.length);
   return ranges;
 }

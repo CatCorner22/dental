@@ -181,13 +181,24 @@ describe("it stays fast enough to run on every field", () => {
   });
 
   it("does not degrade superlinearly as the note grows", () => {
+    // MINIMUM of several runs, not a single sample. This assertion failed on a
+    // shared CI runner at ratio 49 with no code change in the hot path: the
+    // small measurement is sub-millisecond, so one GC pause or noisy-neighbor
+    // slice during it distorts the ratio arbitrarily. Scheduling noise only
+    // ever ADDS time, which makes the minimum the robust estimator of what the
+    // code actually costs — the ratio of minima is stable where the ratio of
+    // single samples is a coin flip.
     const unit = "srp UR quad, pd 4-6mm w/ bop, ext #17 w/ forceps, 2 carpules lido w/ epi. ";
     const time = (reps: number) => {
       const text = unit.repeat(reps);
-      standardize(text);
-      const s = performance.now();
-      standardize(text);
-      return performance.now() - s;
+      standardize(text); // warm
+      let best = Infinity;
+      for (let i = 0; i < 5; i++) {
+        const s = performance.now();
+        standardize(text);
+        best = Math.min(best, performance.now() - s);
+      }
+      return best;
     };
     const small = Math.max(time(20), 0.05);
     const large = time(200);

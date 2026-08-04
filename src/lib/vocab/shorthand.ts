@@ -159,6 +159,25 @@ export const SHORTHAND: Shorthand[] = [
     expansion: "non-invasive blood pressure",
     domain: "medical"
   },
+  {
+    // The opioid rule REQUIRES this token in the note ("CSMD reviewed prior to
+    // prescribing") while the filing gate blocked any note containing it as
+    // unknown shorthand — two rules in direct contradiction, found when Byte's
+    // opioid advice failed his own blocking-audit test. The practice cannot
+    // demand a word its own vocabulary refuses to read.
+    id: "csmd",
+    pattern: /\bCSMD\b/g,
+    display: "CSMD",
+    expansion: "Controlled Substance Monitoring Database",
+    domain: "medical"
+  },
+  {
+    id: "pmp",
+    pattern: /\bPMP\b/g,
+    display: "PMP",
+    expansion: "prescription monitoring program",
+    domain: "medical"
+  },
   { id: "ohi", pattern: /\bOHI\b/gi, display: "OHI", expansion: "oral hygiene instruction", domain: "dental" },
   {
     id: "coe",

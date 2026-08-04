@@ -150,4 +150,30 @@
 //         are contextually required BY THE RULE — hygiene-service notes, once
 //         the law is in force — and deliberately not schema-required, because
 //         a plainly required field blocks every draft already saved.
-export const RULESET_VERSION = "2.14.0";
+// 2.15.0 — unit COMPOUNDS pass the filing gate. "mg/kg" — the standard
+//         weight-based dosing notation, which the medication-safety rules
+//         themselves match — read as unknown shorthand because isUnit()
+//         stripped the slash and looked up "mgkg". A slash-joined token whose
+//         every part is a known unit is now a unit ("mg/kg", "L/min"). Found
+//         when Byte's own dosing advice, quoting the published 4.4 mg/kg
+//         ceiling, tripped the gate that would next have tripped on a real
+//         note. Recorded late: the change shipped with the advisor commit and
+//         should have carried this bump the same day.
+//
+//         Also under this bump: CSMD and PMP join the vocabulary. The opioid
+//         rule REQUIRES "CSMD reviewed" in the note while the filing gate
+//         blocked any note containing the token as unknown shorthand — two
+//         rules in direct contradiction, found the same way as mg/kg: Byte's
+//         opioid advice failed his own blocking-audit test. The practice
+//         cannot demand a word its own vocabulary refuses to read.
+// 2.16.0 — line breaks are clause boundaries, and clauses have a ceiling.
+//         A 1,500-line pasted note parsed as ONE clause because the tokenizer
+//         swallowed newlines as whitespace: assertion scoping inside a clause
+//         is O(facts × cues), so the paste cost 12 seconds on the keystroke
+//         path, and a "no" on line one was in scope to negate a finding forty
+//         lines down. Staff shorthand is one statement per line; the parser
+//         now agrees. A defensive 250-token clause ceiling covers the
+//         remaining adversarial shape (an unbroken wall with no punctuation).
+//         Found by a hostile stress battery, not by a user — which is the
+//         only acceptable way to find a 12-second keystroke.
+export const RULESET_VERSION = "2.16.0";

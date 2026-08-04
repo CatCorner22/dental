@@ -75,6 +75,21 @@ const CONSENT_RULES = `CONSENT DOCUMENTATION (litigation-informed):
 - Record the CONVERSATION, not just a signature: diagnosis discussed, material risks named, alternatives including no treatment, questions asked, and the patient's decision in their own terms.
 - Never assert that consent occurred unless the input states it. A consent discussion without a recorded decision is half a record.`;
 
+const REFUSAL_CUE = /\brefus(?:ed|al|es)\b|\bdeclin(?:ed|es)\b|\bdeferred\s+treatment\b|\bdoes\s+not\s+want\b/i;
+const REFUSAL_RULES = `INFORMED REFUSAL (owner's litigation research; refusal cases are lost on silence):
+- A declined recommendation is documented like an accepted one: what was recommended, what the patient was told could happen without it, and the decision in the patient's own terms.
+- Never assert that the risks of refusal were explained unless the input states it — ask about the gap instead.`;
+
+const ADDENDUM_CUE = /\baddendum\b|\bamend(?:ed|ment)?\b|\bcorrect(?:ion|ed)\b|\blate\s+entry\b/i;
+const ADDENDUM_RULES = `RECORD CORRECTION (Tenn. Comp. R. 0460-02-.12; spoliation doctrine):
+- A dental record is corrected by a dated, signed ADDENDUM that identifies what it corrects. The original entry is never rewritten, deleted, or backdated.
+- An addendum states its reason and its author. Never suggest editing a filed entry in place.`;
+
+const RADIOGRAPH_CUE = /\bbitewings?\b|\bBWs?\b|\bradiographs?\b|\bpano(?:ramic)?\b|\bFMX\b|\bCBCT\b|\bx-?rays?\b/i;
+const RADIOGRAPH_RULES = `RADIOGRAPH RECORDS (Tenn. Comp. R. 0460-02-.12; Tenn. Code Ann. 63-5-108):
+- Tennessee counts radiographs AND their interpretations as part of the dental record. "BWs taken" documents an exposure, not a diagnostic act.
+- The record wants: who interpreted the image, what they saw — or that interpretation is pending, with a named owner. Never supply an interpretation the input does not contain.`;
+
 export function retrieveContext(input: string): RetrievedContext {
   const sources: string[] = [];
   const parts: string[] = [];
@@ -95,6 +110,18 @@ export function retrieveContext(input: string): RetrievedContext {
   if (CONSENT_CUE.test(input)) {
     sources.push("consent documentation");
     parts.push(CONSENT_RULES);
+  }
+  if (REFUSAL_CUE.test(input)) {
+    sources.push("informed refusal");
+    parts.push(REFUSAL_RULES);
+  }
+  if (ADDENDUM_CUE.test(input)) {
+    sources.push("record correction");
+    parts.push(ADDENDUM_RULES);
+  }
+  if (RADIOGRAPH_CUE.test(input)) {
+    sources.push("radiograph records");
+    parts.push(RADIOGRAPH_RULES);
   }
 
   let text = parts.join("\n\n");

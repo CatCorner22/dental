@@ -60,8 +60,14 @@ async function build(): Promise<Db> {
     );
   }
   const { PGlite } = await import("@electric-sql/pglite");
+  // Vercel's serverless FS is read-only except /tmp. A relative `.data/pglite`
+  // mkdir fails with ENOENT and takes login down with it. Prefer an explicit
+  // PGLITE_DIR, then /tmp on Vercel, then the local default.
   const dir =
-    process.env.NODE_ENV === "test" ? "memory://" : (process.env.PGLITE_DIR ?? ".data/pglite");
+    process.env.NODE_ENV === "test"
+      ? "memory://"
+      : (process.env.PGLITE_DIR ??
+        (process.env.VERCEL ? "/tmp/smile-notes-pglite" : ".data/pglite"));
   if (dir !== "memory://" && !dir.startsWith("memory")) {
     // PGlite's own mkdir is not recursive; ensure the parent path exists.
     const { mkdirSync } = await import("node:fs");

@@ -110,6 +110,24 @@ export async function listAuditLogByAction(
     .limit(limit);
 }
 
+/**
+ * Rows for a whole action FAMILY ("bytestar." and the like), newest first —
+ * the digest's period rollups read one family across several action names,
+ * and six separate exact-match queries for one panel would be silly.
+ */
+export async function listAuditLogByActionPrefix(
+  db: Db,
+  prefix: string,
+  limit = 2000
+): Promise<AuditLogRow[]> {
+  return db
+    .select()
+    .from(auditLog)
+    .where(like(auditLog.action, `${prefix}%`))
+    .orderBy(desc(auditLog.at), desc(auditLog.id))
+    .limit(limit);
+}
+
 export async function listAuditLog(
   db: Db,
   limit = 200,

@@ -10,6 +10,9 @@ import { grammarGrowthFromNotes } from "@/lib/learning/grammarGrowth";
 import { UNPARSED_CATEGORY_LABEL } from "@/lib/extract/classifyUnparsed";
 import { unknownAbbreviations } from "@/lib/vocab/unknownAbbreviations";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { listAuditLogByActionPrefix } from "@/lib/db/repo/auditLog";
+import { buildByteStarSummary } from "@/lib/bytestar/summary";
+import { ByteStarSummaryPanel } from "@/components/digest/ByteStarSummaryPanel";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Documentation digest" };
@@ -68,6 +71,14 @@ export default async function DigestPage() {
     unknownAbbreviations(notes.map((n) => n.markdown))
   );
   const grammarGrowth = grammarGrowthFromNotes(sightings);
+
+  // The pioneer's period report: same window as the rest of the digest,
+  // rolled up from the transparent bytestar.* rows. Counts and codes only.
+  const byteStarRows = await listAuditLogByActionPrefix(db, "bytestar.", 2000);
+  const byteStarSummary = buildByteStarSummary(
+    byteStarRows.map((r) => ({ action: r.action, detail: r.detail, atMs: r.at.getTime() })),
+    since.getTime()
+  );
 
   return (
     <div>
@@ -140,6 +151,8 @@ export default async function DigestPage() {
           </p>
         </section>
       )}
+
+      <ByteStarSummaryPanel summary={byteStarSummary} windowDays={PERIOD_DAYS} />
 
       {grammarGrowth.length > 0 && (
         <section className="mt-6">

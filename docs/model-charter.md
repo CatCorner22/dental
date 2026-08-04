@@ -153,6 +153,10 @@ reflex. Three candidates, in order of how well they survive the guide's gates.
 Frozen eval: `src/lib/standardize/disambiguation-eval.ts` (CI ratchet ≥ 80%).
 Injection seam: `readingProposer.ts` — product path always uses the heuristic;
 encoder candidates may be passed into `runDisambiguationEval(cases, fn)` only.
+Gate: `candidate-gate.ts` — `gateEncoderCandidate(fn)` returns the verdict (a
+candidate must STRICTLY beat the heuristic and clear the floor). A pass is
+evidence for review, never a bypass: product wiring is still a code change
+with a `RULESET_VERSION` bump and a human decision.
 
 **The remaining candidate.** A small **encoder-only classifier** over the
 surrounding clause that *proposes* a reading. It earns a product slot only if

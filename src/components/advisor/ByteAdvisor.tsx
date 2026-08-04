@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { advise } from "@/lib/advisor/advisor";
+import { HelpTip } from "@/components/ui/HelpTip";
 import { Byte } from "./Byte";
 
 // BYTE'S PANEL — the advisor behind the glass.
@@ -42,7 +43,13 @@ export function ByteAdvisor({
         <Byte mood={report.mood} />
         <div className="min-w-0 flex-1">
           <div className="flex items-baseline justify-between gap-2">
-            <h3 className="text-sm font-bold text-brand-navy">Byte</h3>
+            <div className="flex items-center gap-1.5">
+              <h3 className="text-sm font-bold text-brand-navy">Byte</h3>
+              <HelpTip label="What Byte does">
+                Byte reads your draft on this device only. Advice cites a source. Byte never
+                writes the note and never blocks filing — the audit panel owns stops.
+              </HelpTip>
+            </div>
             <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">
               advisor · reads only · never blocks
             </span>
@@ -52,6 +59,11 @@ export function ByteAdvisor({
             <div className="relative mt-1 rounded-lg rounded-tl-none bg-white p-2.5 ring-1 ring-slate-200">
               <p className="text-sm font-medium text-slate-900">{tip.say}</p>
               <p className="mt-1 text-xs leading-relaxed text-slate-600">{tip.why}</p>
+              {tip.nextAction && (
+                <p className="mt-1.5 rounded bg-brand-teal/10 px-2 py-1 text-xs font-medium text-brand-navy">
+                  Next: {tip.nextAction}
+                </p>
+              )}
               <p className="mt-1.5 border-t border-slate-100 pt-1 text-[0.65rem] text-slate-400">
                 Source: {tip.source}
               </p>
@@ -82,7 +94,13 @@ export function ByteAdvisor({
         <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
             <div className="flex items-baseline justify-between">
-              <span className="text-slate-500">Read</span>
+              <span className="inline-flex items-center gap-1 text-slate-500">
+                Read
+                <HelpTip label="About read coverage" side="top">
+                  {gauges.notes.read.why}
+                  {gauges.notes.read.next ? ` ${gauges.notes.read.next}` : ""}
+                </HelpTip>
+              </span>
               <span className="font-bold tabular-nums text-brand-navy">
                 {Math.round(gauges.readCoverage * 100)}%
               </span>
@@ -93,20 +111,33 @@ export function ByteAdvisor({
                 style={{ width: `${Math.round(gauges.readCoverage * 100)}%` }}
               />
             </div>
+            <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{gauges.notes.read.why}</p>
           </div>
 
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
             <div className="flex items-baseline justify-between">
-              <span className="text-slate-500">Facts</span>
+              <span className="inline-flex items-center gap-1 text-slate-500">
+                Facts
+                <HelpTip label="About fact density" side="top">
+                  {gauges.notes.density.why}
+                </HelpTip>
+              </span>
               <span className="font-bold tabular-nums text-brand-navy">{gauges.facts}</span>
             </div>
             <p className="mt-1 text-[0.65rem] text-slate-400">
               {gauges.density} per 100 words
             </p>
+            <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{gauges.notes.density.why}</p>
           </div>
 
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
-            <span className="text-slate-500">Defensibility</span>
+            <span className="inline-flex items-center gap-1 text-slate-500">
+              Defensibility
+              <HelpTip label="About defensibility pillars" side="top">
+                {gauges.notes.pillars.why}
+                {gauges.notes.pillars.next ? ` Next: ${gauges.notes.pillars.next}` : ""}
+              </HelpTip>
+            </span>
             {gauges.pillars.applicable ? (
               <ul className="mt-1 space-y-0.5 text-[0.65rem]">
                 {(
@@ -125,10 +156,17 @@ export function ByteAdvisor({
             ) : (
               <p className="mt-1 text-[0.65rem] text-slate-400">Applies once treatment is documented.</p>
             )}
+            <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{gauges.notes.pillars.why}</p>
           </div>
 
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
-            <span className="text-slate-500">Anesthetic</span>
+            <span className="inline-flex items-center gap-1 text-slate-500">
+              Anesthetic
+              <HelpTip label="About anesthetic gauge" side="top">
+                {gauges.notes.dose.why}
+                {gauges.notes.dose.next ? ` ${gauges.notes.dose.next}` : ""}
+              </HelpTip>
+            </span>
             {gauges.dose ? (
               <>
                 <p className="mt-0.5 text-[0.65rem] text-slate-600">
@@ -147,6 +185,7 @@ export function ByteAdvisor({
                 Shows when a dose with a concentration appears.
               </p>
             )}
+            <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{gauges.notes.dose.why}</p>
           </div>
         </div>
       )}

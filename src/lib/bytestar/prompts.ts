@@ -19,7 +19,11 @@
 //         input. The prompt also receives the deterministic parser's reading
 //         of the draft as trusted context, so the model observes against the
 //         same facts the chart draws.
-export const BYTESTAR_PROMPT_VERSION = "1.3.0";
+// 1.4.0 — diverse self-consistency lenses across independent reads (active
+//         voice / TN gaps / Curve-ready wording) so majority vote is not the
+//         same sample echoed; dental-domain canaries and dual PHI scan land
+//         in the same revision.
+export const BYTESTAR_PROMPT_VERSION = "1.4.0";
 
 export const BYTESTAR_DISCLAIMER_FOR_PROMPT =
   "You are experimental. The human remains solely responsible for every note. Your suggestions are general information, not clinical, legal, or pharmacy advice.";

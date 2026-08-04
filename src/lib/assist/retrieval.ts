@@ -90,6 +90,16 @@ const RADIOGRAPH_RULES = `RADIOGRAPH RECORDS (Tenn. Comp. R. 0460-02-.12; Tenn. 
 - Tennessee counts radiographs AND their interpretations as part of the dental record. "BWs taken" documents an exposure, not a diagnostic act.
 - The record wants: who interpreted the image, what they saw — or that interpretation is pending, with a named owner. Never supply an interpretation the input does not contain.`;
 
+const SUPERVISION_CUE =
+  /\b(?:hygienist|RDH|general supervision|direct supervision|registered dental assistant|RDA|practical dental assistant|prophylaxis|scaling)\b/i;
+const SUPERVISION_RULES = `TENNESSEE LICENSE SCOPE (Tenn. Code Ann. § 63-5-108; Rules 0460-03-.09, 0460-04-.08):
+- Diagnosis, treatment planning, and radiograph interpretation are dentist professional judgment.
+- Among auxiliaries, scaling/curettage of deposits is hygienist-only.
+- Hygienist local anesthesia, N2O, root planing/subgingival curettage, and restorative/prosthetic certifications need direct supervision (and the matching Board cert/permit).
+- RDA certification gates: coronal polish, N2O monitoring (not administration), sealants, radiographs, expanded restorative/prosthetic.
+- Never invent a supervision level or a certification the input does not state — ask as a question instead.
+- Pub. Ch. 1107 (eff. 1/1/2027): new-patient hygiene acts listed in the statute need direct supervision by a dentist who has seen the patient.`;
+
 export function retrieveContext(input: string): RetrievedContext {
   const sources: string[] = [];
   const parts: string[] = [];
@@ -122,6 +132,10 @@ export function retrieveContext(input: string): RetrievedContext {
   if (RADIOGRAPH_CUE.test(input)) {
     sources.push("radiograph records");
     parts.push(RADIOGRAPH_RULES);
+  }
+  if (SUPERVISION_CUE.test(input)) {
+    sources.push("tennessee license scope");
+    parts.push(SUPERVISION_RULES);
   }
 
   let text = parts.join("\n\n");

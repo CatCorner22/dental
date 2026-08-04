@@ -54,6 +54,8 @@ export interface KnowledgeEntry {
   priority: number;
   /** Pure predicate over the drafting context. */
   when: (ctx: AdvisorContext) => boolean;
+  /** One concrete next step the writer can take — advice only, never applied. */
+  nextAction?: string;
 }
 
 const hasProcedureCategory = (ctx: AdvisorContext, category: string): boolean =>
@@ -76,6 +78,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "leave the concentration off and nobody can compute the dose from this note, including you.",
     source: "Malamed dose tables; this practice's anesthetic-dose rule (ruleset 2.13.0)",
     priority: 90,
+    nextAction: "Add concentration (%) next to each carpule or mL amount.",
     when: (ctx) =>
       ctx.facts.some(
         (f) => f.kind === "medication" && f.assertion.polarity === "affirmed" && f.volumeMl !== undefined
@@ -90,6 +93,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "weight. One number turns every dose in this note into checkable arithmetic.",
     source: "Joint Commission Sentinel Event Alert 39; ISMP pediatric dosing guidance",
     priority: 85,
+    nextAction: "Write the patient's weight in kilograms on this note.",
     when: (ctx) =>
       mentions(ctx, "pediatric", "child", "pulpotomy", "ssc") &&
       ctx.kinds.has("medication") &&
@@ -104,6 +108,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "allergy when present — either is defensible, and only silence is not.",
     source: "Tenn. Comp. R. 0460-02-.12 (concise medical history); ISMP",
     priority: 80,
+    nextAction: "Add \"NKDA verified today\" or name the allergy verified at this visit.",
     when: (ctx) =>
       ctx.kinds.has("medication") &&
       !mentions(ctx, "allerg", "nkda", "nka")
@@ -118,6 +123,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "findings or what was found — makes the compliance visible.",
     source: "Tenn. Code Ann. § 53-10-310 (CSMD check); TN Dept. of Health opioid guidance",
     priority: 88,
+    nextAction: "Add one line: CSMD checked, date, and what was found.",
     when: (ctx) =>
       mentions(ctx, "hydrocodone", "oxycodone", "codeine", "tramadol", "opioid", "percocet", "lortab", "norco") &&
       !mentions(ctx, "csmd", "pmp", "monitoring database")
@@ -147,6 +153,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "that it happened safely.",
     source: "Tenn. Comp. R. 0460-02-.07 (sedation records); AAPD nitrous oxide guideline",
     priority: 82,
+    nextAction: "Add N2O %, duration, and recovery on 100% oxygen.",
     when: (ctx) =>
       mentions(ctx, "nitrous", "n2o") &&
       !(/\d+\s*%/.test(ctx.text) && mentions(ctx, "oxygen", "recover", "100%"))
@@ -163,6 +170,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "closes the gap.",
     source: "Tenn. Comp. R. 0460-02-.12; Tenn. Code Ann. § 63-5-108",
     priority: 75,
+    nextAction: "Name who read the images and what they saw (or \"interpretation pending\" with an owner).",
     when: (ctx) =>
       ctx.facts.some(
         (f) =>
@@ -182,6 +190,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "defensible three years from now.",
     source: "Bureau of Health Care Servs. v. Schwarcz (Mich. Ct. App. 2015); owner's litigation research",
     priority: 70,
+    nextAction: "Add post-op instructions, complication status, and a follow-up plan.",
     when: (ctx) =>
       hasProcedureCategory(ctx, "surgical") &&
       !hasCareEvent(ctx, "post-operative") &&
@@ -197,6 +206,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "are what records get judged on.",
     source: "D'Amour v. Bd. of Registration in Dentistry, 409 Mass. 572 (1991)",
     priority: 72,
+    nextAction: "Add disposition: disclosed, referred, biopsied, or scheduled for recheck.",
     when: (ctx) =>
       ctx.facts.some(
         (f) => f.kind === "finding" && f.assertion.polarity === "affirmed" && ["lesion", "ulceration"].some((n) => f.finding.includes(n))
@@ -211,6 +221,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "recording that conversation outweigh any stack of signed boilerplate.",
     source: "Sanders (Tenn. Ct. App. 1997); CNA/Dentist's Advantage claim guidance",
     priority: 65,
+    nextAction: "Name risks, alternatives (including no treatment), and the patient's decision.",
     when: (ctx) =>
       mentions(ctx, "consent") && !mentions(ctx, "risk", "alternative", "question", "declined", "option")
   },
@@ -268,6 +279,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "where actors go to disappear.",
     source: "Adams, A Manual of Style for Contract Drafting (5th ed.); this practice's writing standard",
     priority: 40,
+    nextAction: "Rewrite one passive line with the actor first (dentist, hygienist, or assistant).",
     when: (ctx) => detectPassive(ctx.text).length > 0
   },
   {

@@ -1,4 +1,5 @@
 import { runPhiRule } from "@/lib/audit/rules/phi";
+import { scanPhiForProvider, type ScanPhiFn } from "@/lib/audit/rules/phi-secondary";
 import { retrieveContext } from "./retrieval";
 import { verifyMeaning, type VerifyRejection } from "@/lib/verify/verifyMeaning";
 import {
@@ -124,14 +125,19 @@ export async function runAssist(
   capability: AssistCapability,
   text: string,
   generate: GenerateFn,
-  generateList?: GenerateListFn
+  generateList?: GenerateListFn,
+  /** Optional second-line / model PHI scanner — may only add blocks. */
+  modelPhiScan?: ScanPhiFn
 ): Promise<AssistOutcome> {
   const input = text.slice(0, MAX_INPUT);
 
   // PHI gate. ANY phi finding blocks the call — not only S0. Bare-name hits
   // are S2 for the in-app audit (review, not hard-stop on filing), but an AI
   // provider is off-server: probable patient names must never leave either.
-  const phi = runPhiRule(input).filter((f) => f.category === "phi");
+  // Second-line patterns (email, MRN, street) add blocks only; they never clear
+  // a primary hit. Optional model scan is the same contract.
+  const primary = runPhiRule(input).filter((f) => f.category === "phi");
+  const phi = scanPhiForProvider(input, primary, modelPhiScan);
   if (phi.length > 0) {
     const stops = phi.filter((f) => f.severity === "S0").length;
     return {

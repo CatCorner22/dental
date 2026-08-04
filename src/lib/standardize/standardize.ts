@@ -11,6 +11,7 @@ import {
   restoreInitialismCase,
   separateGluedAbbreviations
 } from "./notation";
+import { proposeReading, type ReadingProposal } from "./proposeReading";
 
 // Paste-to-standard: the "writing on rails" pass, moved out of the companion
 // skill and into the app.
@@ -62,6 +63,11 @@ export interface RaisedFlag {
   display: string;
   guidance: string;
   count: number;
+  /**
+   * Optional reading hint for ambiguous shorthand. Never auto-applied —
+   * the writer must still type the words. See proposeReading.ts.
+   */
+  proposal?: ReadingProposal;
 }
 
 export interface StandardizeResult {
@@ -373,12 +379,14 @@ export function standardize(raw: string): StandardizeResult {
 
     if (sh.alternatives) {
       // More than one real reading. Asserting one would put a clinical claim in
-      // the note that the writer never made.
+      // the note that the writer never made. A proposal may hint; it never writes.
+      const proposal = proposeReading(sh.display, sh.alternatives, text);
       bump(flags, (f) => f.display, {
         kind: "ambiguous-shorthand",
         display: sh.display,
         guidance: `"${sh.display}" has more than one meaning here: ${sh.alternatives.join("; ")}. Write the one you mean.`,
-        count: hits.length
+        count: hits.length,
+        ...(proposal ? { proposal } : {})
       });
       continue;
     }

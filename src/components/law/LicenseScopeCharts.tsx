@@ -1,12 +1,13 @@
 "use client";
 
-import { useState } from "react";
+import { useId, useState } from "react";
 import {
   LICENSE_SCOPE_MERMAID,
   LICENSE_SCOPES,
   type LicenseScope
 } from "@/lib/law/license-scope";
 import { MermaidDiagram } from "@/components/ui/MermaidDiagram";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 // Can / cannot by Tennessee dental license level — cited charts for staff.
 // Training aid only; not a substitute for the Code or Board rules.
@@ -14,54 +15,107 @@ import { MermaidDiagram } from "@/components/ui/MermaidDiagram";
 export function LicenseScopeCharts() {
   const [activeId, setActiveId] = useState(LICENSE_SCOPES[0].id);
   const active = LICENSE_SCOPES.find((s) => s.id === activeId) ?? LICENSE_SCOPES[0];
+  const tablistId = useId();
+  const panelId = useId();
 
   return (
     <div className="space-y-6">
-      <div className="max-w-3xl">
-        <p className="eyebrow">Who may do what</p>
-        <h2 className="section-title">Tennessee license scope at a glance</h2>
-        <p className="mt-1 text-sm text-slate-600">
-          Brief, cited can / cannot for each license level. Full duty lists stay in the Board
-          rules — these charts show the hard boundaries staff hit every day. Sources: Tenn. Code
-          Ann. § 63-5-108; Tenn. Comp. R. & Regs. 0460-01-.01, 0460-03-.09, 0460-04-.08 and related
-          certification rules; 2026 Tenn. Pub. Ch. 1107 (eff. 1/1/2027). Not legal advice — verify
-          the current Code and Rule PDFs.
+      <div
+        className="max-w-3xl rounded-lg border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-950"
+        role="status"
+      >
+        <p className="font-semibold">Training aid — not legal advice</p>
+        <p className="mt-0.5 text-xs leading-relaxed">
+          Verify the current Tennessee Code and Board Rule 0460 PDFs before relying on any
+          boundary. Charts summarize hard stops staff hit every day.
         </p>
       </div>
 
-      <MermaidDiagram title="How the roles relate" chart={LICENSE_SCOPE_MERMAID.hierarchy} />
-      <MermaidDiagram
-        title="Supervision: direct vs general vs 2027 new-patient rule"
-        chart={LICENSE_SCOPE_MERMAID.supervision}
-      />
-      <MermaidDiagram
-        title="Reserved acts and certification gates"
-        chart={LICENSE_SCOPE_MERMAID.reserved}
-      />
-
-      <div className="flex flex-wrap gap-2" role="tablist" aria-label="License level">
-        {LICENSE_SCOPES.map((s) => (
-          <button
-            key={s.id}
-            type="button"
-            role="tab"
-            aria-selected={s.id === activeId}
-            className={`tap rounded-full px-3 py-1.5 text-sm font-medium ${
-              s.id === activeId
-                ? "bg-brand-navy text-white"
-                : "bg-slate-100 text-slate-700 hover:bg-slate-200"
-            }`}
-            onClick={() => setActiveId(s.id)}
-          >
-            {s.shortLabel}
-          </button>
-        ))}
+      <div className="flex flex-wrap items-start justify-between gap-2">
+        <div className="max-w-3xl">
+          <p className="eyebrow">Who may do what</p>
+          <h2 className="section-title inline-flex items-center gap-2">
+            Tennessee license scope at a glance
+            <HelpTip label="About these charts">
+              Sources: Tenn. Code Ann. § 63-5-108; Rules 0460-01-.01, 0460-03-.09, 0460-04-.08
+              and related certification rules; 2026 Tenn. Pub. Ch. 1107 (eff. 1/1/2027). Hover any
+              lightbulb for a short tip.
+            </HelpTip>
+          </h2>
+          <p className="mt-1 text-sm text-slate-600">
+            Pick a license level below to see what that person may and may not do, with citations.
+            Diagrams show how the roles and supervision levels fit together.
+          </p>
+        </div>
       </div>
-      <p className="text-xs text-slate-600">
-        Pick a license level to see what that person may and may not do, with citations.
+
+      <div className="flex flex-wrap gap-2" role="tablist" aria-label="License level" id={tablistId}>
+        {LICENSE_SCOPES.map((s) => {
+          const selected = s.id === activeId;
+          return (
+            <button
+              key={s.id}
+              type="button"
+              role="tab"
+              id={`${tablistId}-${s.id}`}
+              aria-selected={selected}
+              aria-controls={panelId}
+              tabIndex={selected ? 0 : -1}
+              className={`tap min-h-11 rounded-lg px-4 py-2 text-sm font-semibold ${
+                selected
+                  ? "bg-brand-navy text-white shadow-sm"
+                  : "bg-white text-slate-800 ring-1 ring-slate-300 hover:bg-slate-50"
+              }`}
+              onClick={() => setActiveId(s.id)}
+              onKeyDown={(e) => {
+                const ids = LICENSE_SCOPES.map((x) => x.id);
+                const i = ids.indexOf(activeId);
+                if (e.key === "ArrowRight" || e.key === "ArrowDown") {
+                  e.preventDefault();
+                  setActiveId(ids[(i + 1) % ids.length]!);
+                } else if (e.key === "ArrowLeft" || e.key === "ArrowUp") {
+                  e.preventDefault();
+                  setActiveId(ids[(i - 1 + ids.length) % ids.length]!);
+                } else if (e.key === "Home") {
+                  e.preventDefault();
+                  setActiveId(ids[0]!);
+                } else if (e.key === "End") {
+                  e.preventDefault();
+                  setActiveId(ids[ids.length - 1]!);
+                }
+              }}
+            >
+              {s.shortLabel}
+            </button>
+          );
+        })}
+      </div>
+      <p className="text-xs text-slate-600" id={`${panelId}-cue`}>
+        Showing scope for <strong>{active.shortLabel}</strong>. Use arrow keys to move between
+        license levels.
       </p>
 
-      <ScopeCard scope={active} />
+      <div role="tabpanel" id={panelId} aria-labelledby={`${tablistId}-${active.id}`}>
+        <ScopeCard scope={active} />
+      </div>
+
+      <details className="rounded-xl bg-white p-3 ring-1 ring-slate-200">
+        <summary className="cursor-pointer text-sm font-semibold text-brand-navy">
+          Show relationship diagrams
+          <span className="ml-2 font-normal text-slate-500">(optional — charts)</span>
+        </summary>
+        <div className="mt-3 space-y-4">
+          <MermaidDiagram title="How the roles relate" chart={LICENSE_SCOPE_MERMAID.hierarchy} />
+          <MermaidDiagram
+            title="Supervision: direct vs general vs 2027 new-patient rule"
+            chart={LICENSE_SCOPE_MERMAID.supervision}
+          />
+          <MermaidDiagram
+            title="Reserved acts and certification gates"
+            chart={LICENSE_SCOPE_MERMAID.reserved}
+          />
+        </div>
+      </details>
     </div>
   );
 }
@@ -80,25 +134,38 @@ function ScopeCard({ scope }: { scope: LicenseScope }) {
         <p className="mt-1 text-sm text-slate-700">{scope.supervision}</p>
       </header>
 
-      <ScopeList title="May" tone="ok" items={scope.may} />
+      <ScopeList
+        title="May"
+        tip="Acts this license level may perform when trained and assigned."
+        tone="ok"
+        items={scope.may}
+      />
       {scope.withCertification.length > 0 && (
         <ScopeList
-          title="May with Board certification / permit (+ listed supervision)"
+          title="May with Board certification / permit"
+          tip="Allowed only with the matching Board certification or permit and the supervision the rule names."
           tone="cert"
           items={scope.withCertification}
         />
       )}
-      <ScopeList title="May not" tone="no" items={scope.mayNot} />
+      <ScopeList
+        title="May not"
+        tip="Hard stops. Do not assign these acts to this license level."
+        tone="no"
+        items={scope.mayNot}
+      />
     </article>
   );
 }
 
 function ScopeList({
   title,
+  tip,
   tone,
   items
 }: {
   title: string;
+  tip: string;
   tone: "ok" | "no" | "cert";
   items: { text: string; citations: string[] }[];
 }) {
@@ -113,7 +180,10 @@ function ScopeList({
 
   return (
     <section className={`rounded-lg border p-3 ${styles}`}>
-      <h4 className={`text-sm font-bold ${heading}`}>{title}</h4>
+      <h4 className={`inline-flex items-center gap-1.5 text-sm font-bold ${heading}`}>
+        {title}
+        <HelpTip label={`About ${title}`}>{tip}</HelpTip>
+      </h4>
       <ul className="mt-2 space-y-2">
         {items.map((item) => (
           <li key={item.text.slice(0, 48)} className="text-sm text-slate-800">

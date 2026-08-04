@@ -1,4 +1,5 @@
 import { runPhiRule } from "@/lib/audit/rules/phi";
+import { scanPhiForProvider, type ScanPhiFn } from "@/lib/audit/rules/phi-secondary";
 import { verifyMeaning } from "@/lib/verify/verifyMeaning";
 import type { GenerateListFn } from "@/lib/assist/service";
 import { retrieveContext } from "@/lib/assist/retrieval";
@@ -140,16 +141,24 @@ type ReadResult =
   | { ok: true; suggestions: ByteStarSuggestion[] }
   | { ok: false; code: "escape-model" | "invalid-shape" | "model-error"; hits?: EscapeHit[]; codes: string[] };
 
+/** Focus lenses for diverse self-consistency — same rails, different attention. */
+const READ_LENSES = [
+  "Focus this read on ACTIVE VOICE and who performed each act.",
+  "Focus this read on TENNESSEE-REQUIRED documentation gaps (as questions only).",
+  "Focus this read on Curve Hero–ready standardized wording and clarity."
+] as const;
+
 async function readOnce(
   input: string,
   system: string,
-  generateList: GenerateListFn
+  generateList: GenerateListFn,
+  lens: string
 ): Promise<ReadResult> {
   let raw: unknown;
   try {
     raw = await generateList({
       system,
-      prompt: `De-identified draft note:\n\n${input}\n\nReturn up to three objective observations that move this draft toward active voice, Curve Hero–ready standardized language, and Tennessee-required documentation completeness. Every observation about existing wording must include the exact quote in "evidence". Use questions for any missing fact. Do not address the writer directly.`,
+      prompt: `De-identified draft note:\n\n${input}\n\n${lens}\n\nReturn up to three objective observations that move this draft toward active voice, Curve Hero–ready standardized language, and Tennessee-required documentation completeness. Every observation about existing wording must include the exact quote in "evidence". Use questions for any missing fact. Do not address the writer directly.`,
       schemaName: "bytestar",
       schema: BYTESTAR_SCHEMA as unknown as Record<string, unknown>
     });
@@ -176,6 +185,8 @@ export async function runByteStar(
     permaKilled?: boolean;
     /** Independent reads for self-consistency; defaults from BYTESTAR_READS. */
     reads?: number;
+    /** Optional second-line / model PHI scanner — may only add blocks. */
+    modelPhiScan?: ScanPhiFn;
   } = {}
 ): Promise<ByteStarOutcome> {
   const config = opts.config ?? getByteStarConfig(opts.env);
@@ -189,7 +200,8 @@ export async function runByteStar(
   }
 
   const input = text.slice(0, 20_000);
-  const phi = runPhiRule(input).filter((f) => f.category === "phi");
+  const primary = runPhiRule(input).filter((f) => f.category === "phi");
+  const phi = scanPhiForProvider(input, primary, opts.modelPhiScan);
   if (phi.length > 0) {
     return { ok: false, code: "phi-blocked", message: BYTESTAR_UNAVAILABLE, codes: phi.map((f) => f.ruleId), benchmarks };
   }
@@ -218,7 +230,9 @@ export async function runByteStar(
 
   const reads = opts.reads ?? resolveReads(opts.env);
   const results = await Promise.all(
-    Array.from({ length: reads }, () => readOnce(input, system, generateList))
+    Array.from({ length: reads }, (_, i) =>
+      readOnce(input, system, generateList, READ_LENSES[i % READ_LENSES.length]!)
+    )
   );
 
   // A model escape on ANY read refuses the whole turn and feeds the ladder —

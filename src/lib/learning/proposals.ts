@@ -44,6 +44,7 @@
 // feeding it.
 
 import { redactedContext } from "./redact";
+import { clusterTokens } from "./cluster";
 
 export type ProposalKind =
   | "vocabulary" // a token the tables do not know
@@ -138,13 +139,16 @@ export function buildProposal(
   kind: ProposalKind,
   subject: string,
   effect: string,
-  sightings: Sighting[]
+  sightings: Sighting[],
+  /** Surface variants that count toward the same proposal (clustering). */
+  alsoMatch: string[] = []
 ): Proposal | undefined {
   if (sightings.length === 0) return undefined;
 
   const authors = new Set(sightings.map((s) => s.authorId));
   const dates = sightings.map((s) => s.filedAt).sort();
-  const pattern = new RegExp(`\\b${escapeRegex(subject)}\\b`, "gi");
+  const forms = [...new Set([subject, ...alsoMatch])].sort((a, b) => b.length - a.length);
+  const pattern = new RegExp(`\\b(?:${forms.map(escapeRegex).join("|")})\\b`, "gi");
   const occurrences = sightings.reduce((sum, s) => sum + (s.text.match(pattern)?.length ?? 0), 0);
 
   const evidence: ProposalEvidence = {
@@ -165,7 +169,11 @@ export function buildProposal(
   const seen = new Set<string>();
   for (const s of sightings) {
     if (contexts.length >= THRESHOLDS.MAX_CONTEXTS) break;
-    const ctx = redactedContext(s.text, subject);
+    let ctx: string | undefined;
+    for (const form of forms) {
+      ctx = redactedContext(s.text, form);
+      if (ctx) break;
+    }
     if (!ctx || seen.has(ctx)) continue;
     seen.add(ctx);
     contexts.push(ctx);
@@ -205,15 +213,27 @@ export function proposalsFromNotes(
   limit = 12
 ): Proposal[] {
   const proposals: Proposal[] = [];
-  for (const { token } of unknownTokens) {
+  // Cluster surface variants first so "postop" / "post-op" share evidence
+  // before thresholds run — same proposal, not three near-misses.
+  const clusters = clusterTokens(unknownTokens.map((t) => t.token));
+  for (const cluster of clusters) {
+    const memberPattern = cluster.members
+      .map((m) => escapeRegex(m))
+      .sort((a, b) => b.length - a.length)
+      .join("|");
     const matching = sightings.filter((s) =>
-      new RegExp(`\\b${escapeRegex(token)}\\b`, "i").test(s.text)
+      new RegExp(`\\b(?:${memberPattern})\\b`, "i").test(s.text)
     );
+    const label =
+      cluster.members.length > 1
+        ? `${cluster.canonical} (also: ${cluster.members.filter((m) => m !== cluster.canonical).join(", ")})`
+        : cluster.canonical;
     const proposal = buildProposal(
       "vocabulary",
-      token,
-      `Adding "${token}" would expand it automatically and stop it blocking a filing.`,
-      matching
+      cluster.canonical,
+      `Adding "${label}" would expand it automatically and stop it blocking a filing.`,
+      matching,
+      cluster.members
     );
     if (proposal) proposals.push(proposal);
     if (proposals.length >= limit) break;

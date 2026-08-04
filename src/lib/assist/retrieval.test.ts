@@ -30,6 +30,12 @@ describe("retrieveContext", () => {
     expect(retrieveContext("Composite on tooth 19.").sources).toContain("tooth notation");
   });
 
+  it("includes Tennessee license-scope cues for hygienist / supervision text", () => {
+    const r = retrieveContext("Hygienist completed prophylaxis under general supervision.");
+    expect(r.sources).toContain("tennessee license scope");
+    expect(r.text).toMatch(/63-5-108/);
+  });
+
   it("includes consent rules for consent discussions", () => {
     expect(retrieveContext("Risks and benefits discussed.").sources).toContain(
       "consent documentation"

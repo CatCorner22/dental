@@ -934,6 +934,16 @@ function ConcernCard({
           <p className="mt-1 text-xs">
             <strong>How to move:</strong> {concern.how}
           </p>
+          {concern.proposal && (
+            <div
+              className="mt-2 rounded-lg border border-amber-200 bg-amber-50 px-2.5 py-2 text-xs text-amber-950"
+              role="status"
+            >
+              <p className="font-semibold">Suggested reading (not applied — type it yourself)</p>
+              <p className="mt-0.5 font-medium">{concern.proposal.suggested}</p>
+              <p className="mt-0.5 text-amber-900/90">{concern.proposal.rationale}</p>
+            </div>
+          )}
 
           <div className="mt-2 flex flex-wrap gap-2">
             {concern.source === "change" ? (

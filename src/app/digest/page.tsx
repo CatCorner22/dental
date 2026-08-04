@@ -9,6 +9,7 @@ import { proposalsFromNotes } from "@/lib/learning/proposals";
 import { grammarGrowthFromNotes } from "@/lib/learning/grammarGrowth";
 import { UNPARSED_CATEGORY_LABEL } from "@/lib/extract/classifyUnparsed";
 import { unknownAbbreviations } from "@/lib/vocab/unknownAbbreviations";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Documentation digest" };
@@ -70,7 +71,14 @@ export default async function DigestPage() {
 
   return (
     <div>
-      <h1 className="page-title">Documentation digest</h1>
+      <div className="flex items-center gap-1.5">
+        <h1 className="page-title">Documentation digest</h1>
+        <HelpTip label="About the digest">
+          Patterns from the last {PERIOD_DAYS} days of filed notes — never a score or a ranking.
+          Vocabulary proposals and grammar-growth categories point at what the tool should learn
+          next; nothing changes without a human-ratified change request.
+        </HelpTip>
+      </div>
       <p className="mt-1 max-w-3xl text-sm text-slate-600">
         The last {PERIOD_DAYS} days: {digest.notesReviewed}{" "}
         {digest.notesReviewed === 1 ? "note" : "notes"} from {digest.authorsReviewed}{" "}

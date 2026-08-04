@@ -29,4 +29,43 @@
 //         version that does not describe the rules that ran. That is the exact
 //         failure this constant exists to prevent, and the CI guard added in
 //         2.4.0 is what stops it happening again.
-export const RULESET_VERSION = "2.5.0";
+// 2.6.0 — obfuscation screen (phi.obfuscated-digits, phi.hidden-characters):
+//         an identifier typed in a non-ASCII decimal script, or split by a
+//         zero-width character, was invisible to every \d-based PHI pattern
+//         while reading normally to a human. The obfuscation is now the finding,
+//         so no pattern has to be taught about Unicode individually.
+// 2.7.0 — the vocabulary staff actually type: w/, w/o, c/o, MH, BP, ant, iso,
+//         epi, lido, fl, tol, mo expand deterministically; perc, endo, imp,
+//         temp, mod, cal, tp, cx are flagged as ambiguous rather than guessed;
+//         EXT and NKA extend their existing ASK to lower case; PFM and PVS join
+//         the first-use terms of art. Measured cause: on notes typed the way
+//         staff type them the transformer made ~2 changes each and the AI
+//         verifier accepted 0 of 5 faithful rewrites, because the tables are
+//         both what the deterministic pass applies AND what licenses a model's
+//         expansions.
+// 2.8.0 — abbreviation preload: 54 entries across dental terms of art (endodontic
+//         working length and irrigants, periodontal grafting and SPT, MRONJ and
+//         oroantral communication, prosthodontic and paediatric terms), the
+//         medical history that changes dental treatment (HTN, DM, CHF, COPD, CVA,
+//         GERD, OSA, SBE, PMH), safe pharmacy sig codes, and a second batch of
+//         ISMP / Joint Commission do-not-use constructs (hs/qhs, TIW/BIW, the
+//         eye-and-ear Latin set, ss, APAP, cc, D/C) which are FLAGGED AND NEVER
+//         EXPANDED, because expanding a dangerous abbreviation launders it.
+//         Ambiguous additions (MI, CAD, RA, cap, ac/pc) ask rather than guess.
+//         See knowledge/sources/dental-abbreviation-preload.md.
+// 2.9.0 — text-to-STRUCTURE. A read-only extraction layer (src/lib/extract)
+//         parses clauses into clinical facts — tooth sites with surfaces,
+//         procedures with a coarse category — and a ConText assertion layer
+//         decides whether the note affirmed or denied each one. New controlled
+//         vocabulary: vocab/procedures.ts.
+//
+//         Stamped because the facts a note yields are now part of what the
+//         ruleset means: a chart drawn from this, or a consistency finding
+//         raised by it, has to be reproducible against the version that ran.
+//
+//         Extraction NEVER edits a note. It returns spans into the input and
+//         values from controlled tables, so the meaning-preservation contract
+//         in standardize.ts is untouched by construction. Negation is assigned
+//         (the algorithm measures 97/97); temporality is only ever hinted (67%
+//         recall on "historical" is below this product's bar for deciding).
+export const RULESET_VERSION = "2.9.0";

@@ -181,6 +181,27 @@ export async function listSubmissionsByUser(
     .offset(page.offset);
 }
 
+/**
+ * Frozen note text from the most recent filings, newest first.
+ *
+ * For the local-vocabulary signal on the Team Lead dashboard: which shorthand the
+ * practice uses that the tool cannot read. Reads what is ALREADY stored rather
+ * than logging tokens as they are typed — an abbreviation is note content, and
+ * this application's contract is that note text is never written to a log.
+ *
+ * Projected to the one column needed. The frozen markdown of a long note is
+ * large, and pulling whole rows to count words in them would make this the most
+ * expensive query on a page that has to stay quick.
+ */
+export async function recentNoteTexts(db: Db, limit = 200): Promise<string[]> {
+  const rows = await db
+    .select({ noteMarkdown: submissions.noteMarkdown })
+    .from(submissions)
+    .orderBy(desc(submissions.submittedAtUtc), desc(submissions.id))
+    .limit(limit);
+  return rows.map((r) => r.noteMarkdown);
+}
+
 export async function countAllSubmissions(db: Db): Promise<number> {
   const rows = await db.select({ n: sql<number>`count(*)::int` }).from(submissions);
   return rows[0]?.n ?? 0;

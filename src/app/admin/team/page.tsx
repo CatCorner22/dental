@@ -7,9 +7,10 @@ import { statRowsForUser } from "@/lib/db/repo/submissions";
 import { listRedemptions, seedStoreIfEmpty } from "@/lib/db/repo/gamify";
 import { STARTER_STORE } from "@/lib/gamify/economy";
 import { computeStats } from "@/lib/stats/computeStats";
-import { computeStats, rollingGpa } from "@/lib/stats/computeStats";
-import { deriveLeadCoachingTip } from "@/lib/gamify/insights";
 import { TeamDashboard, type TeamView } from "@/components/admin/TeamDashboard";
+import { LocalVocabularyPanel } from "@/components/admin/LocalVocabularyPanel";
+import { recentNoteTexts } from "@/lib/db/repo/submissions";
+import { unknownAbbreviations } from "@/lib/vocab/unknownAbbreviations";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Team health" };
@@ -29,6 +30,12 @@ export default async function TeamPage() {
 
   const users = (await listUsers(db)).filter((u) => u.active && u.role !== "readonly");
 
+  // The local-vocabulary signal, read from notes already on file rather than from
+  // a log of what people typed. Bounded to the recent window: a term that stopped
+  // being used last year is not a gap in the vocabulary any more.
+  const noteTexts = await recentNoteTexts(db, 200);
+  const localVocabulary = unknownAbbreviations(noteTexts, { minNotes: 2, limit: 15 });
+
   let pendingAfterHours = 0;
   const timeToFile: number[] = [];
   let justified = 0;
@@ -46,23 +53,6 @@ export default async function TeamPage() {
         if (j === 1) justified++;
       }
     }
-    // Fewer than three graded notes in the window is not a band, it is noise.
-    const graded30 = rows.filter(
-      (r) => r.gpa && r.submittedAtUtc.getTime() >= Date.now() - 30 * 86_400_000
-    ).length;
-    if (rolling === null || graded30 < 3) continue;
-    const band = rolling >= 3.8 ? "thriving" : rolling >= 3.0 ? "stable" : "support";
-    const opportunity = deriveLeadCoachingTip(rows);
-    members.push({
-      displayName: u.displayName,
-      band,
-      coachingTip:
-        band === "support"
-          ? `${opportunity ?? "Recent notes are missing details the audit asks for."} The system has offered practice modules; a five-minute one-on-one on that area lands better than any dashboard.`
-          : band === "thriving"
-            ? "Thriving. Approve their store requests promptly and say so out loud — public praise is the one leaderboard this system endorses."
-            : null
-    });
   }
 
   const view: TeamView = {
@@ -84,12 +74,13 @@ export default async function TeamPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-1 text-2xl font-bold">Team documentation health</h1>
+      <h1 className="page-title mb-1">Team documentation health</h1>
       <p className="mb-4 max-w-3xl text-sm text-slate-600">
         Practice-wide timing and narrative completeness, plus store fulfillment. This page does
         not name people or grade them — coaching stays a conversation, not a dashboard band.
       </p>
       <TeamDashboard view={view} />
+      <LocalVocabularyPanel entries={localVocabulary} notesScanned={noteTexts.length} />
     </div>
   );
 }

@@ -4,8 +4,10 @@ import {
   initialAutosave,
   isDirty,
   needsSave,
+  saveErrorMessage,
   type AutosaveState
 } from "./autosaveMachine";
+import { scopeExplanation } from "@/lib/auth/clinicalRoles";
 
 function run(events: Parameters<typeof autosaveReducer>[1][]): AutosaveState {
   return events.reduce(autosaveReducer, initialAutosave);
@@ -72,6 +74,34 @@ describe("autosaveMachine", () => {
     // resolveConflict() -> idle, then the kept edits save immediately.
     const s = run([{ type: "edit" }, { type: "saveStart" }, { type: "save409", serverVersion: 4 }, { type: "resolved" }, { type: "saveStart" }]);
     expect(s.status).toBe("saving");
+  });
+});
+
+describe("what a refused save tells the writer", () => {
+  // The save chain stops on an error and never retries on its own, so this
+  // string is the whole explanation for why a writer's work is not on the
+  // server. It was `Save failed (403).` for every refusal.
+  it("prefers the server's sentence over the status code", () => {
+    expect(saveErrorMessage(400, { error: "That office is not on the practice's list." })).toBe(
+      "That office is not on the practice's list."
+    );
+  });
+
+  it("names the scope rule instead of the number 403", () => {
+    // The regression that mattered. A hygienist who typed into Assessment got
+    // "Save failed (403)." — no rule, no route forward, and unsaved work in a
+    // field they were never permitted to author. The route sends this sentence;
+    // the indicator must show it.
+    const message = saveErrorMessage(403, { error: scopeExplanation("hygienist") });
+    expect(message).toContain("dentist records the diagnosis");
+    expect(message).not.toContain("403");
+  });
+
+  it("falls back to the status code when there is no body to read", () => {
+    // A proxy or a gateway failure has no JSON. Something must still be said.
+    expect(saveErrorMessage(502, {})).toBe("Save failed (502).");
+    expect(saveErrorMessage(500, { error: "   " })).toBe("Save failed (500).");
+    expect(saveErrorMessage(500, { error: 42 })).toBe("Save failed (500).");
   });
 });
 

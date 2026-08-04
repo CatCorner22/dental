@@ -1,9 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { standardize } from "./standardize";
 
-const applied = (s: string) => standardize(s).applied;
-const flags = (s: string) => standardize(s).flags;
-
 describe("standardize — deterministic rewrites are applied", () => {
   it("corrects a non-medication misspelling and reports it", () => {
     const r = standardize("Drained the abcess.");

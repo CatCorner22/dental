@@ -2,9 +2,11 @@ import { redirect } from "next/navigation";
 import { canReadAuditLog } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
-import { listAuditLog, type AuditFilter } from "@/lib/db/repo/auditLog";
+import { listAuditLog, listAuditLogByAction, type AuditFilter } from "@/lib/db/repo/auditLog";
 import { ExportButton } from "@/components/export/ExportButton";
 import { listUsers } from "@/lib/db/repo/users";
+import { DriftPanel } from "@/components/admin/DriftPanel";
+import { decodeDriftDetail } from "@/lib/assist/drift";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Audit log" };
@@ -31,7 +33,9 @@ const ACTION_LABEL: Record<string, string> = {
   submit: "Note submitted",
   "submit.email-failed": "Note submitted (email failed)",
   "submit.no-email": "Note submitted (email off)",
-  "submit.phi-override": "Privacy stop overridden (attested)"
+  "submit.phi-override": "Privacy stop overridden (attested)",
+  "assist.used": "AI assist used",
+  "assist.drift": "AI assist outcome (drift monitor)"
 };
 
 const FILTERS: { key: AuditFilter; label: string }[] = [
@@ -51,16 +55,34 @@ export default async function AuditLogPage({
   const { filter: raw } = await searchParams;
   const filter: AuditFilter = raw === "auth" || raw === "security" ? raw : "all";
   const db = await getDb();
-  const [log, users] = await Promise.all([listAuditLog(db, 300, filter), listUsers(db)]);
+  const [log, users, driftRows] = await Promise.all([
+    listAuditLog(db, 300, filter),
+    listUsers(db),
+    // A far wider window than the visible table, and filtered in SQL: a refusal
+    // rate computed over "the last 300 events" is a rate over whatever happened
+    // to be recent, and drift is a trend.
+    listAuditLogByAction(db, "assist.drift", 2000)
+  ]);
   const nameById = new Map(users.map((u) => [u.id, `${u.displayName} (${u.username})`]));
+
+  // Rows that are not drift rows decode to null and are dropped — reading one of
+  // those as drift would silently poison every rate on the panel.
+  const driftEvents = driftRows.flatMap((row) => {
+    if (!row.detail) return [];
+    const parsed = decodeDriftDetail(row.detail);
+    // A row whose detail does not parse is dropped rather than guessed at —
+    // reading a non-drift row as drift would silently poison every rate shown.
+    return parsed ? [{ ...parsed, at: row.at }] : [];
+  });
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold">Audit log</h1>
+      <h1 className="page-title mb-1">Audit log</h1>
       <p className="mb-4 text-sm text-slate-600">
         Sign-ins, user-management, and submission events, newest first. This log supports
         traceability; it contains no patient data.
       </p>
+      <DriftPanel events={driftEvents} />
       <div className="mb-4 flex flex-wrap items-center gap-1.5">
         {FILTERS.map((f) => (
           <a
@@ -84,7 +106,7 @@ export default async function AuditLogPage({
         </span>
       </div>
       <div
-        className="overflow-x-auto rounded-lg border border-slate-200 bg-white"
+        className="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200"
         tabIndex={0}
         role="region"
         aria-label="Audit log — scrolls sideways for more columns"

@@ -100,7 +100,7 @@ export function StoreFront() {
 
       <ul className="grid gap-3 sm:grid-cols-2">
         {items.map((item) => (
-          <li key={item.id} className="flex flex-col justify-between rounded-lg border border-slate-200 bg-white p-3">
+          <li key={item.id} className="flex flex-col justify-between rounded-xl bg-white ring-1 ring-slate-200 p-3">
             <div>
               <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">
                 Tier {item.tier} · {TIER_LABEL[item.tier] ?? ""}

@@ -6,6 +6,7 @@ import {
   autosaveReducer,
   initialAutosave,
   isDirty,
+  saveErrorMessage,
   type AutosaveState
 } from "./autosaveMachine";
 
@@ -76,7 +77,8 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
             return "conflict";
           }
           if (!res.ok) {
-            dispatch({ type: "saveErr", message: `Save failed (${res.status}).` });
+            const data = (await res.json().catch(() => ({}))) as { error?: unknown };
+            dispatch({ type: "saveErr", message: saveErrorMessage(res.status, data) });
             return "error";
           }
           const data = (await res.json()) as { version: number };

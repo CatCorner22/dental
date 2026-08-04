@@ -343,7 +343,7 @@ export function UserAdmin({
   return (
     <div>
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Users</h1>
+        <h1 className="page-title">Users</h1>
         <div className="flex flex-wrap items-center gap-2">
           <ExportButton table="users" />
           {addableRoles.length > 0 && (
@@ -376,7 +376,7 @@ export function UserAdmin({
         {users.map((u) => {
           const perms = permsFor(u, selfId, selfRole);
           return (
-            <li key={u.id} className="rounded-lg border border-slate-200 bg-white p-3">
+            <li key={u.id} className="rounded-xl bg-white ring-1 ring-slate-200 p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-mono text-sm">{u.username}</span>
                 <StatusPill active={u.active} />
@@ -399,7 +399,7 @@ export function UserAdmin({
         })}
       </ul>
 
-      <div className="hidden overflow-x-auto rounded-lg border border-slate-200 bg-white sm:block">
+      <div className="hidden overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200 sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">

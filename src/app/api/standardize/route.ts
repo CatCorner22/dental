@@ -2,6 +2,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { standardize } from "@/lib/standardize/standardize";
+import { structureIntoSoap } from "@/lib/standardize/structure";
 import { runTextAudit } from "@/lib/audit/engine";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 
@@ -53,6 +54,20 @@ export async function POST(req: Request): Promise<Response> {
 
   const result = standardize(raw);
 
+  // SOAP structuring, offered alongside the vocabulary pass rather than folded
+  // into it. Two reasons it is a separate field rather than a replacement for
+  // `text`: reordering is a bigger claim than substituting a word, so a person
+  // chooses it by name; and the caller may be the inline builder button working on
+  // ONE FIELD, where sectioning a single value would be absurd.
+  //
+  // Deterministic. The `soap` AI capability does the same job and needs a verifier
+  // to police it, because a model can quietly reword while reorganising. This
+  // cannot — it is a partition of a sentence list, and structure.test.ts asserts on
+  // every case that each sentence comes out exactly once and byte-identical.
+  // It therefore works with AI switched off, which is the default and what a
+  // practice actually gets on day one.
+  const structured = structureIntoSoap(result.text);
+
   // Audit the OUTPUT, not the input. The point of the pass is to hand back text
   // that is ready to paste, so the findings the user sees must be the ones that
   // survive standardization — not the ones it already fixed for them.
@@ -63,6 +78,9 @@ export async function POST(req: Request): Promise<Response> {
     applied: result.applied,
     flags: result.flags,
     clean: result.clean,
+    soap: structured.declined || structured.alreadyStructured
+      ? null
+      : { text: structured.text, sections: structured.sections },
     findings: findings.map((f) => ({
       ruleId: f.ruleId,
       category: f.category,

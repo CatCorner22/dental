@@ -49,6 +49,16 @@ describe("what it does reject", () => {
       "over"
     );
   });
+
+  it("puts the one-liner cap exactly at WISH_TITLE_MAX, not one either side of it", () => {
+    // The loose cases above pass whether the comparison is > or >=, so neither
+    // of them would notice the boundary moving by one. A report refused for
+    // being one character too long is a report nobody files twice.
+    const at = `ab ${"c".repeat(WISH_TITLE_MAX - 3)}`;
+    expect(at).toHaveLength(WISH_TITLE_MAX);
+    expect(wishError({ category: "other", title: at, detail: "" })).toBeNull();
+    expect(wishError({ category: "other", title: `${at}d`, detail: "" })).toContain("under");
+  });
 });
 
 describe("categories and statuses", () => {

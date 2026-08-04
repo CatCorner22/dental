@@ -75,7 +75,7 @@ export function HistoryTable({ rows }: { rows: HistoryRow[] }) {
         )}
       </div>
       <div
-        className="overflow-x-auto rounded-lg border border-slate-200 bg-white"
+        className="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200"
         tabIndex={0}
         role="region"
         aria-label="Filed Smile Notes — scrolls sideways for more columns"

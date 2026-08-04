@@ -258,6 +258,10 @@ Open `/setup` to create the first admin, or set `ADMIN_USERNAME` / `ADMIN_PASSWO
 4. Optionally set `ADMIN_USERNAME` / `ADMIN_PASSWORD` to seed the first admin; otherwise use
    `/setup`. Enable Vercel Deployment Protection so only the team can reach the app, and treat the
    corporate inbox as inside the practice's HIPAA boundary.
+5. Optional — weekly legal-watch email: set `CRON_SECRET` (any long random string). The
+   `vercel.json` cron calls `/api/law-watch/alert` Mondays at 13:00 UTC; with email configured it
+   mails the practice inbox when an official TN source shows dental-relevant signals. Deterministic
+   keyword signals only — the scheduled job never spends AI tokens.
 
 See `.env.example` for the full list. Do **not** run without `POSTGRES_URL` in production —
 PGlite's per-instance storage does not persist across serverless cold starts (the app logs a loud

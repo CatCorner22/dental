@@ -7,6 +7,7 @@ import { standardize } from "@/lib/standardize/standardize";
 import { runTextAudit } from "@/lib/audit/engine";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
+import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { TextDiff } from "@/components/diff/TextDiff";
 import type { VerifiedExtraction } from "@/lib/assist/extraction";
 import {

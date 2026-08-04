@@ -37,7 +37,9 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                     ? [{ href: "/standardize", label: "Standardize" }]
                     : []),
                   { href: "/history", label: "History" },
-                  ...(meetsRole(user.role, "user") ? [{ href: "/store", label: "Store" }] : []),
+                  // Store stays at /store for anyone who bookmarks it, but it is
+                  // not in the primary nav — a points shop next to "start a note"
+                  // invites comparison and hallway scorekeeping.
                   { href: "/wishes", label: "Wish list" },
                   ...(canManageUsers(user.role)
                     ? [{ href: "/admin/team", label: "Team", activePrefix: "/admin/team" }]

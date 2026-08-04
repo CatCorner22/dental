@@ -2,7 +2,7 @@
 
 import { useMemo } from "react";
 import { Odontogram } from "./Odontogram";
-import { chartMarks, contradictions } from "@/lib/extract/chart";
+import { chartMarks, chartRegions, contradictions } from "@/lib/extract/chart";
 import { coverage, extractFacts } from "@/lib/extract/extract";
 
 // THE READBACK PANEL — what the app understood, said back to the writer.
@@ -32,6 +32,7 @@ import { coverage, extractFacts } from "@/lib/extract/extract";
 export function NoteReadback({ text, onJumpTo }: { text: string; onJumpTo?: (offset: number) => void }) {
   const result = useMemo(() => extractFacts(text), [text]);
   const marks = useMemo(() => chartMarks(result), [result]);
+  const regions = useMemo(() => chartRegions(result), [result]);
   const conflicts = useMemo(() => contradictions(result), [result]);
   const read = Math.round(coverage(result) * 100);
   const understood = result.clauseCount - result.unparsed.length;
@@ -63,6 +64,7 @@ export function NoteReadback({ text, onJumpTo }: { text: string; onJumpTo?: (off
         </p>
         <Odontogram
           marks={marks}
+          regions={regions}
           onSelectTooth={(id) => {
             const mark = marks.find((m) => m.toothId === id);
             if (mark?.spans[0]) jump(mark.spans[0].start);

@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { chartMarks, contradictions } from "./chart";
+import { chartMarks, chartRegions, contradictions } from "./chart";
 import { extractFacts } from "./extract";
 
 const marksFor = (text: string) => chartMarks(extractFacts(text));
@@ -94,6 +94,47 @@ describe("contradictions stay rare on purpose", () => {
     const note =
       "Prophylaxis completed. #3, 14, 30 sealants placed. No caries. Bitewings taken. Recall 6 months.";
     expect(contradictions(extractFacts(note))).toEqual([]);
+  });
+});
+
+describe("quadrants are regions, never eight teeth", () => {
+  const regionsFor = (text: string) => chartRegions(extractFacts(text));
+
+  it("reads a quadrant treated without a tooth being named", () => {
+    expect(regionsFor("SRP UR and LR quads")).toEqual(["UR", "LR"]);
+  });
+
+  it("reads the spelled form too", () => {
+    expect(regionsFor("Scaling and root planing, upper right and lower left quadrants")).toEqual([
+      "UR",
+      "LL"
+    ]);
+  });
+
+  // THE RULE THIS ENFORCES. A quadrant says work happened in a region; it does
+  // not say which of eight teeth. Filling them in would put a statement on the
+  // chart the note never made.
+  it("does not turn a quadrant into tooth marks", () => {
+    expect(marksFor("SRP UR quad")).toEqual([]);
+  });
+
+  it("drops a quadrant when the note also named teeth in it", () => {
+    // The teeth are the more specific statement; drawing both double-counts
+    // one finding as two.
+    expect(regionsFor("SRP UR quad, #3 and #4 instrumented")).toEqual([]);
+  });
+
+  it("ignores lowercase, because 'ur' and 'll' appear in ordinary typing", () => {
+    expect(regionsFor("patient will ur and ll return")).toEqual([]);
+  });
+
+  it("does not chart a planned or historical quadrant as treated today", () => {
+    expect(regionsFor("Will need SRP UR quad if pockets persist")).toEqual([]);
+    expect(regionsFor("Previous SRP UR quad")).toEqual([]);
+  });
+
+  it("does not chart a negated quadrant", () => {
+    expect(regionsFor("No SRP UR quad performed")).toEqual([]);
   });
 });
 

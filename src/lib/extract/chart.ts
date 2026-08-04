@@ -33,8 +33,9 @@
 //     The chart is not a record of the mouth; it is a record of this note.
 
 import type { Surface, ToothId } from "@/lib/schema/types";
-import { sitesOfFact } from "./facts";
-import type { ExtractionResult, ProcedureCategory, Span } from "./facts";
+import { getTooth } from "@/lib/vocab/teeth";
+import { affirmedSites, sitesOfFact } from "./facts";
+import type { ExtractionResult, ProcedureCategory, Quadrant, Span } from "./facts";
 
 export interface ChartMark {
   toothId: ToothId;
@@ -70,6 +71,37 @@ const CATEGORY_RANK: Record<ProcedureCategory, number> = {
   preventive: 1,
   diagnostic: 0
 };
+
+/**
+ * Quadrants the note treated as REGIONS, with no tooth named inside them.
+ *
+ * Reported separately from marks and drawn separately on the chart, because
+ * they are a weaker claim. "SRP upper right" says work happened in a quadrant;
+ * it does not say which teeth, and a chart that filled in eight teeth would be
+ * asserting something the note did not.
+ *
+ * A quadrant that ALSO has named teeth in the note is dropped here: the teeth
+ * are the more specific statement and drawing both would double-count one
+ * finding as two.
+ */
+export function chartRegions(result: ExtractionResult): Quadrant[] {
+  const named = new Set<Quadrant>();
+  for (const site of affirmedSites(result)) {
+    const tooth = getTooth(site.toothId);
+    if (tooth) named.add(tooth.quadrant);
+  }
+  const regions: Quadrant[] = [];
+  for (const fact of result.facts) {
+    if (fact.assertion.polarity !== "affirmed") continue;
+    if (fact.assertion.experiencer !== "patient") continue;
+    if (fact.assertion.temporalityHint) continue;
+    for (const q of fact.regions ?? []) {
+      if (named.has(q) || regions.includes(q)) continue;
+      regions.push(q);
+    }
+  }
+  return regions;
+}
 
 export function chartMarks(result: ExtractionResult): ChartMark[] {
   const byTooth = new Map<ToothId, ChartMark>();

@@ -58,6 +58,7 @@ import { clauseRanges, tokenize, type Token } from "./tokenize";
 import type {
   CareEventFact,
   ClinicalFact,
+  Quadrant,
   ExtractionResult,
   FindingFact,
   MaterialFact,
@@ -293,6 +294,58 @@ function readProcedure(
   clauseEnd: number
 ): { term: ProcedureTerm; from: number; to: number } | undefined {
   return readLiteral(PROCEDURE_TERMS_BY_LENGTH, tokens, i, clauseEnd);
+}
+
+/**
+ * Quadrant references in a clause.
+ *
+ * UPPERCASE ONLY for the two-letter codes, matching the discipline the
+ * shorthand table already applies to them and for the reason its comment gives:
+ * "ur", "ul", "ll" and "lr" turn up inside ordinary typing far more often than
+ * they turn up as quadrants. The spelled forms are matched case-insensitively,
+ * because there is nothing else "upper right" can mean here.
+ */
+const QUADRANT_CODES: Record<string, Quadrant> = { UR: "UR", UL: "UL", LL: "LL", LR: "LR" };
+const QUADRANT_WORDS: Array<{ words: string[]; quadrant: Quadrant }> = [
+  { words: ["upper", "right"], quadrant: "UR" },
+  { words: ["upper", "left"], quadrant: "UL" },
+  { words: ["lower", "left"], quadrant: "LL" },
+  { words: ["lower", "right"], quadrant: "LR" },
+  { words: ["maxillary", "right"], quadrant: "UR" },
+  { words: ["maxillary", "left"], quadrant: "UL" },
+  { words: ["mandibular", "left"], quadrant: "LL" },
+  { words: ["mandibular", "right"], quadrant: "LR" }
+];
+
+function readQuadrants(tokens: Token[], from: number, to: number): Quadrant[] {
+  const found: Quadrant[] = [];
+  const add = (q: Quadrant) => {
+    if (!found.includes(q)) found.push(q);
+  };
+  for (let i = from; i < to; i++) {
+    const tok = tokens[i];
+    if (tok.kind !== "word") continue;
+    const code = QUADRANT_CODES[tok.text];
+    if (code) {
+      add(code);
+      continue;
+    }
+    for (const entry of QUADRANT_WORDS) {
+      if (i + entry.words.length > to) continue;
+      let ok = true;
+      for (let k = 0; k < entry.words.length; k++) {
+        if (tokens[i + k].lower !== entry.words[k]) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        add(entry.quadrant);
+        break;
+      }
+    }
+  }
+  return found;
 }
 
 const numberOf = (t: Token | undefined): number | undefined => {
@@ -543,6 +596,12 @@ export function extractFacts(text: string): ExtractionResult {
       end: tokens[to - 1].end
     });
 
+    // Clause-scoped, like sites: "SRP UR and LR quads" binds both quadrants to
+    // the scaling, and the comma split already stops them leaking into the next
+    // assertion.
+    const regions = readQuadrants(tokens, clause.from, clause.to);
+    const withRegions = regions.length > 0 ? { regions } : {};
+
     if (procedure) {
       const targetFrom = Math.min(procedure.from, siteTokenFrom < 0 ? procedure.from : siteTokenFrom);
       const targetTo = Math.max(procedure.to, siteTokenTo);
@@ -554,7 +613,8 @@ export function extractFacts(text: string): ExtractionResult {
         sentenceIndex,
         procedure: procedure.term.display,
         category: procedure.term.category,
-        sites
+        sites,
+        ...withRegions
       } satisfies ProcedureFact);
     }
 
@@ -574,7 +634,8 @@ export function extractFacts(text: string): ExtractionResult {
         ruleId: find.id,
         sentenceIndex,
         finding: find.display,
-        sites
+        sites,
+        ...withRegions
       } satisfies FindingFact);
     }
 
@@ -597,7 +658,8 @@ export function extractFacts(text: string): ExtractionResult {
         ruleId: mat.id,
         sentenceIndex,
         material: mat.display,
-        sites
+        sites,
+        ...withRegions
       } satisfies MaterialFact);
     }
 

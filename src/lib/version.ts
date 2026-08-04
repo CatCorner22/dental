@@ -106,4 +106,11 @@
 //         New controlled vocabulary: ETCO2, SpO2, ECG/EKG, NIBP. The sedation
 //         module's own labels were rewritten to define ASA and ETCO2 on first
 //         use, because the app failing its own gate is a real finding.
-export const RULESET_VERSION = "2.11.0";
+// 2.12.0 — quadrants are extracted as REGIONS. "SRP UR and LR quads" now
+//         reaches the chart as two bands rather than as nothing, and it is
+//         deliberately NOT expanded into sixteen tooth facts: a quadrant says
+//         work happened in a region and does not say which teeth, so filling
+//         them in would put a claim on the chart the note never made. A region
+//         is dropped when the note also named teeth inside it, because the
+//         teeth are the more specific statement.
+export const RULESET_VERSION = "2.12.0";

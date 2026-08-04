@@ -65,16 +65,28 @@ export const TN_AUTHORITIES: readonly Authority[] = [
   {
     id: "tca-63-5-108",
     category: "statute",
-    title: "Practice of dentistry; records as part of the practice",
+    title: "Practice of dentistry and dental hygiene defined; delegation",
     citation: "Tenn. Code Ann. § 63-5-108",
     url: "https://law.justia.com/codes/tennessee/title-63/chapter-5/section-63-5-108/",
     unofficialMirror: true,
     summary:
-      "Defines acts constituting the practice of dentistry, the frame within which patient records, radiographs, and their interpretations belong to the professional act.",
+      "Defines the practice of dentistry and dental hygiene, what may be delegated under direct supervision and full dentist responsibility, which acts require professional judgment (diagnosis, treatment planning, surgery/cutting except hygiene curettage/root planing, radiograph interpretation, most anesthesia), hygienist-only scaling among auxiliaries, general-supervision conditions for hygienists, hygienist:dentist ratios, and limited hygienist prescribing.",
     practiceImpact:
-      "Radiographs AND their interpretations are part of the dental record. \"BWs taken\" documents an exposure; the diagnostic act needs the reader, the finding, or a named owner for a pending interpretation.",
-    appEnforcement: ["imaging-interpretation completeness rule", "Byte: radiograph-interpretation advice", "retrieval: radiograph records"],
-    relatedIds: ["rule-0460-02-12", "tca-63-5"]
+      "Radiographs AND their interpretations are part of the dental record. Scope charts on this page summarize can / cannot by license level — staff still verify the current Code text before relying on any boundary.",
+    appEnforcement: [
+      "imaging-interpretation completeness rule",
+      "Byte: radiograph-interpretation advice",
+      "retrieval: radiograph records",
+      "license scope charts (/reference/tennessee-law)",
+      "role-based scope lock (diagnosis reserved to dentist)"
+    ],
+    relatedIds: [
+      "rule-0460-02-12",
+      "tca-63-5",
+      "rule-0460-03-09",
+      "rule-0460-04-08",
+      "pc-1107-2026"
+    ]
   },
   {
     id: "tca-63-2-101",
@@ -199,8 +211,21 @@ export const TN_AUTHORITIES: readonly Authority[] = [
     summary: "Hygienist licensure, permissible duties, and supervision requirements.",
     practiceImpact:
       "Defines which hygiene acts require which supervision level — the baseline Public Chapter 1107 tightens for new patients in 2027.",
-    appEnforcement: ["supervision-2027 rule", "role-based scope lock"],
-    relatedIds: ["pc-1107-2026", "rule-0460-04"]
+    appEnforcement: ["supervision-2027 rule", "role-based scope lock", "license scope charts"],
+    relatedIds: ["pc-1107-2026", "rule-0460-04", "rule-0460-03-09", "tca-63-5-108"]
+  },
+  {
+    id: "rule-0460-03-09",
+    category: "rule",
+    title: "Dental hygienist — scope of practice",
+    citation: "Tenn. Comp. R. & Regs. 0460-03-.09",
+    url: "https://publications.tnsosfiles.com/rules/0460/0460-03.pdf",
+    summary:
+      "Lists delegable hygiene duties, which acts require direct supervision (root planing/subgingival curettage, N2O, local anesthesia, restorative/prosthetic functions), and prohibited procedures (comprehensive exam, diagnosis, treatment planning, and other reserved acts).",
+    practiceImpact:
+      "The hygienist can / cannot chart on the Tennessee law page is drawn from this rule plus Tenn. Code Ann. § 63-5-108. Certification rules (.06, .10, .12) gate N2O, restorative/prosthetic, and local anesthesia.",
+    appEnforcement: ["license scope charts", "role-based scope lock", "supervision-2027 rule"],
+    relatedIds: ["rule-0460-03", "tca-63-5-108", "pc-1107-2026"]
   },
   {
     id: "rule-0460-04",
@@ -208,11 +233,24 @@ export const TN_AUTHORITIES: readonly Authority[] = [
     title: "Rules Governing Dental Assistants",
     citation: "Tenn. Comp. R. & Regs. 0460-04",
     url: "https://publications.tnsosfiles.com/rules/0460/0460-04.pdf",
-    summary: "Registered dental assistant duties, radiology certification, and supervision.",
+    summary: "Practical and registered dental assistant levels, certification pathways, and scope.",
     practiceImpact:
-      "Assistant-performed duties must sit inside the registered scope; the note's attribution shows who did what, which is how scope compliance is demonstrated after the fact.",
-    appEnforcement: ["attribution requirements (active-voice coaching, residue rule)"],
-    relatedIds: ["rule-0460-03", "tca-63-5"]
+      "Assistant-performed duties must sit inside the registered (or practical) scope; the note's attribution shows who did what, which is how scope compliance is demonstrated after the fact.",
+    appEnforcement: ["attribution requirements (active-voice coaching, residue rule)", "license scope charts"],
+    relatedIds: ["rule-0460-03", "tca-63-5", "rule-0460-04-08", "tca-63-5-108"]
+  },
+  {
+    id: "rule-0460-04-08",
+    category: "rule",
+    title: "Dental assistants — scope of practice",
+    citation: "Tenn. Comp. R. & Regs. 0460-04-.08",
+    url: "https://publications.tnsosfiles.com/rules/0460/0460-04.pdf",
+    summary:
+      "Delegable assistant duties, certification-gated acts (coronal polish, N2O monitoring, sealants, expanded restorative/prosthetic, radiology), and a long prohibited list including diagnosis, scaling/curettage, local anesthesia administration, and uncertified expanded duties.",
+    practiceImpact:
+      "Practical assistants must not invade RDA-only procedures (also Rule 0460-04-.01). The RDA / practical DA scope cards cite this rule section by section.",
+    appEnforcement: ["license scope charts", "attribution requirements (active-voice coaching, residue rule)"],
+    relatedIds: ["rule-0460-04", "rule-0460-01", "tca-63-5-108"]
   },
   {
     id: "retention-minors",

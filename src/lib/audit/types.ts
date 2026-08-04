@@ -87,6 +87,18 @@ export interface AuditContext {
   note: NoteState;
   modules: ModuleDef[]; // active modules
   composedText: string;
+  /**
+   * The date the audit is being run, as ISO yyyy-mm-dd. Defaults to the real
+   * date at the call site.
+   *
+   * An INPUT rather than a clock read, because one rule (supervision.pc1107)
+   * changes behaviour on an effective date, and a rule that read the wall
+   * clock inside the engine would make the same note audit differently on two
+   * days with nothing in the inputs to show why. Passing the date keeps every
+   * audit a pure function of its arguments, which is what lets tests pin both
+   * sides of the boundary.
+   */
+  today?: string;
 }
 
 // One severity ramp, used by every surface that renders a finding.

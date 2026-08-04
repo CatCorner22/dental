@@ -130,4 +130,24 @@
 //         when volume and concentration are both stated. An incomplete dose is
 //         silent: an earlier version blamed the writer for a complete note the
 //         extractor could not assemble across a clause boundary.
-export const RULESET_VERSION = "2.13.0";
+// 2.14.0 — the owner's templates and the rule with a start date.
+//         Four owner-authored scaffolds join the verified blocks (operative
+//         with assistant, hygiene composite, patient-readable summary,
+//         addendum), adapted to house rules: no exact dates in draft text
+//         (Curve's visit supplies the date of service), attribution as
+//         placeholders so the residue rule blocks filing until a person is
+//         named, and no pre-attested findings.
+//
+//         Public Chapter 1107 (2026): from January 1, 2027 a new patient's
+//         diagnostic radiographs, tissue-data collection, prophylaxis, or
+//         fluoride require direct supervision by a dentist who has seen the
+//         patient. Implemented now as an effective-dated rule with the audit
+//         date as an INPUT (AuditContext.today), so the engine stays a pure
+//         function and tests pin both sides of the boundary. Before the date:
+//         a heads-up on the risky combination. After: it blocks filing.
+//
+//         Patient status and Supervision join universal-core as fields that
+//         are contextually required BY THE RULE — hygiene-service notes, once
+//         the law is in force — and deliberately not schema-required, because
+//         a plainly required field blocks every draft already saved.
+export const RULESET_VERSION = "2.14.0";

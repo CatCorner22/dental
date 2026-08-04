@@ -15,6 +15,7 @@ import { runResidueRule } from "./rules/residue";
 import { runAbbreviationRule, runStigmatizingRule, runVaguePhraseRule } from "./rules/terminology";
 import { runShorthandGate } from "./rules/shorthand-gate";
 import { runAnaestheticDoseRule } from "./rules/anesthetic-dose";
+import { runSupervisionRule } from "./rules/supervision";
 import { runAnatomyStateRule, runAnatomyTextRule } from "./rules/anatomy";
 import { newSpellingBudget, runSpellingRule } from "./rules/spelling";
 import { runRequiredRule } from "./rules/required";
@@ -62,6 +63,7 @@ export function runAudit(ctx: AuditContext): AuditReport {
   const textFindings = runTextAudit(ctx.composedText);
   const findings: AuditFinding[] = [
     ...runRequiredRule(ctx.note, ctx.modules),
+    ...runSupervisionRule(ctx.note, ctx.modules, ctx.today ?? new Date().toISOString().slice(0, 10)),
     ...runAnatomyStateRule(ctx.note, ctx.modules),
     ...runMeasurementRule(ctx.note, ctx.modules),
     ...(patientVoice

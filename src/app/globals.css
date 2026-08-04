@@ -400,7 +400,12 @@
      control. rounded-full instead of rounded is the whole retro-future
      gesture — geometry, not decoration — so it costs nothing in contrast,
      focus visibility, or tap-target size. */
-  @apply inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-medium shadow-sm disabled:cursor-not-allowed disabled:opacity-40;
+  /* font-semibold rather than medium, and a one-pixel press on :active. Both
+     are tactility, not decoration: a review called the controls "cheap", and
+     the difference between a printed label and a button you can feel is
+     weight plus response. Transition covers transform and shadow only — never
+     colour, which must snap for the state to read as a state. */
+  @apply inline-flex items-center gap-1.5 rounded-full border px-3.5 py-1.5 text-sm font-semibold shadow-sm transition-[transform,box-shadow] duration-100 active:translate-y-px active:shadow-none disabled:cursor-not-allowed disabled:opacity-40 disabled:active:translate-y-0;
   /* Kills the grey flash iOS paints over a tapped control, which reads as a
      rendering glitch next to our own focus and hover states. */
   -webkit-tap-highlight-color: transparent;

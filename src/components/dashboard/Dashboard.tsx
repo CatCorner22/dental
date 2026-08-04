@@ -145,17 +145,43 @@ export function Dashboard({
       </div>
 
       {canEdit && (
-        <div className="grid grid-cols-2 gap-2 sm:grid-cols-4">
+        /* The four commonest visit types, as cards that look like the actions
+           they are. The previous version was four identical white rectangles
+           whose second line said "One click — start now" four times — filler
+           standing where the useful sentence (what the pick actually sets up)
+           should have been. Affordance now comes from motion and the arrow,
+           not from a repeated caption. */
+        <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
           {QUICK_PICKS.filter((p) => (FEATURED_PICK_IDS as readonly string[]).includes(p.id)).map((p) => (
             <button
               key={p.id}
-              className="rounded-xl bg-white ring-1 ring-slate-200 p-3 text-left shadow-sm hover:ring-2 hover:ring-brand-blue hover:bg-blue-50 disabled:opacity-50"
+              className="group relative overflow-hidden rounded-xl bg-white p-4 text-left shadow-[0_1px_3px_rgba(30,58,95,0.08),0_1px_2px_rgba(30,58,95,0.04)] ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-blue/60 disabled:opacity-50 disabled:hover:translate-y-0"
               disabled={busy}
               onClick={() => createDraft(p.moduleIds, p.label)}
-              title={p.description}
             >
-              <span className="block text-sm font-semibold text-slate-800">{p.label}</span>
-              <span className="mt-0.5 block text-xs text-slate-500">One click — start now</span>
+              {/* Brand chrome, not state: the top rail lights on hover to say
+                  "this is the one you are about to press". */}
+              <span
+                aria-hidden
+                className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-blue to-brand-teal opacity-0 transition-opacity group-hover:opacity-100"
+              />
+              <span className="block text-sm font-semibold text-brand-navy">{p.label}</span>
+              <span className="mt-1 block text-xs leading-relaxed text-slate-600">{p.description}</span>
+              <span className="mt-2 inline-flex items-center gap-1 text-xs font-semibold text-brand-blue">
+                Start now
+                <svg
+                  aria-hidden
+                  viewBox="0 0 16 16"
+                  className="h-3 w-3 transition-transform group-hover:translate-x-0.5"
+                  fill="none"
+                  stroke="currentColor"
+                  strokeWidth="2"
+                  strokeLinecap="round"
+                  strokeLinejoin="round"
+                >
+                  <path d="M3 8h10M9 4l4 4-4 4" />
+                </svg>
+              </span>
             </button>
           ))}
         </div>

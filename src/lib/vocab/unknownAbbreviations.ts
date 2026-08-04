@@ -109,6 +109,14 @@ const UNIT_TOKENS: ReadonlySet<string> = new Set(
 );
 
 function isUnit(token: string): boolean {
+  // A COMPOUND of units is a unit. "mg/kg" is the standard weight-based dosing
+  // notation — the medication-safety rules themselves match it — and "L/min"
+  // is how flow is written. Splitting on the slash and requiring every part to
+  // be a unit keeps "s/p" and "c/o" (letters, not units) out while letting
+  // real rate and per-weight notation through. Found when Byte's own dosing
+  // advice, which quotes "4.4 mg/kg", tripped the filing gate.
+  const parts = token.split("/").map((p) => p.toLowerCase().replace(/[^a-z]/g, ""));
+  if (parts.length > 1 && parts.every((p) => p.length > 0 && UNIT_TOKENS.has(p))) return true;
   return UNIT_TOKENS.has(token.toLowerCase().replace(/[^a-z]/g, ""));
 }
 

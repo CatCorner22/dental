@@ -288,6 +288,71 @@ export const VERIFIED_BLOCKS: VerifiedBlock[] = [
       "This entry is being made now, under today's entry timestamp, with no backdating of any kind.",
       "I will attach this under the SAME visit as the original note in Curve."
     ]
+  },
+  {
+    id: "sedation-record",
+    title: "Sedation / anesthesia record",
+    purpose:
+      "Every element Tennessee Rule 0460-02-.07 enumerates, in order — the note most likely to be read by a stranger under pressure.",
+    // Two wording adaptations from the owner's template, both forced by the
+    // rails: "ASA" is deliberately ambiguous in the vocabulary (nerve block vs
+    // risk class) so it appears here in its defined first-use form, and the
+    // recovery lines ask for OBSERVATIONS because "stable" alone is on the
+    // vague-phrase list — the word is a conclusion, and the record wants the
+    // evidence the conclusion came from.
+    body:
+      "SEDATION / ANESTHESIA RECORD\n\n" +
+      "TYPE AND INTENDED LEVEL:\n<agent class and the intended depth of sedation>\n\n" +
+      "PRESEDATION EVALUATION:\n" +
+      "Medical history: <reviewed at this visit - material findings>\n" +
+      "Current medications: <medications as reported>\n" +
+      "Drug allergies: <allergy status as verified with the patient>\n" +
+      "American Society of Anesthesiologists (ASA) physical status: <class and basis>\n" +
+      "Required consultation: <obtained, or state none was indicated and why>\n" +
+      "Nothing-by-mouth (NPO) status, when applicable: <last intake and hours>\n" +
+      "Baseline blood pressure (BP): <value>\n" +
+      "Baseline pulse: <value>\n" +
+      "Baseline temperature, when required: <value, or state not required>\n" +
+      "Reason any baseline measurement was unobtainable: <reason, or state all were obtained>\n\n" +
+      "INFORMED CONSENT:\n" +
+      "Type of anesthesia discussed: <what was discussed>\n" +
+      "Risks, benefits, and alternatives: <the ones actually discussed with this patient>\n" +
+      "Patient or representative decision: <decision and who made it>\n" +
+      "Consent documented by: <clinician>\n\n" +
+      "TIME-ORIENTED MEDICATION RECORD:\n" +
+      "<time - drug - concentration - dose - route - administrator>\n" +
+      "<repeat one line per administration, in time order>\n\n" +
+      "TIME-ORIENTED MONITORING:\n" +
+      "<time - BP - pulse - oxygen saturation - respirations - responsiveness>\n" +
+      "<add end-tidal carbon dioxide (ETCO2), electrocardiography (ECG), or temperature when required>\n\n" +
+      "COMPLICATIONS / MORBIDITY:\n" +
+      "<affirmatively state none were observed, or the specific event>\n" +
+      "Intervention: <action taken, or state none was required>\n" +
+      "Response: <observed response>\n\n" +
+      "RECOVERY:\n" +
+      "Ventilation at discharge assessment: <the observation - rate and quality, not a conclusion>\n" +
+      "Circulation at discharge assessment: <the observation - BP and pulse>\n" +
+      "Responsiveness: <the observation - what the patient did>\n" +
+      "Discharge criteria met: <which criteria, assessed by whom>\n" +
+      "Discharge time: <time>\n" +
+      "Discharge status: <condition at departure>\n\n" +
+      "DISCHARGE:\n" +
+      "Instructions provided: <verbal and written - what they covered>\n" +
+      "Responsible adult: <who received the patient>\n" +
+      "Transportation: <arrangement>\n" +
+      "Questions and teach-back: <what the escort explained back>\n\n" +
+      "AUTHENTICATION:\n" +
+      "Sedation provider: <provider>\n" +
+      "Operating dentist: <dentist>\n" +
+      "Monitoring personnel: <who monitored>\n" +
+      "Recovery personnel: <who recovered the patient>\n" +
+      "Final review: <reviewing dentist>",
+    verify: [
+      "The time-oriented rows were recorded as events happened, not reconstructed afterwards.",
+      "The recovery lines will carry observations from the discharge assessment, not conclusions.",
+      "A responsible adult actually received this patient, and I will name that arrangement.",
+      "I will paste this under the correct dated visit in Curve, which supplies the date of service."
+    ]
   }
 ];
 

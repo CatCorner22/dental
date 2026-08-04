@@ -68,4 +68,24 @@
 //         in standardize.ts is untouched by construction. Negation is assigned
 //         (the algorithm measures 97/97); temporality is only ever hinted (67%
 //         recall on "historical" is below this product's bar for deciding).
-export const RULESET_VERSION = "2.9.0";
+// 2.10.0 — the parser learns the rest of a note. Measured against a corpus of
+//         real shorthand it read 26.2% of clauses; it now reads 94.6%, and
+//         coverage.test.ts ratchets that so it cannot regress quietly.
+//
+//         New fact kinds: medication (with dose, concentration, and carpule-to-
+//         millilitre arithmetic where the convention is exact), measurement
+//         (including ranges and blood pressure), finding, material, care-event.
+//         New controlled vocabulary: vocab/clinical-terms.ts, plus operative
+//         steps in vocab/procedures.ts.
+//
+//         Two defects the corpus caught that inspection had not:
+//         "no caries noted" was in the pseudo-trigger list, so every clean exam
+//         reported caries; and chart.ts kept a private copy of the site
+//         accessor, so the day findings started carrying teeth, a negated
+//         finding stopped reaching the chart at all.
+//
+//         impliesNegation exists for NKA/NKDA. Reading an absence of allergy as
+//         an allergy is the most dangerous inference available to this parser,
+//         so the term's own meaning overrides surrounding cues rather than
+//         combining with them.
+export const RULESET_VERSION = "2.10.0";

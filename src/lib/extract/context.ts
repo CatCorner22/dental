@@ -105,11 +105,15 @@ const PSEUDO: ContextRule[] = [
   "cannot be excluded",
   "cannot rule out",
   "gram negative",
-  // Dental-specific. "No." is a tooth introducer in some charting styles and
-  // "no" is the single highest-yield negation trigger in the literature, so the
-  // collision is real and it is exactly the class vocab/collisions.test.ts
-  // exists to catch.
-  "no caries noted",
+  // An omission licence, not a clinical denial. "Not applicable" as a field
+  // answer says the question does not apply here; it does not deny a finding,
+  // and omissions.ts already counts it as the different thing it is.
+  //
+  // DELIBERATELY ABSENT: "no caries noted". An earlier version of this list had
+  // it, which was a straight error — it is the single most common negated
+  // finding in a dental note and treating it as a pseudo-trigger meant every
+  // clean exam reported caries. Caught by the corpus measurement, not by
+  // inspection.
   "not applicable"
 ].map((literal, i) => rule(`pseudo.${i}`, literal, "negation", "pseudo"));
 

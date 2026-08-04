@@ -102,7 +102,14 @@ export interface ToothSite {
   impossibleSurfaces: string[];
 }
 
-export type FactKind = "tooth-site" | "procedure" | "medication" | "measurement";
+export type FactKind =
+  | "tooth-site"
+  | "procedure"
+  | "medication"
+  | "measurement"
+  | "finding"
+  | "material"
+  | "care-event";
 
 interface FactBase {
   kind: FactKind;
@@ -153,15 +160,71 @@ export interface MedicationFact extends FactBase {
   drug: string;
   amount?: number;
   unit?: string;
+  /** Percent concentration, where the note gave one ("lidocaine 2%"). */
+  concentrationPercent?: number;
+  /**
+   * Millilitres, derived when the note counted containers.
+   *
+   * Present only when the arithmetic is exact — a carpule is 1.8 mL by
+   * convention, so "2 carp" is 3.6 mL and nothing has been assumed. Absent when
+   * the note gave a count with no convention behind it, because a guessed
+   * volume feeding a maximum-dose check is worse than no check.
+   */
+  volumeMl?: number;
 }
 
 export interface MeasurementFact extends FactBase {
   kind: "measurement";
   amount: number;
+  /** Set when the note gave a range ("4-5 mm"); `amount` is then the low end. */
+  amountMax?: number;
   unit: string;
 }
 
-export type ClinicalFact = ToothSiteFact | ProcedureFact | MedicationFact | MeasurementFact;
+/**
+ * Something observed, as opposed to something done.
+ *
+ * Split from ProcedureFact because the two behave differently under negation. A
+ * negated finding is the commonest statement in a dental exam ("no caries", "no
+ * BOP") and is entirely normal; a negated procedure is rare and means something
+ * else. Collapsing them would make "no caries" and "no extraction" the same
+ * shape, and they are not.
+ */
+export interface FindingFact extends FactBase {
+  kind: "finding";
+  finding: string;
+  /** Tooth sites named in the same clause, if any. */
+  sites: ToothSite[];
+}
+
+export interface MaterialFact extends FactBase {
+  kind: "material";
+  material: string;
+  sites: ToothSite[];
+}
+
+/**
+ * Something done with or for the patient rather than to a tooth.
+ *
+ * Instructions given, options discussed, medical history reviewed, how the
+ * visit was tolerated. These carry no tooth and never appear on the chart, and
+ * they are what a note is judged on when nobody is disputing the dentistry —
+ * every completeness rule that protects the practice is really asking whether
+ * one of these is present.
+ */
+export interface CareEventFact extends FactBase {
+  kind: "care-event";
+  event: string;
+}
+
+export type ClinicalFact =
+  | ToothSiteFact
+  | ProcedureFact
+  | MedicationFact
+  | MeasurementFact
+  | FindingFact
+  | MaterialFact
+  | CareEventFact;
 
 /**
  * The result of reading a note.
@@ -180,13 +243,27 @@ export interface ExtractionResult {
   clauseCount: number;
 }
 
+/** Tooth sites carried by any fact kind that can carry them. */
+export function sitesOfFact(fact: ClinicalFact): ToothSite[] {
+  switch (fact.kind) {
+    case "tooth-site":
+      return [fact.site];
+    case "procedure":
+    case "finding":
+    case "material":
+      return fact.sites;
+    default:
+      return [];
+  }
+}
+
 /** Every distinct tooth the note asserts something about, in chart order. */
 export function affirmedSites(result: ExtractionResult): ToothSite[] {
   const byTooth = new Map<ToothId, ToothSite>();
   for (const fact of result.facts) {
     if (fact.assertion.polarity !== "affirmed") continue;
     if (fact.assertion.experiencer !== "patient") continue;
-    const sites = fact.kind === "tooth-site" ? [fact.site] : fact.kind === "procedure" ? fact.sites : [];
+    const sites = sitesOfFact(fact);
     for (const site of sites) {
       const existing = byTooth.get(site.toothId);
       if (!existing) {

@@ -42,8 +42,11 @@ describe("the thing this must never do: invent a tooth", () => {
 describe("the thing this must never do: assert what the note denied", () => {
   it("negates a finding the note explicitly cleared", () => {
     const result = extractFacts("No caries #14.");
-    const site = result.facts.find((f) => f.kind === "tooth-site");
-    expect(site?.assertion.polarity).toBe("negated");
+    // A finding fact now, not a bare tooth-site: the parser knows "caries" is
+    // an observation, and it is the observation that was denied.
+    const finding = result.facts.find((f) => f.kind === "finding");
+    expect(finding?.finding).toBe("caries");
+    expect(finding?.assertion.polarity).toBe("negated");
     // And therefore the chart stays blank.
     expect(affirmedSites(result)).toEqual([]);
   });
@@ -82,7 +85,7 @@ describe("the thing this must never do: assert what the note denied", () => {
   it("does not leak negation across a comma into the next assertion", () => {
     const note = "No caries #14, composite #30 MOD placed";
     const denied = extractFacts(note).facts.find(
-      (f) => f.kind === "tooth-site" && f.site.toothId === "14"
+      (f) => f.kind === "finding" && f.sites.some((s) => s.toothId === "14")
     );
     const done = extractFacts(note).facts.find((f) => f.kind === "procedure");
     expect(denied?.assertion.polarity).toBe("negated");
@@ -187,6 +190,98 @@ describe("procedure recognition", () => {
     expect(procedures("FMX taken")).toEqual([]);
     expect(procedures("CR placed #14")).toEqual([]);
     expect(procedures("GP removed")).toEqual([]);
+  });
+});
+
+describe("allergy shorthand — the most dangerous thing here to get backwards", () => {
+  it.each(["NKA", "NKDA", "nkda"])("reads %s as an absence of allergy, never as one", (token) => {
+    const fact = extractFacts(`${token}. Prophylaxis completed.`).facts.find((f) => f.kind === "finding");
+    expect(fact?.finding).toContain("allergy");
+    expect(fact?.assertion.polarity).toBe("negated");
+  });
+
+  it("still reads a stated allergy as present", () => {
+    const fact = extractFacts("Allergy to penicillin.").facts.find((f) => f.kind === "finding");
+    expect(fact?.assertion.polarity).toBe("affirmed");
+  });
+
+  it("does not let a stray negation flip NKA into an allergy", () => {
+    // "No NKA" is a writer being unclear. Reading an allergy out of it would be
+    // the worst inference this parser could make, so the term's own meaning wins.
+    const fact = extractFacts("No NKA recorded").facts.find((f) => f.kind === "finding");
+    expect(fact?.assertion.polarity).toBe("negated");
+  });
+});
+
+describe("medications and doses", () => {
+  it("reads the amount written before the drug, as an anesthetic line is written", () => {
+    const med = extractFacts("2 carp lido 2% w epi").facts.find((f) => f.kind === "medication");
+    expect(med?.drug).toBe("lidocaine");
+    expect(med?.amount).toBe(2);
+    expect(med?.unit).toBe("carpule");
+    expect(med?.concentrationPercent).toBe(2);
+  });
+
+  it("reads the amount written after the drug, as a prescription is written", () => {
+    const med = extractFacts("Rx ibuprofen 600 mg q6h prn").facts.find((f) => f.kind === "medication");
+    expect(med?.drug).toBe("ibuprofen");
+    expect(med?.amount).toBe(600);
+    expect(med?.unit).toBe("mg");
+  });
+
+  it("converts carpules to millilitres, because that convention is exact", () => {
+    const med = extractFacts("3 carp lido").facts.find((f) => f.kind === "medication");
+    expect(med?.volumeMl).toBeCloseTo(5.4);
+  });
+
+  it("does NOT invent a volume where no convention exists", () => {
+    const med = extractFacts("ibuprofen 2 tabs").facts.find((f) => f.kind === "medication");
+    expect(med?.volumeMl).toBeUndefined();
+  });
+
+  it("does not double-count the dose as a separate measurement", () => {
+    const facts = extractFacts("2 carp lido").facts;
+    expect(facts.filter((f) => f.kind === "measurement")).toHaveLength(0);
+  });
+
+  it("does not turn a carpule count into a tooth", () => {
+    expect(teeth("2 carp lido 2% w epi 1:100k")).toEqual([]);
+  });
+});
+
+describe("measurements", () => {
+  it("reads a range as a range", () => {
+    const m = extractFacts("Generalized 4-5 mm pockets").facts.find((f) => f.kind === "measurement");
+    expect(m?.amount).toBe(4);
+    expect(m?.amountMax).toBe(5);
+    expect(m?.unit).toBe("mm");
+  });
+
+  it("reads blood pressure, which no unit-based reader can see", () => {
+    const m = extractFacts("BP 128/78").facts.find((f) => f.kind === "measurement");
+    expect(m?.amount).toBe(128);
+    expect(m?.amountMax).toBe(78);
+  });
+
+  it("does not turn a probing depth into a tooth", () => {
+    expect(teeth("localized 6 mm pockets")).toEqual([]);
+  });
+});
+
+describe("care events — what a note is judged on when the dentistry is not disputed", () => {
+  it.each([
+    ["Post-op instr given verbally and in writing", "post-operative instructions"],
+    ["Floss demo given", "flossing demonstration"],
+    ["Tx plan discussed and presented", "treatment plan discussion"],
+    ["MH reviewed and updated", "medical history review"],
+    ["Pt tol well", "patient tolerated the procedure"]
+  ])("reads %j", (text, expected) => {
+    const events = extractFacts(text).facts.filter((f) => f.kind === "care-event");
+    expect(events.map((e) => e.event)).toContain(expected);
+  });
+
+  it("carries no tooth, so it never reaches the chart", () => {
+    expect(teeth("Post-op instr given")).toEqual([]);
   });
 });
 

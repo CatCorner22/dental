@@ -43,10 +43,31 @@
 
 import { getTooth, allowedSurfaces } from "@/lib/vocab/teeth";
 import { PROCEDURE_TERMS_BY_LENGTH, type ProcedureTerm } from "@/lib/vocab/procedures";
+import {
+  CARE_EVENT_TERMS_BY_LENGTH,
+  DOSE_UNITS,
+  DRUG_SHORTHAND,
+  FINDING_TERMS_BY_LENGTH,
+  MATERIAL_TERMS_BY_LENGTH,
+  MEASURE_UNITS
+} from "@/lib/vocab/clinical-terms";
+import { MEDICATION_WORDS } from "@/lib/vocab/misspellings";
 import type { Surface } from "@/lib/schema/types";
 import { assertionFor } from "./context";
 import { clauseRanges, tokenize, type Token } from "./tokenize";
-import type { ClinicalFact, ExtractionResult, ProcedureFact, Span, ToothSite, ToothSiteFact } from "./facts";
+import type {
+  CareEventFact,
+  ClinicalFact,
+  ExtractionResult,
+  FindingFact,
+  MaterialFact,
+  MeasurementFact,
+  MedicationFact,
+  ProcedureFact,
+  Span,
+  ToothSite,
+  ToothSiteFact
+} from "./facts";
 
 /**
  * Words that make a following "#N" something other than a tooth.
@@ -244,12 +265,14 @@ function readSiteGroup(tokens: Token[], i: number, clauseEnd: number): ParsedSit
   return { sites, end: cursor, tokenFrom: start };
 }
 
-function readProcedure(
+/** Match the longest literal from a table at position `i`. */
+function readLiteral<T extends { literal: string[] }>(
+  table: T[],
   tokens: Token[],
   i: number,
   clauseEnd: number
-): { term: ProcedureTerm; from: number; to: number } | undefined {
-  for (const term of PROCEDURE_TERMS_BY_LENGTH) {
+): { term: T; from: number; to: number } | undefined {
+  for (const term of table) {
     const len = term.literal.length;
     if (i + len > clauseEnd) continue;
     let ok = true;
@@ -262,6 +285,150 @@ function readProcedure(
     if (ok) return { term, from: i, to: i + len };
   }
   return undefined;
+}
+
+function readProcedure(
+  tokens: Token[],
+  i: number,
+  clauseEnd: number
+): { term: ProcedureTerm; from: number; to: number } | undefined {
+  return readLiteral(PROCEDURE_TERMS_BY_LENGTH, tokens, i, clauseEnd);
+}
+
+const numberOf = (t: Token | undefined): number | undefined => {
+  if (!t || t.kind !== "number") return undefined;
+  const n = Number(t.digits ?? t.text);
+  return Number.isFinite(n) ? n : undefined;
+};
+
+const DOSE_UNIT_BY_TOKEN = new Map(DOSE_UNITS.map((u) => [u.token, u]));
+const MEASURE_UNIT_BY_TOKEN = new Map(MEASURE_UNITS.map((u) => [u.token, u.unit]));
+
+/**
+ * A number followed by a unit, optionally a range ("4-5 mm").
+ *
+ * THIS ALSO PROTECTS THE TOOTH RULE. "2 carp", "3 mm" and "600 mg" are numbers
+ * in tooth range, and consuming them here as measurements means they are gone
+ * before anything else can look at them. The rule that a bare number is never a
+ * tooth already covered this, but two independent mechanisms agreeing is how
+ * that rule stays true when someone edits one of them.
+ */
+function readQuantity(
+  tokens: Token[],
+  i: number,
+  clauseEnd: number
+): { amount: number; amountMax?: number; unitToken: string; from: number; to: number } | undefined {
+  const amount = numberOf(tokens[i]);
+  if (amount === undefined) return undefined;
+  let cursor = i + 1;
+  let amountMax: number | undefined;
+
+  // A range: "4-5 mm".
+  if (tokens[cursor]?.kind === "punct" && (tokens[cursor].text === "-" || tokens[cursor].text === "–")) {
+    const high = numberOf(tokens[cursor + 1]);
+    if (high !== undefined && high > amount) {
+      amountMax = high;
+      cursor += 2;
+    }
+  }
+
+  const unitTok = tokens[cursor];
+  if (!unitTok || cursor >= clauseEnd) return undefined;
+  if (unitTok.kind === "punct" && unitTok.text === "%") {
+    return { amount, amountMax, unitToken: "%", from: i, to: cursor + 1 };
+  }
+  if (unitTok.kind !== "word") return undefined;
+  const key = unitTok.lower;
+  if (!DOSE_UNIT_BY_TOKEN.has(key) && !MEASURE_UNIT_BY_TOKEN.has(key)) return undefined;
+  return { amount, amountMax, unitToken: key, from: i, to: cursor + 1 };
+}
+
+/**
+ * Blood pressure: "BP 128/78".
+ *
+ * Its own reader because it is the one vital written as two numbers over a
+ * slash, which no unit-based reader can see. It earns the special case: blood
+ * pressure is the vital that decides whether treatment goes ahead today, and a
+ * note that recorded it should not read as a note that did not.
+ */
+function readBloodPressure(
+  tokens: Token[],
+  i: number,
+  clauseEnd: number
+): { systolic: number; diastolic: number; from: number; to: number } | undefined {
+  const label = tokens[i];
+  if (!label || label.kind !== "word") return undefined;
+  if (label.lower !== "bp" && label.lower !== "b/p") return undefined;
+  const systolic = numberOf(tokens[i + 1]);
+  const slash = tokens[i + 2];
+  const diastolic = numberOf(tokens[i + 3]);
+  if (systolic === undefined || diastolic === undefined) return undefined;
+  if (!slash || slash.kind !== "punct" || slash.text !== "/") return undefined;
+  if (i + 4 > clauseEnd) return undefined;
+  return { systolic, diastolic, from: i, to: i + 4 };
+}
+
+/**
+ * A drug, with any amount the clause attached to it.
+ *
+ * The amount may sit either side — "600 mg ibuprofen" and "ibuprofen 600 mg"
+ * are both ordinary — so this looks backward first (the shorthand convention in
+ * an anesthetic line, "2 carp lido") and then forward.
+ */
+function readMedication(
+  tokens: Token[],
+  i: number,
+  clauseEnd: number
+):
+  | {
+      drug: string;
+      amount?: number;
+      unitToken?: string;
+      concentrationPercent?: number;
+      from: number;
+      to: number;
+    }
+  | undefined {
+  const tok = tokens[i];
+  if (!tok || tok.kind !== "word") return undefined;
+  const drug = DRUG_SHORTHAND[tok.lower] ?? (MEDICATION_WORDS.has(tok.lower) ? tok.lower : undefined);
+  if (!drug) return undefined;
+
+  let from = i;
+  let to = i + 1;
+  let amount: number | undefined;
+  let unitToken: string | undefined;
+
+  // Backward: "2 carp lido", "600 mg ibuprofen".
+  for (let back = i - 2; back >= Math.max(0, i - 3); back--) {
+    const q = readQuantity(tokens, back, clauseEnd);
+    if (q && q.to === i && DOSE_UNIT_BY_TOKEN.has(q.unitToken)) {
+      amount = q.amount;
+      unitToken = q.unitToken;
+      from = q.from;
+      break;
+    }
+  }
+
+  // Forward: "ibuprofen 600 mg".
+  if (amount === undefined) {
+    const q = readQuantity(tokens, i + 1, clauseEnd);
+    if (q && DOSE_UNIT_BY_TOKEN.has(q.unitToken)) {
+      amount = q.amount;
+      unitToken = q.unitToken;
+      to = q.to;
+    }
+  }
+
+  // Concentration: "lido 2%".
+  let concentrationPercent: number | undefined;
+  const pct = readQuantity(tokens, to, clauseEnd);
+  if (pct && pct.unitToken === "%") {
+    concentrationPercent = pct.amount;
+    to = pct.to;
+  }
+
+  return { drug, amount, unitToken, concentrationPercent, from, to };
 }
 
 /**
@@ -277,10 +444,22 @@ export function extractFacts(text: string): ExtractionResult {
   const unparsed: Span[] = [];
 
   clauses.forEach((clause, sentenceIndex) => {
+    const factsBefore = facts.length;
     const sites: ToothSite[] = [];
     let siteTokenFrom = -1;
     let siteTokenTo = -1;
     let procedure: { term: ProcedureTerm; from: number; to: number } | undefined;
+    const findings: Array<{
+      id: string;
+      display: string;
+      from: number;
+      to: number;
+      impliesNegation?: boolean;
+    }> = [];
+    const materials: Array<{ id: string; display: string; from: number; to: number }> = [];
+    const careEvents: Array<{ id: string; display: string; from: number; to: number }> = [];
+    const medications: Array<NonNullable<ReturnType<typeof readMedication>>> = [];
+    const quantities: Array<NonNullable<ReturnType<typeof readQuantity>>> = [];
 
     let i = clause.from;
     while (i < clause.to) {
@@ -292,6 +471,34 @@ export function extractFacts(text: string): ExtractionResult {
         i = group.end;
         continue;
       }
+
+      const bp = readBloodPressure(tokens, i, clause.to);
+      if (bp) {
+        quantities.push({
+          amount: bp.systolic,
+          amountMax: bp.diastolic,
+          unitToken: "mm hg",
+          from: bp.from,
+          to: bp.to
+        });
+        i = bp.to;
+        continue;
+      }
+
+      const med = readMedication(tokens, i, clause.to);
+      if (med) {
+        medications.push(med);
+        i = med.to;
+        continue;
+      }
+
+      const qty = readQuantity(tokens, i, clause.to);
+      if (qty) {
+        quantities.push(qty);
+        i = qty.to;
+        continue;
+      }
+
       if (!procedure) {
         const proc = readProcedure(tokens, i, clause.to);
         if (proc) {
@@ -300,46 +507,165 @@ export function extractFacts(text: string): ExtractionResult {
           continue;
         }
       }
+
+      const find = readLiteral(FINDING_TERMS_BY_LENGTH, tokens, i, clause.to);
+      if (find) {
+        findings.push({
+          id: find.term.id,
+          display: find.term.display,
+          from: find.from,
+          to: find.to,
+          impliesNegation: find.term.impliesNegation
+        });
+        i = find.to;
+        continue;
+      }
+
+      const mat = readLiteral(MATERIAL_TERMS_BY_LENGTH, tokens, i, clause.to);
+      if (mat) {
+        materials.push({ id: mat.term.id, display: mat.term.display, from: mat.from, to: mat.to });
+        i = mat.to;
+        continue;
+      }
+
+      const care = readLiteral(CARE_EVENT_TERMS_BY_LENGTH, tokens, i, clause.to);
+      if (care) {
+        careEvents.push({ id: care.term.id, display: care.term.display, from: care.from, to: care.to });
+        i = care.to;
+        continue;
+      }
+
       i++;
     }
 
-    if (!procedure && sites.length === 0) {
-      if (clause.to > clause.from) {
-        unparsed.push({ start: tokens[clause.from].start, end: tokens[clause.to - 1].end });
-      }
-      return;
-    }
+    const spanOf = (from: number, to: number): Span => ({
+      start: tokens[from].start,
+      end: tokens[to - 1].end
+    });
 
     if (procedure) {
       const targetFrom = Math.min(procedure.from, siteTokenFrom < 0 ? procedure.from : siteTokenFrom);
       const targetTo = Math.max(procedure.to, siteTokenTo);
-      const fact: ProcedureFact = {
+      facts.push({
         kind: "procedure",
-        span: { start: tokens[targetFrom].start, end: tokens[targetTo - 1].end },
+        span: spanOf(targetFrom, targetTo),
         assertion: assertionFor(tokens, clause, procedure.from, procedure.to),
         ruleId: procedure.term.id,
         sentenceIndex,
         procedure: procedure.term.display,
         category: procedure.term.category,
         sites
-      };
-      facts.push(fact);
-      return;
+      } satisfies ProcedureFact);
     }
 
-    // Teeth named with no procedure in the clause: still a fact — "caries #14"
-    // and "#14 sensitive to cold" are both statements about tooth 14 — but the
-    // clause did not say what was done, and we do not invent one.
-    for (const site of sites) {
-      const fact: ToothSiteFact = {
-        kind: "tooth-site",
-        span: site.span,
-        assertion: assertionFor(tokens, clause, siteTokenFrom, siteTokenTo),
-        ruleId: "site.bare",
+    for (const find of findings) {
+      // A term that IS an absence ("NKA") is negated by its own meaning, and
+      // that overrides context rather than combining with it. "No NKA" is not a
+      // double negative asserting an allergy; it is a writer being unclear, and
+      // reading an allergy out of it would be the most dangerous inference this
+      // parser could make.
+      const assertion = find.impliesNegation
+        ? ({ polarity: "negated", experiencer: "patient" } as const)
+        : assertionFor(tokens, clause, find.from, find.to);
+      facts.push({
+        kind: "finding",
+        span: spanOf(find.from, find.to),
+        assertion,
+        ruleId: find.id,
         sentenceIndex,
-        site
-      };
-      facts.push(fact);
+        finding: find.display,
+        sites
+      } satisfies FindingFact);
+    }
+
+    for (const care of careEvents) {
+      facts.push({
+        kind: "care-event",
+        span: spanOf(care.from, care.to),
+        assertion: assertionFor(tokens, clause, care.from, care.to),
+        ruleId: care.id,
+        sentenceIndex,
+        event: care.display
+      } satisfies CareEventFact);
+    }
+
+    for (const mat of materials) {
+      facts.push({
+        kind: "material",
+        span: spanOf(mat.from, mat.to),
+        assertion: assertionFor(tokens, clause, mat.from, mat.to),
+        ruleId: mat.id,
+        sentenceIndex,
+        material: mat.display,
+        sites
+      } satisfies MaterialFact);
+    }
+
+    for (const med of medications) {
+      const doseUnit = med.unitToken ? DOSE_UNITS.find((u) => u.token === med.unitToken) : undefined;
+      // Volume only when a convention makes it exact. A carpule is 1.8 mL; a
+      // "tablet" is nothing in particular, and inventing a number there would
+      // feed a maximum-dose check something the note never said.
+      const volumeMl =
+        med.amount !== undefined && doseUnit?.mlPerUnit !== undefined
+          ? Number((med.amount * doseUnit.mlPerUnit).toFixed(2))
+          : doseUnit?.unit === "mL" && med.amount !== undefined
+            ? med.amount
+            : undefined;
+      facts.push({
+        kind: "medication",
+        span: spanOf(med.from, med.to),
+        assertion: assertionFor(tokens, clause, med.from, med.to),
+        ruleId: `med.${med.drug}`,
+        sentenceIndex,
+        drug: med.drug,
+        amount: med.amount,
+        unit: doseUnit?.unit,
+        concentrationPercent: med.concentrationPercent,
+        volumeMl
+      } satisfies MedicationFact);
+    }
+
+    for (const qty of quantities) {
+      // Drop a quantity a medication went back and claimed: "2 carp lido" is
+      // one dose statement, not a dose and an unrelated count of two.
+      const claimed = medications.some((m) => qty.from >= m.from && qty.to <= m.to);
+      if (claimed) continue;
+      const unit = MEASURE_UNITS.find((u) => u.token === qty.unitToken)?.unit
+        ?? DOSE_UNITS.find((u) => u.token === qty.unitToken)?.unit
+        ?? qty.unitToken;
+      facts.push({
+        kind: "measurement",
+        span: spanOf(qty.from, qty.to),
+        assertion: assertionFor(tokens, clause, qty.from, qty.to),
+        ruleId: `measure.${unit}`,
+        sentenceIndex,
+        amount: qty.amount,
+        amountMax: qty.amountMax,
+        unit
+      } satisfies MeasurementFact);
+    }
+
+    // Teeth named with nothing else in the clause: still a fact — "#14" alone
+    // is a statement about tooth 14 — but the clause did not say what about it,
+    // and we do not invent one. Suppressed when something above already carries
+    // the sites, so one clause does not produce two facts for one tooth.
+    const carried = procedure || findings.length > 0 || materials.length > 0;
+    if (!carried) {
+      for (const site of sites) {
+        facts.push({
+          kind: "tooth-site",
+          span: site.span,
+          assertion: assertionFor(tokens, clause, siteTokenFrom, siteTokenTo),
+          ruleId: "site.bare",
+          sentenceIndex,
+          site
+        } satisfies ToothSiteFact);
+      }
+    }
+
+    if (facts.length === factsBefore && clause.to > clause.from) {
+      unparsed.push({ start: tokens[clause.from].start, end: tokens[clause.to - 1].end });
     }
   });
 

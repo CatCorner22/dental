@@ -8,7 +8,10 @@ export type NoteAction =
   | { type: "setValue"; key: string; value: FieldValue }
   | { type: "clearValue"; key: string }
   | { type: "clearModule"; moduleId: string }
-  | { type: "reset" };
+  | { type: "reset" }
+  // Wholesale replacement for the offline-backup restore path. Callers must
+  // validate the state first (validateNoteState) — the reducer trusts it.
+  | { type: "restore"; state: NoteState };
 
 export const initialNoteState: NoteState = {
   selectedModuleIds: [],
@@ -82,5 +85,7 @@ export function noteReducer(state: NoteState, action: NoteAction): NoteState {
     }
     case "reset":
       return initialNoteState;
+    case "restore":
+      return action.state;
   }
 }

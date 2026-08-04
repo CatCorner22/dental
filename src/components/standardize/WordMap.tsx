@@ -8,7 +8,13 @@ import type { WordMapGroup } from "@/lib/standardize/wordMap";
 // reading 200 rows top to bottom.
 export function WordMap({ groups, total, auto }: { groups: WordMapGroup[]; total: number; auto: number }) {
   const [q, setQ] = useState("");
-  const [openId, setOpenId] = useState<string | null>(groups[0]?.id ?? null);
+  // Collapsed by default. This component's own premise — search-first, "not
+  // reading 200 rows top to bottom" — was contradicted by opening the first
+  // group on load, which on the dashboard dumped 87 term-of-art rows below the
+  // draft list and stretched the primary "start a note" screen to ~4,000px.
+  // Progressive disclosure (UIX-H07): the reader searches, or expands the one
+  // category they want. The count line still advertises the full total.
+  const [openId, setOpenId] = useState<string | null>(null);
 
   const needle = q.trim().toLowerCase();
   const filtered = useMemo(() => {

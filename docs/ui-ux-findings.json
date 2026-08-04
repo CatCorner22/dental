@@ -1,0 +1,63 @@
+{
+  "inspection": {
+    "date": "2026-08-04",
+    "build": "next build (production)",
+    "browser": "firefox 1440x1000",
+    "account_role": "admin fixture",
+    "skill": ".cursor/skills/ui-and-ux-inspection"
+  },
+  "adversarial_persona": {
+    "name": "Twitch",
+    "profile": "super dumb, highly industrious, deeply impatient, over-caffeinated",
+    "actions": ["rage double-clicks", "garbage in every field", "6-click submit races", "mid-load Back mashing"],
+    "routes_exercised": 11,
+    "laps": 3,
+    "uncaught_page_errors": 0,
+    "server_5xx": 0,
+    "horizontal_overflow_events": 0
+  },
+  "findings": [
+    {
+      "id": "UIX-001",
+      "title": "Reference Word Map opens 87 rows on the primary action screen",
+      "category": "minimal-and-hierarchical-presentation",
+      "severity": "moderate",
+      "confidence": "high",
+      "status": "fixed",
+      "routes": ["/"],
+      "user_process": "Start or resume a note in one click",
+      "affected_users": ["all"],
+      "evidence_type": ["runtime", "code"],
+      "observed_evidence": [
+        "Dashboard scrollHeight measured at 4167px",
+        "WordMap initialized openId to the first group, rendering 87 term-of-art rows on load",
+        "Draft list sat above a two-column reference wall"
+      ],
+      "user_impact": {
+        "task_success": "not blocked",
+        "time_on_task": "increased",
+        "error_rate": "unchanged",
+        "accessibility": "none"
+      },
+      "heuristics": ["UIX-H07", "UIX-H08"],
+      "standards": [],
+      "reproduction": [
+        "Sign in and land on the dashboard",
+        "Observe the Word Map section renders its first group expanded"
+      ],
+      "remediation": [
+        "Initialize WordMap openId to null (all groups collapsed)",
+        "Preserve search-expands-all and the full-total count line"
+      ],
+      "verification": [
+        "Dashboard scrollHeight re-measured at 1201px (-71%)",
+        "Word Map remains searchable and expandable",
+        "1905 tests pass; tsc clean; production build clean",
+        "Adversarial persona introduces no overflow"
+      ],
+      "estimated_effort": "small",
+      "dependencies": [],
+      "privacy_notes": []
+    }
+  ]
+}

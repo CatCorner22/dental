@@ -36,6 +36,31 @@ describe("retrieveContext", () => {
     );
   });
 
+  it("includes informed-refusal rules when a recommendation is declined", () => {
+    expect(retrieveContext("Patient refused the recommended crown.").sources).toContain(
+      "informed refusal"
+    );
+    expect(retrieveContext("Patient declined fluoride.").sources).toContain("informed refusal");
+  });
+
+  it("includes record-correction rules for addenda", () => {
+    expect(retrieveContext("Addendum to the note from last week.").sources).toContain(
+      "record correction"
+    );
+    const r = retrieveContext("This is a late entry correcting the material.");
+    expect(r.sources).toContain("record correction");
+    expect(r.text).toContain("never rewritten");
+  });
+
+  it("includes radiograph-record rules when imaging is mentioned", () => {
+    expect(retrieveContext("4 BWs taken today.").sources).toContain("radiograph records");
+    expect(retrieveContext("CBCT acquired for implant planning.").sources).toContain(
+      "radiograph records"
+    );
+    // Interpretation guidance never fires without an imaging cue.
+    expect(retrieveContext("Prophylaxis completed.").sources).not.toContain("radiograph records");
+  });
+
   it("returns empty for text that triggers nothing", () => {
     const r = retrieveContext("Patient rescheduled the visit.");
     expect(r.sources).toEqual([]);

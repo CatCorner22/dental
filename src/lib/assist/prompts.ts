@@ -23,7 +23,13 @@
 //         verifier refuses anything whose quote is missing, paraphrased, or
 //         contradicted — telling the model the real rule up front is what keeps
 //         its hit rate worth the click.
-export const ASSIST_PROMPT_VERSION = "1.3.0";
+// 1.4.0 — worked examples in normalize and soap. Few-shot exemplars of the
+//         practice's own house style, exported as data so prompts.test.ts can
+//         run every exemplar through the same verifyMeaning gate the model's
+//         real output faces: the prompt can only ever teach behaviour the
+//         rails accept. The SOAP example demonstrates heading OMISSION, the
+//         hardest rule to state and the easiest to show.
+export const ASSIST_PROMPT_VERSION = "1.4.0";
 
 const MUST_NOT = `HARD CONSTRAINTS — violating any one of these makes the output worthless:
 - NEVER infer a diagnosis, a radiographic interpretation, or a clinical finding.
@@ -54,12 +60,83 @@ const VOICE = `VOICE AND LANGUAGE:
 export const ASSIST_CAPABILITIES = ["normalize", "soap", "interrogate", "conflicts", "extract"] as const;
 export type AssistCapability = (typeof ASSIST_CAPABILITIES)[number];
 
+// WORKED EXAMPLES — the practice teaching by demonstration.
+//
+// A rule tells the model what not to do; an exemplar shows it what done-right
+// looks like, and few-shot examples move faithful-rewrite quality more than
+// any wording change to the rules. These are exported as DATA rather than
+// inlined in the prompt string for one load-bearing reason: prompts.test.ts
+// runs every exemplar through the SAME verifyMeaning gate the model's real
+// output faces. An exemplar that teaches behaviour the verifier would refuse
+// is a bug this suite catches at build time, not a refusal a staff member
+// meets at run time.
+//
+// Drafting rules the examples follow (and therefore teach):
+// - Numbers, teeth, negations, and attributions come out exactly as they
+//   went in. No actor is ever ADDED ("the dentist administered" when the
+//   input named nobody is an attribution fabrication).
+// - Shorthand expands to the full term of art, the same expansion the
+//   deterministic tables license.
+// - Nothing routine is appended: no "tolerated well", no "no complications",
+//   unless the input said it.
+export interface WorkedExample {
+  input: string;
+  output: string;
+}
+
+export const NORMALIZE_EXAMPLES: readonly WorkedExample[] = [
+  {
+    input: "pt c/o sens UL x2 wks, worse w/ cold. no swelling noted. BWs taken.",
+    output:
+      "The patient complains of sensitivity in the upper left for 2 weeks, worse with cold. No swelling noted. Bitewing radiographs taken."
+  },
+  {
+    input: "#30 DO comp. iso w/ rubber dam. pt tol well. post-op instructions given.",
+    output:
+      "Tooth 30, disto-occlusal composite. Isolation with rubber dam. The patient tolerated the procedure well. Post-operative instructions given."
+  }
+] as const;
+
+export const SOAP_EXAMPLE: WorkedExample = {
+  // Demonstrates the three behaviours the rules describe: attribution stays
+  // with the patient, the Assessment heading is OMITTED because the input
+  // contains no diagnosis, and nothing is invented to fill a section.
+  input:
+    "pt reports throbbing pain tooth 19 since saturday. BP 128/76. cold test positive tooth 19. plan root canal therapy tooth 19, risks and alternatives discussed, patient consented.",
+  output: `Safety
+BP 128/76.
+
+Subjective
+The patient reports throbbing pain in tooth 19 since Saturday.
+
+Objective
+Cold test positive on tooth 19.
+
+Plan
+Root canal therapy planned for tooth 19. Risks and alternatives discussed; the patient consented.`
+} as const;
+
+const exampleBlock = (examples: readonly WorkedExample[]): string =>
+  examples
+    .map(
+      (e, i) => `EXAMPLE ${i + 1}
+Input:
+${e.input}
+Output:
+${e.output}`
+    )
+    .join("\n\n");
+
 export const SYSTEM_PROMPTS: Record<AssistCapability, string> = {
   normalize: `You are the language-normalization pass of Smile Notes, a de-identified dental documentation tool. You rewrite WORDING ONLY: fix grammar, tighten rambling sentences, standardize terminology to full terms of art, and put sentences in a logical order. The clinical content must come out exactly as it went in.
 
 ${MUST_NOT}
 
 ${VOICE}
+
+WORKED EXAMPLES — this practice's house style, done right. Note what they do NOT do: no actor is added where the input named none, no routine sentence is appended, every number and negation survives exactly.
+
+${exampleBlock(NORMALIZE_EXAMPLES)}
 
 Return ONLY the rewritten note text. No preamble, no commentary, no markdown fences.`,
 
@@ -80,6 +157,10 @@ Rules for sorting:
 - Every sentence of the input appears in exactly one section, reworded minimally or not at all. Omit a heading entirely when the input has nothing for it. Never write a placeholder like "none" or "not assessed" — absence of input is not a finding.
 
 ${MUST_NOT}
+
+WORKED EXAMPLE — note that the Assessment heading is omitted because the input contains no diagnosis, and nothing was invented to fill it.
+
+${exampleBlock([SOAP_EXAMPLE])}
 
 Return ONLY the sectioned note. No preamble, no commentary.`,
 

@@ -13,6 +13,7 @@ const LINKS = [
   { href: "/reference/curve-hero-header", label: "Curve Hero header" },
   { href: "/reference/sedation-imaging", label: "Sedation & imaging" },
   { href: "/reference/tennessee-law", label: "Tennessee law" },
+  { href: "/reference/risk-management", label: "Risk management" },
   { href: "/reference/data-hygiene", label: "Data Hygiene Guide" },
   { href: "/reference/source-ledger", label: "Evidence and sources" },
   { href: "/reference/deployment", label: "Deployment" }

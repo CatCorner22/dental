@@ -12,6 +12,7 @@ import { formatTicket } from "@/lib/tickets/ticket";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { HistoryTable } from "@/components/history/HistoryTable";
 import { ExportButton } from "@/components/export/ExportButton";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 export const runtime = "nodejs";
 export const metadata = { title: "History" };
@@ -31,7 +32,14 @@ export default async function HistoryPage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="page-title">Submission history</h1>
+        <div className="flex items-center gap-1.5">
+          <h1 className="page-title">Submission history</h1>
+          <HelpTip label="About submission history">
+            Filed notes are frozen: the text, audit report, and ruleset version are stamped at
+            submission and never rewritten. A later rules change cannot alter how a past note
+            reads or was judged.
+          </HelpTip>
+        </div>
         <ExportButton table="submissions" />
       </div>
       {rows.length === 0 ? (

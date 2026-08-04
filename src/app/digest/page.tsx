@@ -5,6 +5,8 @@ import { getDb } from "@/lib/db/client";
 import { listSubmissionsForDigest } from "@/lib/db/repo/submissions";
 import { buildDigest } from "@/lib/digest/digest";
 import { deriveNoteType, type FiledNote } from "@/lib/digest/metrics";
+import { proposalsFromNotes } from "@/lib/learning/proposals";
+import { unknownAbbreviations } from "@/lib/vocab/unknownAbbreviations";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Documentation digest" };
@@ -47,6 +49,17 @@ export default async function DigestPage() {
   const practice = digest.signals.filter((s) => s.scope === "practice");
   const people = digest.signals.filter((s) => s.scope === "person");
 
+  // Vocabulary proposals, from the same notes already loaded. No extra query.
+  //
+  // This section is what makes tier 3 of the filing gate defensible. That tier
+  // blocks a note containing shorthand no table can read, and a block with no
+  // route out is a dead end — a writer stopped by a word the practice uses
+  // forty times a month, and nothing ever changing. This is the route.
+  const proposals = proposalsFromNotes(
+    notes.map((n) => ({ text: n.markdown, authorId: n.authorId, filedAt: n.filedAtIso })),
+    unknownAbbreviations(notes.map((n) => n.markdown))
+  );
+
   return (
     <div>
       <h1 className="page-title">Documentation digest</h1>
@@ -61,6 +74,46 @@ export default async function DigestPage() {
         practice would be flagged for is reported as a finding about the tool or the template instead,
         because a standard nobody meets is a badly set standard.
       </p>
+
+      {proposals.length > 0 && (
+        <section className="mt-6">
+          <h2 className="section-title">Words the tool cannot read yet</h2>
+          <p className="mb-2 max-w-3xl text-xs text-slate-600">
+            Shorthand used by at least two people, in at least five notes, that no vocabulary table
+            knows. Each of these currently stops a note being filed until the writer spells it out —
+            adding it here makes every future use free. Evidence is shown with everything outside the
+            controlled vocabulary removed, so these lines carry no patient detail.
+          </p>
+          <ul className="space-y-3">
+            {proposals.map((p) => (
+              <li key={p.id} className="card-inset">
+                <p className="font-semibold text-slate-900">
+                  <span className="rounded bg-white px-1.5 py-0.5 font-mono">{p.subject}</span>{" "}
+                  <span className="font-normal text-slate-700">
+                    — {p.evidence.occurrences} uses across {p.evidence.notes} notes by{" "}
+                    {p.evidence.authors} people
+                  </span>
+                </p>
+                {p.evidence.contexts.length > 0 && (
+                  <ul className="mt-1 space-y-0.5 font-mono text-xs text-slate-600">
+                    {p.evidence.contexts.map((c, i) => (
+                      <li key={i}>{c}</li>
+                    ))}
+                  </ul>
+                )}
+                <p className="mt-1 text-sm text-slate-700">{p.effect}</p>
+              </li>
+            ))}
+          </ul>
+          <p className="mt-2 text-xs text-slate-600">
+            Nothing here changes by itself. Raise a{" "}
+            <a href="/requests" className="underline">
+              change request
+            </a>{" "}
+            to add one, and it ships with the next ruleset version.
+          </p>
+        </section>
+      )}
 
       {digest.notesReviewed === 0 ? (
         <p className="mt-6 rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">

@@ -1,6 +1,13 @@
 import { describe, expect, it } from "vitest";
 import { REDACTED, redactEvidence, redactedContext } from "./redact";
-import { buildProposal, judgeEffect, meetsThreshold, rankProposals, THRESHOLDS } from "./proposals";
+import {
+  buildProposal,
+  judgeEffect,
+  meetsThreshold,
+  proposalsFromNotes,
+  rankProposals,
+  THRESHOLDS
+} from "./proposals";
 import type { RulesetMetrics, Sighting } from "./proposals";
 
 describe("redaction fails closed", () => {
@@ -183,6 +190,47 @@ describe("the loop closes: a change is judged after it ships", () => {
 
   it("says so plainly when nothing measurable happened", () => {
     expect(judgeEffect(measure(metrics(), metrics({ coverage: 0.705 })))).toBe("no-measurable-change");
+  });
+});
+
+describe("proposals from a period of filed notes", () => {
+  // The bridge that makes tier 3 of the filing gate defensible: that tier blocks
+  // a note containing shorthand no table can read, and a block with no route out
+  // is a dead end.
+  const notes = (token: string, authors: number, count: number): Sighting[] =>
+    Array.from({ length: count }, (_, i) =>
+      sighting(`Prophylaxis completed and ${token} recorded and ${token} reviewed`, `author-${i % authors}`)
+    );
+
+  it("proposes shorthand several people use", () => {
+    const found = proposalsFromNotes(notes("bpe", 3, 9), [{ token: "bpe", count: 18, notes: 9 }]);
+    expect(found.map((p) => p.subject)).toContain("bpe");
+  });
+
+  it("does not propose one person's habit, however frequent", () => {
+    expect(proposalsFromNotes(notes("zzq", 1, 30), [{ token: "zzq", count: 60, notes: 30 }])).toEqual([]);
+  });
+
+  it("says what ratifying it would do", () => {
+    const [p] = proposalsFromNotes(notes("bpe", 3, 9), [{ token: "bpe", count: 18, notes: 9 }]);
+    expect(p.effect).toMatch(/blocking a filing/);
+  });
+
+  it("carries no unredacted patient detail into the evidence", () => {
+    const withName: Sighting[] = Array.from({ length: 12 }, (_, i) =>
+      sighting(`Kowalczyk had bpe recorded and bpe reviewed on 14`, `author-${i % 3}`)
+    );
+    for (const p of proposalsFromNotes(withName, [{ token: "bpe", count: 24, notes: 12 }])) {
+      for (const ctx of p.evidence.contexts) {
+        expect(ctx).not.toContain("Kowalczyk");
+        expect(ctx).not.toMatch(/\d/);
+      }
+    }
+  });
+
+  it("respects the limit and never throws on junk", () => {
+    expect(() => proposalsFromNotes([], [])).not.toThrow();
+    expect(() => proposalsFromNotes(notes("a.b(", 3, 9), [{ token: "a.b(", count: 9, notes: 9 }])).not.toThrow();
   });
 });
 

@@ -1,8 +1,21 @@
 import NextAuth from "next-auth";
 import { authConfig } from "@/lib/auth/auth.config";
 
-// Edge middleware uses only the db-free config. It gates page navigation;
-// every API route additionally re-checks the role via requireRole (guards.ts).
+// NODE RUNTIME, not Edge.
+//
+// This app is self-hosted next to the practice's own database — there is no
+// edge network in front of it and never will be, so Edge bought nothing and
+// cost something real: `jose`, which NextAuth uses for JWT work, reaches for
+// CompressionStream, and the build warned on every run that a Node API was
+// being used in a runtime that does not have it. A permanent warning is worse
+// than the thing it warns about, because it is the one that teaches you to
+// stop reading build output.
+//
+// The middleware still uses only the db-free config and still only gates page
+// navigation; every API route re-checks the role via requireRole (guards.ts).
+// Running on Node changes where it executes, not what it decides.
+export const runtime = "nodejs";
+
 export const { auth: middleware } = NextAuth(authConfig);
 
 export const config = {

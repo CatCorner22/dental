@@ -187,6 +187,41 @@ function escapeRegex(s: string): string {
 }
 
 /**
+ * Turn a period of filed notes into ranked vocabulary proposals.
+ *
+ * The bridge between the signal (shorthand the tool could not read) and the
+ * decision (add it to the tables, or do not). It reads notes the practice
+ * already stores and produces nothing but counts and redacted evidence.
+ *
+ * WHY THE FILING GATE MAKES THIS URGENT RATHER THAN OPTIONAL. Tier 3 of the
+ * gate now BLOCKS a note containing shorthand no table can read. That is only
+ * defensible because there is a route by which the shorthand gets added, and
+ * this is that route. Without it the gate is a dead end: a writer is stopped by
+ * a word the practice uses forty times a month and nothing ever changes.
+ */
+export function proposalsFromNotes(
+  sightings: Sighting[],
+  unknownTokens: Array<{ token: string; count: number; notes: number }>,
+  limit = 12
+): Proposal[] {
+  const proposals: Proposal[] = [];
+  for (const { token } of unknownTokens) {
+    const matching = sightings.filter((s) =>
+      new RegExp(`\\b${escapeRegex(token)}\\b`, "i").test(s.text)
+    );
+    const proposal = buildProposal(
+      "vocabulary",
+      token,
+      `Adding "${token}" would expand it automatically and stop it blocking a filing.`,
+      matching
+    );
+    if (proposal) proposals.push(proposal);
+    if (proposals.length >= limit) break;
+  }
+  return rankProposals(proposals);
+}
+
+/**
  * Rank proposals for a reviewer's attention.
  *
  * Breadth before depth: something four people say twice matters more than

@@ -41,7 +41,7 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                   // or "Review": those words describe judging people, and this
                   // page reports patterns and explicitly re-scopes anything
                   // most of the practice would be flagged for onto the tool.
-                  ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }] : []),
+                  ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }, { href: "/admin/bytestar", label: "ByteStar" }] : []),
                   // Store stays at /store for anyone who bookmarks it, but it is
                   // not in the primary nav — a points shop next to "start a note"
                   // invites comparison and hallway scorekeeping. (Same reasoning

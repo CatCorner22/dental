@@ -11,7 +11,8 @@ import { ladderStageForEscape } from "@/lib/bytestar/ladder";
 import { encodeByteStarDetail } from "@/lib/bytestar/log";
 import { BYTESTAR_PROMPT_VERSION } from "@/lib/bytestar/prompts";
 import { toObservationalSuggestion } from "@/lib/bytestar/public";
-import { runByteStar } from "@/lib/bytestar/service";
+import { resolveReads, runByteStar } from "@/lib/bytestar/service";
+import { runCanary } from "@/lib/bytestar/canary";
 import { isByteStarPermaKilled, modelEscapeHistory } from "@/lib/bytestar/state";
 import { isForbiddenUserAction } from "@/lib/bytestar/one-way";
 import { RULESET_VERSION } from "@/lib/version";
@@ -75,6 +76,44 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: BYTESTAR_UNAVAILABLE, code: "unavailable" }, { status: 503 });
   }
 
+  // Team Lead may run the frozen canary eval against the live model. The
+  // result is a rail-survival report — a drift detector with a denominator —
+  // logged as one transparent bytestar.eval row (pass count, yield, codes).
+  if (action === "run-eval") {
+    if (!meetsRole(guard.user.role, "lead")) {
+      return Response.json({ error: "Team Lead access required." }, { status: 403 });
+    }
+    let evalTokens = 0;
+    const report = await runCanary(
+      async ({ system, prompt, schemaName, schema }) => {
+        const res = await generateObject({
+          model: config.model,
+          system,
+          prompt,
+          schema: jsonSchema(schema),
+          schemaName
+        });
+        evalTokens += (res.usage?.inputTokens ?? 0) + (res.usage?.outputTokens ?? 0);
+        return res.object;
+      },
+      { config }
+    );
+    await logAction(db, {
+      actorId: guard.user.id,
+      actorName: `${guard.user.displayName} (${guard.user.username})`,
+      action: "bytestar.eval",
+      detail: `${encodeByteStarDetail({
+        outcome: report.passed === report.total ? "ok" : "verifier-rejected",
+        promptVersion: BYTESTAR_PROMPT_VERSION,
+        model: config.model,
+        tokens: evalTokens,
+        kept: report.keptTotal,
+        refused: report.refusedTotal
+      })} pass=${report.passed}/${report.total}`
+    });
+    return Response.json({ report });
+  }
+
   const raw = typeof parsed.value.text === "string" ? parsed.value.text : "";
   if (!raw.trim()) {
     return Response.json({ benchmarks: null, observations: [] });
@@ -116,7 +155,7 @@ export async function POST(req: Request): Promise<Response> {
       usedTokens += (res.usage?.inputTokens ?? 0) + (res.usage?.outputTokens ?? 0);
       return res.object;
     },
-    { config, permaKilled }
+    { config, permaKilled, reads: resolveReads() }
   );
 
   const onCoursePct = outcome.benchmarks

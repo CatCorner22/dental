@@ -5,9 +5,10 @@ import { ByteStarFace } from "./ByteStar";
 import { BenchmarkRails } from "./BenchmarkRails";
 import { NorthStarCompass } from "./NorthStarCompass";
 import { measureBenchmarks } from "@/lib/bytestar/benchmarks";
-import { instrumentObservations } from "@/lib/bytestar/instrument";
+import { instrumentObservations, type InstrumentObservation } from "@/lib/bytestar/instrument";
 import { BYTESTAR_DISCLAIMER } from "@/lib/bytestar/prefs";
 import { BYTESTAR_ONE_WAY_NOTICE } from "@/lib/bytestar/one-way";
+import { TrendSpark, type TrendSample } from "./TrendSpark";
 
 // BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: ByteStar gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
@@ -19,6 +20,7 @@ interface Observation {
   why: string;
   question?: string;
   source: string;
+  corroboration?: { seen: number; reads: number };
 }
 
 type DeployStatus = "unknown" | "off" | "on";
@@ -34,10 +36,27 @@ export function ByteStarAdvisor({ text }: { text: string }) {
   const [tipIndex, setTipIndex] = useState(0);
   const [observing, setObserving] = useState(false);
   const lastFetched = useRef("");
+  const [trend, setTrend] = useState<TrendSample[]>([]);
 
   const benchmarks = useMemo(() => measureBenchmarks(deferred), [deferred]);
+
+  // Session trend: sample the on-course share as the draft evolves. Client
+  // memory only — resets with the page, stored nowhere.
+  useEffect(() => {
+    if (!deferred.trim()) {
+      setTrend([]);
+      return;
+    }
+    setTrend((prev) => {
+      const next = [...prev, { v: benchmarks.onCourse }];
+      return next.length > 30 ? next.slice(next.length - 30) : next;
+    });
+    // benchmarks derives from deferred; sampling on deferred is the intent.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [deferred]);
   const instrument = useMemo(() => instrumentObservations(benchmarks), [benchmarks]);
-  const observations = pioneerObs.length > 0 ? pioneerObs : instrument;
+  const observations: (Observation | InstrumentObservation)[] =
+    pioneerObs.length > 0 ? pioneerObs : instrument;
 
   const mood =
     benchmarks.onCourse >= 0.75
@@ -154,6 +173,11 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               )}
               <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-400">
                 Source: {tip.source}
+                {"corroboration" in tip && tip.corroboration && tip.corroboration.reads > 1 && (
+                  <span className="ml-2 text-teal-700">
+                    · corroborated in {tip.corroboration.seen} of {tip.corroboration.reads} independent reads
+                  </span>
+                )}
               </p>
               {observations.length > 1 && (
                 <p className="mt-1 text-[0.6rem] tabular-nums text-slate-400">
@@ -176,17 +200,20 @@ export function ByteStarAdvisor({ text }: { text: string }) {
 
       {benchmarks.gauges.words > 0 && (
         <div className="mt-3 border-t border-amber-200/50 pt-3">
-          <div className="flex items-baseline justify-between">
+          <div className="flex items-center justify-between gap-2">
             <h4 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
               Drift to NorthStar
             </h4>
-            <span
-              className={`text-[0.65rem] tabular-nums ${
-                benchmarks.onCourse >= 0.75 ? "text-teal-700" : "text-amber-800"
-              }`}
-            >
-              {Math.round(benchmarks.onCourse * 100)}% on course
-            </span>
+            <div className="flex items-center gap-2">
+              <TrendSpark samples={trend} />
+              <span
+                className={`text-[0.65rem] tabular-nums ${
+                  benchmarks.onCourse >= 0.75 ? "text-teal-700" : "text-amber-800"
+                }`}
+              >
+                {Math.round(benchmarks.onCourse * 100)}% on course
+              </span>
+            </div>
           </div>
           <BenchmarkRails readings={benchmarks.readings} />
         </div>

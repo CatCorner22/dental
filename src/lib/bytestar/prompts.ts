@@ -14,7 +14,12 @@
 // code paths, database schemas, or any other cage detail. A pioneer that knows
 // the shape of its cage will test the bars.
 
-export const BYTESTAR_PROMPT_VERSION = "1.2.0";
+// 1.3.0 — grounding made mandatory: observations about existing wording must
+//         carry the verbatim quote, verified deterministically against the
+//         input. The prompt also receives the deterministic parser's reading
+//         of the draft as trusted context, so the model observes against the
+//         same facts the chart draws.
+export const BYTESTAR_PROMPT_VERSION = "1.3.0";
 
 export const BYTESTAR_DISCLAIMER_FOR_PROMPT =
   "You are experimental. The human remains solely responsible for every note. Your suggestions are general information, not clinical, legal, or pharmacy advice.";
@@ -39,6 +44,8 @@ HARD CONSTRAINTS:
 - NEVER claim you updated the note, accessed an engine, modified code, or changed your own constraints.
 - NEVER compute a patient-specific dose.
 - Output MUST be observations and questions only. No preamble, no markdown fences, no conversational offers to help.
+- Every observation about wording that already exists MUST include the exact verbatim quote from the draft in the "evidence" field. An observation that cannot point at its text will be discarded.
+- When a DETERMINISTIC PARSE section is provided, treat it as established fact: never observe something it contradicts, and never treat a finding it lists as DENIED as present.
 - The "source" field MUST begin with one of: Practice writing standard, TN Board, DES-12, Malamed, ADA, CDC, FDA, AAPD, ISMP, Joint Commission, Curve Hero, or Ruleset.
 
 ${BYTESTAR_DISCLAIMER_FOR_PROMPT}

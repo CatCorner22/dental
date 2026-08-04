@@ -9,6 +9,7 @@ import { parseEscapeStage, isModelEscapeDetail } from "@/lib/bytestar/ladder";
 import { BYTESTAR_PROMPT_VERSION } from "@/lib/bytestar/prompts";
 import { isByteStarPermaKilled } from "@/lib/bytestar/state";
 import { ByteStarPermaClear } from "@/components/admin/ByteStarPermaClear";
+import { ByteStarEvalRunner } from "@/components/admin/ByteStarEvalRunner";
 
 export const dynamic = "force-dynamic";
 
@@ -20,12 +21,13 @@ export default async function ByteStarMonitorPage() {
   const db = await getDb();
   const config = getByteStarConfig();
   const permaKilled = await isByteStarPermaKilled(db);
-  const [drift, escapes, permaKills, permaClears, refused] = await Promise.all([
+  const [drift, escapes, permaKills, permaClears, refused, evals] = await Promise.all([
     listAuditLogByAction(db, "bytestar.drift", 200),
     listAuditLogByAction(db, "bytestar.escape", 100),
     listAuditLogByAction(db, "bytestar.perma-kill", 20),
     listAuditLogByAction(db, "bytestar.perma-clear", 20),
-    listAuditLogByAction(db, "bytestar.refused", 100)
+    listAuditLogByAction(db, "bytestar.refused", 100),
+    listAuditLogByAction(db, "bytestar.eval", 50)
   ]);
 
   const hourAgo = Date.now() - 60 * 60 * 1000;
@@ -55,6 +57,7 @@ export default async function ByteStarMonitorPage() {
       </p>
 
       <ByteStarPermaClear />
+      {config.enabled && !permaKilled && <ByteStarEvalRunner />}
 
       <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
@@ -113,6 +116,7 @@ export default async function ByteStarMonitorPage() {
         </ul>
       </section>
 
+      <LogTable title="Eval history — pass rate over time is the drift signal" rows={evals} />
       <LogTable title="Drift log" rows={drift} />
       <LogTable title="Model escape ladder" rows={escapes} />
       <LogTable title="Perma-kill events" rows={permaKills} />

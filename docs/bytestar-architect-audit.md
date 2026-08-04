@@ -2,7 +2,21 @@
 
 **Status:** Gate 0 shipped (prompting + RAG-over-tables + verifier rails). No learned parameters in-repo.
 **Skill protocol:** bespoke-llm-architect-skills v2026.08
-**Last reviewed:** 2026-08-04 against `BYTESTAR_PROMPT_VERSION` 1.2.0 / `RULESET_VERSION` 2.14.0
+**Last reviewed:** 2026-08-04 against `BYTESTAR_PROMPT_VERSION` 1.3.0 / `RULESET_VERSION` 2.15.0
+
+**v1.3 capability release — techniques from the architect catalog, cage unchanged:**
+
+| Technique (catalog name) | Implementation |
+|---|---|
+| Chain-of-Verification | Evidence quotes MANDATORY for wording observations (`missing-evidence` refusal); the verification half is deterministic (`input.includes`) |
+| Self-consistency / hallucination mitigation | `BYTESTAR_READS` (1–3) independent reads; strict-majority vote on `kind + anchor` keys; `no-consensus` refusals logged |
+| Uncertainty surfaced honestly | Corroboration shown as a sampling FACT ("seen in 3 of 3 reads") — never a probability, preserving the confidence-score non-goal |
+| Process supervision / grounding context | The deterministic parser's reading (teeth, medications, DENIED findings) rides the prompt as trusted context |
+| Evaluation harness + drift monitor | Frozen canary set (6 synthetic drafts, 2 of which prove the gates without reaching the model); Team Lead runs it live from the monitor; `bytestar.eval` rows give pass-rate-over-time |
+| Monitoring graphics | Session trend sparkline (client memory only) beside the NorthStar compass |
+
+An escape on ANY read refuses the whole turn and feeds the ladder — one read
+trying the bars is the event, not the average.
 
 This is the mandatory Self-Audit Report for the optional pioneer path. It does not
 authorize PEFT, SFT, or training on filed notes. Those remain ruled out by

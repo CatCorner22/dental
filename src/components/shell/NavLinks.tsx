@@ -23,11 +23,16 @@ export function NavLinks({ items }: { items: NavItem[] }) {
             key={item.href}
             href={item.href}
             aria-current={active ? "page" : undefined}
-            // The most-tapped controls in the app, and previously bare
-            // 20px-tall text. `.tap` grows them only where a finger is
-            // driving, so the desktop header keeps its compact spacing.
-            className={`tap rounded px-1 font-medium hover:text-slate-900 ${
-              active ? "text-blue-700 underline" : "text-slate-700"
+            // The most-tapped controls in the app. Pills, not underlined
+            // text: with a dozen destinations in the header, "where am I"
+            // has to be answerable from three feet away, and a filled navy
+            // pill is legible at a glance where an underline is not. The
+            // forced-colors rule keys on aria-current, so the state
+            // survives Windows High Contrast too.
+            className={`tap rounded-full px-2 py-0.5 font-medium transition-colors duration-100 ${
+              active
+                ? "bg-brand-navy text-white shadow-sm"
+                : "text-slate-700 hover:bg-brand-navy/10 hover:text-brand-navy"
             }`}
           >
             {item.label}

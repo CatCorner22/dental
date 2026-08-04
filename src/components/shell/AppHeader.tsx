@@ -18,7 +18,12 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
        The audit that prompted this found brand-navy used ZERO times in the app —
        the identity lived entirely in the logomark, so the shell read as a generic
        admin template. This is chrome only; no state colour is involved. */
-    <header className="border-b-2 border-brand-navy/15 bg-white">
+    /* Sticky glass on desktop: the header stays reachable however deep a
+       long note scrolls, translucent white over the ground wash with a blur
+       so content sliding beneath reads as depth. NOT sticky on phones — the
+       nav wraps to several rows there, and a header that eats a third of a
+       small screen costs more than the shortcut is worth. */
+    <header className="border-b-2 border-brand-navy/15 bg-white/90 backdrop-blur-sm md:sticky md:top-0 md:z-40">
       {/* Wraps to a second line on a phone instead of forcing the page wider
           than the screen. An unwrapped nav here expanded the layout viewport
           to 554px on a 375px device, which pushed every page sideways and
@@ -27,7 +32,10 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
         <Link href="/" className="tap rounded">
           <BrandMark />
         </Link>
-        <nav className="flex min-w-0 flex-wrap items-center gap-x-3 gap-y-1.5 text-sm">
+        {/* gap-x-1.5, not 3: the pills carry their own horizontal padding now,
+            so the old text-link gap on top of it pushed the identity block
+            onto a second row at laptop widths. */}
+        <nav className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1.5 text-sm">
           {user ? (
             <>
               <NavLinks

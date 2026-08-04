@@ -245,6 +245,12 @@
   .section-title {
     @apply text-title-3 font-bold text-brand-navy;
   }
+  /* An editorial eyebrow: the small tracked-caps label above a section title.
+     One more rung on the heading ladder for dense pages, in teal because it
+     is chrome — never state. */
+  .eyebrow {
+    @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-brand-teal;
+  }
 
   /* Level 1: the ordinary content surface. A hairline ring instead of a full
      border weighs less at the same contrast, and the shadow is what separates a
@@ -473,11 +479,35 @@
   }
 }
 .btn-primary {
-  @apply btn border-blue-700 bg-blue-700 text-white hover:bg-blue-800 disabled:hover:bg-blue-700;
+  /* A navy-to-blue vertical gradient instead of a flat fill. One brand
+     gesture, applied to the single most-pressed control in the app: the
+     gradient is dark enough at BOTH stops that white text clears 4.5:1, and
+     hover brightens the whole surface rather than swapping colour, so the
+     state still snaps. */
+  @apply btn border-transparent bg-gradient-to-b from-brand-navy to-blue-700 text-white shadow-[0_2px_6px_rgba(30,58,95,0.35)] hover:brightness-110 disabled:hover:brightness-100;
 }
 .btn-secondary {
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
 }
+}
+
+/* THE GROUND WASH — what makes the page bespoke instead of flat cream.
+   Two enormous, almost-invisible radial tints in the brand's own navy and
+   teal, fixed to the viewport so cards glide over them on scroll. At 4-5%
+   alpha they read as depth, not colour: every contrast ratio measured on
+   the solid cream still holds, because the wash only ever LIGHTENS toward
+   white at the top. Print stylesheets drop backgrounds by default, so the
+   record on paper is untouched. */
+body {
+  background-image:
+    radial-gradient(1200px 500px at 85% -10%, rgba(43, 108, 184, 0.05), transparent 60%),
+    radial-gradient(1000px 420px at -10% 0%, rgba(95, 179, 168, 0.05), transparent 55%),
+    linear-gradient(to bottom, rgba(255, 255, 255, 0.55), transparent 240px);
+  background-attachment: fixed, fixed, scroll;
+}
+[data-contrast="high"] body {
+  /* High contrast asked for maximum figure-ground separation; the wash goes. */
+  background-image: none;
 }
 
 /* The queue-clear starburst. One four-point spark that pops when the andon

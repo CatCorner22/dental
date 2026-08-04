@@ -69,6 +69,32 @@ export const universalCore: ModuleDef = {
             "Tennessee Rule 0460-01-.19 counts an encounter as teledentistry only when secure video or store-and-forward technology carried it; audio-only, email alone, and fax alone do not qualify. A phone call is a telephone contact. A cost-only conversation is a consultation — money never enters this record."
         },
         {
+          id: "patient-status",
+          type: "select",
+          label: "Patient status",
+          // NOT plainly required, on the ALWAYS_REQUIRED principle: a new
+          // required field blocks every draft already saved. The supervision
+          // rule requires it contextually — hygiene-service notes, once
+          // Public Chapter 1107 is in force — which is the only place the
+          // answer changes anything.
+          options: opts("Established patient", "New patient — first visit to this practice"),
+          helpText:
+            "One click, and it matters more from January 1, 2027: Public Chapter 1107 requires DIRECT supervision by a dentist who has seen a NEW patient before a hygienist takes diagnostic radiographs, collects hard- or soft-tissue data, performs prophylaxis, or applies fluoride."
+        },
+        {
+          id: "supervision",
+          type: "select",
+          label: "Supervision",
+          // Contextually required by the supervision rule; see patient-status.
+          options: opts(
+            "Not applicable — the dentist personally provided this care",
+            "Direct — the dentist was on the premises",
+            "General — the dentist authorized in advance"
+          ),
+          helpText:
+            "Who stood behind this visit. Direct means the dentist was physically present in the office during the service; general means prior authorization without presence."
+        },
+        {
           id: "contact-method",
           type: "select",
           label: "Contact method",

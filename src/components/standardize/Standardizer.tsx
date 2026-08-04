@@ -1,8 +1,10 @@
 "use client";
 
-import { useMemo, useRef, useState } from "react";
-import { SEVERITY_CLASS, SEVERITY_LABELS } from "@/lib/audit/types";
-import type { Severity } from "@/lib/audit/types";
+import { useDeferredValue, useMemo, useRef, useState } from "react";
+import { SEVERITY_CHIP, SEVERITY_CLASS, SEVERITY_LABELS } from "@/lib/audit/types";
+import type { AuditFinding, Severity } from "@/lib/audit/types";
+import { standardize } from "@/lib/standardize/standardize";
+import { runTextAudit } from "@/lib/audit/engine";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
 import { TextDiff } from "@/components/diff/TextDiff";
@@ -50,6 +52,16 @@ const ANDON_CLASS: Record<string, string> = {
   amber: "border-amber-300 bg-amber-50 text-amber-900",
   green: "border-green-300 bg-green-50 text-green-900"
 };
+
+const toFindingLike = (f: AuditFinding): FindingLike => ({
+  ruleId: f.ruleId,
+  category: f.category,
+  severity: f.severity,
+  message: f.message,
+  matchedText: f.matchedText ?? null,
+  occurrences: f.occurrences ?? 1,
+  suggestion: f.suggestion ?? null
+});
 
 export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolean }) {
   const [input, setInput] = useState("");
@@ -182,6 +194,40 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
     }
   };
 
+  // THE LIVE CHECK — the whole page's time saving, so it gets the long comment.
+  //
+  // The old shape was: type blind, press Standardize, wait for the server, read
+  // a wall of findings, fix, press Re-check, wait again. Every lap cost a round
+  // trip and a context switch, and the person doing the laps has a patient in
+  // the chair.
+  //
+  // The transformer is deterministic and, measured, runs in about a millisecond
+  // — so it can run on every pause in typing, client-side, and show what WILL
+  // happen before anyone presses anything. Fix a problem and its row disappears
+  // as you type. By the time Standardize is pressed the queue is usually
+  // already empty, and the press is a formality that unlocks Copy.
+  //
+  // WHAT THIS DOES NOT CHANGE: nothing here is accepted, and Copy stays locked
+  // behind the same queue. The preview runs the SAME functions the server runs
+  // (same tables, same ruleset version, one bundle), so what it shows and what
+  // the formal check finds cannot disagree. The builder already runs the full
+  // audit client-side on every keystroke; this is that same, established path.
+  const deferredInput = useDeferredValue(input);
+  const live = useMemo(() => {
+    const text = deferredInput.trim();
+    if (!text) return null;
+    const pass = standardize(text);
+    const findings = runTextAudit(pass.text).map(toFindingLike);
+    const concerns = buildConcerns({ applied: pass.applied, flags: pass.flags }, findings);
+    return {
+      text: pass.text,
+      changes: pass.applied.length,
+      blocking: concerns.filter((c) => c.blocking && c.source !== "change"),
+      style: concerns.filter((c) => !c.blocking).length
+    };
+  }, [deferredInput]);
+  const liveLagging = deferredInput !== input;
+
   const light = useMemo(() => andon(items), [items]);
   const allowed = result !== null && copyAllowed(items);
   const openItems = openBlocking(items);
@@ -198,15 +244,26 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
         <textarea
           id="std-in"
           ref={inputRef}
-          className="field-input min-h-[16rem] font-mono text-sm"
+          /* The input IS the workspace, so it gets workspace height. The old
+             16rem box left most of a 900px screen empty and made a long note
+             scroll inside a porthole. */
+          className="field-input min-h-[16rem] font-mono text-sm lg:min-h-[45vh]"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          onKeyDown={(e) => {
+            // The hands-stay-on-keys path. Anyone fast enough to want this
+            // knows the convention from every chat box on earth.
+            if ((e.ctrlKey || e.metaKey) && e.key === "Enter" && input.trim() && !busy) {
+              e.preventDefault();
+              void run();
+            }
+          }}
           placeholder="Type or paste the note exactly as you would write it. De-identified facts only — no patient name, exact date, contact detail, or record number."
           aria-describedby="std-help"
         />
         <p id="std-help" className="mt-1 text-xs text-slate-500">
-          {input.length.toLocaleString()} characters. Nothing you paste here is saved — the text is
-          standardized in memory and returned.
+          {input.length.toLocaleString()} characters · Ctrl+Enter to check. Nothing you type here is
+          saved — the text is standardized in memory and returned.
         </p>
         <div className="mt-3 flex flex-wrap gap-2">
           <button className="btn-primary" onClick={run} disabled={busy || !input.trim()}>
@@ -448,11 +505,86 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
 
       <div ref={queueRef} tabIndex={-1} role="region" aria-label="Resolution queue" className="outline-none">
         {result === null ? (
-          <div className="rounded border border-slate-200 bg-slate-50 p-4 text-sm text-slate-500">
-            The resolution queue appears here. Every change the tool proposes is accepted by you,
-            item by item; everything it catches is fixed, attested, or sent to a Team Lead. The
-            note unlocks when the queue is clear.
-          </div>
+          live === null ? (
+            <div className="card text-sm text-slate-600">
+              <h2 className="section-title mb-1">This checks as you type</h2>
+              <p>
+                Start typing and this panel shows, live, what the tool would tidy and what will
+                need your judgement — before you press anything. Fix something and its row
+                disappears. Press <strong>Standardize</strong> when you are done to accept the
+                changes item by item and unlock Copy.
+              </p>
+            </div>
+          ) : (
+            /* LIVE, AND SAYS SO. Everything here is a preview: nothing has been
+               accepted, nothing can be copied, and the formal queue — with its
+               attestation and escalation paths — still owns those decisions. */
+            <div className="card" aria-live="polite" aria-label="Live check">
+              <div className="mb-2 flex items-baseline justify-between gap-2">
+                <h2 className="section-title">Live check</h2>
+                <span className="text-xs text-slate-500">
+                  {liveLagging ? "checking…" : "updates as you type"}
+                </span>
+              </div>
+
+              <div className="mb-3 grid grid-cols-3 gap-2 text-center">
+                <div className="card-inset">
+                  <div className="text-xl font-bold text-brand-navy">{live.changes}</div>
+                  <div className="text-xs text-slate-600">
+                    wording {live.changes === 1 ? "fix" : "fixes"} ready
+                  </div>
+                </div>
+                <div className="card-inset">
+                  <div className={`text-xl font-bold ${live.blocking.length > 0 ? "text-orange-700" : "text-brand-navy"}`}>
+                    {live.blocking.length}
+                  </div>
+                  <div className="text-xs text-slate-600">need your judgement</div>
+                </div>
+                <div className="card-inset">
+                  <div className="text-xl font-bold text-brand-navy">{live.style}</div>
+                  <div className="text-xs text-slate-600">style notes</div>
+                </div>
+              </div>
+
+              {live.blocking.length > 0 ? (
+                <ul className="space-y-1.5">
+                  {live.blocking.slice(0, 6).map((c) => (
+                    <li key={c.key} className="flex items-start gap-2 text-sm text-slate-800">
+                      <span
+                        className={`mt-0.5 shrink-0 rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${SEVERITY_CHIP[c.severity]}`}
+                      >
+                        {SEVERITY_LABELS[c.severity]}
+                      </span>
+                      <span>{c.what}</span>
+                    </li>
+                  ))}
+                  {live.blocking.length > 6 && (
+                    <li className="text-xs text-slate-500">…and {live.blocking.length - 6} more.</li>
+                  )}
+                </ul>
+              ) : (
+                <p className="text-sm text-slate-700">
+                  Nothing needs your judgement so far.
+                  {live.changes > 0 &&
+                    ` The ${live.changes} wording ${live.changes === 1 ? "fix" : "fixes"} will be shown for your acceptance when you press Standardize.`}
+                </p>
+              )}
+
+              {live.changes > 0 && (
+                <details className="mt-3">
+                  <summary className="cursor-pointer text-xs font-medium text-slate-700">
+                    Preview the standardized wording
+                  </summary>
+                  <TextDiff before={deferredInput} after={live.text} className="mt-2" />
+                </details>
+              )}
+
+              <p className="mt-3 border-t border-slate-100 pt-2 text-xs text-slate-500">
+                Preview only — nothing is accepted and Copy stays locked until you press{" "}
+                <strong>Standardize</strong> (Ctrl+Enter) and clear the queue.
+              </p>
+            </div>
+          )
         ) : (
           <div className="space-y-4">
             <div

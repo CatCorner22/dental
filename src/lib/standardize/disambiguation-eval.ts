@@ -1,11 +1,16 @@
 import { SHORTHAND } from "@/lib/vocab/shorthand";
-import { proposeReading } from "./proposeReading";
+import {
+  heuristicProposeReading,
+  type ProposeReadingFn
+} from "./readingProposer";
 
 // FROZEN DISAMBIGUATION EVAL — charter §4.1 gate.
 //
-// Measures the deterministic heuristic against gold readings. An encoder earns
-// a product slot only if it beats this baseline on the same frozen set.
-// Cases are synthetic and de-identified by construction.
+// Measures a ProposeReadingFn (default: deterministic heuristic) against gold
+// readings. An encoder earns a product slot only if it beats this baseline on
+// the same frozen set — inject it via runDisambiguationEval(cases, encoderFn).
+// Cases are synthetic and de-identified by construction. Product path never
+// calls an encoder; see readingProposer.ts.
 
 export interface DisambiguationCase {
   id: string;
@@ -117,6 +122,30 @@ export const DISAMBIGUATION_CASES: readonly DisambiguationCase[] = [
     display: "CC",
     text: "Administered 2 CC of lidocaine; volume recorded in mL next.",
     expectSuggested: "cubic centimetres"
+  },
+  {
+    id: "gi.restorative",
+    display: "GI",
+    text: "Tooth 3 GI liner placed under the amalgam; Fuji IX used.",
+    expectSuggested: "glass ionomer"
+  },
+  {
+    id: "gi.medical",
+    display: "GI",
+    text: "Medical history: chronic GI upset and GERD; stomach stable today.",
+    expectSuggested: "gastrointestinal"
+  },
+  {
+    id: "asa.block",
+    display: "ASA",
+    text: "ASA nerve block administered; infiltration at the anterior maxilla.",
+    expectSuggested: "anterior superior alveolar"
+  },
+  {
+    id: "cad.cam",
+    display: "CAD",
+    text: "CAD/CAM ceramic crown milled from the lab scan; try-in next.",
+    expectSuggested: "computer-aided design"
   }
 ] as const;
 
@@ -141,11 +170,12 @@ function alternativesFor(display: string): string[] {
 }
 
 export function runDisambiguationEval(
-  cases: readonly DisambiguationCase[] = DISAMBIGUATION_CASES
+  cases: readonly DisambiguationCase[] = DISAMBIGUATION_CASES,
+  proposeFn: ProposeReadingFn = heuristicProposeReading
 ): DisambiguationReport {
   const results: DisambiguationResult[] = cases.map((c) => {
     const alts = alternativesFor(c.display);
-    const proposal = proposeReading(c.display, alts, c.text);
+    const proposal = proposeFn(c.display, alts, c.text);
     const suggested = proposal?.suggested ?? null;
     let pass: boolean;
     if (c.expectSuggested === null) {

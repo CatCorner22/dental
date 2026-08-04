@@ -375,11 +375,13 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 teeth, drugs, or negations. You still resolve the queue by hand.
               </HelpTip>
             </p>
-            <div className="flex flex-wrap gap-2">
+            <div className="flex flex-wrap gap-2" aria-describedby={!input.trim() ? "std-ai-disabled" : undefined}>
               <button
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("normalize")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "normalize" ? "Working…" : "Tighten the wording"}
               </button>
@@ -387,6 +389,8 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("soap")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "soap" ? "Working…" : "Structure as SOAP"}
               </button>
@@ -394,6 +398,8 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("interrogate")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "interrogate" ? "Working…" : "What is this note missing?"}
               </button>
@@ -401,6 +407,8 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("conflicts")}
                 disabled={!input.trim() || aiBusy !== null}
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={!input.trim() ? "Paste a note first" : aiBusy ? "Wait for the current request" : undefined}
               >
                 {aiBusy === "conflicts" ? "Working…" : "Check for contradictions"}
               </button>
@@ -408,11 +416,23 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 className="btn-secondary text-xs"
                 onClick={() => runAssist("extract")}
                 disabled={!input.trim() || aiBusy !== null}
-                title="The model proposes structured facts; each must quote your text verbatim, a deterministic check refuses anything unsupported, and you accept or reject what remains one fact at a time."
+                aria-disabled={!input.trim() || aiBusy !== null}
+                title={
+                  !input.trim()
+                    ? "Paste a note first"
+                    : aiBusy
+                      ? "Wait for the current request"
+                      : "The model proposes structured facts; each must quote your text verbatim, a deterministic check refuses anything unsupported, and you accept or reject what remains one fact at a time."
+                }
               >
                 {aiBusy === "extract" ? "Working…" : "Pin facts to evidence"}
               </button>
             </div>
+            {!input.trim() && (
+              <p id="std-ai-disabled" className="mt-1 text-xs text-slate-600" role="status">
+                Paste or type a note to enable AI assist buttons.
+              </p>
+            )}
           </div>
         )}
 

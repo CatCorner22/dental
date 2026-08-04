@@ -11,7 +11,8 @@ import {
   restoreInitialismCase,
   separateGluedAbbreviations
 } from "./notation";
-import { proposeReading, type ReadingProposal } from "./proposeReading";
+import type { ReadingProposal } from "./proposeReading";
+import { resolveReadingProposal } from "./readingProposer";
 
 // Paste-to-standard: the "writing on rails" pass, moved out of the companion
 // skill and into the app.
@@ -380,7 +381,7 @@ export function standardize(raw: string): StandardizeResult {
     if (sh.alternatives) {
       // More than one real reading. Asserting one would put a clinical claim in
       // the note that the writer never made. A proposal may hint; it never writes.
-      const proposal = proposeReading(sh.display, sh.alternatives, text);
+      const proposal = resolveReadingProposal(sh.display, sh.alternatives, text);
       bump(flags, (f) => f.display, {
         kind: "ambiguous-shorthand",
         display: sh.display,

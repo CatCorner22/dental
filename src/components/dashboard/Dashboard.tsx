@@ -11,6 +11,7 @@ import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { Character } from "@/components/mascot/Sparkle";
 import { STATUS_META } from "@/lib/status/draftStatus";
 import type { DraftStatus } from "@/lib/status/draftStatus";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 interface DraftRow {
   id: string;
@@ -107,19 +108,29 @@ export function Dashboard({
         <div className="flex items-center gap-3">
           <Character id="sparkle" size="lg" />
           <div>
-            <h1 className="page-title">Hi {displayName} 👋</h1>
+            <div className="flex items-center gap-1.5">
+              <h1 className="page-title">Hi {displayName} 👋</h1>
+              <HelpTip label="About your dashboard">
+                Your drafts live here. Start a blank note or a quick pick. Filter by status when the
+                list grows. Nothing here is the patient chart — open a note to write.
+              </HelpTip>
+            </div>
             <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
           </div>
         </div>
         {canEdit && (
           <div className="relative">
-            <div className="flex gap-2">
+            <div className="flex items-center gap-2">
               <button className="btn-primary" disabled={busy} onClick={() => createDraft([], "Untitled note")}>
                 + New Smile Note
               </button>
               <button className="btn-secondary" disabled={busy} onClick={() => setShowPicks((s) => !s)} aria-expanded={showPicks}>
                 Quick picks ▾
               </button>
+              <HelpTip label="About New Smile Note and Quick picks">
+                New Smile Note opens a blank draft with Universal Core. Quick picks pre-select the
+                modules for a common visit type so you spend less time ticking boxes.
+              </HelpTip>
             </div>
             {showPicks && (
               // Never wider than the screen: a fixed w-80 anchored right of a

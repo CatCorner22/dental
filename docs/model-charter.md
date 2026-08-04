@@ -151,6 +151,8 @@ reflex. Three candidates, in order of how well they survive the guide's gates.
 **Shipped (deterministic).** `proposeReading()` + Standardizer “Suggested reading
 (not applied)” hints from surrounding cues. The writer still types the words.
 Frozen eval: `src/lib/standardize/disambiguation-eval.ts` (CI ratchet ≥ 80%).
+Injection seam: `readingProposer.ts` — product path always uses the heuristic;
+encoder candidates may be passed into `runDisambiguationEval(cases, fn)` only.
 
 **The remaining candidate.** A small **encoder-only classifier** over the
 surrounding clause that *proposes* a reading. It earns a product slot only if
@@ -170,7 +172,9 @@ An encoder earns a slot only if it beats the frozen routing eval.
 ### 4.3 Embeddings for the learning ledger — retrieval, not generation
 
 **Shipped (deterministic).** `clusterTokens()` / bigram similarity merge surface
-variants (`postop` / `post-op`) before proposal thresholds.
+variants (`postop` / `post-op`) before proposal thresholds, plus a small dental
+synonym map (`learning/synonyms.ts`) for true clinical synonym families the
+bigram pass still splits.
 
 **The remaining candidate.** A sentence-embedding model if clustering still
 splits true synonyms after the corpus grows. It still must touch no note text

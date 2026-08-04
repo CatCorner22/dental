@@ -7,6 +7,7 @@ import { ExportButton } from "@/components/export/ExportButton";
 import { listUsers } from "@/lib/db/repo/users";
 import { DriftPanel } from "@/components/admin/DriftPanel";
 import { decodeDriftDetail } from "@/lib/assist/drift";
+import { HelpTip } from "@/components/ui/HelpTip";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Audit log" };
@@ -81,7 +82,13 @@ export default async function AuditLogPage({
 
   return (
     <div>
-      <h1 className="page-title mb-1">Audit log</h1>
+      <div className="mb-1 flex items-center gap-1.5">
+        <h1 className="page-title mb-0">Audit log</h1>
+        <HelpTip label="About the audit log">
+          Traceability for sign-ins, account changes, and submissions. No patient note text is
+          stored here. Actor names are frozen at the event so renames cannot rewrite history.
+        </HelpTip>
+      </div>
       <p className="mb-4 text-sm text-slate-600">
         Sign-ins, user-management, and submission events, newest first. This log supports
         traceability; it contains no patient data.

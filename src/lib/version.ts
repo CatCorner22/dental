@@ -185,4 +185,8 @@
 // 2.18.0 — frozen disambiguation + unread-routing evals (charter §4.1/§4.2
 //         gates); expanded proposeReading cue families (PD/PPD/MI/CAD/RA/cap/ASA);
 //         grammar-growth digest by unread category.
-export const RULESET_VERSION = "2.18.0";
+// 2.19.0 — reading-proposer injection seam (eval-only encoder slot); dental
+//         synonym map for learning-ledger clusters; more proposeReading cues
+//         (qd/qod/ac-pc) + restorative context boost; staff HelpTips on
+//         Dashboard / Builder / Audit / TN law banner; visible export-lock copy.
+export const RULESET_VERSION = "2.19.0";

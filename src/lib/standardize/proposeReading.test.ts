@@ -31,4 +31,13 @@ describe("proposeReading", () => {
     expect(p).toBeDefined();
     expect(alts).toContain(p!.suggested);
   });
+
+  it("boosts glass ionomer when a tooth number and liner cues surround GI", () => {
+    const p = proposeReading(
+      "GI",
+      ["glass ionomer", "gastrointestinal"],
+      "Tooth 3 GI liner placed; Fuji IX used as a base."
+    );
+    expect(p?.suggested).toMatch(/glass ionomer/i);
+  });
 });

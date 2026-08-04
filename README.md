@@ -125,19 +125,19 @@ typecheck + tests + build on every push and PR.
 
 ### Encouragement, progression, and the store (privacy stated exactly)
 
-Each user sees their own submission count, first-pass rate, clean-note streak, badges, lifetime
-rank with XP, a points balance, a 30-day GPA trend, and Sparkle the tooth mascot's
-(deterministic, non-AI) micro-copy. Every filed note carries a frozen **GPA** (Completeness /
-Specificity / Consistency / billing-narrative Justification) derived from the audit report —
-never a second filing gate. Points from clean notes spend in the **clinic store** (`/store`,
-practice-fulfilled rewards, lead-approved), and the **training arena** (`/training`) pays double
-bounties on planted-defect practice cases checked by the real audit engine.
+The dashboard is for starting and resuming notes — not a scoreboard. First-pass rates, clean
+streaks, ranks, XP, GPA trends, and badge strips stay off the logged-in hub so hallway comparison
+cannot start from the home screen. Sparkle the tooth mascot still offers deterministic, non-AI
+micro-copy (greeting and post-file only). Every filed note still carries a frozen **GPA**
+(Completeness / Specificity / Consistency / billing-narrative Justification) derived from the
+audit report — never a second filing gate — and points may still accrue for the optional
+**clinic store** (`/store`, practice-fulfilled, lead-approved) and **training arena**
+(`/training`). Neither is promoted in the primary nav next to charting.
 
-The visibility contract, stated exactly because "no cross-staff comparison" stopped being the
-whole truth when coaching arrived: **peers never see each other's numbers**. A Team Lead's
-dashboard (`/admin/team`) shows practice-wide aggregates and, per person, a coaching **band**
-(thriving / cruising / support offered) with one tip — never per-note scores, never a ranked
-list. The personal dashboard prints this rule where every user can read it.
+**Peers never see each other's numbers.** A Team Lead's dashboard (`/admin/team`) shows
+practice-wide ops aggregates (time-to-file, after-hours volume, narrative completeness) and store
+fulfillment — never named coaching bands, never per-note scores, never a ranked list. Coaching
+stays a conversation, not a dashboard label.
 
 ### Team-spirit lines
 

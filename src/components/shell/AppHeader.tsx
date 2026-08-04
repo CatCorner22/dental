@@ -42,7 +42,10 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                   // page reports patterns and explicitly re-scopes anything
                   // most of the practice would be flagged for onto the tool.
                   ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }] : []),
-                  ...(meetsRole(user.role, "user") ? [{ href: "/store", label: "Store" }] : []),
+                  // Store stays at /store for anyone who bookmarks it, but it is
+                  // not in the primary nav — a points shop next to "start a note"
+                  // invites comparison and hallway scorekeeping. (Same reasoning
+                  // the digest itself follows: patterns, never a scoreboard.)
                   { href: "/wishes", label: "Wish list" },
                   ...(canManageUsers(user.role)
                     ? [{ href: "/admin/team", label: "Team", activePrefix: "/admin/team" }]

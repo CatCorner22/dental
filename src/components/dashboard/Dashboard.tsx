@@ -9,9 +9,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { FEATURED_PICK_IDS, QUICK_PICKS } from "@/lib/presets/quickPicks";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { Character } from "@/components/mascot/Sparkle";
-import { BADGES } from "@/lib/stats/badges";
 import { STATUS_META } from "@/lib/status/draftStatus";
-import type { UserStats } from "@/lib/stats/computeStats";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 
 interface DraftRow {
@@ -29,14 +27,12 @@ export function Dashboard({
   displayName,
   canEdit,
   drafts,
-  stats,
   totalDrafts
 }: {
   role: string;
   displayName: string;
   canEdit: boolean;
   drafts: DraftRow[];
-  stats: UserStats;
   // How many drafts exist in total, versus the page actually rendered.
   totalDrafts: number;
 }) {
@@ -182,7 +178,9 @@ export function Dashboard({
         </Link>
       )}
 
-      <StatsCard stats={stats} />
+      {/* No scoreboard here on purpose. First-pass rates, streaks, ranks, GPA,
+          and badge strips turn a shared charting tool into hallway comparison —
+          the job of this screen is to start or resume a note in one click. */}
 
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -362,61 +360,5 @@ function TransferDialog({
         </div>
       </div>
     </Dialog>
-  );
-}
-
-function StatsCard({ stats }: { stats: UserStats }) {
-  return (
-    <div className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
-      <p className="mb-2 text-center text-xs text-slate-400">
-        Every clean note helps the whole team. 🦷
-      </p>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <Stat label="Submitted" value={String(stats.totalSubmitted)} />
-        <Stat label="First-pass" value={`${Math.round(stats.firstPassRate * 100)}%`} />
-        <Stat
-          label="Clean streak"
-          value={`${stats.currentStreak}${stats.currentStreak >= 3 ? " 🔥" : ""}`}
-        />
-      </div>
-      {(stats.medianMinutesToFile !== null || stats.totalSubmitted > 0) && (
-        // The ROI row: charting time and after-hours notes are the two numbers
-        // that show whether the tool is paying for its minute. Computed from
-        // timestamps the system already records — nothing new is watched.
-        <div className="mt-3 grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 text-center">
-          <Stat
-            label="Median time to file (same day)"
-            value={
-              stats.medianMinutesToFile === null
-                ? "—"
-                : `${Math.round(stats.medianMinutesToFile)} min`
-            }
-          />
-          <Stat
-            label="Filed after hours"
-            value={`${Math.round(stats.afterHoursRate * 100)}%`}
-          />
-        </div>
-      )}
-      {stats.badges.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-          {stats.badges.map((id) => (
-            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs" title={BADGES[id].description}>
-              <span aria-hidden>{BADGES[id].icon}</span>
-              {BADGES[id].name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-2xl font-bold text-slate-800">{value}</div>
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-    </div>
   );
 }

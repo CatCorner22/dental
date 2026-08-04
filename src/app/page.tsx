@@ -121,7 +121,7 @@ export default async function DashboardPage() {
           is not theirs to apply. */}
       {meetsRole(user.role, "user") && (
         <section className="mt-10">
-          <h2 className="mb-1 text-xl font-bold">Word map</h2>
+          <h2 className="section-title mb-1">Word map</h2>
           <p className="mb-3 max-w-3xl text-sm text-slate-600">
             The wording this practice standardizes on. Anything marked{" "}
             <span className="rounded bg-amber-100 px-1 text-xs text-amber-900">your call</span>{" "}

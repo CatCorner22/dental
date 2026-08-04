@@ -1,4 +1,4 @@
-import type { Field, FieldValue, ModuleDef, NoteState, Surface, ToothId } from "@/lib/schema/types";
+import type { Field, FieldValue, ModuleDef, NoteState, Surface } from "@/lib/schema/types";
 import { fieldKey } from "@/lib/schema/types";
 import { isFieldVisible, isValueEmpty } from "@/lib/schema/conditions";
 import { describeTeeth } from "@/lib/vocab/teeth";

@@ -9,6 +9,9 @@ import { STARTER_STORE } from "@/lib/gamify/economy";
 import { computeStats, rollingGpa } from "@/lib/stats/computeStats";
 import { deriveLeadCoachingTip } from "@/lib/gamify/insights";
 import { TeamDashboard, type TeamView } from "@/components/admin/TeamDashboard";
+import { LocalVocabularyPanel } from "@/components/admin/LocalVocabularyPanel";
+import { recentNoteTexts } from "@/lib/db/repo/submissions";
+import { unknownAbbreviations } from "@/lib/vocab/unknownAbbreviations";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Team health" };
@@ -28,6 +31,12 @@ export default async function TeamPage() {
   await seedStoreIfEmpty(db, STARTER_STORE);
 
   const users = (await listUsers(db)).filter((u) => u.active && u.role !== "readonly");
+
+  // The local-vocabulary signal, read from notes already on file rather than from
+  // a log of what people typed. Bounded to the recent window: a term that stopped
+  // being used last year is not a gap in the vocabulary any more.
+  const noteTexts = await recentNoteTexts(db, 200);
+  const localVocabulary = unknownAbbreviations(noteTexts, { minNotes: 2, limit: 15 });
 
   const members: TeamView["members"] = [];
   let clinicGpaSum = 0;
@@ -93,13 +102,14 @@ export default async function TeamPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-1 text-2xl font-bold">Team documentation health</h1>
+      <h1 className="page-title mb-1">Team documentation health</h1>
       <p className="mb-4 max-w-3xl text-sm text-slate-600">
         Macro numbers, coaching bands, and store fulfillment. Bands — never scores, never
         rankings: the point is knowing where five minutes of your time helps most, and staff are
         told exactly what this page shows about them.
       </p>
       <TeamDashboard view={view} />
+      <LocalVocabularyPanel entries={localVocabulary} notesScanned={noteTexts.length} />
     </div>
   );
 }

@@ -24,7 +24,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-1 text-2xl font-bold">{formatTicket(s.id)}</h1>
+      <h1 className="page-title mb-1">{formatTicket(s.id)}</h1>
       <dl className="mb-4 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <dt className="font-semibold text-slate-600">Submitted by</dt>
         <dd>{s.submittedByName}</dd>

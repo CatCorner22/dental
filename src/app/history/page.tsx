@@ -31,7 +31,7 @@ export default async function HistoryPage() {
   return (
     <div>
       <div className="mb-4 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Submission history</h1>
+        <h1 className="page-title">Submission history</h1>
         <ExportButton table="submissions" />
       </div>
       {rows.length === 0 ? (

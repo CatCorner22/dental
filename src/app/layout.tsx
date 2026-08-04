@@ -6,6 +6,7 @@ import { SignOutButton } from "@/components/shell/SignOutButton";
 import { SessionNotices } from "@/components/notice/SessionNotices";
 import { BrandFooter } from "@/components/shell/BrandFooter";
 import { APP_DESCRIPTION, APP_NAME, COPYRIGHT } from "@/lib/brand";
+import { prefsBootScript } from "@/lib/client/displayPrefs";
 import "./globals.css";
 
 export const runtime = "nodejs";
@@ -68,6 +69,15 @@ export default async function RootLayout({ children }: { children: React.ReactNo
 
   return (
     <html lang="en">
+      <head>
+        {/* BEFORE FIRST PAINT, deliberately. Applied from an effect instead, the
+            page renders at the default size and then jumps — and for the person who
+            chose a larger size because they cannot read the default, that first
+            paint is the one that most needs to already be right. next.config.mjs
+            documents why 'unsafe-inline' is granted for script-src; this is the
+            kind of thing that exemption is for. */}
+        <script dangerouslySetInnerHTML={{ __html: prefsBootScript() }} />
+      </head>
       <body className="min-h-screen bg-brand-cream text-slate-900 antialiased">
         <a
           href="#main"

@@ -20,8 +20,33 @@
      The stack is spelled out rather than assumed: Aptos ships with current
      Microsoft 365, Calibri with older installs, Helvetica/Arial everywhere
      else, and the system-ui front stop keeps Linux and Android sensible. */
+  /* THE TEXT-SCALING FIX.
+   *
+   * `body { font-size: 12pt }` was an ABSOLUTE unit, and Tailwind's caption sizes
+   * (text-sm, text-xs) are `rem` — relative to the ROOT. So raising the browser's
+   * own default font size scaled every caption, help text and dense table and left
+   * body copy pinned at 16px. At a 24px default, `text-sm` computes to 21px and
+   * `text-xs` to 18px, both LARGER than the prose they annotate. The one control an
+   * older employee is most likely to already know how to use produced an inverted
+   * layout.
+   *
+   * Setting the root in `rem` fixes it at the source: 0.75rem of the user's own
+   * default is 12pt when their default is 16px, and scales with them when it is
+   * not. Everything sized in rem — which is everything Tailwind emits — now moves
+   * together.
+   *
+   * --text-scale is the in-app control on top of that, for the case where the
+   * browser setting is not discoverable (it rarely is) or where one shared
+   * workstation needs a bigger size than the person who set the browser up wanted.
+   */
+  html {
+    font-size: calc(1rem * var(--text-scale, 1));
+  }
+
   body {
-    font-size: 12pt;
+    /* 1rem, because the 12pt this replaces WAS 16px (12 x 96/72) — the point of
+       the change is that the size now scales, not that it changes. */
+    font-size: 1rem;
     font-family: Aptos, Calibri, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
       Arial, sans-serif;
     /* Notched and rounded screens: keep content clear of the hardware. */
@@ -82,6 +107,120 @@
   [aria-invalid="true"] {
     @apply border-red-500;
   }
+}
+
+/* HIGH CONTRAST.
+ *
+ * Not a dark theme. A dental operatory is bright, the people most likely to need
+ * this are reading at arm's length under a task light, and a dark theme in that
+ * room is harder to read rather than easier. So this raises contrast and weight
+ * on the existing light ground instead of inverting it.
+ *
+ * Severity colour is deliberately NOT touched. Red, orange, amber and green carry
+ * defined meanings that the status chips pair with an icon and a word, and
+ * re-deriving that palette for a second theme is how two screens end up
+ * disagreeing about what amber means. Contrast here is applied to TEXT, BORDERS
+ * and FOCUS — the things that were failing — and the severity system keeps its one
+ * source of truth.
+ */
+[data-contrast="high"] {
+  --tw-ring-offset-width: 2px;
+}
+[data-contrast="high"] body {
+  color: #000;
+}
+[data-contrast="high"] .text-slate-400,
+[data-contrast="high"] .text-slate-500,
+[data-contrast="high"] .text-slate-600 {
+  /* slate-400 on white is 2.6:1 — below the 4.5:1 that normal text needs, and it
+     is what help text and timestamps were rendered in. */
+  color: #334155 !important;
+}
+[data-contrast="high"] .border-slate-100,
+[data-contrast="high"] .border-slate-200,
+[data-contrast="high"] .border-slate-300 {
+  border-color: #475569 !important;
+}
+[data-contrast="high"] .field-input,
+[data-contrast="high"] .chip,
+[data-contrast="high"] .btn {
+  border-width: 2px;
+}
+[data-contrast="high"] a {
+  text-decoration-thickness: 2px;
+}
+[data-contrast="high"] ::placeholder {
+  /* Placeholders were the worst offender: grey-on-white at 11px, holding the
+     format hint a writer needs most on their first note. */
+  color: #475569 !important;
+  opacity: 1;
+}
+
+/* ---------------------------------------------------------------------------
+ * SURFACES AND TYPE
+ *
+ * An audit of the app found the brand palette almost entirely unused —
+ * brand-navy and brand-coral zero times, blue, teal, gold two or three each —
+ * against 26 identical white cards and 15 identical page titles. The identity
+ * existed only in the logomark, and every surface in the app looked like every
+ * other surface, which is what made a dense clinical tool read as a spreadsheet.
+ *
+ * The fix is hierarchy, not decoration. Three surface levels and one heading
+ * treatment, defined once here so a new page inherits the look instead of
+ * reinventing it.
+ *
+ * WHAT THIS DELIBERATELY DOES NOT TOUCH: severity colour. Red, orange, amber and
+ * green carry defined meanings, every one of them paired with an icon and a word,
+ * and the high-contrast block above already says why re-deriving that palette is
+ * how two screens end up disagreeing about what amber means. Brand colour is used
+ * for CHROME — headings, rails, the shell — and never for state.
+ * ------------------------------------------------------------------------- */
+@layer components {
+  /* Page and section headings. Navy rather than near-black: it is the wordmark's
+     own ink, it reads warmer against the cream ground than slate does, and it
+     gives the eye something to anchor on in a page that is otherwise all body
+     text. Tighter tracking at display size, which is what stops a large heading
+     looking like body text that was zoomed. */
+  .page-title {
+    @apply text-2xl font-bold tracking-tight text-brand-navy;
+  }
+  .section-title {
+    @apply text-lg font-bold tracking-tight text-brand-navy;
+  }
+
+  /* Level 1: the ordinary content surface. A hairline ring instead of a full
+     border weighs less at the same contrast, and the shadow is what separates a
+     card from the page rather than the border doing all the work. */
+  .card {
+    /* shadow-sm alone did not lift a white card off a near-white page. The ring
+       gives the edge and the shadow gives the elevation; neither works without
+       the other at this little contrast. */
+    @apply rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(30,58,95,0.08),0_1px_2px_rgba(30,58,95,0.04)] ring-1 ring-slate-200;
+  }
+
+  /* Level 2: something nested INSIDE a card — a summary strip, a metric, a quiet
+     aside. Tinted with the brand ground so nesting reads as depth rather than as
+     another unrelated box. */
+  .card-inset {
+    @apply rounded-lg bg-brand-cream/70 p-3 ring-1 ring-slate-200/70;
+  }
+
+  /* Level 3: a left rail in teal, for a block that is informative rather than a
+     warning. Teal is the brand's "cleared" accent and carries no severity, which
+     is exactly why it is safe here: an amber or red rail would collide with the
+     audit vocabulary. */
+  .card-note {
+    @apply rounded-lg border-l-4 border-brand-teal bg-brand-teal/5 py-3 pl-3 pr-4;
+  }
+}
+
+[data-contrast="high"] .card,
+[data-contrast="high"] .card-inset {
+  /* The ring is thinner than a border by design; under high contrast it has to
+     come back up or the surface hierarchy vanishes for the people who most need
+     to see it. */
+  --tw-ring-opacity: 1;
+  --tw-ring-color: #475569;
 }
 
 /* Rendered reference markdown */
@@ -333,6 +472,9 @@
     background: transparent !important;
     border: 0 !important;
     padding: 0 !important;
+    /* Print stays in pt deliberately: paper has physical dimensions and a
+       reader's screen preference should not change what a filed record looks
+       like on a page in a records request. */
     font-size: 11pt;
   }
   h1,

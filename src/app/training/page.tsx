@@ -13,7 +13,7 @@ export default async function TrainingPage() {
   if (!meetsRole(user.role, "user")) redirect("/");
   return (
     <div className="mx-auto max-w-5xl">
-      <h1 className="mb-1 text-2xl font-bold">Training arena</h1>
+      <h1 className="page-title mb-1">Training arena</h1>
       <p className="mb-4 max-w-3xl text-sm text-slate-600">
         Three-minute practice cases with planted defects — the same defects the audit catches in
         real notes, checked by the same engine, worth a double bounty the first time each one

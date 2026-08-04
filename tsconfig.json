@@ -6,6 +6,14 @@
     "skipLibCheck": true,
     "strict": true,
     "noEmit": true,
+    // The scope-of-practice lock shipped dead because BuilderShell accepted a
+    // `clinicalRole` prop, declared its type, and never used it — the whole
+    // Tennessee diagnosis/treatment-planning rule was one unread identifier,
+    // and typecheck, 916 tests, and the build were all green. A prop that is
+    // wired up and then dropped is now a compile error, which is the only guard
+    // that runs before every one of those.
+    "noUnusedLocals": true,
+    "noUnusedParameters": true,
     "esModuleInterop": true,
     "module": "esnext",
     "moduleResolution": "bundler",

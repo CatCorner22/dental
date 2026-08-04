@@ -1,7 +1,14 @@
 "use client";
 
 import type { AuditFinding, AuditReport } from "@/lib/audit/types";
-import { SEVERITY_CLASS, SEVERITY_LABELS, SEVERITY_ORDER, STATUS_CLASS } from "@/lib/audit/types";
+import {
+  SEVERITY_CHIP,
+  SEVERITY_LABELS,
+  SEVERITY_RAIL,
+  SEVERITY_MEANING,
+  SEVERITY_ORDER,
+  STATUS_CLASS
+} from "@/lib/audit/types";
 
 
 function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () => void }) {
@@ -27,12 +34,24 @@ function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () =>
   };
   return (
     <li
-      className={`rounded border px-2.5 py-2 text-xs ${SEVERITY_CLASS[finding.severity]} ${finding.fieldRef ? "cursor-pointer" : ""}`}
+      className={`rounded-r border-l-4 px-3 py-2.5 text-xs text-slate-800 ${
+        SEVERITY_RAIL[finding.severity]
+      } ${finding.fieldRef ? "cursor-pointer hover:bg-white" : ""}`}
       onClick={finding.fieldRef ? jump : undefined}
     >
       <div className="flex items-start justify-between gap-2">
         <span className="font-semibold">
-          {finding.severity} {SEVERITY_LABELS[finding.severity]}
+          {/* A chip, not a headline. The plain label only: the raw code (S0..S4) is
+              ruleset taxonomy and belongs in the frozen audit report, not in front
+              of a person trying to finish a note — a reviewer with no clinical
+              training read "S1 REQUIRED" as an error code they had caused. */}
+          <span
+            className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${
+              SEVERITY_CHIP[finding.severity]
+            }`}
+          >
+            {SEVERITY_LABELS[finding.severity]}
+          </span>
           {finding.matchedText && (
             <span className="ml-1.5 rounded bg-white/70 px-1 font-mono font-normal">
               {finding.matchedText.length > 40 ? `${finding.matchedText.slice(0, 37)}…` : finding.matchedText}
@@ -49,6 +68,11 @@ function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () =>
         )}
       </div>
       <p className="mt-1">{finding.message}</p>
+      {/* WHAT HAPPENS NEXT, said out loud. The single most common complaint in the
+          usability review was that the app says no without saying why or what it
+          costs: "does this stop me filing, or is it advice?" was unanswerable from
+          a colour and a word. */}
+      <p className="mt-1 opacity-80">{SEVERITY_MEANING[finding.severity]}</p>
       {finding.suggestion && (
         <p className="mt-1">
           <span className="font-semibold">Standard wording:</span> {finding.suggestion}
@@ -76,7 +100,9 @@ export function AuditPanel({
         Deterministic checks only — this audit never scores the note or replaces clinician review.
         Suggestions are never applied automatically.
       </p>
-      <ul className="space-y-1.5">
+      {/* Breathing room between items. At space-y-1.5 eleven open required fields
+          smashed into one another vertically and read as a single block of alarm. */}
+      <ul className="space-y-2.5">
         {SEVERITY_ORDER.flatMap((sev) =>
           report.findings
             .filter((f) => f.severity === sev)

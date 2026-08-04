@@ -62,12 +62,80 @@ function editDistanceAtMost(a: string, b: string, max: number): boolean {
   return dp[a.length] <= max;
 }
 
-function closeDentalTerm(word: string): string | undefined {
+function computeCloseDentalTerm(word: string): string | undefined {
   const max = word.length >= 8 ? 2 : 1;
   for (const term of DENTAL_LEXICON) {
     if (term.length >= 5 && editDistanceAtMost(word, term, max)) return term;
   }
   return undefined;
+}
+
+/**
+ * Memoized close-match lookup — the single hottest thing in the whole app.
+ *
+ * The scan runs Levenshtein against all 394 dental terms of length >= 5, and
+ * the budget below permits 1,500 of those per audit run. runAudit() runs on
+ * EVERY KEYSTROKE in the builder, and measured on a developer machine this one
+ * function was 79-81% of the entire per-keystroke pipeline: 46 ms of the 58 ms
+ * for a fully loaded note, 11 ms of 14 ms for a typical one. A clinician's
+ * tablet is several times slower than that machine, which is where those
+ * numbers stop being a profile and start being visible lag between a key going
+ * down and the letter appearing.
+ *
+ * Almost all of that work was repeated. The function is pure and the lexicon is
+ * a static table, so a word's close match never changes — yet it was recomputed
+ * once per field that contains the word, and then again for every field on the
+ * next keystroke. Caching turns the second occurrence of any word, in any field,
+ * on any later keystroke, into a Map lookup.
+ *
+ * Two properties this must not break, both pinned in spelling.test.ts:
+ *
+ *   - The budget is still spent at the CALL SITE, on every attempt, hit or
+ *     miss. Charging only cache misses would make the report depend on how warm
+ *     the cache happened to be, so the same note could audit differently in two
+ *     server processes — and a frozen audit report has to be a fact about the
+ *     note, not about the machine that graded it.
+ *   - Findings are byte-identical to the uncached implementation. This is a
+ *     cache of a pure function, not a change to a rule.
+ *
+ * Bounded because a server process is long-lived and words arrive from typed
+ * text. Cleared wholesale rather than evicted by age: correctness does not
+ * depend on any entry surviving, so the cheapest possible policy is the right
+ * one.
+ */
+const CLOSE_MATCH_CACHE_MAX = 4096;
+const closeMatchCache = new Map<string, string | undefined>();
+let closeMatchScans = 0;
+
+function closeDentalTerm(word: string): string | undefined {
+  // `has` rather than a truthy check: "no close term" is a real answer worth
+  // caching, and it is the common one.
+  if (closeMatchCache.has(word)) return closeMatchCache.get(word);
+  closeMatchScans++;
+  const match = computeCloseDentalTerm(word);
+  if (closeMatchCache.size >= CLOSE_MATCH_CACHE_MAX) closeMatchCache.clear();
+  closeMatchCache.set(word, match);
+  return match;
+}
+
+/**
+ * Test-only instrumentation.
+ *
+ * `closeMatchScans` counts full 394-term Levenshtein sweeps — the actual
+ * expensive work, as opposed to the wall-clock time it happens to take on
+ * whatever machine CI gave us. A performance guard written against a work count
+ * fails deterministically when the cache is removed or defeated; the same guard
+ * written as a millisecond ceiling has to be set so loose (CI runners vary by
+ * several times) that it would sit there green through the exact regression it
+ * exists to catch. See spelling.test.ts and engine-keystroke.test.ts.
+ */
+export function __resetCloseMatchCache(): void {
+  closeMatchCache.clear();
+  closeMatchScans = 0;
+}
+
+export function __closeMatchScans(): number {
+  return closeMatchScans;
 }
 
 export function runSpellingRule(

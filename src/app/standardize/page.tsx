@@ -14,7 +14,7 @@ export default async function StandardizePage() {
   if (!meetsRole(user.role, "user")) redirect("/");
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold">Standardize a note</h1>
+      <h1 className="page-title mb-1">Standardize a note</h1>
       <p className="mb-1 max-w-3xl text-sm text-slate-600">
         Paste what you would normally type and work the queue: the tool proposes, you decide.
         Every change is accepted by you item by item, everything it catches is fixed or explained

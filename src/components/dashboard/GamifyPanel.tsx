@@ -79,7 +79,7 @@ function TrendLine({ trend }: { trend: { day: string; gpa: number }[] }) {
 export function GamifyPanel({ view }: { view: GamifyView }) {
   const { rank, next, progress } = view.rankProgress;
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
       <div className="flex flex-wrap items-baseline justify-between gap-2">
         <p>
           <span className="text-sm font-bold">{rank.title}</span>{" "}

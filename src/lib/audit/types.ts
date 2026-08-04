@@ -14,6 +14,25 @@ export const SEVERITY_LABELS: Record<Severity, string> = {
   S4: "INFO"
 };
 
+/**
+ * What a severity means, in a sentence, for the person reading it.
+ *
+ * The labels above are the practice's formal audit vocabulary and they stay. These
+ * are for the screen. A usability review of the builder found the panel rendering
+ * "S1 REQUIRED" — the internal code AND the label — and a non-clinical reviewer read
+ * it as an error code they had done something to deserve. The code is taxonomy for
+ * the ruleset and the frozen report; it is not an instruction to a human.
+ *
+ * Each one says what happens next, because that is the only question the reader has.
+ */
+export const SEVERITY_MEANING: Record<Severity, string> = {
+  S0: "Must be fixed. This blocks copying and filing.",
+  S1: "Needed before this note can be filed.",
+  S2: "Worth a look before you file. Does not block.",
+  S3: "Wording only. Does not block.",
+  S4: "For information. Does not block."
+};
+
 export const SEVERITY_ORDER: Severity[] = ["S0", "S1", "S2", "S3", "S4"];
 
 export type AuditCategory =
@@ -84,6 +103,36 @@ export const SEVERITY_CLASS: Record<Severity, string> = {
   S2: "border-amber-300 bg-amber-50 text-amber-900",
   S3: "border-blue-200 bg-blue-50 text-blue-900",
   S4: "border-slate-200 bg-slate-50 text-slate-700"
+};
+
+/**
+ * The severity as a LEFT RAIL rather than a full tinted box.
+ *
+ * A design review called the findings list "a wall of red shouting" and it was
+ * right: every finding was a filled, bordered, tinted box stacked hard against the
+ * next one, so eleven open required fields read as eleven alarms rather than as a
+ * checklist of eleven things to type. A rail carries the same severity information
+ * at a fraction of the visual weight, which is what lets a list of them be scanned
+ * instead of endured.
+ *
+ * Same colours as above, deliberately — the palette is the audit vocabulary and it
+ * does not get re-derived for a second presentation.
+ */
+export const SEVERITY_RAIL: Record<Severity, string> = {
+  S0: "border-l-red-500 bg-red-50/60",
+  S1: "border-l-orange-500 bg-orange-50/60",
+  S2: "border-l-amber-500 bg-amber-50/60",
+  S3: "border-l-blue-400 bg-blue-50/50",
+  S4: "border-l-slate-400 bg-slate-50/60"
+};
+
+/** The severity word as a small chip. Glanceable, not a headline. */
+export const SEVERITY_CHIP: Record<Severity, string> = {
+  S0: "bg-red-600 text-white",
+  S1: "bg-orange-600 text-white",
+  S2: "bg-amber-500 text-amber-950",
+  S3: "bg-blue-600 text-white",
+  S4: "bg-slate-500 text-white"
 };
 
 // The overall-status banner, keyed on OverallStatus so a renamed status is a

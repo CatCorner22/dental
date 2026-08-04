@@ -2,7 +2,7 @@ import { requireRole } from "@/lib/auth/guards";
 import { setPasswordAndRevokeLinks } from "@/lib/db/repo/resetTokens";
 import { canSetPasswordDirectly } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
-import { getUserById, updateUser } from "@/lib/db/repo/users";
+import { getUserById } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword, passwordPolicyError } from "@/lib/auth/password";

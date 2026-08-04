@@ -32,7 +32,7 @@ export default async function WishesPage() {
   return (
     <div className="max-w-3xl">
       <div className="mb-1 flex flex-wrap items-center justify-between gap-2">
-        <h1 className="text-2xl font-bold">Wish list</h1>
+        <h1 className="page-title">Wish list</h1>
         <ExportButton table="wishes" />
       </div>
       <p className="mb-4 text-sm text-slate-600">

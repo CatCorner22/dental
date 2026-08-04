@@ -1,76 +1,58 @@
 "use client";
 
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
+import { browserSpeechEngine, dictationDisabled, type DictationEngine } from "@/lib/dictation/engine";
+import { normalizeDictation } from "@/lib/dictation/normalize";
 
-// VOICE DICTATION — browser speech recognition feeding the same deterministic
-// pipeline as typed text. Nothing here bypasses a gate: dictated words land in
-// the input box and face the identical audit, queue, and copy lock.
+// VOICE DICTATION — a swappable engine feeding the same deterministic
+// pipeline as typed text. Nothing here bypasses a gate: dictated words are
+// term-normalized (joins only — see dictation/normalize.ts), land in the
+// input box, and face the identical audit, queue, and copy lock.
 //
-// The honest caveat is stated in the UI: browser speech services may process
-// audio on the vendor's servers, so the de-identification rule applies to the
-// SPOKEN words, not just the typed ones. Hidden when the API is unsupported —
-// a dead microphone button is worse than none.
+// The warning the writer sees is derived from the ENGINE's offDevice flag,
+// not hard-coded — when the on-device Whisper engine lands, the label and
+// caution update themselves. Hidden entirely when the deployment disables
+// dictation or the engine is unavailable: a dead microphone button is worse
+// than none.
 
-type SpeechRecognitionLike = {
-  lang: string;
-  continuous: boolean;
-  interimResults: boolean;
-  start: () => void;
-  stop: () => void;
-  onresult: ((e: { resultIndex: number; results: ArrayLike<{ isFinal: boolean; 0: { transcript: string } }> }) => void) | null;
-  onend: (() => void) | null;
-  onerror: (() => void) | null;
-};
-
-function getRecognizer(): SpeechRecognitionLike | null {
-  if (typeof window === "undefined") return null;
-  const w = window as unknown as {
-    SpeechRecognition?: new () => SpeechRecognitionLike;
-    webkitSpeechRecognition?: new () => SpeechRecognitionLike;
-  };
-  const Ctor = w.SpeechRecognition ?? w.webkitSpeechRecognition;
-  return Ctor ? new Ctor() : null;
-}
-
-export function DictationButton({ onText, disabled }: { onText: (text: string) => void; disabled?: boolean }) {
+export function DictationButton({
+  onText,
+  disabled
+}: {
+  onText: (text: string) => void;
+  disabled?: boolean;
+}) {
+  const engine: DictationEngine = useMemo(() => browserSpeechEngine(), []);
   const [supported, setSupported] = useState(false);
   const [listening, setListening] = useState(false);
-  const recRef = useRef<SpeechRecognitionLike | null>(null);
+  const [tidied, setTidied] = useState(0);
   const onTextRef = useRef(onText);
   onTextRef.current = onText;
 
   useEffect(() => {
-    setSupported(getRecognizer() !== null);
-    return () => recRef.current?.stop();
-  }, []);
+    setSupported(!dictationDisabled() && engine.available());
+    return () => engine.stop();
+  }, [engine]);
 
   if (!supported) return null;
 
   const stop = () => {
-    recRef.current?.stop();
-    recRef.current = null;
+    engine.stop();
     setListening(false);
   };
 
   const start = () => {
-    const rec = getRecognizer();
-    if (!rec) return;
-    rec.lang = "en-US";
-    rec.continuous = true;
-    rec.interimResults = false;
-    rec.onresult = (e) => {
-      for (let i = e.resultIndex; i < e.results.length; i++) {
-        const r = e.results[i];
-        if (r?.isFinal) {
-          const t = r[0]?.transcript?.trim();
-          if (t) onTextRef.current(t);
-        }
-      }
-    };
-    rec.onend = () => setListening(false);
-    rec.onerror = () => setListening(false);
-    recRef.current = rec;
-    rec.start();
+    setTidied(0);
+    engine.start(
+      (raw) => {
+        // Deterministic dental-term joins only — the writer sees the result
+        // land and edits it like anything typed.
+        const { text, changes } = normalizeDictation(raw);
+        if (changes.length > 0) setTidied((n) => n + changes.length);
+        onTextRef.current(text);
+      },
+      () => setListening(false)
+    );
     setListening(true);
   };
 
@@ -84,7 +66,9 @@ export function DictationButton({ onText, disabled }: { onText: (text: string) =
         title={
           listening
             ? "Stop dictating"
-            : "Dictate into the note box. Speak de-identified facts only — the browser's speech service may process audio off-device."
+            : engine.offDevice
+              ? `Dictate into the note box via the ${engine.label.toLowerCase()}. Speak de-identified facts only — this engine may process audio off-device.`
+              : `Dictate into the note box via ${engine.label.toLowerCase()} — audio stays on this device.`
         }
         onClick={listening ? stop : start}
       >
@@ -92,7 +76,13 @@ export function DictationButton({ onText, disabled }: { onText: (text: string) =
       </button>
       {listening && (
         <span className="text-xs text-rose-800" role="status">
-          Listening — speak de-identified facts only.
+          Listening{engine.offDevice ? " — speak de-identified facts only" : ""}.
+        </span>
+      )}
+      {!listening && tidied > 0 && (
+        <span className="text-xs text-slate-500" role="status">
+          {tidied} dental term{tidied === 1 ? "" : "s"} tidied (split words joined — nothing
+          reworded).
         </span>
       )}
     </span>

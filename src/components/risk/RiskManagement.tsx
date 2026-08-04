@@ -80,6 +80,7 @@ const TOPICS: RiskTopic[] = [
       "No names, exact dates, contact details, record numbers, or identifiable photographs — the PHI gate blocks what it can see, and you catch what it cannot.",
       "The privacy-stop override is an attestation with your name on it. Use it for false positives, never for convenience.",
       "AI assist and ByteStar run behind the same PHI gate; nothing leaves for a provider while an identifier is present.",
+      "Dictation uses the browser's speech engine, which may process audio off this device — the de-identification rule applies to the SPOKEN words, not just the typed ones. Never say a patient's name into the microphone.",
       "If PHI reaches a filed note anyway, tell the Team Lead the same day — the response plan depends on speed."
     ],
     checklist: {

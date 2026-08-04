@@ -27,6 +27,7 @@ import type { FieldValue, NoteState } from "@/lib/schema/types";
 import { NoteForm } from "./NoteForm";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
+import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
@@ -91,7 +92,7 @@ export function BuilderShell({
   // Has this session made a real edit yet? Distinguishes "nothing has happened"
   // from "something happened and was reverted" — see the autosave effect.
   const hasEdited = useRef(false);
-  const [tab, setTab] = useState<"audit" | "chart" | "preview">("audit");
+  const [tab, setTab] = useState<"audit" | "chart" | "byte" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
@@ -370,7 +371,7 @@ export function BuilderShell({
         </div>
       </div>
       <div className="mb-3 flex gap-1">
-        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["preview", "Preview"]] as const).map(([t, label]) => (
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -384,6 +385,12 @@ export function BuilderShell({
       <div className="pane-60">
         {tab === "audit" ? (
           <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+        ) : tab === "byte" ? (
+          /* Byte reads the same composed markdown the chart does — one
+             memoized composition, one deferred cadence. Advice-only here; the
+             "think deeper" path lives on the Standardize screen where the
+             assist consent and queue already are. */
+          <ByteAdvisor text={markdown} />
         ) : tab === "chart" ? (
           /* Fed the COMPOSED note rather than any single field, because a
              tooth named in one field and a procedure named in another are one

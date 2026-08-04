@@ -38,7 +38,7 @@ export async function deleteUserBlock(db: Db, ownerId: string, id: number): Prom
   const rows = await db
     .delete(userBlocks)
     .where(and(eq(userBlocks.id, id), eq(userBlocks.ownerId, ownerId)))
-    .returning({ id: userBlocks.id });
+    .returning();
   return rows.length > 0;
 }
 

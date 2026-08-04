@@ -142,7 +142,7 @@ export function GauntletForm() {
       </ol>
 
       {cycle && (
-        <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="card">
           <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
             Cycle {cycle.n} of 5
           </p>
@@ -233,7 +233,7 @@ function PreFlight({
   onNext: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="card">
       <h2 className="mb-1 text-lg font-bold">Pre-flight checklist</h2>
       <p className="mb-3 text-sm text-slate-700">
         Confirm each of these before the request may be sent.
@@ -370,7 +370,7 @@ function SterilizationReport({
   onSubmit: () => void;
 }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4 shadow-sm">
+    <div className="card">
       <h2 className="mb-1 text-lg font-bold">Sterilization report</h2>
       <p className="mb-3 text-sm text-slate-700">
         {verdict.sterile

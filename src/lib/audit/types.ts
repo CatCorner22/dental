@@ -105,6 +105,36 @@ export const SEVERITY_CLASS: Record<Severity, string> = {
   S4: "border-slate-200 bg-slate-50 text-slate-700"
 };
 
+/**
+ * The severity as a LEFT RAIL rather than a full tinted box.
+ *
+ * A design review called the findings list "a wall of red shouting" and it was
+ * right: every finding was a filled, bordered, tinted box stacked hard against the
+ * next one, so eleven open required fields read as eleven alarms rather than as a
+ * checklist of eleven things to type. A rail carries the same severity information
+ * at a fraction of the visual weight, which is what lets a list of them be scanned
+ * instead of endured.
+ *
+ * Same colours as above, deliberately — the palette is the audit vocabulary and it
+ * does not get re-derived for a second presentation.
+ */
+export const SEVERITY_RAIL: Record<Severity, string> = {
+  S0: "border-l-red-500 bg-red-50/60",
+  S1: "border-l-orange-500 bg-orange-50/60",
+  S2: "border-l-amber-500 bg-amber-50/60",
+  S3: "border-l-blue-400 bg-blue-50/50",
+  S4: "border-l-slate-400 bg-slate-50/60"
+};
+
+/** The severity word as a small chip. Glanceable, not a headline. */
+export const SEVERITY_CHIP: Record<Severity, string> = {
+  S0: "bg-red-600 text-white",
+  S1: "bg-orange-600 text-white",
+  S2: "bg-amber-500 text-amber-950",
+  S3: "bg-blue-600 text-white",
+  S4: "bg-slate-500 text-white"
+};
+
 // The overall-status banner, keyed on OverallStatus so a renamed status is a
 // type error rather than an unstyled banner.
 export const STATUS_CLASS: Record<OverallStatus, string> = {

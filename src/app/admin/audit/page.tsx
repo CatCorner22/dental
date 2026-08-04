@@ -77,7 +77,7 @@ export default async function AuditLogPage({
 
   return (
     <div>
-      <h1 className="mb-1 text-2xl font-bold">Audit log</h1>
+      <h1 className="page-title mb-1">Audit log</h1>
       <p className="mb-4 text-sm text-slate-600">
         Sign-ins, user-management, and submission events, newest first. This log supports
         traceability; it contains no patient data.
@@ -106,7 +106,7 @@ export default async function AuditLogPage({
         </span>
       </div>
       <div
-        className="overflow-x-auto rounded-lg border border-slate-200 bg-white"
+        className="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200"
         tabIndex={0}
         role="region"
         aria-label="Audit log — scrolls sideways for more columns"

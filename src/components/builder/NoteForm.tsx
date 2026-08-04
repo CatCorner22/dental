@@ -114,7 +114,7 @@ export function NoteForm({
   return (
     <div className="space-y-4">
       {modules.map((mod) => (
-        <details key={mod.id} open className="rounded-lg border border-slate-200 bg-white shadow-sm">
+        <details key={mod.id} open className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
           <summary className="cursor-pointer select-none rounded-t-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800">
             {mod.title}
           </summary>

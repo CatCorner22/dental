@@ -111,7 +111,7 @@ export function Dashboard({
         <div className="flex items-center gap-3">
           <Character id="sparkle" size="lg" />
           <div>
-            <h1 className="text-2xl font-bold">Hi {displayName} 👋</h1>
+            <h1 className="page-title">Hi {displayName} 👋</h1>
             <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
           </div>
         </div>
@@ -130,7 +130,7 @@ export function Dashboard({
               // narrower button group computed a negative left edge on a
               // phone, putting the labels off-screen with no way to scroll to
               // them (absolute overflow to the left creates no scrollbar).
-              <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white p-2 shadow-lg sm:left-auto sm:w-80">
+              <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-xl bg-white ring-1 ring-slate-200 p-2 shadow-lg sm:left-auto sm:w-80">
                 {QUICK_PICKS.map((p) => (
                   <button
                     key={p.id}
@@ -153,7 +153,7 @@ export function Dashboard({
           {QUICK_PICKS.filter((p) => (FEATURED_PICK_IDS as readonly string[]).includes(p.id)).map((p) => (
             <button
               key={p.id}
-              className="rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm hover:border-blue-400 hover:bg-blue-50 disabled:opacity-50"
+              className="rounded-xl bg-white ring-1 ring-slate-200 p-3 text-left shadow-sm hover:ring-2 hover:ring-brand-blue hover:bg-blue-50 disabled:opacity-50"
               disabled={busy}
               onClick={() => createDraft(p.moduleIds, p.label)}
               title={p.description}
@@ -244,7 +244,7 @@ export function Dashboard({
               : "No drafts match your search."}
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
             {/* flex-wrap: the title link plus three shrink-0 action buttons
                 cannot fit a phone on one line, and without wrapping they
                 forced the page wider than the screen. */}
@@ -367,7 +367,7 @@ function TransferDialog({
 
 function StatsCard({ stats }: { stats: UserStats }) {
   return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
+    <div className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
       <p className="mb-2 text-center text-xs text-slate-400">
         Every clean note helps the whole team. 🦷
       </p>

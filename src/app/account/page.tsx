@@ -17,7 +17,7 @@ export default async function AccountPage() {
   const row = await getUserById(await getDb(), user.id);
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="mb-1 text-2xl font-bold">My account</h1>
+      <h1 className="page-title mb-1">My account</h1>
       <dl className="mb-6 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <dt className="font-semibold text-slate-600">Username</dt>
         <dd className="font-mono">{user.username}</dd>

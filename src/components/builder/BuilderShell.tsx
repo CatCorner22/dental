@@ -550,7 +550,7 @@ export function BuilderShell({
       <button
         type="button"
         onClick={() => setShowMobileAudit(true)}
-        className="tap mb-4 flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-2 text-left shadow-sm lg:hidden"
+        className="tap mb-4 flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm lg:hidden"
       >
         <ProgressRing counts={report.counts} />
         <span className="min-w-0 flex-1">
@@ -567,7 +567,7 @@ export function BuilderShell({
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Module rail */}
         <aside className="shrink-0 lg:w-60">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
+          <div className="card p-3 lg:sticky lg:top-20">
             <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
             <input
               type="search"
@@ -618,7 +618,7 @@ export function BuilderShell({
             covers the same ground where this would otherwise sit below the
             entire form. */}
         <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
+          <div className="card p-3 lg:sticky lg:top-20">
             {sidekickBody}
           </div>
         </aside>

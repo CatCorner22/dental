@@ -18,8 +18,8 @@ export function LocalVocabularyPanel({ entries, notesScanned }: {
 }) {
   if (notesScanned === 0) {
     return (
-      <section className="mt-8 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-lg font-bold">Shorthand the tool does not know</h2>
+      <section className="mt-8 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+        <h2 className="section-title">Shorthand the tool does not know</h2>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
           Nothing filed yet. Once notes are on file, this lists the abbreviations the practice
           uses that the transformer cannot expand — so the vocabulary can be extended from what
@@ -30,8 +30,8 @@ export function LocalVocabularyPanel({ entries, notesScanned }: {
   }
 
   return (
-    <section className="mt-8 rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-lg font-bold">Shorthand the tool does not know</h2>
+    <section className="mt-8 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+      <h2 className="section-title">Shorthand the tool does not know</h2>
       <p className="mt-1 max-w-3xl text-sm text-slate-700">
         Read from the {notesScanned.toLocaleString()} most recent filed notes. These are
         abbreviation-shaped words the transformer cannot expand and cannot flag — so they reach

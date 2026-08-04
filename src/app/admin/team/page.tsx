@@ -102,7 +102,7 @@ export default async function TeamPage() {
 
   return (
     <div className="mx-auto max-w-4xl">
-      <h1 className="mb-1 text-2xl font-bold">Team documentation health</h1>
+      <h1 className="page-title mb-1">Team documentation health</h1>
       <p className="mb-4 max-w-3xl text-sm text-slate-600">
         Macro numbers, coaching bands, and store fulfillment. Bands — never scores, never
         rankings: the point is knowing where five minutes of your time helps most, and staff are

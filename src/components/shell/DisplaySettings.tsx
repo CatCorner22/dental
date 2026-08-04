@@ -50,8 +50,8 @@ export function DisplaySettings() {
   };
 
   return (
-    <section className="rounded-lg border border-slate-200 bg-white p-4">
-      <h2 className="text-lg font-bold">Text size and contrast</h2>
+    <section className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
+      <h2 className="section-title">Text size and contrast</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-600">
         Saved on <strong>this device</strong>, not to your account — the tablet in an operatory and
         the front-desk monitor need different sizes, and the same person uses both. A shared

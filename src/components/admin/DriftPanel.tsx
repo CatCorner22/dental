@@ -56,8 +56,8 @@ export function DriftPanel({ events }: { events: DriftEvent[] }) {
 
   if (events.length === 0) {
     return (
-      <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
-        <h2 className="text-lg font-bold">AI assist — drift monitor</h2>
+      <section className="mb-6 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+        <h2 className="section-title">AI assist — drift monitor</h2>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
           No AI calls recorded. Either assist is switched off for this deployment, which is the
           default, or nobody has used it yet. Nothing here is required for the app to work.
@@ -67,9 +67,9 @@ export function DriftPanel({ events }: { events: DriftEvent[] }) {
   }
 
   return (
-    <section className="mb-6 rounded-lg border border-slate-200 bg-white p-4">
+    <section className="mb-6 rounded-xl bg-white ring-1 ring-slate-200 p-4">
       <div className="mb-2 flex flex-wrap items-center gap-3">
-        <h2 className="text-lg font-bold">AI assist — drift monitor</h2>
+        <h2 className="section-title">AI assist — drift monitor</h2>
         <span
           className={`inline-flex items-center gap-1.5 rounded-full border px-2.5 py-0.5 text-xs font-semibold ${style.chip}`}
         >

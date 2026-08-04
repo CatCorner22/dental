@@ -13,7 +13,7 @@ export default async function ResetPage({ params }: { params: Promise<{ token: s
   // POST handler is the single place that judges it.
   return (
     <div className="mx-auto max-w-sm py-10">
-      <h1 className="mb-1 text-2xl font-bold">Set your password</h1>
+      <h1 className="page-title mb-1">Set your password</h1>
       <p className="mb-4 text-sm text-slate-500">
         This link works once and expires an hour after it was sent.
       </p>

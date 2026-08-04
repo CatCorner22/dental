@@ -166,4 +166,14 @@
 //         rules in direct contradiction, found the same way as mg/kg: Byte's
 //         opioid advice failed his own blocking-audit test. The practice
 //         cannot demand a word its own vocabulary refuses to read.
-export const RULESET_VERSION = "2.15.0";
+// 2.16.0 — line breaks are clause boundaries, and clauses have a ceiling.
+//         A 1,500-line pasted note parsed as ONE clause because the tokenizer
+//         swallowed newlines as whitespace: assertion scoping inside a clause
+//         is O(facts × cues), so the paste cost 12 seconds on the keystroke
+//         path, and a "no" on line one was in scope to negate a finding forty
+//         lines down. Staff shorthand is one statement per line; the parser
+//         now agrees. A defensive 250-token clause ceiling covers the
+//         remaining adversarial shape (an unbroken wall with no punctuation).
+//         Found by a hostile stress battery, not by a user — which is the
+//         only acceptable way to find a 12-second keystroke.
+export const RULESET_VERSION = "2.16.0";

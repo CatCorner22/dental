@@ -77,6 +77,18 @@ export default async function RootLayout({ children }: { children: React.ReactNo
             documents why 'unsafe-inline' is granted for script-src; this is the
             kind of thing that exemption is for. */}
         <script dangerouslySetInnerHTML={{ __html: prefsBootScript() }} />
+        {/* Preloaded rather than left to the CSS to discover. The stylesheet
+            has to parse before the browser learns the font exists, which on a
+            cold cache is one extra round trip spent showing the fallback and
+            then reflowing — and the reflow is worst on the dense screens,
+            because Inter and Calibri do not set the same width. */}
+        <link
+          rel="preload"
+          href="/fonts/InterVariable.woff2"
+          as="font"
+          type="font/woff2"
+          crossOrigin="anonymous"
+        />
       </head>
       <body className="min-h-screen bg-brand-cream text-slate-900 antialiased">
         <a

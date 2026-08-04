@@ -26,6 +26,7 @@ import { useAutosave } from "@/lib/client/useAutosave";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
 import { NoteForm } from "./NoteForm";
 import { AuditPanel } from "./AuditPanel";
+import { NoteReadback } from "./NoteReadback";
 import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
@@ -90,7 +91,7 @@ export function BuilderShell({
   // Has this session made a real edit yet? Distinguishes "nothing has happened"
   // from "something happened and was reverted" — see the autosave effect.
   const hasEdited = useRef(false);
-  const [tab, setTab] = useState<"audit" | "preview">("audit");
+  const [tab, setTab] = useState<"audit" | "chart" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
@@ -369,7 +370,7 @@ export function BuilderShell({
         </div>
       </div>
       <div className="mb-3 flex gap-1">
-        {([["audit", `Audit (${report.findings.length})`], ["preview", "Preview"]] as const).map(([t, label]) => (
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -383,6 +384,13 @@ export function BuilderShell({
       <div className="pane-60">
         {tab === "audit" ? (
           <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+        ) : tab === "chart" ? (
+          /* Fed the COMPOSED note rather than any single field, because a
+             tooth named in one field and a procedure named in another are one
+             clinical statement and the chart has to see both. Composition is
+             already memoized on the deferred state, so this rides the same
+             off-the-keystroke-path pipeline the audit does. */
+          <NoteReadback text={markdown} />
         ) : (
           <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
         )}

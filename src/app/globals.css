@@ -2,6 +2,47 @@
 @tailwind components;
 @tailwind utilities;
 
+/* --------------------------------------------------------------------------
+ * TYPEFACE
+ *
+ * Self-hosted, because the CSP is `font-src 'self' data:` and a clinical record
+ * tool has no business making a request to a font CDN on every page load — that
+ * is a third party learning which practice is open at 7am.
+ *
+ * ONE file, the variable upright. 352 KB buys the entire 100-900 weight axis,
+ * which is what makes a real type hierarchy affordable; the italic face is a
+ * second 388 KB for the two places in the whole app that use italic, so it is
+ * omitted and those two synthesize.
+ *
+ * WHY A TYPEFACE AT ALL, in a tool that is supposed to be about safety: because
+ * of what this app renders. Tooth numbers, milligram doses, probing depths in
+ * millimetres, carpule counts. The previous stack was the operating system's
+ * default — whatever Aptos or Calibri happened to be installed — and in those
+ * faces `0` and `O` are near-identical and `1`, `l` and `I` collapse into one
+ * shape at 12px. That is a dose-misreading waiting to happen, and it is the
+ * same failure the NHS medicines-labelling guidance is written against: when
+ * multiple strengths of one thing exist, the design has to make them
+ * impossible to confuse.
+ *
+ * So the OpenType features below are not decoration:
+ *   ss02 — disambiguated 1 / l / I
+ *   zero — slashed zero, so 0 cannot be read as O
+ *   tnum — tabular figures, so a column of tooth numbers or doses aligns and a
+ *          transposed digit shows up as a ragged edge instead of hiding
+ *   cv05 — lowercase l with a tail
+ *
+ * Inter, SIL Open Font License 1.1 (see Inter-LICENSE.txt alongside the file).
+ * -------------------------------------------------------------------------- */
+@font-face {
+  font-family: "InterVariable";
+  font-style: normal;
+  font-weight: 100 900;
+  /* swap, not block: a note in progress must render even if the font 404s on a
+     cold cache in an operatory with bad wifi. */
+  font-display: swap;
+  src: url("/fonts/InterVariable.woff2") format("woff2");
+}
+
 @layer base {
   html {
     /* iOS Safari inflates text when a phone turns landscape unless this is
@@ -47,8 +88,20 @@
     /* 1rem, because the 12pt this replaces WAS 16px (12 x 96/72) — the point of
        the change is that the size now scales, not that it changes. */
     font-size: 1rem;
-    font-family: Aptos, Calibri, system-ui, -apple-system, "Segoe UI", Roboto, Helvetica,
-      Arial, sans-serif;
+    /* Line height 1.6 on body copy, per the NICE design system's published
+       scale. The old default was Tailwind's 1.5, and clinical prose is read by
+       people scanning for one fact in a paragraph they did not write. */
+    line-height: 1.6;
+    font-family: InterVariable, Aptos, Calibri, system-ui, -apple-system, "Segoe UI", Roboto,
+      Helvetica, Arial, sans-serif;
+    /* The safety features. See the @font-face block above for why each one is
+       here; the short version is that this app renders doses and tooth numbers
+       and the default system faces cannot tell 0 from O. */
+    font-feature-settings:
+      "ss02" 1,
+      "zero" 1,
+      "tnum" 1,
+      "cv05" 1;
     /* Notched and rounded screens: keep content clear of the hardware. */
     padding-left: env(safe-area-inset-left);
     padding-right: env(safe-area-inset-right);
@@ -181,11 +234,16 @@
      gives the eye something to anchor on in a page that is otherwise all body
      text. Tighter tracking at display size, which is what stops a large heading
      looking like body text that was zoomed. */
+  /* On the NICE scale now, not Tailwind's default ramp. text-2xl and text-lg
+     are one step apart in that ramp, which is why a page title and the section
+     heading under it used to read as the same level of thing. title-1 to
+     title-3 is a real interval, and the negative tracking is what stops a
+     large heading looking like body copy that was zoomed. */
   .page-title {
-    @apply text-2xl font-bold tracking-tight text-brand-navy;
+    @apply text-title-1 font-bold text-brand-navy;
   }
   .section-title {
-    @apply text-lg font-bold tracking-tight text-brand-navy;
+    @apply text-title-3 font-bold text-brand-navy;
   }
 
   /* Level 1: the ordinary content surface. A hairline ring instead of a full

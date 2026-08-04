@@ -30,6 +30,8 @@ import { GENERATED_LEXICON } from "./lexicon-generated";
 import { MEDICATION_WORDS } from "./misspellings";
 import { BANNED_ABBREVIATIONS } from "./abbreviations";
 import { SHORTHAND } from "./shorthand";
+import { ALL_UNITS } from "./units";
+import { DOSE_UNITS, MEASURE_UNITS } from "./clinical-terms";
 
 export interface UnknownAbbreviation {
   /** The token as it appeared, lower-cased. */
@@ -58,9 +60,56 @@ export interface UnknownAbbreviation {
 function abbreviationShaped(raw: string): boolean {
   const letters = raw.replace(/[^A-Za-z]/g, "");
   if (letters.length < 2 || letters.length > 6) return false;
+  // ROMAN NUMERALS ARE NOT SHORTHAND. "II", "III", "IV" are how a dental note
+  // writes a classification — ASA physical status II, Angle Class III, a
+  // Class IV restoration — and they are unexpandable because they are already
+  // the term. Uppercase and vowel-free, they matched every other test here, so
+  // the filing gate blocked notes for containing a number.
+  if (/^[IVXLCDM]+$/.test(raw)) return false;
   if (/[/.]/.test(raw)) return true;
   if (raw === raw.toUpperCase()) return true;
   return !/[aeiouy]/i.test(letters);
+}
+
+/**
+ * A UNIT OF MEASUREMENT IS NOT SHORTHAND.
+ *
+ * "mm", "kg", "mL", "mg" are two- and three-letter, vowel-free and often
+ * mixed-case, which is every heuristic in `abbreviationShaped` at once. Without
+ * this, the filing gate blocked a note for containing a millimetre — which is
+ * to say it blocked essentially every clinical note there is, including two
+ * fully-written-out training scenarios whose entire purpose is to show what a
+ * clean note looks like.
+ *
+ * They are also not shorthand in the sense that matters: nobody has to look
+ * "mm" up in five years, and expanding it to "millimeters" would be worse
+ * style, not better. Excluded at the shared predicate rather than in the gate,
+ * so the practice-vocabulary counter also stops proposing that someone add
+ * "mm" to the dictionary.
+ */
+const UNIT_TOKENS: ReadonlySet<string> = new Set(
+  [
+    ...ALL_UNITS,
+    ...DOSE_UNITS.map((u) => u.token),
+    ...MEASURE_UNITS.map((u) => u.token),
+    // Written forms the tables above do not carry as tokens.
+    "mmhg",
+    "ml",
+    "cc",
+    "iu",
+    "meq",
+    "mmol",
+    "ppm",
+    "psi",
+    "hr",
+    "hrs",
+    "sec",
+    "secs"
+  ].map((u) => u.toLowerCase().replace(/[^a-z]/g, ""))
+);
+
+function isUnit(token: string): boolean {
+  return UNIT_TOKENS.has(token.toLowerCase().replace(/[^a-z]/g, ""));
 }
 
 /** Every token any vocabulary table already matches, so it is not unknown. */
@@ -107,6 +156,23 @@ function isKnownWord(token: string): boolean {
     GENERATED_LEXICON.has(w) ||
     MEDICATION_WORDS.has(w)
   );
+}
+
+/**
+ * Is this token shorthand that no vocabulary table can read?
+ *
+ * Exported so the filing gate and this counter share ONE definition. They are
+ * two halves of the same loop: the gate stops a note containing shorthand
+ * nobody will be able to read in five years, and the counter is the route by
+ * which that shorthand gets added to the tables so the next occurrence is free.
+ * If the two disagreed, a writer could be blocked on a token the practice's own
+ * vocabulary process was blind to — a dead end with no way out.
+ */
+export function looksLikeShorthand(token: string): boolean {
+  if (!abbreviationShaped(token)) return false;
+  if (isUnit(token)) return false;
+  if (isKnownWord(token)) return false;
+  return !isAlreadyKnownToTables(token);
 }
 
 /**

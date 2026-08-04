@@ -154,6 +154,36 @@ export function noteMetrics(note: FiledNote): NoteMetrics {
   };
 }
 
+/**
+ * What KIND of note this is, derived rather than stored.
+ *
+ * The digest compares like with like, so it needs a note type — and the
+ * submissions table does not store one. The options were a schema change and a
+ * migration over frozen historical rows, or deriving it.
+ *
+ * Deriving wins, and not only because it is cheaper: the dominant procedure
+ * category IS what makes two notes comparable. A note whose heaviest procedure
+ * is surgical belongs with other surgical notes whatever module produced it,
+ * and a module label would have grouped by which form someone opened rather
+ * than by what they did.
+ *
+ * "unclassified" when no procedure was recognised. That bucket is honest — it
+ * holds the notes the parser could not categorise — and grouping them together
+ * means a coverage complaint about them lands as one signal rather than
+ * scattering across every real category.
+ */
+export function deriveNoteType(markdown: string): string {
+  const counts = new Map<string, number>();
+  for (const fact of extractFacts(markdown).facts) {
+    if (fact.kind !== "procedure") continue;
+    if (fact.assertion.polarity !== "affirmed") continue;
+    counts.set(fact.category, (counts.get(fact.category) ?? 0) + 1);
+  }
+  if (counts.size === 0) return "unclassified";
+  // Ties broken alphabetically so the result is deterministic across runs.
+  return [...counts.entries()].sort((a, b) => b[1] - a[1] || a[0].localeCompare(b[0]))[0][0];
+}
+
 /** Median rather than mean, throughout. One 4,000-word note must not move the bar. */
 export function median(values: number[]): number {
   if (values.length === 0) return 0;

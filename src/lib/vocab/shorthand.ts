@@ -116,6 +116,49 @@ export const SHORTHAND: Shorthand[] = [
   // ---- Procedures
   { id: "rct", pattern: /\bRCTs?\b/gi, display: "RCT", expansion: "root canal therapy", pluralExpansion: "root canal therapies", domain: "dental" },
   { id: "srp", pattern: /\bSRP\b/gi, display: "SRP", expansion: "scaling and root planing", domain: "dental" },
+
+  // ---- Sedation and anaesthesia monitoring.
+  //
+  // Added because the filing gate found them, which is the loop working: the
+  // app's own sedation module names these monitors, the gate blocked filing on
+  // shorthand no table could read, and the route out that its message promises
+  // is exactly this — put it in the vocabulary and the next occurrence is free.
+  //
+  // The alternative would have been to soften the gate, and that is the trade
+  // to refuse. A monitoring term nobody can expand in five years is a real
+  // problem in a sedation record specifically, which is the note most likely to
+  // be read by a stranger under pressure.
+  {
+    id: "etco2",
+    // The digit is part of the term, not a number after it.
+    pattern: /\bETCO2\b/gi,
+    display: "ETCO2",
+    expansion: "end-tidal carbon dioxide",
+    domain: "medical"
+  },
+  {
+    id: "spo2",
+    pattern: /\bSpO2\b/gi,
+    display: "SpO2",
+    expansion: "peripheral oxygen saturation",
+    domain: "medical"
+  },
+  {
+    id: "ecg",
+    // ECG and EKG are the same investigation; both expand to the same words, so
+    // there is no ambiguity to ask about.
+    pattern: /\bE[CK]G\b/g,
+    display: "ECG",
+    expansion: "electrocardiography",
+    domain: "medical"
+  },
+  {
+    id: "nibp",
+    pattern: /\bNIBP\b/gi,
+    display: "NIBP",
+    expansion: "non-invasive blood pressure",
+    domain: "medical"
+  },
   { id: "ohi", pattern: /\bOHI\b/gi, display: "OHI", expansion: "oral hygiene instruction", domain: "dental" },
   {
     id: "coe",

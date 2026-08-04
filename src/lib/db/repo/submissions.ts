@@ -1,4 +1,4 @@
-import { and, desc, eq, ne, sql } from "drizzle-orm";
+import { and, desc, eq, gte, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, type SubmissionRow } from "../schema";
 import { formatTicket } from "@/lib/tickets/ticket";
@@ -154,6 +154,48 @@ const submissionSummaryColumns = {
   // practice renames an office.
   officeName: submissions.officeName
 };
+
+/**
+ * The columns the Team Lead digest needs, for notes filed since a cutoff.
+ *
+ * A separate query from listAllSubmissions because it pulls the two BIG frozen
+ * columns — the note markdown and the audit report — and the history list must
+ * never start dragging those across the wire to render a table of filenames.
+ *
+ * Bounded by both a date and a row cap. A digest is a review of a period, and
+ * an unbounded scan of every note the practice has ever filed is a different,
+ * much more expensive thing that nobody asked for.
+ */
+export async function listSubmissionsForDigest(
+  db: Db,
+  sinceUtc: Date,
+  limit = 2000
+): Promise<
+  Array<{
+    id: number;
+    submittedById: string;
+    submittedByName: string;
+    submittedAtEt: string;
+    noteMarkdown: string;
+    auditReport: string;
+    filename: string;
+  }>
+> {
+  return db
+    .select({
+      id: submissions.id,
+      submittedById: submissions.submittedById,
+      submittedByName: submissions.submittedByName,
+      submittedAtEt: submissions.submittedAtEt,
+      noteMarkdown: submissions.noteMarkdown,
+      auditReport: submissions.auditReport,
+      filename: submissions.filename
+    })
+    .from(submissions)
+    .where(gte(submissions.submittedAtUtc, sinceUtc))
+    .orderBy(desc(submissions.submittedAtUtc))
+    .limit(limit);
+}
 
 export async function listAllSubmissions(
   db: Db,

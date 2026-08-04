@@ -53,11 +53,12 @@ import {
 } from "@/lib/vocab/clinical-terms";
 import { MEDICATION_WORDS } from "@/lib/vocab/misspellings";
 import type { Surface } from "@/lib/schema/types";
-import { assertionFor } from "./context";
+import { assertionFor, findMatches, type Match } from "./context";
 import { clauseRanges, tokenize, type Token } from "./tokenize";
 import type {
   CareEventFact,
   ClinicalFact,
+  Quadrant,
   ExtractionResult,
   FindingFact,
   MaterialFact,
@@ -265,6 +266,39 @@ function readSiteGroup(tokens: Token[], i: number, clauseEnd: number): ParsedSit
   return { sites, end: cursor, tokenFrom: start };
 }
 
+/**
+ * Term tables indexed by their FIRST token.
+ *
+ * The tables are searched at every token position in every clause, and there
+ * are about 175 terms across the four of them. Scanning all of them at every
+ * position is O(positions x terms), which on a loaded note was a measurable
+ * share of an audit that runs on every keystroke.
+ *
+ * Bucketing by first token turns the common case — a word that begins no term
+ * at all, which is most words — into one Map lookup that misses. Buckets stay
+ * in longest-literal-first order, so "root canal therapy" still beats "root
+ * canal" and the result is byte-identical to the linear scan it replaces.
+ *
+ * Built lazily and cached: a WeakMap keyed on the table array, so a table is
+ * indexed once per process rather than once per call, without this module
+ * needing to know how many tables exist.
+ */
+const literalIndexCache = new WeakMap<object, Map<string, unknown[]>>();
+
+function literalIndex<T extends { literal: string[] }>(table: T[]): Map<string, T[]> {
+  const cached = literalIndexCache.get(table);
+  if (cached) return cached as Map<string, T[]>;
+  const index = new Map<string, T[]>();
+  for (const term of table) {
+    const key = term.literal[0];
+    const bucket = index.get(key);
+    if (bucket) bucket.push(term);
+    else index.set(key, [term]);
+  }
+  literalIndexCache.set(table, index as Map<string, unknown[]>);
+  return index;
+}
+
 /** Match the longest literal from a table at position `i`. */
 function readLiteral<T extends { literal: string[] }>(
   table: T[],
@@ -272,11 +306,13 @@ function readLiteral<T extends { literal: string[] }>(
   i: number,
   clauseEnd: number
 ): { term: T; from: number; to: number } | undefined {
-  for (const term of table) {
+  const candidates = literalIndex(table).get(tokens[i].lower);
+  if (!candidates) return undefined;
+  for (const term of candidates) {
     const len = term.literal.length;
     if (i + len > clauseEnd) continue;
     let ok = true;
-    for (let k = 0; k < len; k++) {
+    for (let k = 1; k < len; k++) {
       if (tokens[i + k].lower !== term.literal[k]) {
         ok = false;
         break;
@@ -293,6 +329,58 @@ function readProcedure(
   clauseEnd: number
 ): { term: ProcedureTerm; from: number; to: number } | undefined {
   return readLiteral(PROCEDURE_TERMS_BY_LENGTH, tokens, i, clauseEnd);
+}
+
+/**
+ * Quadrant references in a clause.
+ *
+ * UPPERCASE ONLY for the two-letter codes, matching the discipline the
+ * shorthand table already applies to them and for the reason its comment gives:
+ * "ur", "ul", "ll" and "lr" turn up inside ordinary typing far more often than
+ * they turn up as quadrants. The spelled forms are matched case-insensitively,
+ * because there is nothing else "upper right" can mean here.
+ */
+const QUADRANT_CODES: Record<string, Quadrant> = { UR: "UR", UL: "UL", LL: "LL", LR: "LR" };
+const QUADRANT_WORDS: Array<{ words: string[]; quadrant: Quadrant }> = [
+  { words: ["upper", "right"], quadrant: "UR" },
+  { words: ["upper", "left"], quadrant: "UL" },
+  { words: ["lower", "left"], quadrant: "LL" },
+  { words: ["lower", "right"], quadrant: "LR" },
+  { words: ["maxillary", "right"], quadrant: "UR" },
+  { words: ["maxillary", "left"], quadrant: "UL" },
+  { words: ["mandibular", "left"], quadrant: "LL" },
+  { words: ["mandibular", "right"], quadrant: "LR" }
+];
+
+function readQuadrants(tokens: Token[], from: number, to: number): Quadrant[] {
+  const found: Quadrant[] = [];
+  const add = (q: Quadrant) => {
+    if (!found.includes(q)) found.push(q);
+  };
+  for (let i = from; i < to; i++) {
+    const tok = tokens[i];
+    if (tok.kind !== "word") continue;
+    const code = QUADRANT_CODES[tok.text];
+    if (code) {
+      add(code);
+      continue;
+    }
+    for (const entry of QUADRANT_WORDS) {
+      if (i + entry.words.length > to) continue;
+      let ok = true;
+      for (let k = 0; k < entry.words.length; k++) {
+        if (tokens[i + k].lower !== entry.words[k]) {
+          ok = false;
+          break;
+        }
+      }
+      if (ok) {
+        add(entry.quadrant);
+        break;
+      }
+    }
+  }
+  return found;
 }
 
 const numberOf = (t: Token | undefined): number | undefined => {
@@ -543,18 +631,31 @@ export function extractFacts(text: string): ExtractionResult {
       end: tokens[to - 1].end
     });
 
+    // ONE scan of the clause's negation and temporality cues, shared by every
+    // fact in it. Recomputing per fact made a five-fact clause scan the same
+    // tokens against the same ~150 rules five times, and this runs inside the
+    // per-keystroke audit.
+    const clauseMatches: Match[] = findMatches(tokens, clause.from, clause.to);
+
+    // Clause-scoped, like sites: "SRP UR and LR quads" binds both quadrants to
+    // the scaling, and the comma split already stops them leaking into the next
+    // assertion.
+    const regions = readQuadrants(tokens, clause.from, clause.to);
+    const withRegions = regions.length > 0 ? { regions } : {};
+
     if (procedure) {
       const targetFrom = Math.min(procedure.from, siteTokenFrom < 0 ? procedure.from : siteTokenFrom);
       const targetTo = Math.max(procedure.to, siteTokenTo);
       facts.push({
         kind: "procedure",
         span: spanOf(targetFrom, targetTo),
-        assertion: assertionFor(tokens, clause, procedure.from, procedure.to),
+        assertion: assertionFor(tokens, clause, procedure.from, procedure.to, clauseMatches),
         ruleId: procedure.term.id,
         sentenceIndex,
         procedure: procedure.term.display,
         category: procedure.term.category,
-        sites
+        sites,
+        ...withRegions
       } satisfies ProcedureFact);
     }
 
@@ -566,7 +667,7 @@ export function extractFacts(text: string): ExtractionResult {
       // parser could make.
       const assertion = find.impliesNegation
         ? ({ polarity: "negated", experiencer: "patient" } as const)
-        : assertionFor(tokens, clause, find.from, find.to);
+        : assertionFor(tokens, clause, find.from, find.to, clauseMatches);
       facts.push({
         kind: "finding",
         span: spanOf(find.from, find.to),
@@ -574,7 +675,8 @@ export function extractFacts(text: string): ExtractionResult {
         ruleId: find.id,
         sentenceIndex,
         finding: find.display,
-        sites
+        sites,
+        ...withRegions
       } satisfies FindingFact);
     }
 
@@ -582,7 +684,7 @@ export function extractFacts(text: string): ExtractionResult {
       facts.push({
         kind: "care-event",
         span: spanOf(care.from, care.to),
-        assertion: assertionFor(tokens, clause, care.from, care.to),
+        assertion: assertionFor(tokens, clause, care.from, care.to, clauseMatches),
         ruleId: care.id,
         sentenceIndex,
         event: care.display
@@ -593,11 +695,12 @@ export function extractFacts(text: string): ExtractionResult {
       facts.push({
         kind: "material",
         span: spanOf(mat.from, mat.to),
-        assertion: assertionFor(tokens, clause, mat.from, mat.to),
+        assertion: assertionFor(tokens, clause, mat.from, mat.to, clauseMatches),
         ruleId: mat.id,
         sentenceIndex,
         material: mat.display,
-        sites
+        sites,
+        ...withRegions
       } satisfies MaterialFact);
     }
 
@@ -615,7 +718,7 @@ export function extractFacts(text: string): ExtractionResult {
       facts.push({
         kind: "medication",
         span: spanOf(med.from, med.to),
-        assertion: assertionFor(tokens, clause, med.from, med.to),
+        assertion: assertionFor(tokens, clause, med.from, med.to, clauseMatches),
         ruleId: `med.${med.drug}`,
         sentenceIndex,
         drug: med.drug,
@@ -637,7 +740,7 @@ export function extractFacts(text: string): ExtractionResult {
       facts.push({
         kind: "measurement",
         span: spanOf(qty.from, qty.to),
-        assertion: assertionFor(tokens, clause, qty.from, qty.to),
+        assertion: assertionFor(tokens, clause, qty.from, qty.to, clauseMatches),
         ruleId: `measure.${unit}`,
         sentenceIndex,
         amount: qty.amount,
@@ -656,7 +759,7 @@ export function extractFacts(text: string): ExtractionResult {
         facts.push({
           kind: "tooth-site",
           span: site.span,
-          assertion: assertionFor(tokens, clause, siteTokenFrom, siteTokenTo),
+          assertion: assertionFor(tokens, clause, siteTokenFrom, siteTokenTo, clauseMatches),
           ruleId: "site.bare",
           sentenceIndex,
           site

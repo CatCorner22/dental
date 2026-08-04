@@ -12,6 +12,22 @@ export interface BannedAbbreviation {
   display: string; // shorthand as staff type it
   replacement: string; // "use when true"
   severityClass: "style" | "review";
+  /**
+   * A Joint Commission / ISMP do-not-use construct: one with a documented
+   * history of being MISREAD, where the remedy is always that a person writes
+   * the words out.
+   *
+   * This flag is what makes the entry BLOCK FILING rather than merely advise.
+   * The distinction it draws is the whole reason the filing gate is tiered:
+   * "X-ray" for "radiograph" is untidy and "10U" for "10 units" has turned ten
+   * into a hundred, and a gate that treated them the same would teach people to
+   * clear both with the same reflex.
+   *
+   * These are never auto-expanded. Expanding a dangerous abbreviation launders
+   * it — the note comes out clean, the reader is reassured, and the writing
+   * habit that caused the misreading survives intact.
+   */
+  doNotUse?: true;
 }
 
 export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
@@ -137,14 +153,16 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     pattern: /\b\d+\s?[Uu]\b/g,
     display: "U (units)",
     replacement: 'write "units" in full — U is read as a zero, so 10U becomes 100',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     id: "unit-iu",
     pattern: /\b\d+\s?IU\b|\bIU\b/g,
     display: "IU",
     replacement: 'write "international units" in full — IU is read as IV or as the number 10',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     id: "morphine-ms",
@@ -159,7 +177,8 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     // across a drug AND a diagnosis is exactly why the term is on the list.
     replacement:
       "write the term out in full — MS is read as morphine sulfate, as magnesium sulfate, and as multiple sclerosis",
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     id: "prn",
@@ -382,7 +401,8 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     pattern: /\bq?\.?h\.?s\.?(?=[\s,.;:)]|$)/gi,
     display: "hs / qhs",
     replacement: 'write "at bedtime" — hs is also read as half-strength',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     id: "tiw",
@@ -390,7 +410,8 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     display: "TIW / BIW",
     replacement:
       'write "three times a week" or "twice a week" in full — TIW is read as three times a DAY',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     // OD is the one with three readings and the worst consequences: right eye,
@@ -400,21 +421,24 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     display: "OD / OS / OU / AD / AS / AU",
     replacement:
       'name the eye or ear in words — OD is read as right eye, as once daily, and as overdose',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     id: "one-half-ss",
     pattern: /\b\d+\s?ss\b|\bss\b(?=\s*(?:mg|mL|ml|tab))/gi,
     display: "ss (one half)",
     replacement: 'write "one half" or use 0.5 — ss is read as the number 55',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     id: "apap",
     pattern: /\bAPAP\b/gi,
     display: "APAP",
     replacement: 'write "acetaminophen" in full — APAP is not recognised by everyone who reads it',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     // cc is read as U, which is how a volume becomes a hundredfold dose. mL is
@@ -424,7 +448,8 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     pattern: /\b\d+\s?cc\b/gi,
     display: "cc (cubic centimeters)",
     replacement: 'write mL — cc is misread as U, turning a volume into units',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
   {
     // Discharge and discontinue are opposite instructions.
@@ -432,7 +457,8 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     pattern: /\bD\/C\b/gi,
     display: "D/C",
     replacement: 'write "discharge" or "discontinue" — D/C is read as both',
-    severityClass: "review"
+    severityClass: "review",
+    doNotUse: true
   },
 
   {
@@ -464,7 +490,7 @@ export const BANNED_ABBREVIATIONS: BannedAbbreviation[] = [
     replacement:
       'write "twice daily" — bare "bid" is left alone because it is also an ordinary English word',
     severityClass: "review"
-  },
+      },
 
   // ---- Ambiguous: the tool asks, because the reading changes the record.
   {

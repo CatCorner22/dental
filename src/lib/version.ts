@@ -88,4 +88,46 @@
 //         an allergy is the most dangerous inference available to this parser,
 //         so the term's own meaning overrides surrounding cues rather than
 //         combining with them.
-export const RULESET_VERSION = "2.10.0";
+// 2.11.0 — the tiered shorthand filing gate (audit/rules/shorthand-gate.ts).
+//         Ambiguous shorthand, shorthand no table can read, and Joint
+//         Commission / ISMP do-not-use constructs now raise S1 and stop FILING.
+//         Shorthand the tables can already expand is untouched and still costs
+//         the writer nothing, because a gate that stops "BW" and "10U" with the
+//         same force teaches people to clear both with the same reflex.
+//
+//         Four false positives found by the existing suite while building it,
+//         each of which would have been enough on its own to get the gate
+//         switched off: units of measurement ("5 mm" blocked a note for
+//         containing a millimetre), Roman numerals ("ASA II"), the tool's own
+//         PHI masks (blocking a note BECAUSE it had been redacted), and
+//         alphanumeric terms truncated at the first digit ("ETCO2" reported as
+//         "ETCO"). All four are now pinned regression tests.
+//
+//         New controlled vocabulary: ETCO2, SpO2, ECG/EKG, NIBP. The sedation
+//         module's own labels were rewritten to define ASA and ETCO2 on first
+//         use, because the app failing its own gate is a real finding.
+// 2.12.0 — quadrants are extracted as REGIONS. "SRP UR and LR quads" now
+//         reaches the chart as two bands rather than as nothing, and it is
+//         deliberately NOT expanded into sixteen tooth facts: a quadrant says
+//         work happened in a region and does not say which teeth, so filling
+//         them in would put a claim on the chart the note never made. A region
+//         is dropped when the note also named teeth inside it, because the
+//         teeth are the more specific statement.
+// 2.13.0 — local anaesthetic maximum-dose arithmetic (rules/anesthetic-dose.ts).
+//         The first rule in this product that only exists because the
+//         transformer READS notes: "2 carp lido 2%" contains no "mg", so no
+//         regex over milligrams can reach it. The dose is implied by three
+//         conventions -- 1.8 mL per carpule, 2% = 20 mg/mL -- and getting to a
+//         number needs structured facts.
+//
+//         S2, never blocking, and that is a safety decision rather than
+//         caution: a note is a RECORD, and if more than the maximum was given
+//         the note MUST say so. A gate refusing to file it would suppress the
+//         documentation of the event it was worried about, and teach staff to
+//         under-record doses to get the note out.
+//
+//         Fires only on exceedance, never on approaching a limit, and only
+//         when volume and concentration are both stated. An incomplete dose is
+//         silent: an earlier version blamed the writer for a complete note the
+//         extractor could not assemble across a clause boundary.
+export const RULESET_VERSION = "2.13.0";

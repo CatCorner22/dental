@@ -111,6 +111,9 @@ export type FactKind =
   | "material"
   | "care-event";
 
+/** ADA quadrant codes, as the practice's own shorthand table spells them. */
+export type Quadrant = "UR" | "UL" | "LL" | "LR";
+
 interface FactBase {
   kind: FactKind;
   span: Span;
@@ -119,6 +122,19 @@ interface FactBase {
   ruleId: string;
   /** Index of the sentence this came from, for scoping consistency checks. */
   sentenceIndex: number;
+  /**
+   * Quadrants the clause named, as REGIONS — never expanded into teeth.
+   *
+   * "SRP UR and LR quads" says scaling was done in two quadrants. It does NOT
+   * say which of the sixteen teeth were instrumented, and turning a quadrant
+   * into eight tooth facts would put a claim in the chart that the note never
+   * made — the precise thing this layer exists not to do.
+   *
+   * So a region stays a region all the way to the chart, where it is drawn as
+   * a band rather than as filled teeth. Half a mouth of perio treatment
+   * becomes visible, and it stays visibly different from named teeth.
+   */
+  regions?: Quadrant[];
 }
 
 export interface ToothSiteFact extends FactBase {

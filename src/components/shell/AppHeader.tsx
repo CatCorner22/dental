@@ -37,9 +37,15 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                     ? [{ href: "/standardize", label: "Standardize" }]
                     : []),
                   { href: "/history", label: "History" },
+                  // Team Lead and above. Named "Digest" rather than "Quality"
+                  // or "Review": those words describe judging people, and this
+                  // page reports patterns and explicitly re-scopes anything
+                  // most of the practice would be flagged for onto the tool.
+                  ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }] : []),
                   // Store stays at /store for anyone who bookmarks it, but it is
                   // not in the primary nav — a points shop next to "start a note"
-                  // invites comparison and hallway scorekeeping.
+                  // invites comparison and hallway scorekeeping. (Same reasoning
+                  // the digest itself follows: patterns, never a scoreboard.)
                   { href: "/wishes", label: "Wish list" },
                   ...(canManageUsers(user.role)
                     ? [{ href: "/admin/team", label: "Team", activePrefix: "/admin/team" }]

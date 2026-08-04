@@ -144,6 +144,25 @@ const TOOTH_ISH = (t: Token | undefined): boolean => {
   return t.kind === "word" && /^[A-T]$/.test(t.text);
 };
 
+/**
+ * A comma introducing WHERE the preceding clause happened.
+ *
+ * "Scaling and root planing, upper right and lower left quadrants" is one
+ * assertion written in two halves, and splitting it stranded the location in a
+ * clause with no procedure to attach to — so a note that plainly said which
+ * quadrants were treated charted nothing at all.
+ *
+ * Narrow on purpose: only a quadrant reference immediately after the comma
+ * counts. Anything else is a genuine new assertion and must still split, for
+ * the negation-scope reason in the header.
+ */
+const QUADRANT_START = new Set(["upper", "lower", "maxillary", "mandibular"]);
+const LOCATION_ISH = (t: Token | undefined): boolean => {
+  if (!t || t.kind !== "word") return false;
+  if (/^(?:UR|UL|LL|LR)$/.test(t.text)) return true;
+  return QUADRANT_START.has(t.lower);
+};
+
 export function clauseRanges(tokens: Token[]): Array<{ from: number; to: number }> {
   const ranges: Array<{ from: number; to: number }> = [];
   let from = 0;
@@ -151,7 +170,10 @@ export function clauseRanges(tokens: Token[]): Array<{ from: number; to: number 
     const t = tokens[i];
     if (t.kind !== "punct") continue;
     let isBreak = t.text === ";" || t.text === "." || t.text === "!" || t.text === "?";
-    if (t.text === ",") isBreak = !(TOOTH_ISH(tokens[i - 1]) && TOOTH_ISH(tokens[i + 1]));
+    if (t.text === ",") {
+      const insideToothList = TOOTH_ISH(tokens[i - 1]) && TOOTH_ISH(tokens[i + 1]);
+      isBreak = !insideToothList && !LOCATION_ISH(tokens[i + 1]);
+    }
     if (isBreak) {
       if (i > from) ranges.push({ from, to: i });
       from = i + 1;

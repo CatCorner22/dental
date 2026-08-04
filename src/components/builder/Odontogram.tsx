@@ -3,7 +3,7 @@
 import { useMemo } from "react";
 import type { Surface, ToothId } from "@/lib/schema/types";
 import type { ChartMark } from "@/lib/extract/chart";
-import type { ProcedureCategory } from "@/lib/extract/facts";
+import type { ProcedureCategory, Quadrant } from "@/lib/extract/facts";
 import { PERMANENT_MANDIBULAR_ORDER, PERMANENT_MAXILLARY_ORDER, getTooth } from "@/lib/vocab/teeth";
 
 // THE READBACK. See src/lib/extract/chart.ts for why this exists; the short
@@ -200,13 +200,52 @@ function Arch({
   );
 }
 
+const QUADRANT_LABEL: Record<Quadrant, string> = {
+  UR: "upper right",
+  UL: "upper left",
+  LL: "lower left",
+  LR: "lower right"
+};
+
+/**
+ * A quadrant the note treated without naming a tooth.
+ *
+ * Drawn as a BAND along the arch rather than as filled teeth, and the
+ * difference is a claim about the note, not a style choice: "SRP upper right"
+ * says work happened in a quadrant and does not say which of eight teeth were
+ * instrumented. Filling them in would put a statement on the chart that the
+ * note never made.
+ */
+function RegionBand({ quadrant, y }: { quadrant: Quadrant; y: number }) {
+  const isUpper = quadrant === "UR" || quadrant === "UL";
+  // Viewer's left is the patient's right.
+  const onViewerLeft = quadrant === "UR" || quadrant === "LR";
+  const halfWidth = 8 * TOOTH_W + 7 * GAP;
+  const x = onViewerLeft ? 0 : halfWidth + GAP;
+  return (
+    <g>
+      <rect
+        x={x}
+        y={isUpper ? y - 3 : y + TOOTH_H + 1}
+        width={halfWidth}
+        height={3}
+        fill="#5FB3A8"
+        rx={1.5}
+      />
+      <title>{`${QUADRANT_LABEL[quadrant]} quadrant treated; the note did not name individual teeth`}</title>
+    </g>
+  );
+}
+
 export interface OdontogramProps {
   marks: ChartMark[];
+  /** Quadrants treated without a tooth being named. */
+  regions?: Quadrant[];
   /** Called with a tooth id when a tooth is activated. */
   onSelectTooth?: (id: ToothId) => void;
 }
 
-export function Odontogram({ marks, onSelectTooth }: OdontogramProps) {
+export function Odontogram({ marks, regions = [], onSelectTooth }: OdontogramProps) {
   const byTooth = useMemo(() => new Map(marks.map((m) => [m.toothId, m])), [marks]);
   const width = 16 * TOOTH_W + 15 * GAP;
   const used = useMemo(() => {
@@ -249,7 +288,22 @@ export function Odontogram({ marks, onSelectTooth }: OdontogramProps) {
           patient&apos;s left
         </text>
         <Arch order={PERMANENT_MANDIBULAR_ORDER} marks={byTooth} y={TOOTH_H + 32} onSelect={onSelectTooth} />
+        {regions.map((q) => (
+          <RegionBand key={q} quadrant={q} y={q === "UR" || q === "UL" ? 0 : TOOTH_H + 32} />
+        ))}
       </svg>
+
+      {regions.length > 0 && (
+        <p className="mt-2 text-xs text-slate-700">
+          <span
+            aria-hidden
+            className="mr-1.5 inline-block h-1 w-4 rounded-sm align-middle"
+            style={{ backgroundColor: "#5FB3A8" }}
+          />
+          Treated by quadrant ({regions.map((q) => QUADRANT_LABEL[q]).join(", ")}). The note did not
+          name individual teeth, so none are marked.
+        </p>
+      )}
 
       {used.length > 0 && (
         <ul className="mt-2 flex flex-wrap gap-x-3 gap-y-1 text-xs text-slate-700">

@@ -150,4 +150,20 @@
 //         are contextually required BY THE RULE — hygiene-service notes, once
 //         the law is in force — and deliberately not schema-required, because
 //         a plainly required field blocks every draft already saved.
-export const RULESET_VERSION = "2.14.0";
+// 2.15.0 — unit COMPOUNDS pass the filing gate. "mg/kg" — the standard
+//         weight-based dosing notation, which the medication-safety rules
+//         themselves match — read as unknown shorthand because isUnit()
+//         stripped the slash and looked up "mgkg". A slash-joined token whose
+//         every part is a known unit is now a unit ("mg/kg", "L/min"). Found
+//         when Byte's own dosing advice, quoting the published 4.4 mg/kg
+//         ceiling, tripped the gate that would next have tripped on a real
+//         note. Recorded late: the change shipped with the advisor commit and
+//         should have carried this bump the same day.
+//
+//         Also under this bump: CSMD and PMP join the vocabulary. The opioid
+//         rule REQUIRES "CSMD reviewed" in the note while the filing gate
+//         blocked any note containing the token as unknown shorthand — two
+//         rules in direct contradiction, found the same way as mg/kg: Byte's
+//         opioid advice failed his own blocking-audit test. The practice
+//         cannot demand a word its own vocabulary refuses to read.
+export const RULESET_VERSION = "2.15.0";

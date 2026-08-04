@@ -8,8 +8,8 @@ import { runTextAudit } from "@/lib/audit/engine";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
+import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { TextDiff } from "@/components/diff/TextDiff";
-import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import type { VerifiedExtraction } from "@/lib/assist/extraction";
 import {
   andon,
@@ -693,12 +693,15 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
             cadence, one source of truth, zero extra keystroke cost. Read-only
             by architecture — the panel has no path into the note. "Think
             deeper" routes to the existing verified interrogate capability. */}
-        <div className="mb-4">
+        <div className="mb-4 space-y-3">
           <ByteAdvisor
             text={deferredInput}
             assistEnabled={assistEnabled}
             onAskDeeper={() => runAssist("interrogate")}
           />
+          {/* ByteStar is the optional pioneer. Opt-in + disclaimer live inside
+              the panel; deployment gate is server-side and silent. */}
+          <ByteStarAdvisor text={deferredInput} />
         </div>
         {result === null ? (
           live === null ? (

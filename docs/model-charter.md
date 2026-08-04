@@ -33,6 +33,15 @@ Using the guide's control ladder:
 optional, verifier-gated Level 0 assist.** It is not a bespoke LLM, and calling
 it one would be the category error the guide opens with.
 
+**Byte vs ByteStar.** Byte is the always-on deterministic advisor (practice
+knowledge compiled into trigger→advice entries; no provider call). **ByteStar**
+is the optional pioneer path: Level 0 prompting against the same gateway, plus
+silent killswitch (`BYTESTAR_KILL`), escape backstops, PHI gate, meaning
+verification on any proposed rewrite, device opt-in with a fixed experimental
+disclaimer, and a Team Lead–visible transparent log (`bytestar.*` audit
+actions). ByteStar suggests; it never writes the note and never touches the
+deterministic engine. No learned parameters ship in this repository.
+
 That is not a deficiency to be corrected. It is the design. The differentiator
 this product sells is that every output is reproducible against a stamped
 ruleset version, and learned parameters are in tension with that by

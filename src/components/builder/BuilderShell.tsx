@@ -2,12 +2,22 @@
 
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 
-import { useCallback, useEffect, useMemo, useReducer, useRef, useState } from "react";
+import {
+  useCallback,
+  useDeferredValue,
+  useEffect,
+  useMemo,
+  useReducer,
+  useRef,
+  useState
+} from "react";
+import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { computeGates, runAudit } from "@/lib/audit/engine";
+import { OMISSION_NOTICE_THRESHOLD, omissionReport } from "@/lib/audit/omissions";
 import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
@@ -16,10 +26,28 @@ import { useAutosave } from "@/lib/client/useAutosave";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
 import { NoteForm } from "./NoteForm";
 import { AuditPanel } from "./AuditPanel";
+import { NoteReadback } from "./NoteReadback";
 import { SaveIndicator } from "./SaveIndicator";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
-import { ConflictDialog, PhiOverrideDialog, SubmitDialog } from "./BuilderDialogs";
+import { Dialog } from "@/components/ui/Dialog";
+
+// None of these three render on first paint — a conflict, a PHI override,
+// and a submit confirmation are all things that happen only after an edit
+// or a click. Splitting them out of the initial chunk keeps their weight
+// (and react-markdown-adjacent Sparkle copy) off the note page's first load,
+// which is the heaviest page in the app. `ssr: false` is safe: none of the
+// three is ever the FIRST thing rendered for a request — they only appear
+// after client-side state changes post-mount.
+const ConflictDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.ConflictDialog), {
+  ssr: false
+});
+const PhiOverrideDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.PhiOverrideDialog), {
+  ssr: false
+});
+const SubmitDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.SubmitDialog), {
+  ssr: false
+});
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -63,12 +91,19 @@ export function BuilderShell({
   // Has this session made a real edit yet? Distinguishes "nothing has happened"
   // from "something happened and was reverted" — see the autosave effect.
   const hasEdited = useRef(false);
-  const [tab, setTab] = useState<"audit" | "preview">("audit");
+  const [tab, setTab] = useState<"audit" | "chart" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
+  // Below `lg` the module rail, form, and Sidekick stack vertically (see the
+  // flex-col wrapper below), which buried live audit feedback under the
+  // entire form — a clinician charting on a phone or tablet had to scroll
+  // past everything just to see whether the note was blocked. This mirrors
+  // the Sidekick into a reachable sheet on those screens instead; the desktop
+  // sticky aside is untouched.
+  const [showMobileAudit, setShowMobileAudit] = useState(false);
 
   const autosave = useAutosave(draftId, initialVersion);
   const { markEdited, flush } = autosave;
@@ -85,7 +120,34 @@ export function BuilderShell({
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
 
+  // TYPING FIRST, GRADING A BEAT LATER.
+  //
+  // composeNote + runAudit ran on `state` directly, which put the whole audit
+  // stack between a key going down and the letter appearing: ~3 ms for a typical
+  // note and ~13 ms fully loaded on a developer machine, and a burst of ten
+  // keystrokes paid it ten times. A clinician's tablet is several times slower.
+  //
+  // Deferring the audited copy costs a typing burst ONE audit instead of one per
+  // character, and React can abandon a run a newer keystroke already invalidated.
+  // The inputs stay fully controlled, so no character is dropped or reordered, and
+  // the autosave effect deliberately keeps using the FRESH state: what gets saved
+  // must never lag what was typed.
+  //
+  // Safe because the client audit was never the gate — the submit route re-composes
+  // and re-audits server-side and refuses with 422 on any open STOP or REQUIRED
+  // finding. While the panel catches up it says so out loud rather than letting a
+  // settled-looking report describe a note that has moved on.
+  const deferredState = useDeferredValue(state);
+  const auditing = deferredState !== state;
+
+  // The FORM's module list stays fresh: ticking a module is a discrete choice and
+  // its section has to appear under the finger that ticked it. activeModules is a
+  // filter over ~32 definitions, so computing both is free.
   const modules = useMemo(() => activeModules(state.selectedModuleIds), [state.selectedModuleIds]);
+  const auditModules = useMemo(
+    () => activeModules(deferredState.selectedModuleIds),
+    [deferredState.selectedModuleIds]
+  );
   // The office name the CLIENT composes with must be the one the SERVER
   // freezes, or the preview is not the artifact and the two audits disagree.
   const officeName = useMemo(
@@ -93,14 +155,22 @@ export function BuilderShell({
     [offices, officeId]
   );
   const markdown = useMemo(
-    () => composeNote(state, modules, { officeName }),
-    [state, modules, officeName]
+    () => composeNote(deferredState, auditModules, { officeName }),
+    [deferredState, auditModules, officeName]
   );
   const report = useMemo(
-    () => runAudit({ note: state, modules, composedText: markdown }),
-    [state, modules, markdown]
+    () => runAudit({ note: deferredState, modules: auditModules, composedText: markdown }),
+    [deferredState, auditModules, markdown]
   );
   const fieldFindings = useMemo(() => findingsByField(report.findings), [report.findings]);
+
+  // How much of this note is a recorded absence rather than a fact. Deferred with
+  // the rest of the graded copy, and never a gate — see omissions.ts for why
+  // closing the escape hatch would make notes worse, not better.
+  const omissions = useMemo(
+    () => omissionReport(deferredState, auditModules),
+    [deferredState, auditModules]
+  );
 
   const phiSignature = useMemo(
     () => JSON.stringify(report.phiStops.map((f) => [f.ruleId, f.matchedText]).sort()),
@@ -139,7 +209,16 @@ export function BuilderShell({
     return changed;
   }, [phiFindings, state.values, dispatch]);
   const gates = computeGates(report, overrideActive);
-  const hasContent = useMemo(() => Object.values(state.values).some((v) => !isValueEmpty(v)), [state.values]);
+  // From the SAME snapshot the report came from, deliberately. Read from the fresh
+  // state instead, the first keystroke of a note would set hasContent true while
+  // the counts were still all zero — and deriveDraftStatus turns that pair into
+  // "Ready to submit", in green, on an empty note with every required field still
+  // open. An andon that flashes the wrong colour is worse than one that takes an
+  // extra frame to be right.
+  const hasContent = useMemo(
+    () => Object.values(deferredState.values).some((v) => !isValueEmpty(v)),
+    [deferredState.values]
+  );
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
@@ -274,6 +353,74 @@ export function BuilderShell({
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
 
+  // Shared between the desktop sticky aside and the mobile audit sheet, so
+  // the two never drift into two different implementations of the same
+  // panel. Closes over local state directly rather than taking props — it is
+  // rendered, not reused as a component, so there is no extra fiber or
+  // remount cost to doing it this way.
+  const sidekickBody = (
+    <>
+      <div className="mb-3 flex items-center gap-3">
+        <ProgressRing counts={report.counts} />
+        <div className="min-w-0">
+          <StatusChip status={liveStatus} />
+          <p className="mt-1 text-xs text-slate-500">
+            {auditing ? "Checking the latest edit…" : report.status}
+          </p>
+        </div>
+      </div>
+      <div className="mb-3 flex gap-1">
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["preview", "Preview"]] as const).map(([t, label]) => (
+          <button
+            key={t}
+            onClick={() => setTab(t)}
+            aria-pressed={tab === t}
+            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
+          >
+            {label}
+          </button>
+        ))}
+      </div>
+      <div className="pane-60">
+        {tab === "audit" ? (
+          <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+        ) : tab === "chart" ? (
+          /* Fed the COMPOSED note rather than any single field, because a
+             tooth named in one field and a procedure named in another are one
+             clinical statement and the chart has to see both. Composition is
+             already memoized on the deferred state, so this rides the same
+             off-the-keystroke-path pipeline the audit does. */
+          <NoteReadback text={markdown} />
+        ) : (
+          <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
+        )}
+      </div>
+      <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
+          {copied ? "Copied ✓" : "Copy"}
+        </button>
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
+          Download .md
+        </button>
+        <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}>
+          Download .txt
+        </button>
+        {report.phiStops.length > 0 && !overrideActive && (
+          <button
+            type="button"
+            className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
+            onClick={() => {
+              setShowMobileAudit(false);
+              setShowOverride(true);
+            }}
+          >
+            Review privacy stop
+          </button>
+        )}
+      </div>
+    </>
+  );
+
   return (
     <div className="pb-24">
       {/* Sticky patient-header-style bar */}
@@ -344,16 +491,91 @@ export function BuilderShell({
         </div>
       </div>
 
+      {/* WHY SUBMIT IS OFF, in words, on the screen.
+          The reason lived only in a `title` tooltip — which does not exist on a
+          tablet, never appears for a keyboard user, and needs a deliberate hover a
+          hurried person will not perform. A usability review's single most common
+          complaint was the app saying no without saying why: someone filled a note,
+          pressed Submit, nothing happened, and they had to infer the cause from
+          coloured chips in a panel. Counted and named, with the count matching the
+          panel so the two cannot disagree. */}
+      {canEdit && hasContent && !gates.emailAllowed && liveStatus !== "submitted" && (
+        <p
+          className="mb-4 rounded border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900"
+          role="status"
+        >
+          <strong>Not ready to file yet.</strong>{" "}
+          {report.counts.S0 > 0 && (
+            <>
+              {report.counts.S0} item{report.counts.S0 === 1 ? "" : "s"} must be fixed
+              {report.counts.S1 > 0 ? ", and " : ". "}
+            </>
+          )}
+          {report.counts.S1 > 0 && (
+            <>
+              {report.counts.S1} required field{report.counts.S1 === 1 ? "" : "s"}{" "}
+              {report.counts.S1 === 1 ? "is" : "are"} still open.{" "}
+            </>
+          )}
+          Each one is listed in the audit panel with a link straight to the field.
+        </p>
+      )}
+
+      {/* WHAT THIS NOTE ACTUALLY SAYS, when most of it says "not applicable".
+          Shown, never blocked. Clicking a licence is one action and finding out the
+          real answer is a conversation, so the escape hatch is the path of least
+          resistance — a usability reviewer walking the app cold found exactly that.
+          The answer is not to close it (a form that refuses "I do not know" gets a
+          fabricated value instead) but to stop it being invisible. */}
+      {canEdit && omissions.licensed > 0 && omissions.rate >= OMISSION_NOTICE_THRESHOLD && (
+        <p className="mb-4 rounded border border-amber-300 bg-amber-50 px-3 py-2 text-sm text-amber-900">
+          <strong>
+            {omissions.licensed} of {omissions.answered + omissions.licensed} required answers record
+            an absence rather than a finding.
+          </strong>{" "}
+          That is allowed and it is written into the note — {" "}
+          {omissions.byLicence
+            .map((b) => `${b.fields.length} × "${b.licence.label}"`)
+            .join(", ")}
+          . Worth one more look if any of them could be answered instead: a recorded
+          absence is defensible, and so is a fact, but only one of them is useful to
+          whoever reads this next.
+        </p>
+      )}
+
       {!canEdit && (
         <p className="mb-4 rounded border border-slate-300 bg-slate-100 px-3 py-2 text-sm text-slate-700">
           You have read-only access. You can view this note but not edit or submit it.
         </p>
       )}
 
+      {/* Mobile/tablet audit bar. Below `lg` the module rail, form, and
+          Sidekick stack vertically (see the flex-col wrapper just below),
+          which buried live audit feedback under the entire form — reaching
+          it meant scrolling past every field first. Placed here, above that
+          stack, it is visible without scrolling and opens the same Sidekick
+          content in a dismissible sheet. */}
+      <button
+        type="button"
+        onClick={() => setShowMobileAudit(true)}
+        className="tap mb-4 flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm lg:hidden"
+      >
+        <ProgressRing counts={report.counts} />
+        <span className="min-w-0 flex-1">
+          <StatusChip status={liveStatus} />
+          <span className="mt-0.5 block truncate text-xs text-slate-500">
+            {report.findings.length === 0
+              ? "No findings — view audit & preview"
+              : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — view audit & preview`}
+          </span>
+        </span>
+        <span aria-hidden className="shrink-0 text-slate-400">▸</span>
+      </button>
+
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Module rail */}
         <aside className="shrink-0 lg:w-60">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
+          <div className="card p-3 lg:sticky lg:top-20">
             <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
             <input
               type="search"
@@ -390,63 +612,22 @@ export function BuilderShell({
         {/* Form */}
         <section className="min-w-0 flex-1">
           <fieldset disabled={!canEdit} className="min-w-0">
-            <NoteForm modules={modules} state={state} onChange={setValue} findingsByField={fieldFindings} />
+            <NoteForm
+              modules={modules}
+              state={state}
+              onChange={setValue}
+              findingsByField={fieldFindings}
+              clinicalRole={clinicalRole}
+            />
           </fieldset>
         </section>
 
-        {/* Sidekick */}
-        <aside className="shrink-0 lg:w-[26rem]">
-          <div className="rounded-lg border border-slate-200 bg-white p-3 shadow-sm lg:sticky lg:top-20">
-            <div className="mb-3 flex items-center gap-3">
-              <ProgressRing counts={report.counts} />
-              <div className="min-w-0">
-                <StatusChip status={liveStatus} />
-                <p className="mt-1 text-xs text-slate-500">{report.status}</p>
-              </div>
-            </div>
-            <div className="mb-3 flex gap-1">
-              {([["audit", `Audit (${report.findings.length})`], ["preview", "Preview"]] as const).map(([t, label]) => (
-                <button
-                  key={t}
-                  onClick={() => setTab(t)}
-                  aria-pressed={tab === t}
-                  className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
-                >
-                  {label}
-                </button>
-              ))}
-            </div>
-            <div className="pane-60">
-              {tab === "audit" ? (
-                <AuditPanel report={report} />
-              ) : (
-                <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">{markdown}</pre>
-              )}
-            </div>
-            <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={copy}>
-                {copied ? "Copied ✓" : "Copy"}
-              </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.md`, markdown)}>
-                Download .md
-              </button>
-              <button className="btn-secondary" disabled={!hasContent || !gates.exportAllowed} onClick={() => download(`${filename}.txt`, composeNoteText(state, modules, { officeName }))}>
-                Download .txt
-              </button>
-              {report.phiStops.length > 0 && !overrideActive && (
-                <button
-                  type="button"
-                  // Was an 18px text link sitting beside three 44px buttons —
-                  // and it is the ONLY route to the privacy dialog, i.e. the
-                  // single control between a flagged identifier and an
-                  // unblocked submit. It gets a real target and real weight.
-                  className="btn-secondary border-rose-300 text-rose-800 hover:bg-rose-50"
-                  onClick={() => setShowOverride(true)}
-                >
-                  Review privacy stop
-                </button>
-              )}
-            </div>
+        {/* Sidekick — desktop only below `lg`; the mobile bar + sheet above
+            covers the same ground where this would otherwise sit below the
+            entire form. */}
+        <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
+          <div className="card p-3 lg:sticky lg:top-20">
+            {sidekickBody}
           </div>
         </aside>
       </div>
@@ -464,6 +645,11 @@ export function BuilderShell({
         </div>
       )}
 
+      {showMobileAudit && (
+        <Dialog title="Audit & preview" onClose={() => setShowMobileAudit(false)}>
+          {sidekickBody}
+        </Dialog>
+      )}
       {showOverride && (
         <PhiOverrideDialog
           phiStops={report.phiStops}

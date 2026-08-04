@@ -29,16 +29,105 @@
 //         version that does not describe the rules that ran. That is the exact
 //         failure this constant exists to prevent, and the CI guard added in
 //         2.4.0 is what stops it happening again.
-// 2.6.0 — the privacy screen, corrected in both directions at once.
-//         Catches: a name announced by a chained cue ("referred to dr. john
-//         smith" was missed entirely, by this rule and by phi.name both), four
-//         more date formats (YYYY/MM/DD, MM.DD.YYYY, "2 August 2026",
-//         02-AUG-2026), and the note TITLE, which was never screened at all
-//         while becoming the emailed attachment filename.
-//         Stops crying wolf about: "MS Contin" (morphine sulfate, previously S0
-//         — a blocked opioid entry), "MR Imaging", "DR Sensor", "IAN
-//         INJECTION", "FRANK PUS", "MAX CENTRAL".
-//         Both directions in one version on purpose: a screen that misses real
-//         names is useless, and one that blocks real clinical terms gets muted,
-//         which is the same failure a step later.
-export const RULESET_VERSION = "2.6.0";
+// 2.6.0 — obfuscation screen (phi.obfuscated-digits, phi.hidden-characters):
+//         an identifier typed in a non-ASCII decimal script, or split by a
+//         zero-width character, was invisible to every \d-based PHI pattern
+//         while reading normally to a human. The obfuscation is now the finding,
+//         so no pattern has to be taught about Unicode individually.
+// 2.7.0 — the vocabulary staff actually type: w/, w/o, c/o, MH, BP, ant, iso,
+//         epi, lido, fl, tol, mo expand deterministically; perc, endo, imp,
+//         temp, mod, cal, tp, cx are flagged as ambiguous rather than guessed;
+//         EXT and NKA extend their existing ASK to lower case; PFM and PVS join
+//         the first-use terms of art. Measured cause: on notes typed the way
+//         staff type them the transformer made ~2 changes each and the AI
+//         verifier accepted 0 of 5 faithful rewrites, because the tables are
+//         both what the deterministic pass applies AND what licenses a model's
+//         expansions.
+// 2.8.0 — abbreviation preload: 54 entries across dental terms of art (endodontic
+//         working length and irrigants, periodontal grafting and SPT, MRONJ and
+//         oroantral communication, prosthodontic and paediatric terms), the
+//         medical history that changes dental treatment (HTN, DM, CHF, COPD, CVA,
+//         GERD, OSA, SBE, PMH), safe pharmacy sig codes, and a second batch of
+//         ISMP / Joint Commission do-not-use constructs (hs/qhs, TIW/BIW, the
+//         eye-and-ear Latin set, ss, APAP, cc, D/C) which are FLAGGED AND NEVER
+//         EXPANDED, because expanding a dangerous abbreviation launders it.
+//         Ambiguous additions (MI, CAD, RA, cap, ac/pc) ask rather than guess.
+//         See knowledge/sources/dental-abbreviation-preload.md.
+// 2.9.0 — text-to-STRUCTURE. A read-only extraction layer (src/lib/extract)
+//         parses clauses into clinical facts — tooth sites with surfaces,
+//         procedures with a coarse category — and a ConText assertion layer
+//         decides whether the note affirmed or denied each one. New controlled
+//         vocabulary: vocab/procedures.ts.
+//
+//         Stamped because the facts a note yields are now part of what the
+//         ruleset means: a chart drawn from this, or a consistency finding
+//         raised by it, has to be reproducible against the version that ran.
+//
+//         Extraction NEVER edits a note. It returns spans into the input and
+//         values from controlled tables, so the meaning-preservation contract
+//         in standardize.ts is untouched by construction. Negation is assigned
+//         (the algorithm measures 97/97); temporality is only ever hinted (67%
+//         recall on "historical" is below this product's bar for deciding).
+// 2.10.0 — the parser learns the rest of a note. Measured against a corpus of
+//         real shorthand it read 26.2% of clauses; it now reads 94.6%, and
+//         coverage.test.ts ratchets that so it cannot regress quietly.
+//
+//         New fact kinds: medication (with dose, concentration, and carpule-to-
+//         millilitre arithmetic where the convention is exact), measurement
+//         (including ranges and blood pressure), finding, material, care-event.
+//         New controlled vocabulary: vocab/clinical-terms.ts, plus operative
+//         steps in vocab/procedures.ts.
+//
+//         Two defects the corpus caught that inspection had not:
+//         "no caries noted" was in the pseudo-trigger list, so every clean exam
+//         reported caries; and chart.ts kept a private copy of the site
+//         accessor, so the day findings started carrying teeth, a negated
+//         finding stopped reaching the chart at all.
+//
+//         impliesNegation exists for NKA/NKDA. Reading an absence of allergy as
+//         an allergy is the most dangerous inference available to this parser,
+//         so the term's own meaning overrides surrounding cues rather than
+//         combining with them.
+// 2.11.0 — the tiered shorthand filing gate (audit/rules/shorthand-gate.ts).
+//         Ambiguous shorthand, shorthand no table can read, and Joint
+//         Commission / ISMP do-not-use constructs now raise S1 and stop FILING.
+//         Shorthand the tables can already expand is untouched and still costs
+//         the writer nothing, because a gate that stops "BW" and "10U" with the
+//         same force teaches people to clear both with the same reflex.
+//
+//         Four false positives found by the existing suite while building it,
+//         each of which would have been enough on its own to get the gate
+//         switched off: units of measurement ("5 mm" blocked a note for
+//         containing a millimetre), Roman numerals ("ASA II"), the tool's own
+//         PHI masks (blocking a note BECAUSE it had been redacted), and
+//         alphanumeric terms truncated at the first digit ("ETCO2" reported as
+//         "ETCO"). All four are now pinned regression tests.
+//
+//         New controlled vocabulary: ETCO2, SpO2, ECG/EKG, NIBP. The sedation
+//         module's own labels were rewritten to define ASA and ETCO2 on first
+//         use, because the app failing its own gate is a real finding.
+// 2.12.0 — quadrants are extracted as REGIONS. "SRP UR and LR quads" now
+//         reaches the chart as two bands rather than as nothing, and it is
+//         deliberately NOT expanded into sixteen tooth facts: a quadrant says
+//         work happened in a region and does not say which teeth, so filling
+//         them in would put a claim on the chart the note never made. A region
+//         is dropped when the note also named teeth inside it, because the
+//         teeth are the more specific statement.
+// 2.13.0 — local anaesthetic maximum-dose arithmetic (rules/anesthetic-dose.ts).
+//         The first rule in this product that only exists because the
+//         transformer READS notes: "2 carp lido 2%" contains no "mg", so no
+//         regex over milligrams can reach it. The dose is implied by three
+//         conventions -- 1.8 mL per carpule, 2% = 20 mg/mL -- and getting to a
+//         number needs structured facts.
+//
+//         S2, never blocking, and that is a safety decision rather than
+//         caution: a note is a RECORD, and if more than the maximum was given
+//         the note MUST say so. A gate refusing to file it would suppress the
+//         documentation of the event it was worried about, and teach staff to
+//         under-record doses to get the note out.
+//
+//         Fires only on exceedance, never on approaching a limit, and only
+//         when volume and concentration are both stated. An incomplete dose is
+//         silent: an earlier version blamed the writer for a complete note the
+//         extractor could not assemble across a clause boundary.
+export const RULESET_VERSION = "2.13.0";

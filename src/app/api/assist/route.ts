@@ -5,6 +5,7 @@ import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 import { getAssistConfig, runAssist } from "@/lib/assist/service";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { encodeDriftDetail } from "@/lib/assist/drift";
 import { ASSIST_CAPABILITIES, ASSIST_PROMPT_VERSION, type AssistCapability } from "@/lib/assist/prompts";
 import { RULESET_VERSION } from "@/lib/version";
 
@@ -125,15 +126,38 @@ export async function POST(req: Request): Promise<Response> {
   // REFUSALS ARE THE MORE INFORMATIVE HALF, and they were not recorded at all.
   //
   // Only successes were logged, so the one question worth asking of a live
-  // deployment — is this AI helping, and where does it fail? — had no data
-  // behind it. A verifier rejection rate that climbs after a model revision is
-  // the signal that the provider changed under you; a PHI-block rate that
-  // climbs is a training problem in the practice, not a software one. Neither
-  // is visible from a log of what worked.
+  // deployment — is this AI helping, and where does it fail? — had no data behind
+  // it. A verifier rejection rate that climbs after a model revision is the signal
+  // that the provider changed under you; a PHI-block rate that climbs is a
+  // training problem in the practice, not a software one. Neither is visible from
+  // a log of what worked.
   //
-  // Codes, versions and counts only. Never the note, never the prompt, never
-  // the model's draft — logging content to "improve quality" is how a log
-  // becomes the least protected copy of the clinical record.
+  // ONE row per call, in a PARSEABLE format, covering every outcome including the
+  // successes — because a refusal rate needs a denominator, and a prose row cannot
+  // supply one. encodeDriftDetail is read back by the drift monitor on the audit
+  // page, which is where the trend becomes visible; a count nobody aggregates is a
+  // count nobody uses.
+  //
+  // Codes, versions, model identity and token count only. Never the note, never
+  // the prompt, never the model's draft — logging content to "improve quality" is
+  // how a log becomes the least protected copy of the clinical record. The model
+  // identity is the load-bearing field: "anthropic/claude-sonnet-4.5" is a pointer,
+  // not a version, and a rate that moves while nothing in the practice changed is
+  // unattributable without it.
+  await logAction(db, {
+    ...actor,
+    action: "assist.drift",
+    target: draftId || null,
+    detail: encodeDriftDetail({
+      outcome: outcome.ok ? "ok" : outcome.code,
+      capability: capability as AssistCapability,
+      promptVersion: ASSIST_PROMPT_VERSION,
+      model: config.model,
+      tokens: usedTokens,
+      codes: outcome.ok ? [] : outcome.codes
+    })
+  });
+
   if (!outcome.ok) {
     await logAction(db, {
       ...actor,

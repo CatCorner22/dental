@@ -14,7 +14,7 @@ export default async function RequestsPage() {
 
   return (
     <div className="max-w-3xl">
-      <h1 className="mb-1 text-2xl font-bold">Ask the Smile Notes Team for a data change</h1>
+      <h1 className="page-title mb-1">Ask the Smile Notes Team for a data change</h1>
       <p className="mb-4 text-sm text-slate-600">
         Adding, removing, or changing a field is structural, not cosmetic — it reaches charts,
         recalls, medical alerts, claims, and every report. Treat this proposal as contaminated until

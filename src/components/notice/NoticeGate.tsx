@@ -60,9 +60,22 @@ export function NoticeGate({
           audit finding, and signs in the EDR.
         </p>
       </div>
+      {/* The failure this dialog cannot afford to swallow. The gate is not
+          dismissible and the server refuses every other API until the
+          acknowledgment is stored, so a user whose POST fails is sealed inside
+          a modal with a button that appears to do nothing. The message was
+          already being set — it was simply never rendered. */}
+      {error && (
+        <p
+          role="alert"
+          className="mt-4 rounded border border-rose-300 bg-rose-50 px-3 py-2 text-sm text-rose-900"
+        >
+          {error}
+        </p>
+      )}
       <div className="mt-4 flex justify-end">
         <button type="button" className="btn-primary" disabled={busy} onClick={ack}>
-          {busy ? "Saving…" : "I understand"}
+          {busy ? "Saving…" : error ? "Try again" : "I understand"}
         </button>
       </div>
     </Dialog>

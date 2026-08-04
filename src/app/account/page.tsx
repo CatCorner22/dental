@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AccountForm } from "@/components/account/AccountForm";
 import { RevokeSessions } from "@/components/account/RevokeSessions";
+import { DisplaySettings } from "@/components/shell/DisplaySettings";
 import { MfaSettings } from "@/components/account/MfaSettings";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
@@ -16,7 +17,7 @@ export default async function AccountPage() {
   const row = await getUserById(await getDb(), user.id);
   return (
     <div className="mx-auto max-w-md">
-      <h1 className="mb-1 text-2xl font-bold">My account</h1>
+      <h1 className="page-title mb-1">My account</h1>
       <dl className="mb-6 grid grid-cols-2 gap-x-4 gap-y-1 text-sm">
         <dt className="font-semibold text-slate-600">Username</dt>
         <dd className="font-mono">{user.username}</dd>
@@ -31,6 +32,7 @@ export default async function AccountPage() {
       <MfaSettings enabled={row?.mfaEnabled ?? false} />
       <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
       <RevokeSessions />
+      <DisplaySettings />
     </div>
   );
 }

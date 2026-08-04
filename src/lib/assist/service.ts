@@ -87,6 +87,16 @@ export type AssistOutcome =
       /** Cold logic for the user: what stopped the call and what to do. */
       message: string;
       rejections?: VerifyRejection[];
+      /**
+       * Machine-readable reasons, uniform across every failure kind: verifier
+       * rejection codes, or the PHI rule ids that blocked the call.
+       *
+       * Exists so the drift monitor has ONE field to read instead of a switch on
+       * `code`. Every value is a constant from this codebase — a rule name — and
+       * never anything derived from the text, which is what keeps "no note content
+       * is ever logged" true while still making the signal legible.
+       */
+      codes: string[];
     };
 
 const MAX_INPUT = 20000;
@@ -104,13 +114,23 @@ export async function runAssist(
   // provider is off-server: probable patient names must never leave either.
   const phi = runPhiRule(input).filter((f) => f.category === "phi");
   if (phi.length > 0) {
+    const stops = phi.filter((f) => f.severity === "S0").length;
     return {
       ok: false,
       code: "phi-blocked",
+      codes: [...new Set(phi.map((f) => f.ruleId))].sort(),
       message:
         `The AI was not called. ${phi.length} possible identifier${phi.length === 1 ? "" : "s"} ` +
         `must be removed or masked first — de-identified text is the condition for any AI ` +
-        `assistance, with no exception and no override.`
+        `assistance, with no exception and no override. ` +
+        // Says WHY the same finding is a review elsewhere and a stop here. Without
+        // it, a staff member who has just seen the audit call this an S2 REVIEW
+        // reads the block as the tool contradicting itself, and a rule that looks
+        // arbitrary is a rule that gets worked around.
+        (stops < phi.length
+          ? `Some of these are flagged for review rather than blocked elsewhere in the app; ` +
+            `sending text to an outside provider cannot be reviewed afterwards, so here they stop the call.`
+          : `Use Mask identifiers, or edit the text, then try again.`)
     };
   }
 
@@ -138,6 +158,7 @@ export async function runAssist(
       return {
         ok: false,
         code: "model-error",
+        codes: [],
         message:
           "This capability needs the structured model binding, which this deployment did not provide. The deterministic tools still work."
       };
@@ -154,6 +175,7 @@ export async function runAssist(
       return {
         ok: false,
         code: "model-error",
+        codes: [],
         message:
           "The AI service did not answer. The deterministic tools still work — continue without it."
       };
@@ -164,6 +186,7 @@ export async function runAssist(
         return {
           ok: false,
           code: "invalid-shape",
+          codes: [],
           message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
         };
       }
@@ -174,6 +197,7 @@ export async function runAssist(
         return {
           ok: false,
           code: "invalid-shape",
+          codes: [],
           message: `The AI's answer did not match the agreed shape (${parsed.reason}), so it was not shown. Your text is untouched.`
         };
       }
@@ -188,6 +212,7 @@ export async function runAssist(
       return {
         ok: false,
         code: "model-error",
+        codes: [],
         message:
           "The AI service did not answer. The deterministic tools still work — continue without it."
       };
@@ -201,6 +226,7 @@ export async function runAssist(
     return {
       ok: false,
       code: "verifier-rejected",
+      codes: [...new Set(verdict.rejections.map((r) => r.code))].sort(),
       message:
         `The AI's draft was refused before you saw it: it differed from your note in clinical ` +
         `substance (${verdict.rejections.map((r) => r.code).join(", ")}). This is the check ` +

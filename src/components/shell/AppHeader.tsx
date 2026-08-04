@@ -14,7 +14,11 @@ import { BrandMark } from "./BrandMark";
 // Server component. The banner is always visible; nav adapts to role.
 export function AppHeader({ user }: { user: SessionUser | null }) {
   return (
-    <header className="border-b border-slate-200 bg-white">
+    /* A navy hairline under the header, and the nav in navy rather than slate.
+       The audit that prompted this found brand-navy used ZERO times in the app —
+       the identity lived entirely in the logomark, so the shell read as a generic
+       admin template. This is chrome only; no state colour is involved. */
+    <header className="border-b-2 border-brand-navy/15 bg-white">
       {/* Wraps to a second line on a phone instead of forcing the page wider
           than the screen. An unwrapped nav here expanded the layout viewport
           to 554px on a 375px device, which pushed every page sideways and
@@ -33,7 +37,15 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                     ? [{ href: "/standardize", label: "Standardize" }]
                     : []),
                   { href: "/history", label: "History" },
-                  ...(meetsRole(user.role, "user") ? [{ href: "/store", label: "Store" }] : []),
+                  // Team Lead and above. Named "Digest" rather than "Quality"
+                  // or "Review": those words describe judging people, and this
+                  // page reports patterns and explicitly re-scopes anything
+                  // most of the practice would be flagged for onto the tool.
+                  ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }] : []),
+                  // Store stays at /store for anyone who bookmarks it, but it is
+                  // not in the primary nav — a points shop next to "start a note"
+                  // invites comparison and hallway scorekeeping. (Same reasoning
+                  // the digest itself follows: patterns, never a scoreboard.)
                   { href: "/wishes", label: "Wish list" },
                   ...(canManageUsers(user.role)
                     ? [{ href: "/admin/team", label: "Team", activePrefix: "/admin/team" }]
@@ -47,11 +59,11 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                   { href: "/account", label: "Account" }
                 ]}
               />
-              <span className="hidden text-slate-400 sm:inline">·</span>
+              <span className="hidden text-brand-navy/30 sm:inline">·</span>
               {/* The human label, not the enum value. "lead" told nobody what
                   they could do; "Team Lead" is the word the hierarchy is
                   actually documented in. */}
-              <span className="hidden text-xs text-slate-500 sm:inline">
+              <span className="hidden text-xs text-slate-600 sm:inline">
                 {user.displayName} ({ROLE_LABEL[user.role]})
               </span>
               <SignOutButton />
@@ -61,7 +73,13 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
           )}
         </nav>
       </div>
-      <div className="border-t border-amber-200 bg-amber-50 px-4 py-1.5 text-center text-xs font-medium text-amber-900">
+      {/* Navy, not amber. This is a STANDING CONDITION OF USE, not a warning
+          about the current screen — and amber is the audit vocabulary's REVIEW
+          colour. A permanent amber bar spends that signal on something that is
+          always true, which teaches the eye to skip amber in the one place it
+          means "look at this now". Same words, same prominence, a colour that
+          does not collide. */}
+      <div className="border-t border-brand-navy/15 bg-brand-navy/[0.04] px-4 py-1.5 text-center text-xs font-medium text-brand-navy">
         This system may form part of a legal and medical record. Enter de-identified facts only —
         never a patient name, exact date, contact detail, record number, or image.
       </div>

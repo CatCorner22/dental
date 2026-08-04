@@ -15,7 +15,7 @@ export default async function SetupPage() {
       <p className="mb-3">
         <BrandMark size="lg" />
       </p>
-      <h1 className="mb-2 text-2xl font-bold">Create the first Smile Notes Developer</h1>
+      <h1 className="page-title mb-2">Create the first Smile Notes Developer</h1>
       <p className="mb-6 text-sm text-slate-600">
         This one-time step creates the account that can do everything. From there it adds
         Hierarchy Managers, who add Team Leads, who add the rest of the team.

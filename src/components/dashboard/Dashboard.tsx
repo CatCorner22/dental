@@ -9,9 +9,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { FEATURED_PICK_IDS, QUICK_PICKS } from "@/lib/presets/quickPicks";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { Character } from "@/components/mascot/Sparkle";
-import { BADGES } from "@/lib/stats/badges";
 import { STATUS_META } from "@/lib/status/draftStatus";
-import type { UserStats } from "@/lib/stats/computeStats";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 
 interface DraftRow {
@@ -29,14 +27,12 @@ export function Dashboard({
   displayName,
   canEdit,
   drafts,
-  stats,
   totalDrafts
 }: {
   role: string;
   displayName: string;
   canEdit: boolean;
   drafts: DraftRow[];
-  stats: UserStats;
   // How many drafts exist in total, versus the page actually rendered.
   totalDrafts: number;
 }) {
@@ -111,7 +107,7 @@ export function Dashboard({
         <div className="flex items-center gap-3">
           <Character id="sparkle" size="lg" />
           <div>
-            <h1 className="text-2xl font-bold">Hi {displayName} 👋</h1>
+            <h1 className="page-title">Hi {displayName} 👋</h1>
             <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
           </div>
         </div>
@@ -130,7 +126,7 @@ export function Dashboard({
               // narrower button group computed a negative left edge on a
               // phone, putting the labels off-screen with no way to scroll to
               // them (absolute overflow to the left creates no scrollbar).
-              <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-lg border border-slate-200 bg-white p-2 shadow-lg sm:left-auto sm:w-80">
+              <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-xl bg-white ring-1 ring-slate-200 p-2 shadow-lg sm:left-auto sm:w-80">
                 {QUICK_PICKS.map((p) => (
                   <button
                     key={p.id}
@@ -153,7 +149,7 @@ export function Dashboard({
           {QUICK_PICKS.filter((p) => (FEATURED_PICK_IDS as readonly string[]).includes(p.id)).map((p) => (
             <button
               key={p.id}
-              className="rounded-lg border border-slate-200 bg-white p-3 text-left shadow-sm hover:border-blue-400 hover:bg-blue-50 disabled:opacity-50"
+              className="rounded-xl bg-white ring-1 ring-slate-200 p-3 text-left shadow-sm hover:ring-2 hover:ring-brand-blue hover:bg-blue-50 disabled:opacity-50"
               disabled={busy}
               onClick={() => createDraft(p.moduleIds, p.label)}
               title={p.description}
@@ -182,7 +178,9 @@ export function Dashboard({
         </Link>
       )}
 
-      <StatsCard stats={stats} />
+      {/* No scoreboard here on purpose. First-pass rates, streaks, ranks, GPA,
+          and badge strips turn a shared charting tool into hallway comparison —
+          the job of this screen is to start or resume a note in one click. */}
 
       <div>
         <div className="mb-2 flex flex-wrap items-center justify-between gap-2">
@@ -244,7 +242,7 @@ export function Dashboard({
               : "No drafts match your search."}
           </p>
         ) : (
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-lg border border-slate-200 bg-white">
+          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
             {/* flex-wrap: the title link plus three shrink-0 action buttons
                 cannot fit a phone on one line, and without wrapping they
                 forced the page wider than the screen. */}
@@ -362,61 +360,5 @@ function TransferDialog({
         </div>
       </div>
     </Dialog>
-  );
-}
-
-function StatsCard({ stats }: { stats: UserStats }) {
-  return (
-    <div className="rounded-lg border border-slate-200 bg-white p-4">
-      <p className="mb-2 text-center text-xs text-slate-400">
-        Every clean note helps the whole team. 🦷
-      </p>
-      <div className="grid grid-cols-3 gap-4 text-center">
-        <Stat label="Submitted" value={String(stats.totalSubmitted)} />
-        <Stat label="First-pass" value={`${Math.round(stats.firstPassRate * 100)}%`} />
-        <Stat
-          label="Clean streak"
-          value={`${stats.currentStreak}${stats.currentStreak >= 3 ? " 🔥" : ""}`}
-        />
-      </div>
-      {(stats.medianMinutesToFile !== null || stats.totalSubmitted > 0) && (
-        // The ROI row: charting time and after-hours notes are the two numbers
-        // that show whether the tool is paying for its minute. Computed from
-        // timestamps the system already records — nothing new is watched.
-        <div className="mt-3 grid grid-cols-2 gap-4 border-t border-slate-100 pt-3 text-center">
-          <Stat
-            label="Median time to file (same day)"
-            value={
-              stats.medianMinutesToFile === null
-                ? "—"
-                : `${Math.round(stats.medianMinutesToFile)} min`
-            }
-          />
-          <Stat
-            label="Filed after hours"
-            value={`${Math.round(stats.afterHoursRate * 100)}%`}
-          />
-        </div>
-      )}
-      {stats.badges.length > 0 && (
-        <div className="mt-3 flex flex-wrap gap-2 border-t border-slate-100 pt-3">
-          {stats.badges.map((id) => (
-            <span key={id} className="inline-flex items-center gap-1 rounded-full bg-slate-100 px-2 py-0.5 text-xs" title={BADGES[id].description}>
-              <span aria-hidden>{BADGES[id].icon}</span>
-              {BADGES[id].name}
-            </span>
-          ))}
-        </div>
-      )}
-    </div>
-  );
-}
-
-function Stat({ label, value }: { label: string; value: string }) {
-  return (
-    <div>
-      <div className="text-2xl font-bold text-slate-800">{value}</div>
-      <div className="text-xs font-medium text-slate-500">{label}</div>
-    </div>
   );
 }

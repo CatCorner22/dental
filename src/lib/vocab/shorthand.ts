@@ -116,6 +116,49 @@ export const SHORTHAND: Shorthand[] = [
   // ---- Procedures
   { id: "rct", pattern: /\bRCTs?\b/gi, display: "RCT", expansion: "root canal therapy", pluralExpansion: "root canal therapies", domain: "dental" },
   { id: "srp", pattern: /\bSRP\b/gi, display: "SRP", expansion: "scaling and root planing", domain: "dental" },
+
+  // ---- Sedation and anaesthesia monitoring.
+  //
+  // Added because the filing gate found them, which is the loop working: the
+  // app's own sedation module names these monitors, the gate blocked filing on
+  // shorthand no table could read, and the route out that its message promises
+  // is exactly this — put it in the vocabulary and the next occurrence is free.
+  //
+  // The alternative would have been to soften the gate, and that is the trade
+  // to refuse. A monitoring term nobody can expand in five years is a real
+  // problem in a sedation record specifically, which is the note most likely to
+  // be read by a stranger under pressure.
+  {
+    id: "etco2",
+    // The digit is part of the term, not a number after it.
+    pattern: /\bETCO2\b/gi,
+    display: "ETCO2",
+    expansion: "end-tidal carbon dioxide",
+    domain: "medical"
+  },
+  {
+    id: "spo2",
+    pattern: /\bSpO2\b/gi,
+    display: "SpO2",
+    expansion: "peripheral oxygen saturation",
+    domain: "medical"
+  },
+  {
+    id: "ecg",
+    // ECG and EKG are the same investigation; both expand to the same words, so
+    // there is no ambiguity to ask about.
+    pattern: /\bE[CK]G\b/g,
+    display: "ECG",
+    expansion: "electrocardiography",
+    domain: "medical"
+  },
+  {
+    id: "nibp",
+    pattern: /\bNIBP\b/gi,
+    display: "NIBP",
+    expansion: "non-invasive blood pressure",
+    domain: "medical"
+  },
   { id: "ohi", pattern: /\bOHI\b/gi, display: "OHI", expansion: "oral hygiene instruction", domain: "dental" },
   {
     id: "coe",
@@ -132,7 +175,11 @@ export const SHORTHAND: Shorthand[] = [
   { id: "loe", pattern: /\bLOE\b/gi, display: "LOE", expansion: "limited oral evaluation", domain: "dental" },
   {
     id: "ext",
-    pattern: /\bEXT\b/g,
+    // Case-INSENSITIVE, unlike the quadrant entries below. "ext" is not an
+    // English word, so there is no typo for it to fire on, and staff type it in
+    // lower case — measured on real notes, where an uppercase-only pattern meant
+    // a surgical note's most important abbreviation went unflagged entirely.
+    pattern: /\bEXT\b/gi,
     display: "EXT",
     expansion: "extraction",
     alternatives: ["extraction", "extension"],
@@ -140,6 +187,9 @@ export const SHORTHAND: Shorthand[] = [
   },
   { id: "ssc", pattern: /\bSSCs?\b/gi, display: "SSC", expansion: "stainless steel crown", pluralExpansion: "stainless steel crowns", domain: "dental" },
   { id: "sdf", pattern: /\bSDF\b/gi, display: "SDF", expansion: "silver diamine fluoride", domain: "dental" },
+
+  { id: "pfm", pattern: /\bPFM\b/gi, display: "PFM", expansion: "porcelain-fused-to-metal", domain: "dental" },
+  { id: "pvs", pattern: /\bPVS\b/gi, display: "PVS", expansion: "polyvinyl siloxane", domain: "dental" },
 
   // ---- Materials
   { id: "mta", pattern: /\bMTA\b/gi, display: "MTA", expansion: "mineral trioxide aggregate", domain: "dental" },
@@ -150,7 +200,7 @@ export const SHORTHAND: Shorthand[] = [
   { id: "rmgi", pattern: /\bRMGI\b/gi, display: "RMGI", expansion: "resin-modified glass ionomer", domain: "dental" },
   {
     id: "gi",
-    pattern: /\bGI\b/g,
+    pattern: /\bGI\b/gi,
     display: "GI",
     expansion: "glass ionomer",
     alternatives: ["glass ionomer", "gastrointestinal"],
@@ -158,7 +208,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "gp",
-    pattern: /\bGP\b/g,
+    pattern: /\bGP\b/gi,
     display: "GP",
     expansion: "gutta-percha",
     alternatives: ["gutta-percha", "general practitioner"],
@@ -166,7 +216,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "cr",
-    pattern: /\bCR\b/g,
+    pattern: /\bCR\b/gi,
     display: "CR",
     expansion: "composite resin",
     alternatives: ["composite resin", "centric relation"],
@@ -219,7 +269,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "pd",
-    pattern: /\bPD\b/g,
+    pattern: /\bPD\b/gi,
     display: "PD",
     expansion: "probing depth",
     alternatives: ["probing depth", "pocket depth", "partial denture", "periodontal disease"],
@@ -248,7 +298,7 @@ export const SHORTHAND: Shorthand[] = [
   { id: "ianb", pattern: /\bIANBs?\b/gi, display: "IANB", expansion: "inferior alveolar nerve block", pluralExpansion: "inferior alveolar nerve blocks", domain: "dental" },
   {
     id: "psa",
-    pattern: /\bPSA\b/g,
+    pattern: /\bPSA\b/gi,
     display: "PSA",
     expansion: "posterior superior alveolar nerve block",
     // In a medical history PSA is prostate-specific antigen. Expanding it turns
@@ -271,7 +321,7 @@ export const SHORTHAND: Shorthand[] = [
   },
   {
     id: "la",
-    pattern: /\bLA\b/g,
+    pattern: /\bLA\b/gi,
     display: "LA",
     expansion: "local anesthetic",
     alternatives: ["local anesthetic", "local anesthesia"],
@@ -317,7 +367,12 @@ export const SHORTHAND: Shorthand[] = [
     // Never expanded. Charted "NKA" is used for both readings in the wild, and
     // only the person who examined the patient knows which they meant. The
     // banned-abbreviation rule says the same thing — "only when verified".
-    pattern: /\bNKA\b/g,
+    //
+    // Case-INSENSITIVE: "nka" is not an English word, so there is no typo for
+    // this to fire on, and an uppercase-only pattern meant a lower-case "nka" —
+    // which is how it gets typed between patients — was not even flagged. An
+    // unflagged NKA is an unverified allergy statement sitting in the record.
+    pattern: /\bNKA\b/gi,
     display: "NKA",
     expansion: "no known allergies",
     alternatives: ["no known allergies", "no known drug allergies"],
@@ -375,6 +430,191 @@ export const SHORTHAND: Shorthand[] = [
     domain: "dosing"
   },
 
+  // -------------------------------------------------------------------------
+  // PRELOAD BATCH 1 — dental terms of art
+  // -------------------------------------------------------------------------
+  //
+  // Added after measuring the transformer on notes typed the way staff type them
+  // and finding it made about two changes each. See
+  // knowledge/sources/dental-abbreviation-preload.md for what was consulted and
+  // for the classification rule these follow, which is this file's existing one:
+  // an unambiguous term of art gets an `expansion` and is defined on first use; a
+  // token with more than one real reading in a dental chart gets `alternatives`
+  // and is flagged for the writer, never guessed.
+  //
+  // CASE. Everything here is case-insensitive except where the lower-case form is
+  // an English word — see TAD below. collisions.test.ts is the tripwire: it runs
+  // every silent expansion against a corpus of already-correct clinical prose and
+  // fails if one fires inside a well-written sentence.
+
+  // ---- Endodontics
+  { id: "wl", pattern: /\bWL\b/gi, display: "WL", expansion: "working length", domain: "dental" },
+  { id: "maf", pattern: /\bMAF\b/gi, display: "MAF", expansion: "master apical file", domain: "dental" },
+  {
+    // Safety-relevant enough to be worth spelling out every time it is defined:
+    // a sodium hypochlorite accident is a recognised endodontic emergency, and a
+    // note that records the irrigant as four characters is a note that hides it.
+    id: "naocl",
+    pattern: /\bNaOCl\b/gi,
+    display: "NaOCl",
+    expansion: "sodium hypochlorite",
+    domain: "dental"
+  },
+  { id: "edta", pattern: /\bEDTA\b/gi, display: "EDTA", expansion: "ethylenediaminetetraacetic acid", domain: "dental" },
+
+  // ---- Periodontics
+  { id: "mgj", pattern: /\bMGJ\b/gi, display: "MGJ", expansion: "mucogingival junction", domain: "dental" },
+  { id: "kt", pattern: /\bKT\b/gi, display: "KT", expansion: "keratinized tissue", domain: "dental" },
+  { id: "gtr", pattern: /\bGTR\b/gi, display: "GTR", expansion: "guided tissue regeneration", domain: "dental" },
+  { id: "gbr", pattern: /\bGBR\b/gi, display: "GBR", expansion: "guided bone regeneration", domain: "dental" },
+  { id: "fgg", pattern: /\bFGG\b/gi, display: "FGG", expansion: "free gingival graft", domain: "dental" },
+  { id: "ctg", pattern: /\bCTG\b/gi, display: "CTG", expansion: "connective tissue graft", domain: "dental" },
+  { id: "spt", pattern: /\bSPT\b/gi, display: "SPT", expansion: "supportive periodontal therapy", domain: "dental" },
+
+  // ---- Oral surgery
+  {
+    // The reason this one matters: a note that abbreviates osteonecrosis of the
+    // jaw is a note where the single most important word for a patient on an
+    // antiresorptive is four letters long.
+    id: "mronj",
+    pattern: /\bMRONJ\b/gi,
+    display: "MRONJ",
+    expansion: "medication-related osteonecrosis of the jaw",
+    domain: "dental"
+  },
+  { id: "onj", pattern: /\bONJ\b/gi, display: "ONJ", expansion: "osteonecrosis of the jaw", domain: "dental" },
+  { id: "oac", pattern: /\bOAC\b/gi, display: "OAC", expansion: "oroantral communication", domain: "dental" },
+  { id: "oaf", pattern: /\bOAF\b/gi, display: "OAF", expansion: "oroantral fistula", domain: "dental" },
+  { id: "ian", pattern: /\bIAN\b/gi, display: "IAN", expansion: "inferior alveolar nerve", domain: "dental" },
+
+  // ---- Prosthodontics and restorative
+  { id: "cd-denture", pattern: /\bCD\b/gi, display: "CD", expansion: "complete denture", domain: "dental" },
+  { id: "pfz", pattern: /\bPFZ\b/gi, display: "PFZ", expansion: "porcelain-fused-to-zirconia", domain: "dental" },
+  {
+    id: "cadcam",
+    pattern: /\bCAD\s?\/\s?CAM\b/gi,
+    display: "CAD/CAM",
+    expansion: "computer-aided design and computer-aided manufacturing",
+    domain: "dental"
+  },
+  {
+    // Two readings, and they are not close: a jaw position and a heart attack.
+    // Both belong in a dental record and only the writer knows which they meant.
+    id: "mi",
+    pattern: /\bMI\b/gi,
+    display: "MI",
+    expansion: "maximum intercuspation",
+    alternatives: ["maximum intercuspation (the jaw position)", "myocardial infarction (the cardiac event)"],
+    domain: "dental"
+  },
+  {
+    // "CAD" is coronary artery disease in a medical history and computer-aided
+    // design in a crown workflow. The bare form is never expanded; CAD/CAM above
+    // carries the restorative reading because the slash disambiguates it.
+    id: "cad",
+    pattern: /\bCAD\b/gi,
+    display: "CAD",
+    expansion: "coronary artery disease",
+    alternatives: ["coronary artery disease", "computer-aided design (write CAD/CAM)"],
+    domain: "medical"
+  },
+
+  // ---- Paediatric and preventive
+  { id: "ecc", pattern: /\bECC\b/gi, display: "ECC", expansion: "early childhood caries", domain: "dental" },
+  { id: "prr", pattern: /\bPRR\b/gi, display: "PRR", expansion: "preventive resin restoration", domain: "dental" },
+  { id: "fv", pattern: /\bFV\b/gi, display: "FV", expansion: "fluoride varnish", domain: "dental" },
+  { id: "tsd", pattern: /\bTSD\b/gi, display: "TSD", expansion: "tell-show-do", domain: "dental" },
+
+  // ---- Orthodontics
+  { id: "ipr", pattern: /\bIPR\b/gi, display: "IPR", expansion: "interproximal reduction", domain: "dental" },
+  {
+    // Case-SENSITIVE, and the tripwire in collisions.test.ts is why. "tad" is an
+    // ordinary English word — "a tad sensitive" is a thing a note says — and a
+    // case-insensitive expansion would rewrite it as "a temporary anchorage
+    // device sensitive". Orthodontic notes write TAD in capitals, so requiring
+    // them costs the writer nothing.
+    id: "tad",
+    pattern: /\bTAD\b/g,
+    display: "TAD",
+    expansion: "temporary anchorage device",
+    domain: "dental"
+  },
+
+  // ---- Medical history that changes dental treatment
+  { id: "htn", pattern: /\bHTN\b/gi, display: "HTN", expansion: "hypertension", domain: "medical" },
+  { id: "dm", pattern: /\bDM\b/gi, display: "DM", expansion: "diabetes mellitus", domain: "medical" },
+  { id: "chf", pattern: /\bCHF\b/gi, display: "CHF", expansion: "congestive heart failure", domain: "medical" },
+  { id: "copd", pattern: /\bCOPD\b/gi, display: "COPD", expansion: "chronic obstructive pulmonary disease", domain: "medical" },
+  { id: "cva", pattern: /\bCVA\b/gi, display: "CVA", expansion: "cerebrovascular accident", domain: "medical" },
+  { id: "gerd", pattern: /\bGERD\b/gi, display: "GERD", expansion: "gastroesophageal reflux disease", domain: "medical" },
+  { id: "osa", pattern: /\bOSA\b/gi, display: "OSA", expansion: "obstructive sleep apnea", domain: "medical" },
+  { id: "sbe", pattern: /\bSBE\b/gi, display: "SBE", expansion: "subacute bacterial endocarditis", domain: "medical" },
+  { id: "pmh", pattern: /\bPMH\b/gi, display: "PMH", expansion: "past medical history", domain: "medical" },
+  {
+    // Same species as NKA above: charted "RA" is rheumatoid arthritis in a
+    // history and relative analgesia — nitrous oxide — on a sedation record.
+    // Guessing between a systemic disease and an anaesthetic would be inventing
+    // clinical content either way.
+    id: "ra",
+    pattern: /\bRA\b/gi,
+    display: "RA",
+    expansion: "rheumatoid arthritis",
+    alternatives: ["rheumatoid arthritis", "relative analgesia (nitrous oxide)"],
+    domain: "medical"
+  },
+
+  // -------------------------------------------------------------------------
+  // PRELOAD BATCH 2 — pharmacy sig codes that are safe to expand
+  // -------------------------------------------------------------------------
+  //
+  // ONLY the ones with a single reading and no entry on the ISMP error-prone
+  // list. Everything Latin and error-prone — hs, qhs, TIW, AD/AS/AU, OD/OS/OU,
+  // ss, cc, APAP, D/C — is in BANNED_ABBREVIATIONS as a do-not-use flag instead,
+  // because expanding a dangerous abbreviation LAUNDERS it: the note comes out
+  // clean and the habit that caused the error survives untouched.
+  // NO ROUTE ABBREVIATIONS. IV, IM, PO and SL were here and are deliberately
+  // gone: they are among the most universally understood constructs in medicine,
+  // read without pause by an insurer, an attorney or the next treating dentist,
+  // so defining them adds noise rather than clarity — ".5 mg intravenous (IV)"
+  // is worse writing than ".5 mg IV". An existing dose-safety test caught it by
+  // asserting the exact output of a sedation line, which was the right alarm for
+  // the wrong reason and still the right answer.
+  //
+  // DOSING INTERVALS (q4h, q6h, q8h, q12h) live in BANNED_ABBREVIATIONS instead,
+  // because the first-use convention here appends "(q6h)" after the expansion and
+  // the abbreviation CONTAINS A DIGIT. "every 6 hours (q6h)" carries the number 6
+  // twice, and the digit-preservation property test caught exactly that: a
+  // duplicated number in a dosing instruction. A direct replacement has no
+  // parenthetical and no duplicate.
+  { id: "disp", pattern: /\bdisp\b/gi, display: "disp", expansion: "dispense", domain: "dosing" },
+  { id: "gtt", pattern: /\bgtts?\b/gi, display: "gtt", expansion: "drops", domain: "dosing" },
+  { id: "otc", pattern: /\bOTC\b/gi, display: "OTC", expansion: "over the counter", domain: "dosing" },
+  { id: "nsaid", pattern: /\bNSAIDs?\b/gi, display: "NSAID", expansion: "nonsteroidal anti-inflammatory drug", pluralExpansion: "nonsteroidal anti-inflammatory drugs", domain: "dosing" },
+  { id: "abx", pattern: /\bABX\b/gi, display: "ABX", expansion: "antibiotics", domain: "dosing" },
+  { id: "ga", pattern: /\bGA\b/gi, display: "GA", expansion: "general anesthesia", domain: "medical" },
+  {
+    // "cap" is a crown in a patient's vocabulary and a capsule in a pharmacist's.
+    // On a dental note both readings are live, and one of them is a restoration
+    // while the other is a dose form.
+    id: "cap",
+    pattern: /\bcaps?\b/gi,
+    display: "cap",
+    expansion: "capsule",
+    alternatives: ["capsule (the dose form)", "crown (write \"crown\" — \"cap\" is the patient's word)"],
+    domain: "dosing"
+  },
+  {
+    // ac / pc are on the ISMP list of abbreviations to spell out. Flagged rather
+    // than expanded because a misread meal-timing instruction is a real dosing
+    // error, and because "pc" is also how a computer gets written.
+    id: "ac-pc",
+    pattern: /\b[ap]\.?c\.?(?=[\s,.;:)]|$)/gi,
+    display: "ac / pc",
+    expansion: "before meals or after meals",
+    alternatives: ["before meals (ac)", "after meals (pc)"],
+    domain: "dosing"
+  },
+
   // ---- Quadrants
   //
   // Case-SENSITIVE, unlike most of this table. Lower-case "ul" and "ll" turn up
@@ -385,10 +625,10 @@ export const SHORTHAND: Shorthand[] = [
   //
   // These four are on the practice's own approved list, and the example in
   // their standardization document uses one directly: "Pain 8/10, LL molar".
-  { id: "ur", pattern: /\bUR\b/g, display: "UR", expansion: "upper right quadrant", domain: "dental" },
-  { id: "ul", pattern: /\bUL\b/g, display: "UL", expansion: "upper left quadrant", domain: "dental" },
-  { id: "lr", pattern: /\bLR\b/g, display: "LR", expansion: "lower right quadrant", domain: "dental" },
-  { id: "ll", pattern: /\bLL\b/g, display: "LL", expansion: "lower left quadrant", domain: "dental" },
+  { id: "ur", pattern: /\bUR(?:\s+quad(?:rant)?)?\b/g, display: "UR", expansion: "upper right quadrant", domain: "dental" },
+  { id: "ul", pattern: /\bUL(?:\s+quad(?:rant)?)?\b/g, display: "UL", expansion: "upper left quadrant", domain: "dental" },
+  { id: "lr", pattern: /\bLR(?:\s+quad(?:rant)?)?\b/g, display: "LR", expansion: "lower right quadrant", domain: "dental" },
+  { id: "ll", pattern: /\bLL(?:\s+quad(?:rant)?)?\b/g, display: "LL", expansion: "lower left quadrant", domain: "dental" },
 
   {
     // From the same example: "s/s of abscess". Expanded, never interpreted —

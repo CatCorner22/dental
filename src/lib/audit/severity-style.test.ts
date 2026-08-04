@@ -1,7 +1,13 @@
 import { readFileSync } from "node:fs";
 import path from "node:path";
 import { describe, expect, it } from "vitest";
-import { SEVERITY_CLASS, STATUS_CLASS, SEVERITY_ORDER } from "./types";
+import {
+  SEVERITY_CHIP,
+  SEVERITY_CLASS,
+  SEVERITY_RAIL,
+  STATUS_CLASS,
+  SEVERITY_ORDER
+} from "./types";
 import type { OverallStatus } from "./types";
 
 // Severity is this app's core safety vocabulary. S0 means stop; S3 means style.
@@ -40,18 +46,39 @@ describe("one severity ramp, shared", () => {
     }
   });
 
-  it("gives each severity a distinct appearance", () => {
+  it("gives each severity a distinct appearance, in every ramp", () => {
     // Two severities that look identical are two severities a reader cannot
-    // tell apart, which defeats the point of grading them.
-    const seen = new Set(Object.values(SEVERITY_CLASS));
-    expect(seen.size).toBe(SEVERITY_ORDER.length);
+    // tell apart, which defeats the point of grading them. Applied to EVERY ramp,
+    // so a second presentation of the same vocabulary cannot quietly collapse two
+    // levels that the first one distinguished.
+    for (const [name, ramp] of [
+      ["SEVERITY_CLASS", SEVERITY_CLASS],
+      ["SEVERITY_RAIL", SEVERITY_RAIL],
+      ["SEVERITY_CHIP", SEVERITY_CHIP]
+    ] as const) {
+      expect(new Set(Object.values(ramp)).size, `${name} has two identical entries`).toBe(
+        SEVERITY_ORDER.length
+      );
+      expect(Object.keys(ramp).sort(), `${name} is missing a severity`).toEqual(
+        [...SEVERITY_ORDER].sort()
+      );
+    }
   });
 
   it("no component defines its own ramp", () => {
     // The drift was possible because the mapping lived in the components.
     for (const rel of COMPONENTS) {
       const src = readFileSync(path.join(process.cwd(), rel), "utf8");
-      expect(src, `${rel} must import the shared ramp`).toContain("SEVERITY_CLASS");
+      // ANY of the shared ramps counts. The guard's point is that the mapping
+      // must not live in the component, not that there is only ever one
+      // presentation of it — the audit panel renders severity as a rail and a chip
+      // rather than a filled box, and both of those ramps are defined in
+      // lib/audit/types beside the original.
+      const RAMPS = ["SEVERITY_CLASS", "SEVERITY_RAIL", "SEVERITY_CHIP"];
+      expect(
+        RAMPS.some((r) => src.includes(r)),
+        `${rel} must import a shared severity ramp (one of ${RAMPS.join(", ")})`
+      ).toBe(true);
       for (const localName of ["SEVERITY_STYLES", "SEV_CLASS", "STATUS_STYLES"]) {
         expect(
           src.includes(`const ${localName}`),

@@ -43,6 +43,10 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         ticket={formatTicket(s.id)}
         note={s.noteMarkdown ?? ""}
         audit={s.auditReport ?? ""}
+        submittedByName={s.submittedByName}
+        submittedAtEt={s.submittedAtEt}
+        ruleVersion={s.ruleVersion}
+        auditStatus={s.auditStatus}
       />
       <h2 className="mb-2 text-lg font-semibold">Note</h2>
       <pre className="mb-6 overflow-x-auto whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs">{s.noteMarkdown}</pre>

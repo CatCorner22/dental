@@ -34,6 +34,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -371,6 +372,11 @@ export function BuilderShell({
             {auditing ? "Checking the latest edit…" : report.status}
           </p>
         </div>
+      </div>
+      {/* The writer's own TN scope, one click away — advisory here; the
+          Assessment/Plan scope-lock does the enforcing. */}
+      <div className="mb-3">
+        <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
       <div className="mb-3 flex gap-1">
         {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "ByteStar"], ["preview", "Preview"]] as const).map(([t, label]) => (

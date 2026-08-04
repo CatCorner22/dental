@@ -7,7 +7,9 @@ import { standardize } from "@/lib/standardize/standardize";
 import { runTextAudit } from "@/lib/audit/engine";
 import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
+import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { TextDiff } from "@/components/diff/TextDiff";
+import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import type { VerifiedExtraction } from "@/lib/assist/extraction";
 import {
   andon,
@@ -687,6 +689,17 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
       </div>
 
       <div ref={queueRef} tabIndex={-1} role="region" aria-label="Resolution queue" className="outline-none">
+        {/* Byte rides the same deferred text the live check uses: one analysis
+            cadence, one source of truth, zero extra keystroke cost. Read-only
+            by architecture — the panel has no path into the note. "Think
+            deeper" routes to the existing verified interrogate capability. */}
+        <div className="mb-4">
+          <ByteAdvisor
+            text={deferredInput}
+            assistEnabled={assistEnabled}
+            onAskDeeper={() => runAssist("interrogate")}
+          />
+        </div>
         {result === null ? (
           live === null ? (
             <div className="card text-sm text-slate-600">

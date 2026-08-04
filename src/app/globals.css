@@ -548,3 +548,26 @@
     content: "";
   }
 }
+
+/* Byte's blink: eyes scale to a line every few seconds. The ONLY animation the
+   mascot has — a character that waves and bounces next to a clinical form is a
+   distraction wearing a smile. Guarded by the same reduced-motion rule as
+   everything else: under prefers-reduced-motion Byte simply keeps his eyes
+   open, which costs nothing and jitters nobody. */
+@keyframes byte-blink {
+  0%, 92%, 100% {
+    transform: scaleY(1);
+  }
+  95% {
+    transform: scaleY(0.12);
+  }
+}
+.byte-blink {
+  animation: byte-blink 5.2s ease-in-out infinite;
+  transform-origin: center 30%;
+}
+@media (prefers-reduced-motion: reduce) {
+  .byte-blink {
+    animation: none;
+  }
+}

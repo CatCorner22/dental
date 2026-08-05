@@ -32,6 +32,9 @@ import { awardForSubmission, awardOnce } from "@/lib/db/repo/gamify";
 import { BADGES } from "@/lib/stats/badges";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
 import { sparkleLine } from "@/lib/stats/sparkle";
+// The backstop. Sealed, independent, and imported ONLY here -- the publish gate
+// is the single place in the application permitted to reach into src/lib/byteaudit.
+import { byteAuditVerify, type ByteAuditVerdict } from "@/lib/byteaudit/verify";
 
 export const runtime = "nodejs";
 
@@ -202,6 +205,20 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   // a mid-way failure rolls the whole thing back so the draft stays
   // resubmittable and no blank ticket is ever written to the record. The
   // frozen text is captured here so the email reuses it without recomposing.
+  /**
+ * ByteAudit said no.
+ *
+ * A distinct type rather than a bare Error so the catch below can tell a
+ * disagreement from an outage. They need opposite advice: an outage is worth
+ * retrying, a disagreement will reproduce exactly and needs a person.
+ */
+class ByteAuditRefusal extends Error {
+  constructor(readonly verdict: ByteAuditVerdict) {
+    super("byteaudit refused");
+    this.name = "ByteAuditRefusal";
+  }
+}
+
   let frozenNote = "";
   let frozenAudit = "";
   let filed;
@@ -252,10 +269,59 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
           ) +
           "\n" +
           stamp;
+        // THE BACKSTOP, inside the transaction on purpose.
+        //
+        // Both documents now exist and the ticket is issued, but nothing is
+        // committed. ByteAudit reads what was actually built -- not what this
+        // route believes it built -- and a refusal throws, which rolls the whole
+        // filing back. There is no half-filed state to clean up and no ticket
+        // burned on a record that was never written.
+        //
+        // It shares no code with anything above it: not the composer, not the
+        // stamp builder, not the audit engine. That is what lets it disagree.
+        //
+        // The submissionId is derived from the ticket here, so ByteAudit's
+        // ticket-matches-record check is tautological at THIS call site. It is
+        // not wasted -- the same function runs over stored rows during offline
+        // re-verification, where the two values come from different places and
+        // the check is real.
+        const verdict = byteAuditVerify({
+          claimed: {
+            ticket,
+            ruleVersion: RULESET_VERSION,
+            auditStatus: report.status,
+            submittedAtEt,
+            submissionId: Number(ticket.slice(3))
+          },
+          frozenNote,
+          frozenAudit
+        });
+        if (!verdict.publish) throw new ByteAuditRefusal(verdict);
+
         return { note: frozenNote, audit: frozenAudit };
       }
     );
   } catch (e) {
+    // A ByteAudit refusal is not an outage and must not be reported as one.
+    // "Try again" is exactly wrong advice for an artifact that will be rebuilt
+    // identically and refused identically, so it gets its own status and says
+    // what disagreed.
+    if (e instanceof ByteAuditRefusal) {
+      console.error("byteaudit refused a filing:", e.verdict.objections.map((o) => o.stepId).join(","));
+      return Response.json(
+        {
+          error:
+            "ByteAudit stopped this filing: the note and the record that describes it do not agree. " +
+            "Nothing was filed and nothing was sent. Tell a Team Lead — this is a fault in the tool, not in your note.",
+          byteAudit: {
+            objections: e.verdict.objections,
+            stepsChecked: e.verdict.stepsChecked,
+            stepsExpected: e.verdict.stepsExpected
+          }
+        },
+        { status: 422 }
+      );
+    }
     console.error("submit filing failed:", e instanceof Error ? e.name : "error");
     return Response.json(
       { error: "Could not file the note. Nothing was sent — try again." },

@@ -449,7 +449,7 @@ export function BuilderShell({
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
       <div className="mb-3 flex gap-1">
-        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "ByteStar"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "SuperByte"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}

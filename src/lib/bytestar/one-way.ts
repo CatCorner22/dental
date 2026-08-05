@@ -1,15 +1,15 @@
-// ONE-WAY FEEDBACK — ByteStar → staff, never staff → ByteStar.
+// ONE-WAY FEEDBACK — SuperByte → staff, never staff → SuperByte.
 //
-// ByteStar gives feedback through objective language (observations) and
+// SuperByte gives feedback through objective language (observations) and
 // graphics (NorthStar compass, drift-to-target rails, mood). Staff cannot
 // prompt it, rate it, copy from it, or send any signal back that could train
 // or steer the model. The only POST body staff may send is de-identified
 // draft text for passive observation; Team Lead may clear a perma-kill latch.
 
 export const BYTESTAR_ONE_WAY_NOTICE =
-  "ByteStar gives you objective feedback here — language and graphics only. You cannot prompt ByteStar, copy its text, or send it feedback.";
+  "SuperByte gives you objective feedback here — language and graphics only. You cannot prompt SuperByte, copy its text, or send it feedback.";
 
-/** Actions staff must never use to talk TO ByteStar. Enforced in the API route. */
+/** Actions staff must never use to talk TO SuperByte. Enforced in the API route. */
 export const BYTESTAR_FORBIDDEN_USER_ACTIONS = [
   "feedback",
   "rate",

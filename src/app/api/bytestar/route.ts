@@ -198,7 +198,7 @@ export async function POST(req: Request): Promise<Response> {
     if (stage === "perma-kill") {
       await logAction(db, {
         actorId: null,
-        actorName: "ByteStar ladder",
+        actorName: "SuperByte ladder",
         action: "bytestar.perma-kill",
         detail: encodeByteStarDetail({
           outcome: "perma-kill",

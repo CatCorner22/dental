@@ -2,7 +2,7 @@ import type { Db } from "@/lib/db/client";
 import { listAuditLogByAction } from "@/lib/db/repo/auditLog";
 import { parseEscapeStage, isModelEscapeDetail, type ModelEscapeRow } from "./ladder";
 
-// Deployment-wide ByteStar cage state from the transparent audit log.
+// Deployment-wide SuperByte cage state from the transparent audit log.
 // No note content — only ladder stages and perma-kill markers.
 
 export async function isByteStarPermaKilled(db: Db): Promise<boolean> {

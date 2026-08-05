@@ -179,7 +179,7 @@
 // 2.17.0 — staff-adoption + Gate-1 follow-ons without learned weights:
 //         ambiguous-shorthand reading proposals (display-only); unread-clause
 //         category router for the readback panel; provider-only second-line
-//         PHI patterns (email/MRN/street/ZIP) merged before assist/ByteStar
+//         PHI patterns (email/MRN/street/ZIP) merged before assist/SuperByte
 //         calls; learning-ledger surface-variant clustering; Byte next-action
 //         + gauge explanations; TN license-scope retrieval cue.
 // 2.18.0 — frozen disambiguation + unread-routing evals (charter §4.1/§4.2

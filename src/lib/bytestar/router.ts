@@ -1,6 +1,6 @@
 // BYTESTAR MODE ROUTER — deterministic strictness routing for the pioneer.
 //
-// The router classifies the DRAFT (staff never prompt ByteStar) into risk
+// The router classifies the DRAFT (staff never prompt SuperByte) into risk
 // modes and resolves a strictness profile. Everything here is regex over the
 // input text: the model is never asked to classify its own risk, because a
 // model grading its own danger is the self-judging loop the charter rejects.
@@ -114,7 +114,7 @@ export function detectForeignJurisdiction(text: string): string | null {
 
 /** Copy shown by the panel when TN-law observations were withheld. */
 export function jurisdictionNoticeFor(state: string): string {
-  return `This draft references ${state}. ByteStar's law observations are Tennessee-only and were withheld — verify ${state} requirements with that state's board.`;
+  return `This draft references ${state}. SuperByte's law observations are Tennessee-only and were withheld — verify ${state} requirements with that state's board.`;
 }
 
 // Strong-claim language that demands a named authority behind it. Applied to

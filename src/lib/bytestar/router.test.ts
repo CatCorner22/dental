@@ -56,7 +56,7 @@ const ROUTING_CASES: Array<{ id: string; text: string; expect: string[] }> = [
   }
 ];
 
-describe("ByteStar mode router (deterministic)", () => {
+describe("SuperByte mode router (deterministic)", () => {
   it("routes every frozen case exactly", () => {
     for (const c of ROUTING_CASES) {
       expect(resolveModes(c.text), c.id).toEqual(c.expect);

@@ -1,9 +1,9 @@
-// BENCHMARKS — the NorthStar numbers ByteStar steers toward.
+// BENCHMARKS — the NorthStar numbers SuperByte steers toward.
 //
 // Sources of truth, in this order:
 //   1. Leading practices encoded in the deterministic advisor gauges
 //      (read coverage, density, later-reader pillars, active voice).
-//   2. Tennessee-required documentation cues (presence-only — ByteStar never
+//   2. Tennessee-required documentation cues (presence-only — SuperByte never
 //      invents the missing language; it only reports the gap).
 //   3. Team Lead feedback signals when supplied as aggregate targets
 //      (optional override band; defaults below are the practice baseline).

@@ -10,8 +10,21 @@
  * Do not use `uselibpqcompat=true` here — that opts into the weaker meaning.
  */
 export function pinPostgresSslMode(url: string): string {
-  return url.replace(
+  // Vercel/Neon paste mistakes sometimes wrap the URL in quotes; strip them
+  // so the sslmode rewrite actually matches.
+  let out = url.trim().replace(/^['"]+|['"]+$/g, "");
+
+  out = out.replace(
     /([?&]sslmode=)(require|prefer|verify-ca)(?=&|$)/gi,
     "$1verify-full"
   );
+
+  // Neon URLs without an sslmode still speak TLS; pin explicitly so a dashboard
+  // copy that omits the query param does not fall through to pg defaults that
+  // warn (or, later, weaken).
+  if (/[.]neon[.]tech([:/?]|$)/i.test(out) && !/[?&]sslmode=/i.test(out)) {
+    out += out.includes("?") ? "&sslmode=verify-full" : "?sslmode=verify-full";
+  }
+
+  return out;
 }

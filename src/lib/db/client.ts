@@ -141,14 +141,21 @@ async function seedAdmin(db: Db): Promise<void> {
     // setup attempts — same rule as an in-app admin password reset.
     const { setPasswordAndRevokeLinks } = await import("./repo/resetTokens");
     await setPasswordAndRevokeLinks(db, existing.id, await hashPassword(password), new Date());
+    // Clear the second factor too. This flag exists for exactly one scenario —
+    // the site owner cannot sign in and there is no other Developer to help —
+    // and an enabled authenticator locks that owner out just as completely as
+    // a lost password. Resetting one but not the other left the break-glass
+    // path broken for the person it was built for (a live lockout proved it).
+    const { updateUser } = await import("./repo/users");
+    await updateUser(db, existing.id, { mfaEnabled: false, mfaSecret: null });
     await logAction(db, {
       actorId: null,
       action: "setup.admin-password-reset",
       target: username,
-      detail: "ADMIN_PASSWORD_RESET=1 — remove this env flag after sign-in"
+      detail: "ADMIN_PASSWORD_RESET=1 — password reset, second factor cleared; remove this env flag after sign-in"
     });
     console.warn(
-      `[db] Reset password for Developer "${username}" via ADMIN_PASSWORD_RESET. Remove that env flag now.`
+      `[db] Reset password and cleared MFA for Developer "${username}" via ADMIN_PASSWORD_RESET. Remove that env flag now.`
     );
     return;
   }

@@ -187,6 +187,7 @@ argument to deposition memory contests the defense does not control.
 | Consent discussion, no decision | `complete.consent-no-decision` | S2 | `byte.consent-is-a-conversation` |
 | Consent assertion, no substance | `complete.consent-thin-assertion` | S2 | `byte.consent-is-a-conversation` |
 | Procedure without rationale | `complete.clinical-rationale` | S2 | `byte.clinical-rationale` |
+| Referral without recipient or reason | `complete.referral-loop-open` | S2 | `byte.referral-loop` |
 
 ## Residual risks and honest limits
 

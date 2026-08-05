@@ -96,6 +96,17 @@ const RULES: CompletenessRule[] = [
     what: "A significant procedure is documented without clinical reasoning.",
     how:
       "State why this treatment was indicated — the finding, diagnosis, or symptom it addresses. Procedure codes and billing narratives are not a substitute for clinical rationale."
+  },
+  {
+    id: "complete.referral-loop-open",
+    // Doctors Company referral documentation guidance; delayed-diagnosis claim pattern.
+    trigger:
+      /\b(?:referred|referral\s+(?:to|placed|made|given|pending)|refer\s+to|will\s+refer)\b/i,
+    satisfiedBy:
+      /\b(?:endodontist|periodontist|oral\s+surgeon|oral\s+surgery|OMFS|orthodont|prosthodont|pedodont|physician|PCP|primary\s+care|specialist|Dr\.|to\s+Dr\b|for\s+(?:evaluation|consult|biopsy|extraction|surgical|periodontal|orthodontic|urgent|stat)|because|due\s+to|regarding|evaluate|periapical|lesion|radiolucen|pain|swelling|abscess|fracture|impacted|interpretation|interpreted|read\s+by)\b/i,
+    what: "A referral is documented without naming the recipient or the clinical reason.",
+    how:
+      "Record to whom (named specialist or service), why (finding or symptom), and urgency when time-sensitive. \"Referral placed\" alone does not close the loop."
   }
 ];
 

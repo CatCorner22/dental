@@ -199,4 +199,7 @@
 //         complete.consent-thin-assertion (checkbox theater); advisor entry
 //         byte.clinical-rationale; internal "language optimizer for risk
 //         reduction" terminology; knowledge/sources/litigation-documentation-research.md.
-export const RULESET_VERSION = "2.21.0";
+// 2.22.0 — complete.referral-loop-open (Doctors Company referral guidance);
+//         Team Lead+ claim-file research digest on /reference/risk-management;
+//         documentationResearch added to reference doc allowlist.
+export const RULESET_VERSION = "2.22.0";

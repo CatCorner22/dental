@@ -26,10 +26,18 @@ export function ByteStarPermaClear() {
             body: JSON.stringify({ action: "perma-clear" })
           })
             .then(async (r) => {
-              if (!r.ok) throw new Error("Failed");
+              if (!r.ok) {
+                // Surface the server's actual reason. The old fixed "Team Lead
+                // access required" message showed even when the failure was
+                // something else entirely, which made the latch look broken.
+                const data = (await r.json().catch(() => ({}))) as { error?: string };
+                throw new Error(data.error ?? `Could not clear (HTTP ${r.status}).`);
+              }
               setMsg("Perma-kill cleared. Refresh to see updated status.");
             })
-            .catch(() => setMsg("Could not clear — Team Lead access required."))
+            .catch((e: Error) =>
+              setMsg(e.message || "Could not reach the server — check the connection and try again.")
+            )
             .finally(() => setPending(false));
         }}
       >

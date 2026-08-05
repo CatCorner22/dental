@@ -64,13 +64,18 @@ export default async function ByteStarMonitorPage() {
           label="Deployment door"
           value={config.enabled && !permaKilled ? "Open" : "Closed"}
           note={
+            // Ordered by which gate actually stops the call, so the one
+            // sentence shown is the one thing to fix — a generic "requires
+            // three switches" note left the owner guessing which was missing.
             permaKilled
-              ? "Ladder perma-kill is engaged (model escape ladder)."
+              ? "Ladder perma-kill is engaged (model escape ladder). Clear it below after review."
               : config.silentlyKilled
                 ? "Silent kill BYTESTAR_KILL is engaged (operator)."
-                : config.enabled
-                  ? "Assist + BYTESTAR_ENABLED are on. Staff observe only."
-                  : "Requires ASSIST_ENABLED, API key, and BYTESTAR_ENABLED."
+                : !config.assistOn
+                  ? "Set ASSIST_ENABLED=1 and AI_GATEWAY_API_KEY in the deployment environment, then redeploy — ByteStar rides the assist provider."
+                  : config.pioneerOptedOut
+                    ? "BYTESTAR_ENABLED=0 is set. Remove it (or set 1) to reopen the pioneer."
+                    : "Open — no per-user activation. ByteStar observes drafts automatically; staff observe only."
           }
         />
         <Stat label="Prompt version" value={BYTESTAR_PROMPT_VERSION} note={`Model: ${config.model}`} />

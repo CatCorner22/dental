@@ -49,6 +49,7 @@ async function build(): Promise<Db> {
     const db = drizzlePg(new Pool({ connectionString: url }), { schema });
     await applySchema(db);
     await seedAdmin(db);
+    await sweepMfaWhileDisabled(db);
     await seedOffices(db);
     return db;
   }
@@ -76,8 +77,34 @@ async function build(): Promise<Db> {
   const db = drizzlePglite(new PGlite(dir), { schema });
   await applySchema(db);
   await seedAdmin(db);
+  await sweepMfaWhileDisabled(db);
   await seedOffices(db);
   return db;
+}
+
+// While the deployment-level MFA switch is off, stale enrollments are cleared
+// at bootstrap. Login already skips the code check when the switch is off, so
+// this is not what unlocks anyone — it exists so flipping MFA_ENABLED=1 later
+// starts from zero enrollments instead of resurrecting a factor whose device
+// may be long gone. Failure here must not take the app down.
+async function sweepMfaWhileDisabled(db: Db): Promise<void> {
+  try {
+    const { mfaFeatureEnabled } = await import("@/lib/auth/mfaFeature");
+    if (mfaFeatureEnabled()) return;
+    const { clearAllMfa } = await import("./repo/users");
+    const cleared = await clearAllMfa(db);
+    if (cleared.length === 0) return;
+    const { logAction } = await import("./repo/auditLog");
+    await logAction(db, {
+      actorId: null,
+      action: "setup.mfa-sweep",
+      target: cleared.join(", "),
+      detail: "second factors cleared: MFA is turned off on this deployment"
+    });
+    console.warn(`[db] MFA disabled on this deployment; cleared enrollment for: ${cleared.join(", ")}`);
+  } catch (err) {
+    console.warn("[db] MFA sweep skipped:", err);
+  }
 }
 
 // Configured offices, on an empty table only. Never a reconciliation: a

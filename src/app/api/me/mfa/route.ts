@@ -4,6 +4,7 @@ import { getUserById, updateUser } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { generateMfaSecret, mfaEnrollmentUri, verifyMfaCode } from "@/lib/auth/totp";
+import { mfaFeatureEnabled } from "@/lib/auth/mfaFeature";
 import { checkThrottle, clearThrottle, passwordCheckKey, recordFailure } from "@/lib/auth/throttle";
 
 export const runtime = "nodejs";
@@ -26,6 +27,15 @@ export const runtime = "nodejs";
 export async function POST(req: Request): Promise<Response> {
   const guard = await requireRole("readonly");
   if (!guard.ok) return guard.response;
+  // Feature-gated as a whole. Enrollment while off would arm a factor the
+  // login path is not checking — worse than useless, it re-locks the account
+  // the moment the switch is turned back on.
+  if (!mfaFeatureEnabled()) {
+    return Response.json(
+      { error: "Two-factor authentication is turned off on this deployment (set MFA_ENABLED=1 to offer it)." },
+      { status: 409 }
+    );
+  }
   const parsed = await readJsonRecord(req);
   if (parsed.kind !== "object") {
     return Response.json({ error: "Invalid request." }, { status: 400 });

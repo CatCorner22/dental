@@ -2,8 +2,9 @@
 
 import { useState } from "react";
 import Link from "next/link";
-import { LICENSE_SCOPES, type LicenseLevel } from "@/lib/law/license-scope";
+import { LICENSE_SCOPES } from "@/lib/law/license-scope";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { clinicalRoleToLicenseLevel } from "@/lib/scope/authorCapabilities";
 
 // LICENSE SCOPE, IN THE BUILDER — the chart row that applies to the person
 // writing, one click from the note instead of three pages away.
@@ -12,17 +13,9 @@ import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 // Assessment/Plan already does the enforcing). A writer wondering mid-visit
 // "may I even do this?" gets the cited answer without leaving the note.
 
-const ROLE_TO_LEVEL: Partial<Record<ClinicalRole, LicenseLevel>> = {
-  dentist: "dentist",
-  hygienist: "dental-hygienist",
-  // The card shows the registered level; practical assistants see the same
-  // card's link to the full charts where both assistant levels are drawn.
-  assistant: "registered-dental-assistant"
-};
-
 export function LicenseScopeCard({ clinicalRole }: { clinicalRole: ClinicalRole }) {
   const [open, setOpen] = useState(false);
-  const level = ROLE_TO_LEVEL[clinicalRole];
+  const level = clinicalRoleToLicenseLevel(clinicalRole);
   if (!level) return null;
   const scope = LICENSE_SCOPES.find((s) => s.id === level);
   if (!scope) return null;

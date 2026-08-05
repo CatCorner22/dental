@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from "react";
 import { advise } from "@/lib/advisor/advisor";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Byte } from "./Byte";
 
@@ -21,15 +22,18 @@ import { Byte } from "./Byte";
 
 export function ByteAdvisor({
   text,
+  clinicalRole,
   assistEnabled = false,
   onAskDeeper
 }: {
   text: string;
+  /** Scopes coaching to the writer's TN license. */
+  clinicalRole?: ClinicalRole;
   /** Wired by the host to the verified interrogate capability. Advice-only. */
   assistEnabled?: boolean;
   onAskDeeper?: () => void;
 }) {
-  const report = useMemo(() => advise(text), [text]);
+  const report = useMemo(() => advise(text, { clinicalRole }), [text, clinicalRole]);
   const [tipIndex, setTipIndex] = useState(0);
   const tip = report.advice[Math.min(tipIndex, Math.max(0, report.advice.length - 1))];
   const { gauges } = report;

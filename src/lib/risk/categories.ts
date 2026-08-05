@@ -168,6 +168,8 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   // note does not carry.
   "complete.consent-thin-assertion": "material-omission",
   "complete.referral-loop-open": "material-omission",
+  "complete.finding-no-disposition": "material-omission",
+  "complete.procedure-no-followup": "material-omission",
   "required.missing": "material-omission",
   "supervision.pc1107-new-patient": "material-omission",
   "supervision.pc1107-unanswered": "material-omission",
@@ -177,6 +179,7 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   // procedure recorded with no reasoning attached. This was the thinnest
   // category in the taxonomy when it was written, and it is now less thin.
   "complete.clinical-rationale": "rationale-absent",
+  "complete.rx-no-indication": "rationale-absent",
   "justify.buildup-retention": "rationale-absent",
   "justify.crown-necessity": "rationale-absent",
   "justify.srp-periodontal-evidence": "rationale-absent",
@@ -200,6 +203,11 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   // filed as though it describes this one.
   "residue.": "record-mechanics",
   "stale.": "record-mechanics",
+
+  // Author-capability handoff cue (auxiliaries): not a missing fact in the
+  // note, but a record-mechanics reminder that judgement sections file under
+  // a different license.
+  "scope.author-handoff": "record-mechanics",
 
   // ── author voice ───────────────────────────────────────────────────────────
   "effort.gibberish": "author-voice",

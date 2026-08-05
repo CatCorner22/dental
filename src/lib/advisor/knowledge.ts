@@ -28,6 +28,15 @@
 // ===========================================================================
 
 import type { ClinicalFact } from "@/lib/extract/facts";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+
+/** Which author licenses an entry is written for. Omit = every role. */
+export type AdvisorAuthorScope =
+  | "any"
+  | "hygienist"
+  | "assistant"
+  | "dentist"
+  | "auxiliary"; // hygienist or assistant
 
 export interface AdvisorContext {
   /** The note text, as typed so far. */
@@ -38,6 +47,8 @@ export interface AdvisorContext {
   facts: ClinicalFact[];
   /** Fact kinds present, for cheap membership checks. */
   kinds: Set<ClinicalFact["kind"]>;
+  /** Writer clinical role when known — scopes which entries may fire. */
+  clinicalRole?: ClinicalRole;
 }
 
 export interface KnowledgeEntry {
@@ -57,6 +68,24 @@ export interface KnowledgeEntry {
   when: (ctx: AdvisorContext) => boolean;
   /** One concrete next step the writer can take — advice only, never applied. */
   nextAction?: string;
+  /**
+   * When set, the entry only fires for matching author scopes. Safety entries
+   * stay `any` (or omit). Judgement-coaching entries target `dentist`.
+   */
+  authorScope?: AdvisorAuthorScope;
+}
+
+export function entryMatchesAuthorScope(
+  entry: KnowledgeEntry,
+  role: ClinicalRole | undefined
+): boolean {
+  const scope = entry.authorScope ?? "any";
+  if (scope === "any") return true;
+  // Unconfigured accounts keep general + dentist judgement coaching — same
+  // load-bearing default as canRecordClinicalJudgement (restrict only once roles are set).
+  if (!role || role === "unset") return scope === "dentist";
+  if (scope === "auxiliary") return role === "hygienist" || role === "assistant";
+  return scope === role;
 }
 
 const hasProcedureCategory = (ctx: AdvisorContext, category: string): boolean =>
@@ -262,6 +291,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "another dentist cannot see the decision path years later.",
     source: "The Doctors Company (1,185 dental claims, 2010–2020); complete.clinical-rationale rule",
     priority: 66,
+    authorScope: "dentist",
     nextAction: "Add one sentence: the finding, diagnosis, or symptom that made this treatment indicated.",
     when: (ctx) =>
       /\b(?:crown(?:\s+prep)?|root\s+canal|RCT|SRP|extraction|extracted|implant|build-?up|pulpotomy)\b/i.test(
@@ -270,6 +300,52 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       !/\b(?:because|due\s+to|indicated|recommended\s+for|diagnosed|diagnosis|caries|fracture|infection|periodont|bone\s+loss|pain|symptom|recurrent\s+decay)\b/i.test(
         ctx.text
       )
+  },
+  {
+    id: "byte.hygiene-findings-loop",
+    say: "Probing or bleeding without sites leaves the next hygienist guessing.",
+    why:
+      "A hygienist records clinical findings and measurements for diagnosis by the dentist " +
+      "(Tenn. Code Ann. § 63-5-108(c)). Pocket depths, bleeding points, and calculus extent " +
+      "are the facts that make that handoff usable — \"periodontal findings noted\" is not.",
+    source: "Tenn. Code Ann. § 63-5-108(c); Tenn. Comp. R. & Regs. 0460-03-.09",
+    priority: 70,
+    authorScope: "hygienist",
+    nextAction: "Add probing depths with sites, bleeding locations, and what hygiene service you performed.",
+    when: (ctx) =>
+      mentions(ctx, "proph", "scaling", "root planing", "srp", "periodont", "probing", "bleeding") &&
+      !(/\b\d\s*mm\b/i.test(ctx.text) || mentions(ctx, "tooth", "#", "site", "quad"))
+  },
+  {
+    id: "byte.hygiene-dentist-handoff",
+    say: "Findings are yours to record. Diagnosis stays with the dentist.",
+    why:
+      "Tennessee does not authorize a hygienist to perform a comprehensive examination, " +
+      "diagnosis, or treatment planning. Document what you measured and did; leave Assessment " +
+      "and Plan empty for the dentist, then transfer when they are ready to file.",
+    source: "Tenn. Code Ann. § 63-5-108(c)(3); Tenn. Comp. R. & Regs. 0460-03-.09(7)(a)",
+    priority: 60,
+    authorScope: "hygienist",
+    nextAction: "Keep Assessment/Plan clear; transfer the draft when the dentist will diagnose.",
+    when: (ctx) =>
+      ctx.facts.length >= 2 &&
+      (mentions(ctx, "proph", "scaling", "fluoride", "sealant", "periodont") ||
+        ctx.kinds.has("measurement"))
+  },
+  {
+    id: "byte.assistant-attribution",
+    say: "Name who performed each act — \"was placed\" hides the hands.",
+    why:
+      "An assistant documents what they performed and observed under dentist direction. " +
+      "Active voice with a role or credential (\"the treating dentist placed…\", \"I assisted with…\") " +
+      "keeps the record honest about scope and responsibility.",
+    source: "Tenn. Code Ann. § 63-5-108(d); practice writing standard (active voice)",
+    priority: 68,
+    authorScope: "assistant",
+    nextAction: "Rewrite passive procedure lines with who did the act (treating dentist vs assistant).",
+    when: (ctx) =>
+      ctx.kinds.has("procedure") &&
+      /\b(?:was|were)\s+(?:placed|administered|performed|completed|given)\b/i.test(ctx.text)
   },
   {
     id: "byte.consent-is-a-conversation",

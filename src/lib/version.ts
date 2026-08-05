@@ -226,4 +226,10 @@
 //         No rule was weakened to make the number green: a negative control
 //         asserts the shorthand corpus still blocks, and the recall tests over
 //         the persona and scenario corpora are unchanged.
-export const RULESET_VERSION = "2.23.0";
+// 2.24.0 — license-scope-aware templates and capability-tailored coaching:
+//         Quick picks / featured scaffolds filtered by clinical role; audit
+//         tailor suppresses dentist-judgement required.missing for auxiliaries
+//         (scope.author-handoff S3); Byte knowledge gains authorScope; SuperByte
+//         receives an AUTHOR LICENSE lens. EDR product seam (edr/product.ts)
+//         replaces hard-coded Curve Hero handoff copy for multi-PMS deploys.
+export const RULESET_VERSION = "2.24.0";

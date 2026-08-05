@@ -8,6 +8,9 @@ import { sitesOfFact } from "@/lib/extract/facts";
 import { BYTESTAR_UNAVAILABLE, getByteStarConfig, type ByteStarConfig } from "./config";
 import { detectEscape, type EscapeHit } from "./escape";
 import { measureBenchmarks, type BenchmarkReport } from "./benchmarks";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { authorCapabilities } from "@/lib/scope/authorCapabilities";
+import { edrProductName } from "@/lib/edr/product";
 import { BYTESTAR_PROMPT_VERSION, BYTESTAR_SYSTEM_PROMPT } from "./prompts";
 import { isAllowedSource } from "./public";
 import {
@@ -177,11 +180,13 @@ type ReadResult =
   | { ok: false; code: "escape-model" | "invalid-shape" | "model-error"; hits?: EscapeHit[]; codes: string[] };
 
 /** Focus lenses for diverse self-consistency — same rails, different attention. */
-const READ_LENSES = [
-  "Focus this read on ACTIVE VOICE and who performed each act.",
-  "Focus this read on TENNESSEE-REQUIRED documentation gaps (as questions only).",
-  "Focus this read on Curve Hero–ready standardized wording and clarity."
-] as const;
+function readLenses(edrName: string): readonly string[] {
+  return [
+    "Focus this read on ACTIVE VOICE and who performed each act.",
+    "Focus this read on TENNESSEE-REQUIRED documentation gaps (as questions only).",
+    `Focus this read on ${edrName}–ready standardized wording and clarity.`
+  ];
+}
 
 async function readOnce(
   input: string,
@@ -193,7 +198,7 @@ async function readOnce(
   try {
     raw = await generateList({
       system,
-      prompt: `De-identified draft note:\n\n${input}\n\n${lens}\n\nReturn up to three objective observations that move this draft toward active voice, Curve Hero–ready standardized language, and Tennessee-required documentation completeness. Every observation about existing wording must include the exact quote in "evidence". Use questions for any missing fact. Do not address the writer directly.`,
+      prompt: `De-identified draft note:\n\n${input}\n\n${lens}\n\nReturn up to three objective observations that move this draft toward active voice, electronic-dental-record–ready standardized language, and Tennessee-required documentation completeness. Every observation about existing wording must include the exact quote in "evidence". Use questions for any missing fact. Do not address the writer directly.`,
       schemaName: "bytestar",
       schema: BYTESTAR_SCHEMA as unknown as Record<string, unknown>
     });
@@ -222,9 +227,13 @@ export async function runByteStar(
     reads?: number;
     /** Optional second-line / model PHI scanner — may only add blocks. */
     modelPhiScan?: ScanPhiFn;
+    /** Signed-in clinical role — license-scoped observation lens. */
+    clinicalRole?: ClinicalRole;
   } = {}
 ): Promise<ByteStarOutcome> {
   const config = opts.config ?? getByteStarConfig(opts.env);
+  const env = opts.env ?? process.env;
+  const edrName = edrProductName(env);
   const benchmarks = measureBenchmarks(text);
 
   if (opts.permaKilled || config.silentlyKilled) {
@@ -262,9 +271,12 @@ export async function runByteStar(
   const retrieved = retrieveContext(input);
   const parseContext = parseContextFor(input);
   const strictAddendum = strictPromptAddendum(profile, modes);
+  const role = opts.clinicalRole ?? "unset";
+  const authorLens = authorCapabilities(role).bytestarLens;
   const system = [
     BYTESTAR_SYSTEM_PROMPT,
     strictAddendum,
+    `--- AUTHOR LICENSE (trusted; from the signed-in account) ---\n${authorLens}`,
     retrieved.text ? `--- PRACTICE STANDARDS (retrieved for this text) ---\n${retrieved.text}` : "",
     parseContext ? `--- ${parseContext}` : ""
   ]
@@ -273,9 +285,10 @@ export async function runByteStar(
 
   // Strict profiles raise the read floor; the existing ceiling still caps cost.
   const reads = Math.max(opts.reads ?? resolveReads(opts.env), profile.minReads);
+  const lenses = readLenses(edrName);
   const results = await Promise.all(
     Array.from({ length: reads }, (_, i) =>
-      readOnce(input, system, generateList, READ_LENSES[i % READ_LENSES.length]!)
+      readOnce(input, system, generateList, lenses[i % lenses.length]!)
     )
   );
 

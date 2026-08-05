@@ -6,7 +6,9 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { Dialog } from "@/components/ui/Dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
-import { FEATURED_PICK_IDS, QUICK_PICKS } from "@/lib/presets/quickPicks";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { authorCapabilities } from "@/lib/scope/authorCapabilities";
+import { featuredPicksForRole, quickPicksForRole } from "@/lib/presets/quickPicks";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { Character } from "@/components/mascot/Sparkle";
 import { STATUS_META } from "@/lib/status/draftStatus";
@@ -26,6 +28,7 @@ interface DraftRow {
 
 export function Dashboard({
   role,
+  clinicalRole = "unset",
   displayName,
   username,
   canEdit,
@@ -33,6 +36,8 @@ export function Dashboard({
   totalDrafts
 }: {
   role: string;
+  /** TN clinical license — scopes Quick picks and structure cues. */
+  clinicalRole?: ClinicalRole;
   displayName: string;
   /** Stable key for per-user client-side state (onboarding checklist). */
   username: string;
@@ -46,6 +51,9 @@ export function Dashboard({
   const [statusFilter, setStatusFilter] = useState<DraftStatus | null>(null);
   const [busy, setBusy] = useState(false);
   const [showPicks, setShowPicks] = useState(false);
+  const scopePicks = useMemo(() => quickPicksForRole(clinicalRole), [clinicalRole]);
+  const featuredPicks = useMemo(() => featuredPicksForRole(clinicalRole), [clinicalRole]);
+  const structureCue = authorCapabilities(clinicalRole).structureCue;
   const [transferFor, setTransferFor] = useState<DraftRow | null>(null);
   const [rowError, setRowError] = useState("");
 
@@ -134,7 +142,8 @@ export function Dashboard({
               </button>
               <HelpTip label="About New Smile Note and Quick picks">
                 New Smile Note opens a blank draft with Universal Core. Quick picks pre-select the
-                modules for a common visit type so you spend less time ticking boxes.
+                modules for a common visit type matched to your clinical role so you spend less time
+                ticking boxes outside your license.
               </HelpTip>
             </div>
             {showPicks && (
@@ -143,7 +152,8 @@ export function Dashboard({
               // phone, putting the labels off-screen with no way to scroll to
               // them (absolute overflow to the left creates no scrollbar).
               <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-xl bg-white ring-1 ring-slate-200 p-2 shadow-lg sm:left-auto sm:w-80">
-                {QUICK_PICKS.map((p) => (
+                <p className="mb-1 px-2 text-[0.7rem] leading-snug text-slate-500">{structureCue}</p>
+                {scopePicks.map((p) => (
                   <button
                     key={p.id}
                     className="block w-full rounded p-2 text-left hover:bg-blue-50"
@@ -161,14 +171,10 @@ export function Dashboard({
       </div>
 
       {canEdit && (
-        /* The four commonest visit types, as cards that look like the actions
-           they are. The previous version was four identical white rectangles
-           whose second line said "One click — start now" four times — filler
-           standing where the useful sentence (what the pick actually sets up)
-           should have been. Affordance now comes from motion and the arrow,
-           not from a repeated caption. */
+        /* Role-scoped visit scaffolds. Affordance comes from motion and the
+           arrow, not from a repeated caption. */
         <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-          {QUICK_PICKS.filter((p) => (FEATURED_PICK_IDS as readonly string[]).includes(p.id)).map((p) => (
+          {featuredPicks.map((p) => (
             <button
               key={p.id}
               className="group relative overflow-hidden rounded-xl bg-white p-4 text-left shadow-[0_1px_3px_rgba(30,58,95,0.08),0_1px_2px_rgba(30,58,95,0.04)] ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-blue/60 disabled:opacity-50 disabled:hover:translate-y-0"

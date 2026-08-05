@@ -42,6 +42,7 @@ export default async function DashboardPage() {
     <>
       <Dashboard
         role={user.role}
+        clinicalRole={user.clinicalRole}
         displayName={user.displayName}
         username={user.username}
         canEdit={user.role !== "readonly"}

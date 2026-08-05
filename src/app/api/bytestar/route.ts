@@ -155,7 +155,13 @@ export async function POST(req: Request): Promise<Response> {
       usedTokens += (res.usage?.inputTokens ?? 0) + (res.usage?.outputTokens ?? 0);
       return res.object;
     },
-    { config, permaKilled, reads: resolveReads() }
+    {
+      config,
+      permaKilled,
+      reads: resolveReads(),
+      // Prefer the fresh session clinical role over any client-supplied claim.
+      clinicalRole: guard.user.clinicalRole
+    }
   );
 
   const onCoursePct = outcome.benchmarks

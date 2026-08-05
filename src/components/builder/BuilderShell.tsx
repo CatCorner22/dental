@@ -14,6 +14,7 @@ import {
 import dynamic from "next/dynamic";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
+import { moduleVisibleInRail } from "@/lib/scope/authorCapabilities";
 import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
 import { computeGates, runAudit } from "@/lib/audit/engine";
@@ -166,8 +167,14 @@ export function BuilderShell({
     [deferredState, auditModules, officeName]
   );
   const report = useMemo(
-    () => runAudit({ note: deferredState, modules: auditModules, composedText: markdown }),
-    [deferredState, auditModules, markdown]
+    () =>
+      runAudit({
+        note: deferredState,
+        modules: auditModules,
+        composedText: markdown,
+        clinicalRole
+      }),
+    [deferredState, auditModules, markdown, clinicalRole]
   );
   const fieldFindings = useMemo(() => findingsByField(report.findings), [report.findings]);
 
@@ -468,7 +475,7 @@ export function BuilderShell({
              memoized composition, one deferred cadence. Advice-only here; the
              "think deeper" path lives on the Standardize screen where the
              assist consent and queue already are. */
-          <ByteAdvisor text={markdown} />
+          <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
         ) : tab === "bytestar" ? (
           <ByteStarAdvisor text={markdown} />
         ) : tab === "prior" ? (
@@ -788,7 +795,12 @@ export function BuilderShell({
               <input type="checkbox" checked disabled /> Universal Core
             </label>
             <div className="pane-55 space-y-0.5">
-              {ALL_MODULES.filter((m) => !m.alwaysOn && moduleMatches(m, moduleQuery)).map((m) => (
+              {ALL_MODULES.filter(
+                (m) =>
+                  !m.alwaysOn &&
+                  moduleVisibleInRail(clinicalRole, m.id) &&
+                  moduleMatches(m, moduleQuery)
+              ).map((m) => (
                 <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
                   <input
                     type="checkbox"

@@ -209,6 +209,11 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   "residue.": "record-mechanics",
   "stale.": "record-mechanics",
 
+  // Author-capability handoff cue (auxiliaries): not a missing fact in the
+  // note, but a record-mechanics reminder that judgement sections file under
+  // a different license.
+  "scope.author-handoff": "record-mechanics",
+
   // ── author voice ───────────────────────────────────────────────────────────
   "effort.gibberish": "author-voice",
   "effort.unprofessional": "author-voice",

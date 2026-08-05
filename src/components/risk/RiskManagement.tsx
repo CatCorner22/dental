@@ -3,6 +3,7 @@
 import { useMemo, useState } from "react";
 import Link from "next/link";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { edrProductName, edrTransferChecklistTitle } from "@/lib/edr/product";
 
 // RISK MANAGEMENT — operational, interactive, and honest about its maturity.
 //
@@ -29,22 +30,23 @@ interface RiskTopic {
   appLinks?: { href: string; label: string }[];
 }
 
-const TOPICS: RiskTopic[] = [
-  {
-    id: "curve-hero-transfer",
-    title: "Curve Hero transfer discipline",
+function transferTopic(): RiskTopic {
+  const edr = edrProductName();
+  return {
+    id: "edr-transfer",
+    title: edrTransferChecklistTitle(),
     summary:
       "The riskiest moment in this workflow is the paste: a perfect note in the wrong chart is a records error no audit can see.",
     points: [
       "Standardize locks Copy until every blocking item is fixed, attested, or escalated — never work around the lock by retyping from the screen.",
       "The two-identifier confirmation before copy exists because chart mix-ups survive on single identifiers. Match two, every time.",
-      "Identity, exact dates, signatures, and codes are completed in Curve Hero only. If it identifies the patient, it never belonged in Smile Notes.",
+      `Identity, exact dates, signatures, and codes are completed in ${edr} only. If it identifies the patient, it never belonged in Smile Notes.`,
       "Paste, then read the pasted note once inside the chart before signing. Formatting survives most pastes; verify, do not assume."
     ],
     checklist: {
-      title: "Before every paste into Curve Hero",
+      title: `Before every paste into ${edr}`,
       items: [
-        { id: "ch-chart", text: "The correct patient chart is open in Curve Hero" },
+        { id: "ch-chart", text: `The correct patient chart is open in ${edr}` },
         { id: "ch-two-id", text: "Two identifiers matched (for example name and date of birth)" },
         { id: "ch-copy-unlocked", text: "Copy unlocked on its own — no blocking item bypassed" },
         { id: "ch-reread", text: "Pasted note re-read inside the chart before signing" }
@@ -52,9 +54,13 @@ const TOPICS: RiskTopic[] = [
     },
     appLinks: [
       { href: "/standardize", label: "Standardize" },
-      { href: "/reference/curve-hero-header", label: "Curve Hero header reference" }
+      { href: "/reference/curve-hero-header", label: `${edr} header reference` }
     ]
-  },
+  };
+}
+
+const TOPICS: RiskTopic[] = [
+  transferTopic(),
   {
     id: "documentation-defensibility",
     title: "Writing for a later reader",

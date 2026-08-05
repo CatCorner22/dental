@@ -1,3 +1,4 @@
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import type { ModuleDef, NoteState } from "@/lib/schema/types";
 
 // Severity model from the formal audit pass in
@@ -99,6 +100,12 @@ export interface AuditContext {
    * sides of the boundary.
    */
   today?: string;
+  /**
+   * Writer's clinical role. When set, dentist-judgement coaching is tailored
+   * away for auxiliaries who cannot author Assessment/Plan (see
+   * tailorForAuthor.ts). Omit for text-only audits and frozen historical runs.
+   */
+  clinicalRole?: ClinicalRole;
 }
 
 // One severity ramp, used by every surface that renders a finding.

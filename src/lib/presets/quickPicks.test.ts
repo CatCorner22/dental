@@ -1,5 +1,6 @@
 import { describe, expect, it } from "vitest";
-import { QUICK_PICKS } from "./quickPicks";
+import { CLINICAL_ROLES } from "@/lib/auth/clinicalRoles";
+import { QUICK_PICKS, featuredPicksForRole, quickPicksForRole } from "./quickPicks";
 import { MODULES_BY_ID } from "@/lib/modules";
 
 describe("quick picks", () => {
@@ -23,6 +24,12 @@ describe("quick picks", () => {
   it("carry no field values — structural selection only", () => {
     for (const pick of QUICK_PICKS) {
       expect("values" in pick).toBe(false);
+    }
+  });
+  it("exposes at least one featured scaffold for every clinical role", () => {
+    for (const role of CLINICAL_ROLES) {
+      expect(featuredPicksForRole(role).length, role).toBeGreaterThan(0);
+      expect(quickPicksForRole(role).length, role).toBeGreaterThan(0);
     }
   });
 });

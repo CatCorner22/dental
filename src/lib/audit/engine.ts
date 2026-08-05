@@ -25,6 +25,7 @@ import { runEffortRules } from "./rules/effort";
 import { runCompletenessRules } from "./rules/completeness";
 import { runJustificationRules } from "./rules/justification";
 import { runPlainLanguageRule } from "./rules/plain-language";
+import { tailorAuditFindings } from "./tailorForAuthor";
 
 // Pure and isomorphic. The client runs the full audit live; the email route
 // re-runs the text audit server-side so a tampered client cannot bypass it.
@@ -61,7 +62,7 @@ export function runAudit(ctx: AuditContext): AuditReport {
   // answer is already known would be the wrong kind of thorough.
   const patientVoice = collectPatientVoice(ctx.note, ctx.modules);
   const textFindings = runTextAudit(ctx.composedText);
-  const findings: AuditFinding[] = [
+  const raw: AuditFinding[] = [
     ...runRequiredRule(ctx.note, ctx.modules),
     ...runSupervisionRule(ctx.note, ctx.modules, ctx.today ?? new Date().toISOString().slice(0, 10)),
     ...runAnatomyStateRule(ctx.note, ctx.modules),
@@ -74,6 +75,7 @@ export function runAudit(ctx: AuditContext): AuditReport {
     ...runFieldSpelling(ctx.note, ctx.modules),
     ...runPatientLanguage(ctx.note, ctx.modules)
   ];
+  const findings = tailorAuditFindings(raw, ctx.clinicalRole, ctx.note, ctx.modules);
   return buildReport(findings);
 }
 

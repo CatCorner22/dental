@@ -37,7 +37,7 @@ const STEPS = [
   },
   {
     id: "risk",
-    label: "Read the Curve Hero transfer checklist on the Risk page",
+    label: "Read the EDR transfer checklist on the Risk page",
     href: "/reference/risk-management",
     hint: "Two identifiers, every paste."
   }

@@ -16,8 +16,14 @@
 import { extractFacts } from "@/lib/extract/extract";
 import { coverage as parseCoverage } from "@/lib/extract/extract";
 import type { ClinicalFact } from "@/lib/extract/facts";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { ANAESTHETIC_LIMITS, milligramsFrom } from "@/lib/audit/rules/anesthetic-dose";
-import { KNOWLEDGE, type AdvisorContext, type KnowledgeEntry } from "./knowledge";
+import {
+  entryMatchesAuthorScope,
+  KNOWLEDGE,
+  type AdvisorContext,
+  type KnowledgeEntry
+} from "./knowledge";
 
 export interface Advice {
   id: string;
@@ -147,11 +153,16 @@ function doseGauge(facts: ClinicalFact[]): DoseGauge | undefined {
   return best;
 }
 
+export interface AdviseOptions {
+  /** Writer clinical role — scopes coaching to license-appropriate tips. */
+  clinicalRole?: ClinicalRole;
+}
+
 /**
  * Read a draft and advise. Pure and total: any string in, a report out,
  * nothing thrown, nothing stored, nothing written anywhere.
  */
-export function advise(text: string): AdvisorReport {
+export function advise(text: string, opts: AdviseOptions = {}): AdvisorReport {
   const trimmed = text.trim();
   const extraction = extractFacts(trimmed);
   const facts = extraction.facts;
@@ -162,11 +173,13 @@ export function advise(text: string): AdvisorReport {
     text: trimmed,
     lower,
     facts,
-    kinds: new Set(facts.map((f) => f.kind))
+    kinds: new Set(facts.map((f) => f.kind)),
+    clinicalRole: opts.clinicalRole
   };
 
   const matched: KnowledgeEntry[] = [];
   for (const entry of KNOWLEDGE) {
+    if (!entryMatchesAuthorScope(entry, opts.clinicalRole)) continue;
     let hit = false;
     try {
       hit = entry.when(ctx);

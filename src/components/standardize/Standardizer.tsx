@@ -27,6 +27,8 @@ import {
   type FindingLike,
   type QueueItem
 } from "@/lib/standardize/resolution";
+import { copyForEdrLabel, edrProductName } from "@/lib/edr/product";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 
 // THE RESOLUTION QUEUE. The transformer never auto-corrects and the user never
 // overrides: every deterministic rewrite is accepted item by item, every flag
@@ -69,7 +71,15 @@ const toFindingLike = (f: AuditFinding): FindingLike => ({
   suggestion: f.suggestion ?? null
 });
 
-export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolean }) {
+export function Standardizer({
+  assistEnabled = false,
+  clinicalRole = "unset"
+}: {
+  assistEnabled?: boolean;
+  clinicalRole?: ClinicalRole;
+}) {
+  const edrName = edrProductName();
+  const copyLabel = copyForEdrLabel();
   const [input, setInput] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -706,9 +716,9 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                 onClick={copy}
                 disabled={!allowed}
                 aria-disabled={!allowed}
-                title={allowed ? "Copy for Curve Hero" : blockedExplanation(items)}
+                title={allowed ? copyLabel : blockedExplanation(items)}
               >
-                {copied ? "Copied ✓" : allowed ? "Copy for Curve Hero" : "🔒 Copy locked"}
+                {copied ? "Copied ✓" : allowed ? copyLabel : "🔒 Copy locked"}
               </button>
             </div>
             <div
@@ -746,7 +756,7 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
                     onChange={(e) => setPasteChecked(e.target.checked)}
                   />
                   <span>
-                    The correct chart is open in Curve Hero and I matched <strong>two</strong>{" "}
+                    The correct chart is open in {edrName} and I matched <strong>two</strong>{" "}
                     identifiers there (for example name and date of birth). A perfect note in the
                     wrong chart is a records error this tool cannot see — only you can.
                   </span>
@@ -768,6 +778,7 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
         <div className="mb-4 space-y-3">
           <ByteAdvisor
             text={deferredInput}
+            clinicalRole={clinicalRole}
             assistEnabled={assistEnabled}
             onAskDeeper={() => runAssist("interrogate")}
           />

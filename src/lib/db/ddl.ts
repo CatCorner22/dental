@@ -230,5 +230,16 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS "submissions_draft_idx" ON "submissions" ("draft_id");`,
   `CREATE INDEX IF NOT EXISTS "submissions_by_user_idx" ON "submissions" ("submitted_by_id", "submitted_at_utc" DESC);`,
   `CREATE INDEX IF NOT EXISTS "submissions_at_idx" ON "submissions" ("submitted_at_utc" DESC);`,
-  `CREATE INDEX IF NOT EXISTS "audit_log_at_idx" ON "audit_log" ("at" DESC, "id" DESC);`
+  `CREATE INDEX IF NOT EXISTS "audit_log_at_idx" ON "audit_log" ("at" DESC, "id" DESC);`,
+  // Working-copy revision ring for autosave recovery (not filed history).
+  `CREATE TABLE IF NOT EXISTS "draft_revisions" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "draft_id" text NOT NULL REFERENCES "drafts"("id") ON DELETE CASCADE,
+     "version" integer NOT NULL,
+     "title" text NOT NULL,
+     "office_id" text,
+     "note_state" jsonb NOT NULL,
+     "saved_at" timestamp with time zone DEFAULT now() NOT NULL
+   );`,
+  `CREATE INDEX IF NOT EXISTS "draft_revisions_draft_saved_idx" ON "draft_revisions" ("draft_id", "saved_at" DESC);`
 ];

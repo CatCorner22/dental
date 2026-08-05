@@ -1,7 +1,17 @@
-import { and, desc, eq, isNotNull, ne, sql } from "drizzle-orm";
+import { and, desc, eq, isNotNull, ne, notInArray, sql } from "drizzle-orm";
 import type { Db } from "../client";
-import { drafts, submissions, type DraftRow, type NewDraft } from "../schema";
+import {
+  draftRevisions,
+  drafts,
+  submissions,
+  type DraftRevisionRow,
+  type DraftRow,
+  type NewDraft
+} from "../schema";
 import { DEFAULT_PAGE_SIZE, type PageParams } from "@/lib/http/pagination";
+
+/** Cap the working-copy revision ring so autosave cannot grow without bound. */
+export const DRAFT_REVISION_KEEP = 20;
 
 const DEFAULT_PAGE: PageParams = { limit: DEFAULT_PAGE_SIZE, offset: 0 };
 
@@ -70,12 +80,17 @@ export async function countAllDrafts(db: Db): Promise<number> {
 
 // Optimistic-concurrency update: only applies when the caller's baseVersion
 // matches the stored version, then bumps it. Returns undefined on a stale write.
+// When the note content (or title/office) lands, append a working-copy revision
+// and prune the ring — recovery for power loss / bad paste, not legal history.
 export async function updateDraftChecked(
   db: Db,
   id: string,
   baseVersion: number,
   patch: Partial<
-    Pick<DraftRow, "title" | "noteState" | "status" | "lastSendFailed" | "lastSubmissionId">
+    Pick<
+      DraftRow,
+      "title" | "officeId" | "noteState" | "status" | "lastSendFailed" | "lastSubmissionId"
+    >
   >,
   now: Date
 ): Promise<DraftRow | undefined> {
@@ -84,7 +99,74 @@ export async function updateDraftChecked(
     .set({ ...patch, version: baseVersion + 1, updatedAt: now })
     .where(and(eq(drafts.id, id), eq(drafts.version, baseVersion)))
     .returning();
+  if (!row) return undefined;
+
+  const contentChanged =
+    patch.noteState !== undefined || patch.title !== undefined || patch.officeId !== undefined;
+  if (contentChanged) {
+    await db.insert(draftRevisions).values({
+      draftId: row.id,
+      version: row.version,
+      title: row.title,
+      officeId: row.officeId,
+      noteState: row.noteState,
+      savedAt: now
+    });
+    await pruneDraftRevisions(db, row.id, DRAFT_REVISION_KEEP);
+  }
   return row;
+}
+
+export type DraftRevisionSummary = Pick<
+  DraftRevisionRow,
+  "id" | "draftId" | "version" | "title" | "officeId" | "savedAt"
+>;
+
+export async function listDraftRevisions(
+  db: Db,
+  draftId: string,
+  limit = DRAFT_REVISION_KEEP
+): Promise<DraftRevisionSummary[]> {
+  return db
+    .select({
+      id: draftRevisions.id,
+      draftId: draftRevisions.draftId,
+      version: draftRevisions.version,
+      title: draftRevisions.title,
+      officeId: draftRevisions.officeId,
+      savedAt: draftRevisions.savedAt
+    })
+    .from(draftRevisions)
+    .where(eq(draftRevisions.draftId, draftId))
+    .orderBy(desc(draftRevisions.savedAt), desc(draftRevisions.id))
+    .limit(limit);
+}
+
+export async function getDraftRevision(
+  db: Db,
+  draftId: string,
+  revisionId: number
+): Promise<DraftRevisionRow | undefined> {
+  const [row] = await db
+    .select()
+    .from(draftRevisions)
+    .where(and(eq(draftRevisions.draftId, draftId), eq(draftRevisions.id, revisionId)))
+    .limit(1);
+  return row;
+}
+
+async function pruneDraftRevisions(db: Db, draftId: string, keep: number): Promise<void> {
+  const kept = await db
+    .select({ id: draftRevisions.id })
+    .from(draftRevisions)
+    .where(eq(draftRevisions.draftId, draftId))
+    .orderBy(desc(draftRevisions.savedAt), desc(draftRevisions.id))
+    .limit(keep);
+  if (kept.length === 0) return;
+  const keepIds = kept.map((k) => k.id);
+  await db
+    .delete(draftRevisions)
+    .where(and(eq(draftRevisions.draftId, draftId), notInArray(draftRevisions.id, keepIds)));
 }
 
 // Atomically claim a draft for submission. Exactly one of any set of

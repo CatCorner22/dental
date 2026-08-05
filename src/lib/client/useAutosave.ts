@@ -10,7 +10,10 @@ import {
   type AutosaveState
 } from "./autosaveMachine";
 
-const DEBOUNCE_MS = 1500;
+/** Near-realtime: short enough that a power blip rarely eats a finished sentence. */
+const DEBOUNCE_MS = 800;
+/** While offline/error, keep nudging without hammering (backoff starts here). */
+const RETRY_MS = 4000;
 
 // What a completed flush means for the caller: "clean" = every edit is on the
 // server; "conflict" = a newer version exists there; "error" = the save
@@ -30,19 +33,19 @@ interface UseAutosave {
 }
 
 // Wraps the pure autosave machine: debounces edits into a version-checked
-// PATCH, drains trailing edits, and surfaces conflicts. Design rules:
+// PATCH, drains trailing edits, retries on reconnect, and flushes on pagehide.
+// Design rules:
 // - One save chain at a time; joiners await the running chain.
-// - The chain keeps saving while new edits queue up, and STOPS on the first
-//   conflict or error — no automatic retry (an offline tab must not hammer
-//   the server in a zero-delay loop). The next edit or flush retries.
-// - flush() resolves only when everything is drained or a stop is hit, and
-//   reports which, so Submit can gate on it.
+// - Stops on conflict (human must choose). Soft-retries on network error when
+//   the tab is online again or on a timer — never a zero-delay hammer loop.
+// - flush() resolves only when everything is drained or a stop is hit.
 export function useAutosave(draftId: string, initialVersion: number): UseAutosave {
   const [state, dispatch] = useReducer(autosaveReducer, initialAutosave);
   const versionRef = useRef(initialVersion);
   const pending = useRef<{ note: NoteState; title: string; officeId: string | null } | null>(null);
   const chain = useRef<Promise<FlushOutcome> | null>(null);
   const timer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const retryTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const stateRef = useRef<AutosaveState>(state);
   stateRef.current = state;
   const unmounted = useRef(false);
@@ -54,7 +57,6 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
         // An unresolved conflict freezes saving; a PATCH with the stale
         // version is guaranteed 409 noise.
         if (stateRef.current.status === "conflict") return "conflict";
-        if (unmounted.current) return "clean"; // never save after unmount
         const payload = pending.current;
         dispatch({ type: "saveStart" });
         try {
@@ -69,7 +71,9 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
               // as durable as typing — and so a note filed straight after the
               // change cannot freeze the previous location into the record.
               officeId: payload.officeId
-            })
+            }),
+            // Best-effort delivery when the tab is closing (pagehide flush).
+            keepalive: true
           });
           if (res.status === 409) {
             const data = (await res.json().catch(() => ({}))) as { version?: number };
@@ -99,6 +103,19 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
     });
     return chain.current;
   }, [draftId]);
+
+  const scheduleRetry = useCallback(() => {
+    if (retryTimer.current) clearTimeout(retryTimer.current);
+    retryTimer.current = setTimeout(() => {
+      if (unmounted.current) return;
+      if (stateRef.current.status === "conflict") return;
+      if (pending.current || stateRef.current.status === "error" || stateRef.current.status === "dirty") {
+        void runChain().then((outcome) => {
+          if (outcome === "error" && !unmounted.current) scheduleRetry();
+        });
+      }
+    }, RETRY_MS);
+  }, [runChain]);
 
   const markEdited = useCallback(
     (note: NoteState, title: string, officeId: string | null) => {
@@ -145,14 +162,46 @@ export function useAutosave(draftId: string, initialVersion: number): UseAutosav
       // dirty, saving, error, AND conflict states.
       if (pending.current !== null || isDirty(stateRef.current)) e.preventDefault();
     };
+    const onPageHide = () => {
+      // Cancel debounce and push immediately — the laptop lid / power cut case.
+      if (timer.current) clearTimeout(timer.current);
+      if (pending.current && stateRef.current.status !== "conflict") {
+        void runChain();
+      }
+    };
+    const onOnline = () => {
+      if (pending.current || stateRef.current.status === "error") {
+        void runChain().then((outcome) => {
+          if (outcome === "error") scheduleRetry();
+        });
+      }
+    };
+    const onVisibility = () => {
+      if (document.visibilityState === "hidden") onPageHide();
+    };
     window.addEventListener("beforeunload", warn);
+    window.addEventListener("pagehide", onPageHide);
+    window.addEventListener("online", onOnline);
+    document.addEventListener("visibilitychange", onVisibility);
     return () => {
       window.removeEventListener("beforeunload", warn);
-      // Never fire a save after the builder unmounts.
+      window.removeEventListener("pagehide", onPageHide);
+      window.removeEventListener("online", onOnline);
+      document.removeEventListener("visibilitychange", onVisibility);
       unmounted.current = true;
       if (timer.current) clearTimeout(timer.current);
+      if (retryTimer.current) clearTimeout(retryTimer.current);
+      // Last-chance flush while the document is still alive.
+      if (pending.current && stateRef.current.status !== "conflict") {
+        void runChain();
+      }
     };
-  }, []);
+  }, [runChain, scheduleRetry]);
+
+  // Soft retry while stuck in error with pending work.
+  useEffect(() => {
+    if (state.status === "error" && pending.current) scheduleRetry();
+  }, [state.status, scheduleRetry]);
 
   // Memoized so consumers can safely use this object in effect dependencies.
   return useMemo(

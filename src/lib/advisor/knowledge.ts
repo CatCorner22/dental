@@ -4,7 +4,8 @@
 // WHAT BYTE IS, AND WHAT BYTE IS NOT
 //
 // Byte is the practice's knowledge, compiled: Tennessee dental-record law, the
-// pharmacy safety literature, the litigation lessons from the owner's research,
+// pharmacy safety literature, claim-file documentation patterns (see
+// knowledge/sources/litigation-documentation-research.md), and the practice's
 // and the practice's own writing standards — evaluated deterministically
 // against the note being drafted, live, on every pause in typing.
 //
@@ -188,7 +189,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "on the missing documentation of the complication and the disclosure. Post-operative " +
       "instructions, complication status, and follow-up are what make an extraction note " +
       "defensible three years from now.",
-    source: "Bureau of Health Care Servs. v. Schwarcz (Mich. Ct. App. 2015); owner's litigation research",
+    source: "Bureau of Health Care Servs. v. Schwarcz (Mich. Ct. App. 2015); MedPro/WSDA sparse-chart case study",
     priority: 70,
     nextAction: "Add post-op instructions, complication status, and a follow-up plan.",
     when: (ctx) =>
@@ -213,13 +214,33 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       ) && !mentions(ctx, "refer", "biopsy", "monitor", "recheck", "disclosed", "discussed")
   },
   {
+    id: "byte.clinical-rationale",
+    say: "A procedure code names what you did. The note still owes why.",
+    why:
+      "Clinical rationale was the third-most-common documentation gap in The Doctors Company's " +
+      "closed dental claims (51 of 172 insufficient-documentation items). A crown, SRP, or " +
+      "extraction without the finding or diagnosis it addresses reads as billing narrative — " +
+      "another dentist cannot see the decision path years later.",
+    source: "The Doctors Company (1,185 dental claims, 2010–2020); complete.clinical-rationale rule",
+    priority: 66,
+    nextAction: "Add one sentence: the finding, diagnosis, or symptom that made this treatment indicated.",
+    when: (ctx) =>
+      /\b(?:crown(?:\s+prep)?|root\s+canal|RCT|SRP|extraction|extracted|implant|build-?up|pulpotomy)\b/i.test(
+        ctx.text
+      ) &&
+      !/\b(?:because|due\s+to|indicated|recommended\s+for|diagnosed|diagnosis|caries|fracture|infection|periodont|bone\s+loss|pain|symptom|recurrent\s+decay)\b/i.test(
+        ctx.text
+      )
+  },
+  {
     id: "byte.consent-is-a-conversation",
     say: "A signed form proves a signature. The note proves the conversation.",
     why:
-      "Tennessee's informed-consent cases turn on what was actually discussed — risks, " +
-      "alternatives, the option of doing nothing, the patient's questions. Two sentences " +
-      "recording that conversation outweigh any stack of signed boilerplate.",
-    source: "Sanders (Tenn. Ct. App. 1997); CNA/Dentist's Advantage claim guidance",
+      "The Doctors Company found absent or limited informed consent in 55 of 172 " +
+      "insufficient-documentation items in closed dental claims (2010–2020). Cases turn on " +
+      "what was discussed — risks, alternatives, the option of doing nothing, patient " +
+      "questions. Two sentences recording that conversation outweigh any stack of signed boilerplate.",
+    source: "The Doctors Company (1,185 dental claims, 2010–2020); Sanders (Tenn. Ct. App. 1997)",
     priority: 65,
     nextAction: "Name risks, alternatives (including no treatment), and the patient's decision.",
     when: (ctx) =>
@@ -233,7 +254,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "What was recommended, what the patient was told could happen without it, and their " +
       "decision in their own words — that is informed refusal, and it protects the patient's " +
       "autonomy and the practice in the same three sentences.",
-    source: "CNA/Dentist's Advantage informed-refusal guidance; owner's litigation research",
+    source: "CNA/Dentist's Advantage informed-refusal guidance; The Doctors Company referral documentation guidance",
     priority: 68,
     when: (ctx) =>
       mentions(ctx, "refused", "declined", "does not want", "deferred treatment") &&
@@ -261,7 +282,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "corrects — never by rewriting the original. An altered record is treated as consciousness " +
       "of wrongdoing in litigation even when the underlying care was fine. The addendum template " +
       "in verified blocks does this correctly.",
-    source: "Tenn. Comp. R. 0460-02-.12; spoliation doctrine in the owner's litigation research",
+    source: "Tenn. Comp. R. 0460-02-.12; spoliation doctrine (see litigation-documentation-research.md)",
     priority: 74,
     when: (ctx) =>
       mentions(ctx, "correction", "corrected note", "amend", "addendum", "revise the note") &&

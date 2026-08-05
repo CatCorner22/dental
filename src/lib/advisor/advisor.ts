@@ -8,7 +8,7 @@
 //   ADVICE  — the highest-priority knowledge entries whose predicates match.
 //   GAUGES  — live numbers a drafting screen can draw: how much of the note
 //             the tools can read, how dense it is, how much anesthetic
-//             headroom remains, and which defensibility pillars are present.
+//             headroom remains, and which risk-reduction pillars are present.
 //   MOOD    — which face Byte makes. Derived from the same numbers, because a
 //             mascot whose expression disagrees with the dashboard is a
 //             mascot nobody trusts.
@@ -29,11 +29,10 @@ export interface Advice {
 }
 
 /**
- * The defensibility pillars, from the owner's litigation research: the four
- * things a reviewer asks of a treatment note when nobody disputes the
- * dentistry itself. Presence-only — Byte reports which pillars the note
- * already has, never a score, because a percentage invites gaming and a
- * checklist invites completion.
+ * Risk-reduction pillars (language optimizer layer): the four things a later
+ * reviewer asks of a treatment note when nobody disputes the dentistry itself.
+ * Presence-only — Byte reports which pillars the note already has, never a
+ * score, because a percentage invites gaming and a checklist invites completion.
  */
 export interface DefensibilityPillars {
   consent: boolean;

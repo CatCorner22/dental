@@ -126,7 +126,7 @@ describe("a masked note is actually fileable", () => {
     // at S1, and S1 blocks email — so choosing the safe option made the note
     // unfileable and pushed the clinician back to waiving the privacy stop,
     // which is exactly what masking exists to replace.
-    const masked = "Reached [CONTACT-A7K2] about the estimate; [PERSON-B4M9] consented.";
+    const masked = "Reached [CONTACT-A7K2] about the estimate; [PERSON-B4M9] agreed to proceed.";
     expect(runTextAudit(masked)).toEqual([]);
   });
 

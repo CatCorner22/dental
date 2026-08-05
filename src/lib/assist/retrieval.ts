@@ -71,12 +71,13 @@ const TOOTH_RULES = `TOOTH NOTATION (practice standard):
 - Surfaces: anterior teeth take M I D F L; posterior take M O D B L. Never I on a posterior or O on an anterior.`;
 
 const CONSENT_CUE = /\bconsent|risks?\s+and\s+benefits?|treatment\s+options?\b/i;
-const CONSENT_RULES = `CONSENT DOCUMENTATION (litigation-informed):
+const CONSENT_RULES = `CONSENT DOCUMENTATION (language optimizer for risk reduction — Doctors Company claim-file patterns):
 - Record the CONVERSATION, not just a signature: diagnosis discussed, material risks named, alternatives including no treatment, questions asked, and the patient's decision in their own terms.
-- Never assert that consent occurred unless the input states it. A consent discussion without a recorded decision is half a record.`;
+- Never assert that consent occurred unless the input states it. A consent discussion without a recorded decision is half a record.
+- "Patient consented" or "consent obtained" alone is checkbox theater — the note must show what was discussed.`;
 
 const REFUSAL_CUE = /\brefus(?:ed|al|es)\b|\bdeclin(?:ed|es)\b|\bdeferred\s+treatment\b|\bdoes\s+not\s+want\b/i;
-const REFUSAL_RULES = `INFORMED REFUSAL (owner's litigation research; refusal cases are lost on silence):
+const REFUSAL_RULES = `INFORMED REFUSAL (language optimizer for risk reduction — refusal cases are lost on silence):
 - A declined recommendation is documented like an accepted one: what was recommended, what the patient was told could happen without it, and the decision in the patient's own terms.
 - Never assert that the risks of refusal were explained unless the input states it — ask about the gap instead.`;
 

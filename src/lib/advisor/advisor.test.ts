@@ -116,6 +116,11 @@ describe("the advisor engine", () => {
     expect(report.advice[0].id).toBe("byte.dose-context");
   });
 
+  it("coaches clinical rationale when a procedure has no documented why", () => {
+    const report = advise("Crown prep on tooth 14 completed. Patient tolerated well.");
+    expect(report.advice.some((a) => a.id === "byte.clinical-rationale")).toBe(true);
+  });
+
   it("tracks the defensibility pillars only when treatment happened", () => {
     expect(advise("Periodic exam. No caries.").gauges.pillars.applicable).toBe(false);
     const treated = advise("#14 MOD composite placed by Dr. M. Post-op instructions given. Recall 6 months.");

@@ -194,4 +194,9 @@
 //         "chatgpt" token and retired-assistant deployment doc are gone).
 //         Same bump covers the personal-blocks PHI refusal at save — a new
 //         place the identifier rules run, not a change to what they match.
-export const RULESET_VERSION = "2.20.0";
+// 2.21.0 — claim-file documentation research encoded as anticipatory rules:
+//         complete.clinical-rationale (Doctors Company #3 gap) and
+//         complete.consent-thin-assertion (checkbox theater); advisor entry
+//         byte.clinical-rationale; internal "language optimizer for risk
+//         reduction" terminology; knowledge/sources/litigation-documentation-research.md.
+export const RULESET_VERSION = "2.21.0";

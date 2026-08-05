@@ -48,8 +48,8 @@ export interface PersonaAgent {
   commonComplaints: string[];
   /** Charting failure modes this persona reliably produces. */
   failureModes: string[];
-  /** Litigation / claim-file pattern tags from the research digest. */
-  litigationPatterns: string[];
+  /** Documentation-risk pattern tags from claim-file research (see litigation-documentation-research.md). */
+  documentationRiskPatterns: string[];
 }
 
 export const PERSONA_AGENTS: readonly PersonaAgent[] = [
@@ -78,7 +78,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "anesthetic-named-without-amount",
       "placeholder-residue"
     ],
-    litigationPatterns: ["insufficient-detail", "imaging-no-read", "sparse-operative"]
+    documentationRiskPatterns: ["insufficient-detail", "imaging-no-read", "sparse-operative"]
   },
   {
     id: "jordan-blake",
@@ -105,7 +105,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "rushed-perio-without-numbers",
       "vague-tolerated-well"
     ],
-    litigationPatterns: ["imaging-no-read", "insufficient-detail", "no-rationale"]
+    documentationRiskPatterns: ["imaging-no-read", "insufficient-detail", "no-rationale"]
   },
   {
     id: "priya-nair",
@@ -132,7 +132,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "passive-voice-operative",
       "form-cited-as-conversation"
     ],
-    litigationPatterns: ["consent-half", "insufficient-detail", "record-mechanics"]
+    documentationRiskPatterns: ["consent-half", "insufficient-detail", "record-mechanics"]
   },
   {
     id: "marcus-webb",
@@ -159,7 +159,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "wrong-visit-attachment-language",
       "judgmental-administrative-tone"
     ],
-    litigationPatterns: ["record-mechanics", "insufficient-detail"]
+    documentationRiskPatterns: ["record-mechanics", "insufficient-detail"]
   },
   {
     id: "denise-ortiz",
@@ -186,7 +186,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "crown-without-necessity-narrative",
       "residue-tbd-fields"
     ],
-    litigationPatterns: ["no-rationale", "insufficient-detail", "sparse-operative"]
+    documentationRiskPatterns: ["no-rationale", "insufficient-detail", "sparse-operative"]
   },
   {
     id: "helen-krause",
@@ -213,7 +213,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "technique-rich-consent-thin",
       "paper-era-structure"
     ],
-    litigationPatterns: ["consent-half", "insufficient-detail"]
+    documentationRiskPatterns: ["consent-half", "insufficient-detail"]
   },
   {
     id: "ray-thompson",
@@ -240,7 +240,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "no-findings-no-technique",
       "resists-required-detail"
     ],
-    litigationPatterns: ["sparse-operative", "imaging-no-read", "consent-half", "insufficient-detail"]
+    documentationRiskPatterns: ["sparse-operative", "imaging-no-read", "consent-half", "insufficient-detail"]
   },
   {
     id: "shirley-grant",
@@ -267,7 +267,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "delayed-phone-note",
       "missing-escalation-to-dentist"
     ],
-    litigationPatterns: ["record-mechanics", "insufficient-detail"]
+    documentationRiskPatterns: ["record-mechanics", "insufficient-detail"]
   },
   {
     id: "sam-okonkwo",
@@ -294,7 +294,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "pediatric-lb-with-mg-per-kg",
       "laterality-ambiguity"
     ],
-    litigationPatterns: ["rx-incomplete", "insufficient-detail", "record-mechanics"]
+    documentationRiskPatterns: ["rx-incomplete", "insufficient-detail", "record-mechanics"]
   },
   {
     id: "pat-ellis",
@@ -321,7 +321,7 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "new-patient-delegation-gap",
       "outdated-terminology"
     ],
-    litigationPatterns: ["insufficient-detail", "record-mechanics", "consent-half"]
+    documentationRiskPatterns: ["insufficient-detail", "record-mechanics", "consent-half"]
   }
 ] as const;
 

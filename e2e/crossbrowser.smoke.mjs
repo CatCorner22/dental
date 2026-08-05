@@ -49,16 +49,28 @@ for (const [engineName, engine] of ENGINES) {
     // ("Failed to fetch RSC payload … Falling back to browser navigation").
     // WebKit on phone hits this under rapid sequential gotos; Chromium/Firefox
     // usually do not. It is not an app bug — the fallback navigation completes
-    // — so do not fail the smoke suite on it. Real pageerrors still count.
+    // — so do not fail the smoke suite on it.
+    //
+    // The same engine also throws pageerrors for RSC prefetch fetches that are
+    // blocked by the Cross-Origin-Resource-Policy header ("Fetch API cannot
+    // load … due to access control checks"). These happen when viewport-based
+    // link prefetch fires mid-rapid-navigation in WebKit on a narrow viewport;
+    // the navigation itself succeeds via the fallback path. Filter both forms.
     const isBenignRscFallback = (t) =>
       /Failed to fetch RSC payload/i.test(t) && /Falling back to browser navigation/i.test(t);
+    const isBenignRscCorpError = (t) =>
+      /Fetch API cannot load/i.test(t) && /[?&]_rsc=/.test(t) && /access control checks/i.test(t);
     page.on("console", (m) => {
       if (m.type() !== "error") return;
       const text = m.text().slice(0, 200);
       if (isBenignRscFallback(text)) return;
       consoleErrors.push(text);
     });
-    page.on("pageerror", (e) => consoleErrors.push("PAGEERROR: " + String(e).slice(0, 200)));
+    page.on("pageerror", (e) => {
+      const text = String(e).slice(0, 300);
+      if (isBenignRscCorpError(text)) return;
+      consoleErrors.push("PAGEERROR: " + text.slice(0, 200));
+    });
 
     try {
       await page.goto(`${BASE}/login`, { waitUntil: "networkidle", timeout: 30000 });

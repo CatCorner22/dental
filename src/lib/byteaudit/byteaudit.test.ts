@@ -2,7 +2,7 @@ import { describe, expect, it } from "vitest";
 import { createHash } from "node:crypto";
 import { readFileSync, readdirSync } from "node:fs";
 import path from "node:path";
-import { SEAL } from "./SEAL";
+import { SEAL } from "./manifest";
 import { judgeSeal, explainSeal, REQUIRED_SEALED_FILES } from "./seal";
 import { PIPELINE_STEPS, KNOWN_STATUSES, LIMITS } from "./contract";
 import { byteAuditVerify, explainVerdict, type FinalArtifact } from "./verify";
@@ -14,7 +14,7 @@ function sealedOnDisk(dir = HERE, prefix = ""): Record<string, string> {
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
     const rel = prefix ? `${prefix}/${entry.name}` : entry.name;
     if (entry.isDirectory()) Object.assign(out, sealedOnDisk(path.join(dir, entry.name), rel));
-    else if (entry.name.endsWith(".ts") && rel !== "SEAL.ts" && !rel.endsWith(".test.ts")) {
+    else if (entry.name.endsWith(".ts") && rel !== "manifest.ts" && !rel.endsWith(".test.ts")) {
       out[rel] = createHash("sha256").update(readFileSync(path.join(dir, rel))).digest("hex");
     }
   }

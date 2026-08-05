@@ -11,7 +11,7 @@ export const SEAL: SealManifest = {
   version: "2026-08-05",
   files: {
   "contract.ts": "b54c53d9a44ac904e342fec434eab2cd4fe899772cafd82044704a09d6e9659f",
-  "seal.ts": "4f533118c3557bf51cadc6e44331a790c6492af57ba9a6cd474bc7a91eb505fe",
+  "seal.ts": "c2d7eef77367c7926679d9c26ef4c19961c2c37fd2f40b3995a75e854fbc6aa6",
   "verify.ts": "153c7f1207c2fd3682a9c41443ab9fbfb0a6064228ac8d063d129fdf78ba9191"
   }
 };

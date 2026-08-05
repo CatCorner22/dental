@@ -9,7 +9,7 @@
 // opinion in the system.
 //
 // So the directory is SEALED. Its contents hash to a value recorded in
-// SEAL.ts, and three independent mechanisms keep it honest:
+// manifest.ts, and three independent mechanisms keep it honest:
 //
 //   1. A test (byteaudit.test.ts) reads every file in this directory from disk,
 //      hashes it, and fails if the result does not match the recorded seal.
@@ -19,11 +19,11 @@
 //      it is checked. A verifier that shares code with the thing it verifies is
 //      not a second opinion, it is an echo.
 //   3. Re-sealing requires running a script by hand. Application code has no way
-//      to do it: nothing here writes SEAL.ts, and nothing outside this
+//      to do it: nothing here writes manifest.ts, and nothing outside this
 //      directory is permitted to import from it except the publish gate.
 //
 // THE WINDOW. Updates arrive as batches through one documented door: change the
-// files, run `node scripts/byteaudit-seal.mjs`, and commit the new SEAL.ts in
+// files, run `node scripts/byteaudit-seal.mjs`, and commit the new manifest.ts in
 // the same diff. That diff is one line of hash per changed file, which is
 // exactly what makes it reviewable — a reviewer cannot miss that the backstop
 // moved, because moving it is never a side effect of anything else.
@@ -157,6 +157,6 @@ export function explainSeal(verdict: SealVerdict): string {
     "",
     "This is either a change nobody meant to make — revert it — or a deliberate",
     "update, in which case run `node scripts/byteaudit-seal.mjs` and commit the",
-    "new SEAL.ts in the same change, so the diff shows the backstop moving."
+    "new manifest.ts in the same change, so the diff shows the backstop moving."
   ].join("\n");
 }

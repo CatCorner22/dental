@@ -23,10 +23,16 @@ import { fileURLToPath } from "node:url";
 
 const HERE = path.dirname(fileURLToPath(import.meta.url));
 const SEALED_DIR = path.resolve(HERE, "../src/lib/byteaudit");
-const MANIFEST = path.join(SEALED_DIR, "SEAL.ts");
+const MANIFEST = path.join(SEALED_DIR, "manifest.ts");
 
-/** The manifest cannot hash itself, and tests are evidence rather than logic. */
-const EXCLUDED = new Set(["SEAL.ts"]);
+/**
+ * The manifest cannot hash itself, and tests are evidence rather than logic.
+ *
+ * Named manifest.ts rather than SEAL.ts: a file differing from seal.ts only in
+ * casing compiles locally and fails the production build, because TypeScript
+ * refuses the ambiguity that a case-insensitive filesystem would create.
+ */
+const EXCLUDED = new Set(["manifest.ts"]);
 
 function sealedFiles(dir, prefix = "") {
   const out = [];

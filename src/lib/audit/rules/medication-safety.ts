@@ -353,8 +353,19 @@ const INTERACTIONS: InteractionPattern[] = [
 
 // "avoided", "withheld", "not prescribed", "contraindicated — so", "held",
 // "instead of": the sentence already shows the clinician did the thinking.
+// The cues that mean "the clinician saw this interaction and did not walk into it".
+//
+// The list originally missed the commonest phrasing of all. A note reading
+// "Patient takes apixaban. No NSAIDs advised, acetaminophen only." raised S1 and
+// blocked email — on documentation that is not merely adequate but exemplary.
+// That is the incentive pointing exactly backwards: the clinician who identifies
+// an interaction, avoids it, and writes it down is stopped, while the one who
+// never mentions the anticoagulant sails through.
+//
+// So bare negation of the agent counts ("no NSAIDs", "no ibuprofen"), as do
+// "advised against" and "deferred". Found by the precision corpus.
 const AVOIDANCE_CUE =
-  /\b(?:avoid(?:ed|ing)?|withheld|withhold|not\s+(?:prescribed?|given|used)|held|contraindicated|declined|instead\s+of|rather\s+than|switch(?:ed)?\s+(?:to|from)|allerg)\w*/i;
+  /\b(?:avoid(?:ed|ing)?|withheld|withhold|no\s+(?:\w+\s+){0,2}(?:nsaids?|ibuprofen|naproxen|aspirin|asa)\b|not\s+(?:prescribed?|given|used|advised|recommended)|advised\s+against|deferred|held|contraindicated|declined|instead\s+of|rather\s+than|only\b|switch(?:ed)?\s+(?:to|from)|allerg)\w*/i;
 
 function sentenceContaining(text: string, index: number): string {
   const start = text.lastIndexOf(".", index);

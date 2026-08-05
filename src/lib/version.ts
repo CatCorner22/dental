@@ -194,4 +194,28 @@
 //         "chatgpt" token and retired-assistant deployment doc are gone).
 //         Same bump covers the personal-blocks PHI refusal at save — a new
 //         place the identifier rules run, not a change to what they match.
-export const RULESET_VERSION = "2.20.0";
+// 2.21.0 — precision. The first measurement of how often the audit stops a note
+//         that was already fine (src/lib/audit/precision/), and the five
+//         narrowings it demanded. Every one was a BLOCKING false positive found
+//         by running the rules over 34 notes written to house style:
+//           anatomy.text-tooth (S0) read "#557 carbide bur" as an impossible ADA
+//             tooth designation — one of the commonest tokens in a restorative
+//             note. Instrument nouns now end the tooth run.
+//           medsafe.interaction.* (S1) blocked "no NSAIDs advised" on an
+//             anticoagulated patient — the tool punishing the clinician who
+//             spotted the interaction and documented avoiding it. Bare negation
+//             of the agent now counts as an avoidance cue.
+//           effort.unprofessional (S1) fired on "buccal fat pad", "gross
+//             debridement", "lying supine", "lies distal". Context gates either
+//             side of the hit; the slur itself still fires, including when it
+//             sits beside a legitimate phrase.
+//           effort.gibberish (S1) fired on "------" and on runs of pasted
+//             spaces. Repeated WORD characters only; punctuation is formatting.
+//           phi.ssn-bare (S0) fired on any nine-digit run, so an implant lot
+//             number and a scanner serial both blocked filing. Now requires a
+//             cue (ssn / social security / tax id / identifier / member /
+//             subscriber / policy / account).
+//         No rule was weakened to make the number green: a negative control
+//         asserts the shorthand corpus still blocks, and the recall tests over
+//         the persona and scenario corpora are unchanged.
+export const RULESET_VERSION = "2.21.0";

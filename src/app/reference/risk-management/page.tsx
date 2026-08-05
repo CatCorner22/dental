@@ -1,4 +1,8 @@
 import { RiskManagement } from "@/components/risk/RiskManagement";
+import { MarkdownDoc } from "@/components/reference/MarkdownDoc";
+import { readReferenceDoc } from "@/lib/content";
+import { freshSessionUser } from "@/lib/auth/freshUser";
+import { meetsRole } from "@/lib/auth/roles";
 
 export const metadata = { title: "Risk management" };
 
@@ -7,7 +11,10 @@ export const metadata = { title: "Risk management" };
 // boundaries, scope/supervision, business practices, incident response.
 // Interactive scaffolding now; content is provisional and labeled as such.
 
-export default function RiskManagementPage() {
+export default async function RiskManagementPage() {
+  const user = await freshSessionUser();
+  const showResearch = Boolean(user && meetsRole(user.role, "lead"));
+
   return (
     <div>
       <p className="eyebrow">Practice-level view</p>
@@ -17,6 +24,26 @@ export default function RiskManagementPage() {
         that survive review, PHI that never leaves, scope that matches licensure, and business
         records that answer questions before they become disputes.
       </p>
+
+      {showResearch && (
+        <details
+          id="documentation-research"
+          className="mb-6 max-w-3xl rounded-lg border border-slate-200 bg-slate-50 p-4"
+        >
+          <summary className="cursor-pointer text-sm font-semibold text-brand-navy">
+            Claim-file documentation research (Team Lead+)
+          </summary>
+          <p className="mt-2 text-xs text-slate-600">
+            Internal synthesis from public carrier claim files and case studies. Correlation in
+            closed claims — not a promise that better notes prevent litigation. Grounds the
+            language optimizer for risk reduction rules in the audit engine.
+          </p>
+          <div className="mt-4 rounded-md bg-white p-3 ring-1 ring-slate-200">
+            <MarkdownDoc markdown={readReferenceDoc("documentationResearch")} />
+          </div>
+        </details>
+      )}
+
       <RiskManagement />
     </div>
   );

@@ -130,6 +130,25 @@ describe("procedure without clinical rationale", () => {
   });
 });
 
+describe("referral without loop closure", () => {
+  it("fires when a referral is stated without recipient or reason", () => {
+    expect(ids("Referral placed. Patient dismissed.")).toContain("complete.referral-loop-open");
+    expect(ids("Patient referred. Recall in six months.")).toContain("complete.referral-loop-open");
+  });
+
+  it("is satisfied by a named recipient or clinical reason", () => {
+    expect(
+      ids("Referred to oral surgery for evaluation of tooth 32 periapical radiolucency.")
+    ).not.toContain("complete.referral-loop-open");
+    expect(ids("4 bitewing radiographs acquired. Referred for interpretation.")).not.toContain(
+      "complete.referral-loop-open"
+    );
+    expect(ids("Refer to endodontist for retreatment of tooth 19 due to persistent pain.")).not.toContain(
+      "complete.referral-loop-open"
+    );
+  });
+});
+
 describe("tone", () => {
   it("every message anticipates the reader, never scolds the writer", () => {
     const findings = runCompletenessRules("Extraction of tooth 32 completed. Patient dismissed.");

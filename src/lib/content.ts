@@ -12,7 +12,8 @@ const DOCS = {
   tennesseeLaw: "skill/references/tennessee-dental-law-summary.md",
   sourceLedger: "skill/references/source-ledger.md",
   deployment: "skill/references/deployment-recommendation.md",
-  dataHygiene: "skill/references/data-hygiene-guide.md"
+  dataHygiene: "skill/references/data-hygiene-guide.md",
+  documentationResearch: "knowledge/sources/litigation-documentation-research.md"
 } as const;
 
 export type DocName = keyof typeof DOCS;

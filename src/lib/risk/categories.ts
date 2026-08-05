@@ -168,6 +168,11 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   // note does not carry.
   "complete.consent-thin-assertion": "material-omission",
   "complete.referral-loop-open": "material-omission",
+  // Open clinical loops from the deep-research ingest: a finding or procedure
+  // without the next disposition is a fact the visit produced that the note
+  // never carries — same failure mode as an extraction without an outcome.
+  "complete.finding-no-disposition": "material-omission",
+  "complete.procedure-no-followup": "material-omission",
   "required.missing": "material-omission",
   "supervision.pc1107-new-patient": "material-omission",
   "supervision.pc1107-unanswered": "material-omission",
@@ -177,6 +182,9 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   // procedure recorded with no reasoning attached. This was the thinnest
   // category in the taxonomy when it was written, and it is now less thin.
   "complete.clinical-rationale": "rationale-absent",
+  // Drug named; clinical why omitted — same reader gap as a procedure without
+  // reasoning. Duration alone is already covered by complete.rx-no-duration.
+  "complete.rx-no-indication": "rationale-absent",
   "justify.buildup-retention": "rationale-absent",
   "justify.crown-necessity": "rationale-absent",
   "justify.srp-periodontal-evidence": "rationale-absent",

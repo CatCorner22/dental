@@ -121,6 +121,17 @@ describe("the advisor engine", () => {
     expect(report.advice.some((a) => a.id === "byte.clinical-rationale")).toBe(true);
   });
 
+  it("coaches prescription indication and bounded negatives from the integrity digest", () => {
+    expect(
+      advise("Prescribed amoxicillin 500 mg three times daily for 7 days.").advice.some(
+        (a) => a.id === "byte.rx-indication"
+      )
+    ).toBe(true);
+    expect(advise("Crown seated. No problems.").advice.some((a) => a.id === "byte.bounded-negatives")).toBe(
+      true
+    );
+  });
+
   it("tracks the defensibility pillars only when treatment happened", () => {
     expect(advise("Periodic exam. No caries.").gauges.pillars.applicable).toBe(false);
     const treated = advise("#14 MOD composite placed by Dr. M. Post-op instructions given. Recall 6 months.");

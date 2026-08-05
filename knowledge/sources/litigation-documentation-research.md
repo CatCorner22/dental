@@ -188,6 +188,13 @@ argument to deposition memory contests the defense does not control.
 | Consent assertion, no substance | `complete.consent-thin-assertion` | S2 | `byte.consent-is-a-conversation` |
 | Procedure without rationale | `complete.clinical-rationale` | S2 | `byte.clinical-rationale` |
 | Referral without recipient or reason | `complete.referral-loop-open` | S2 | `byte.referral-loop` |
+| Rx without indication | `complete.rx-no-indication` | S2 | `byte.rx-indication` |
+| Finding without disposition | `complete.finding-no-disposition` | S2 | `byte.soft-tissue-close-the-loop` |
+| Procedure without follow-up | `complete.procedure-no-followup` | S2 | (advisor pillars) |
+| Overbroad absolute negatives | `vague.no-complications` (+ sibling phrases) | S2 | `byte.bounded-negatives` |
+
+See also `documentation-integrity-deep-research.md` for the multi-audience integrity
+framework and park list (pharmacy DEA, CERT packet, multi-state engine).
 
 ## Residual risks and honest limits
 

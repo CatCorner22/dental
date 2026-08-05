@@ -202,4 +202,8 @@
 // 2.22.0 — complete.referral-loop-open (Doctors Company referral guidance);
 //         Team Lead+ claim-file research digest on /reference/risk-management;
 //         documentationResearch added to reference doc allowlist.
-export const RULESET_VERSION = "2.22.0";
+// 2.23.0 — deep-research documentation-integrity ingest: complete.rx-no-indication,
+//         complete.finding-no-disposition, complete.procedure-no-followup;
+//         bounded-negative vague phrases + byte.bounded-negatives / byte.rx-indication;
+//         documentation-integrity-deep-research.md on Team Lead+ risk page.
+export const RULESET_VERSION = "2.23.0";

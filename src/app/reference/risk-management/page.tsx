@@ -26,22 +26,41 @@ export default async function RiskManagementPage() {
       </p>
 
       {showResearch && (
-        <details
-          id="documentation-research"
-          className="mb-6 max-w-3xl rounded-lg border border-slate-200 bg-slate-50 p-4"
-        >
-          <summary className="cursor-pointer text-sm font-semibold text-brand-navy">
-            Claim-file documentation research (Team Lead+)
-          </summary>
-          <p className="mt-2 text-xs text-slate-600">
-            Internal synthesis from public carrier claim files and case studies. Correlation in
-            closed claims — not a promise that better notes prevent litigation. Grounds the
-            language optimizer for risk reduction rules in the audit engine.
-          </p>
-          <div className="mt-4 rounded-md bg-white p-3 ring-1 ring-slate-200">
-            <MarkdownDoc markdown={readReferenceDoc("documentationResearch")} />
-          </div>
-        </details>
+        <div className="mb-6 max-w-3xl space-y-3">
+          <details
+            id="documentation-research"
+            className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+          >
+            <summary className="cursor-pointer text-sm font-semibold text-brand-navy">
+              Claim-file documentation research (Team Lead+)
+            </summary>
+            <p className="mt-2 text-xs text-slate-600">
+              Internal synthesis from public carrier claim files and case studies. Correlation in
+              closed claims — not a promise that better notes prevent litigation. Grounds the
+              language optimizer for risk reduction rules in the audit engine.
+            </p>
+            <div className="mt-4 rounded-md bg-white p-3 ring-1 ring-slate-200">
+              <MarkdownDoc markdown={readReferenceDoc("documentationResearch")} />
+            </div>
+          </details>
+
+          <details
+            id="documentation-integrity"
+            className="rounded-lg border border-slate-200 bg-slate-50 p-4"
+          >
+            <summary className="cursor-pointer text-sm font-semibold text-brand-navy">
+              Documentation integrity framework (Team Lead+)
+            </summary>
+            <p className="mt-2 text-xs text-slate-600">
+              National integrity framework distilled for dental + dental prescribing. Multi-audience
+              risk table, bounded negatives, and an explicit park list for pharmacy DEA and claim-packet
+              workflows this app does not own. Companion to the claim-file digest above.
+            </p>
+            <div className="mt-4 rounded-md bg-white p-3 ring-1 ring-slate-200">
+              <MarkdownDoc markdown={readReferenceDoc("documentationIntegrity")} />
+            </div>
+          </details>
+        </div>
       )}
 
       <RiskManagement />

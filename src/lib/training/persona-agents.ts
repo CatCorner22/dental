@@ -105,7 +105,12 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "rushed-perio-without-numbers",
       "vague-tolerated-well"
     ],
-    documentationRiskPatterns: ["imaging-no-read", "insufficient-detail", "no-rationale"]
+    documentationRiskPatterns: [
+      "imaging-no-read",
+      "insufficient-detail",
+      "no-rationale",
+      "OBJECTIVE_FINDING_MISSING"
+    ]
   },
   {
     id: "priya-nair",
@@ -186,7 +191,12 @@ export const PERSONA_AGENTS: readonly PersonaAgent[] = [
       "crown-without-necessity-narrative",
       "residue-tbd-fields"
     ],
-    documentationRiskPatterns: ["no-rationale", "insufficient-detail", "sparse-operative"]
+    documentationRiskPatterns: [
+      "no-rationale",
+      "insufficient-detail",
+      "sparse-operative",
+      "FOLLOWUP_MISSING"
+    ]
   },
   {
     id: "helen-krause",

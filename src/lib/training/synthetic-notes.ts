@@ -111,14 +111,15 @@ export const SYNTHETIC_TRAINING_NOTES: readonly SyntheticTrainingNote[] = [
       "Patient called about pain after yesterday's extraction. Told them it is probably fine " +
       "and to rinse with warm salt water and take whatever leftover pain pills they have at home. " +
       "Said if it still hurts next week we can look at it. Seemed like a difficult patient again.",
-    researchBasis: ["record-mechanics", "role-boundary", "judgmental-language"],
-    expectedAuditRulePrefixes: ["complete.extraction-no-outcome"],
+    researchBasis: ["record-mechanics", "role-boundary", "judgmental-language", "FOLLOWUP_MISSING"],
+    expectedAuditRulePrefixes: ["complete.extraction-no-outcome", "complete.procedure-no-followup"],
     expectedDefectTags: [
       "role-boundary-clinical-advice",
       "no-escalation-to-dentist",
       "judgmental-language",
       "rx-advice-without-prescriber",
-      "delayed-or-memory-phone-note"
+      "delayed-or-memory-phone-note",
+      "FOLLOWUP_MISSING"
     ],
     requiredEvidence: ["extraction", "dentist", "post-operative"]
   },
@@ -182,7 +183,8 @@ export const SYNTHETIC_TRAINING_NOTES: readonly SyntheticTrainingNote[] = [
       "sparse-operative",
       "medpro-rct-with-local",
       "insufficient-detail",
-      "near-retirement-brevity"
+      "near-retirement-brevity",
+      "AMBIGUOUS_NEGATIVE"
     ],
     expectedAuditRulePrefixes: ["vague.tolerated-well", "vague.no-complications", "complete.clinical-rationale"],
     expectedDefectTags: [
@@ -191,7 +193,8 @@ export const SYNTHETIC_TRAINING_NOTES: readonly SyntheticTrainingNote[] = [
       "no-findings",
       "no-technique",
       "no-consent",
-      "no-materials"
+      "no-materials",
+      "AMBIGUOUS_NEGATIVE"
     ],
     requiredEvidence: ["tooth 30", "root canal", "carpule", "radiograph"]
   },

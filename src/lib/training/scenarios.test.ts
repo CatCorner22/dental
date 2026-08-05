@@ -27,8 +27,9 @@ describe("training scenarios", () => {
       "treatment and vital signs remained at baseline. Lidocaine 2% with epinephrine " +
       "1:100,000, 2 carpules, via inferior alveolar nerve block; the patient reported profound " +
       "numbness before access. Two periapical radiographs acquired of tooth 19; interpretation by the " +
-      "treating dentist: periapical radiolucency at the mesial apex, no other findings. " +
-      "Obturation planned at the second visit within two weeks.";
+      "treating dentist: periapical radiolucency at the mesial apex, no other findings; " +
+      "finding disclosed to the patient and will be monitored at the obturation visit. " +
+      "Return visit for obturation in 2 weeks.";
     expect(matchesScenarioEvidence(scenario, repaired)).toBe(true);
     expect(isScenarioComplete(runTextAudit(repaired))).toBe(true);
   });

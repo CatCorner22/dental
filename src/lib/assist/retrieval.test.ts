@@ -67,6 +67,18 @@ describe("retrieveContext", () => {
     expect(retrieveContext("Prophylaxis completed.").sources).not.toContain("radiograph records");
   });
 
+  it("includes prescription documentation cues for dental prescribing text", () => {
+    const r = retrieveContext("Prescribed amoxicillin 500 mg for 7 days.");
+    expect(r.sources).toContain("prescription documentation");
+    expect(r.text).toMatch(/indication/i);
+  });
+
+  it("includes bounded-negative cues for absolute negative phrases", () => {
+    const r = retrieveContext("Crown seated. No problems.");
+    expect(r.sources).toContain("bounded negatives");
+    expect(r.text).toMatch(/procedure-bounded|patient-reported/i);
+  });
+
   it("returns empty for text that triggers nothing", () => {
     const r = retrieveContext("Patient rescheduled the visit.");
     expect(r.sources).toEqual([]);

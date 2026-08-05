@@ -107,6 +107,41 @@ const RULES: CompletenessRule[] = [
     what: "A referral is documented without naming the recipient or the clinical reason.",
     how:
       "Record to whom (named specialist or service), why (finding or symptom), and urgency when time-sensitive. \"Referral placed\" alone does not close the loop."
+  },
+  {
+    id: "complete.rx-no-indication",
+    // Deep-research medication-information gap: drug without why.
+    // Deliberately does NOT treat "for 7 days" as an indication.
+    trigger:
+      /\b(?:prescribed|prescription|dispensed?)\b[^.\n]{0,80}\b(?:amoxicillin|penicillin|clindamycin|azithromycin|metronidazole|doxycycline|ibuprofen|naproxen|acetaminophen|hydrocodone|oxycodone|codeine|tramadol|chlorhexidine|fluconazole|nystatin)\b/i,
+    satisfiedBy:
+      /\b(?:to\s+treat|indicated(?:\s+for)?|due\s+to|secondary\s+to|prophylaxis|prophylactic|infection|abscess|cellulitis|pericoronitis|odontalgia|periodont|post-?op(?:erative)?\s+pain|for\s+(?:the\s+)?(?:infection|abscess|pain|swelling|extraction|procedure|odontogenic))\b/i,
+    what: "A prescription is recorded without a clinical indication.",
+    how:
+      "State why the drug was prescribed — the infection, pain, prophylaxis, or other indication. Duration alone does not explain the clinical reason."
+  },
+  {
+    id: "complete.finding-no-disposition",
+    // Soft-tissue / radiographic finding without a closed loop (deep-research open-loop taxonomy).
+    // "No lesions" is satisfied by the negation cue so clean exams stay silent.
+    trigger: /\b(?:lesion|ulceration|ulcer|radiolucency|PARL)\b/i,
+    satisfiedBy:
+      /\b(?:refer(?:ral|red)?|biopsy|monitor(?:ed|ing)?|recheck|disclosed|discussed|scheduled|observ(?:e|ed|ation)|follow-?ups?|no\s+(?:lesions?|ulcers?|radiolucenc(?:y|ies)))\b/i,
+    what: "A soft-tissue or radiographic finding is recorded without a disposition.",
+    how:
+      "Close the loop: disclosed to the patient, monitored with a recheck plan, biopsied, or referred. A finding alone is an open clinical loop."
+  },
+  {
+    id: "complete.procedure-no-followup",
+    // FOLLOWUP_MISSING for significant procedures (advisor pillars made auditable).
+    // Hygiene-only and simple restorative notes deliberately do not trigger.
+    trigger:
+      /\b(?:crown(?:\s+prep)?|root\s+canal|RCT|endodont|extraction|extracted|SRP|scaling\s+and\s+root\s+planing|root\s+planing|implant\s+placement|bridge\s+prep|apicoectomy|pulpotomy|pulpectomy|bone\s+graft|sinus\s+(?:lift|augment))\b/i,
+    satisfiedBy:
+      /\b(?:follow-?ups?|recall|RTC|return\s+(?:to|in)|next\s+visit|second\s+visit|re-?eval(?:uation|uate[ds]?)?|referral|referred|come\s+back|(?:in|within)\s+(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)(?:\s*-\s*|\s+to\s+)?(?:\d+|one|two|three|four|five|six|seven|eight|nine|ten)?\s*(?:days?|weeks?|months?)|seat(?:ing)?\s+(?:visit|appointment))\b/i,
+    what: "A significant procedure is documented without a follow-up plan.",
+    how:
+      "State the next step — recall interval, return visit, seating appointment, or referral. Treatment without a planned next contact leaves an open safety loop."
   }
 ];
 

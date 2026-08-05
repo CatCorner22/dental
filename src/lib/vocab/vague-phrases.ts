@@ -141,10 +141,24 @@ export const VAGUE_PHRASES: VaguePhrase[] = [
   },
   {
     id: "no-complications",
-    pattern: /\bno complications\b/gi,
+    pattern: /\b(?:no complications|without(?:\s+any)?\s+complications)\b/gi,
     display: "no complications",
     replacement:
       "no complication was observed during the stated procedure or observation period"
+  },
+  {
+    id: "no-problems",
+    pattern: /\bno problems\b/gi,
+    display: "no problems",
+    replacement:
+      "state what was assessed and the observed result for this encounter — avoid an absolute negative"
+  },
+  {
+    id: "no-issues",
+    pattern: /\bno issues\b/gi,
+    display: "no issues",
+    replacement:
+      "state what was assessed and the observed result for this encounter — avoid an absolute negative"
   },
   {
     id: "and-or",

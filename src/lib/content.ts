@@ -13,7 +13,8 @@ const DOCS = {
   sourceLedger: "skill/references/source-ledger.md",
   deployment: "skill/references/deployment-recommendation.md",
   dataHygiene: "skill/references/data-hygiene-guide.md",
-  documentationResearch: "knowledge/sources/litigation-documentation-research.md"
+  documentationResearch: "knowledge/sources/litigation-documentation-research.md",
+  documentationIntegrity: "knowledge/sources/documentation-integrity-deep-research.md"
 } as const;
 
 export type DocName = keyof typeof DOCS;

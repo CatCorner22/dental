@@ -91,6 +91,18 @@ const RADIOGRAPH_RULES = `RADIOGRAPH RECORDS (Tenn. Comp. R. 0460-02-.12; Tenn. 
 - Tennessee counts radiographs AND their interpretations as part of the dental record. "BWs taken" documents an exposure, not a diagnostic act.
 - The record wants: who interpreted the image, what they saw — or that interpretation is pending, with a named owner. Never supply an interpretation the input does not contain.`;
 
+const RX_CUE =
+  /\b(?:prescribed|prescription|dispensed?)\b|\b(?:amoxicillin|penicillin|clindamycin|ibuprofen|hydrocodone|oxycodone|metronidazole)\b/i;
+const RX_RULES = `PRESCRIPTION DOCUMENTATION (language optimizer for risk reduction):
+- Reconstructible prescriptions need dose or strength, frequency, duration or supply, clinical indication, and allergy status verified at this visit.
+- Never invent an indication, allergy clearance, or counseling step the input does not state — ask about the gap instead.
+- "For 7 days" is duration, not indication.`;
+
+const NEGATIVE_CUE = /\b(?:no complications|without(?:\s+any)?\s+complications|no problems|no issues)\b/i;
+const NEGATIVE_RULES = `BOUNDED NEGATIVES (language optimizer for risk reduction):
+- Prefer patient-reported, clinician-observed, or procedure-bounded negatives over absolute claims.
+- Never convert silence into "no swelling," "no complications," or "normal exam." Ask whether a scoped observation exists.`;
+
 const SUPERVISION_CUE =
   /\b(?:hygienist|RDH|general supervision|direct supervision|registered dental assistant|RDA|practical dental assistant|prophylaxis|scaling)\b/i;
 const SUPERVISION_RULES = `TENNESSEE LICENSE SCOPE (Tenn. Code Ann. § 63-5-108; Rules 0460-03-.09, 0460-04-.08):
@@ -133,6 +145,14 @@ export function retrieveContext(input: string): RetrievedContext {
   if (RADIOGRAPH_CUE.test(input)) {
     sources.push("radiograph records");
     parts.push(RADIOGRAPH_RULES);
+  }
+  if (RX_CUE.test(input)) {
+    sources.push("prescription documentation");
+    parts.push(RX_RULES);
+  }
+  if (NEGATIVE_CUE.test(input)) {
+    sources.push("bounded negatives");
+    parts.push(NEGATIVE_RULES);
   }
   if (SUPERVISION_CUE.test(input)) {
     sources.push("tennessee license scope");

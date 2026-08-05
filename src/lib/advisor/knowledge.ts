@@ -205,13 +205,52 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
       "plus its disposition — described, measured where possible, disclosed, referred or " +
       "scheduled for review — is a closed loop. A finding alone is an open one, and open loops " +
       "are what records get judged on.",
-    source: "D'Amour v. Bd. of Registration in Dentistry, 409 Mass. 572 (1991)",
+    source:
+      "D'Amour v. Bd. of Registration in Dentistry, 409 Mass. 572 (1991); " +
+      "documentation-integrity-deep-research.md; complete.finding-no-disposition",
     priority: 72,
     nextAction: "Add disposition: disclosed, referred, biopsied, or scheduled for recheck.",
     when: (ctx) =>
       ctx.facts.some(
         (f) => f.kind === "finding" && f.assertion.polarity === "affirmed" && ["lesion", "ulceration"].some((n) => f.finding.includes(n))
       ) && !mentions(ctx, "refer", "biopsy", "monitor", "recheck", "disclosed", "discussed")
+  },
+  {
+    id: "byte.rx-indication",
+    say: "A prescription needs a why, not only a dose and a day count.",
+    why:
+      "Drug name, strength, and duration reconstruct the order; the indication reconstructs the " +
+      "clinical judgment. \"Prescribed amoxicillin for 7 days\" leaves the later reader guessing " +
+      "whether this was infection, prophylaxis, or habit — and medication-information gaps are a " +
+      "documented documentation-integrity pattern.",
+    source: "documentation-integrity-deep-research.md; complete.rx-no-indication; ISMP patient-information guidance",
+    priority: 76,
+    nextAction: "Add the indication in one phrase (infection, post-operative pain, prophylaxis, etc.).",
+    when: (ctx) =>
+      /\b(?:prescribed|prescription|dispensed?)\b/i.test(ctx.text) &&
+      /\b(?:amoxicillin|penicillin|clindamycin|azithromycin|metronidazole|ibuprofen|hydrocodone|oxycodone)\b/i.test(
+        ctx.text
+      ) &&
+      !/\b(?:to\s+treat|indicated|due\s+to|infection|abscess|pain|prophylaxis|prophylactic|swelling)\b/i.test(
+        ctx.text
+      )
+  },
+  {
+    id: "byte.bounded-negatives",
+    say: "Absolute negatives overclaim. Bound them to what was asked or observed.",
+    why:
+      "\"No problems\" and \"no complications\" imply knowledge beyond the encounter. Prefer " +
+      "patient-reported (\"denies swelling today\"), clinician-observed (\"no swelling on exam\"), " +
+      "or procedure-bounded (\"no immediate complication observed before discharge\"). A record " +
+      "cannot prove every conceivable negative; it can document the scope of inquiry.",
+    source: "documentation-integrity-deep-research.md (bounded-negative distinction); CMS/ADA documentation integrity",
+    priority: 55,
+    nextAction: "Rewrite the absolute negative with a time frame and what was actually assessed.",
+    when: (ctx) =>
+      /\b(?:no complications|without(?:\s+any)?\s+complications|no problems|no issues)\b/i.test(ctx.text) &&
+      !/\b(?:observed|during|before\s+discharge|on\s+(?:today'?s\s+)?(?:exam|examination)|denies)\b/i.test(
+        ctx.text
+      )
   },
   {
     id: "byte.clinical-rationale",

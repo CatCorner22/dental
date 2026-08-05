@@ -149,6 +149,90 @@ describe("referral without loop closure", () => {
   });
 });
 
+describe("prescription without indication", () => {
+  it("fires when a drug is prescribed with duration but no clinical reason", () => {
+    expect(ids("Prescribed amoxicillin 500 mg three times daily for 7 days.")).toContain(
+      "complete.rx-no-indication"
+    );
+  });
+
+  it("is satisfied by indication language and is not fooled by 'for N days' alone", () => {
+    expect(
+      ids("Prescribed amoxicillin 500 mg three times daily for 7 days for odontogenic infection.")
+    ).not.toContain("complete.rx-no-indication");
+    expect(
+      ids("Prescribed ibuprofen 600 mg every 6 hours for post-operative pain for 3 days.")
+    ).not.toContain("complete.rx-no-indication");
+  });
+
+  it("handles casing variants and is idempotent", () => {
+    const text = "PRESCRIBED AMOXICILLIN 500 MG TID FOR 7 DAYS.";
+    expect(ids(text)).toContain("complete.rx-no-indication");
+    expect(ids(text)).toEqual(ids(text));
+    expect(ids(text)).toEqual(ids(text));
+  });
+});
+
+describe("finding without disposition", () => {
+  it("fires when a lesion or radiolucency has no closed loop", () => {
+    expect(ids("Soft tissue lesion noted on left buccal mucosa. Patient dismissed.")).toContain(
+      "complete.finding-no-disposition"
+    );
+    expect(ids("Periapical radiolucency at tooth 30. Crown prep completed.")).toContain(
+      "complete.finding-no-disposition"
+    );
+  });
+
+  it("stays silent on clean exams and closed loops", () => {
+    expect(ids("No lesions noted. Adult prophylaxis completed.")).not.toContain(
+      "complete.finding-no-disposition"
+    );
+    expect(
+      ids("Soft tissue lesion noted on left buccal mucosa. Disclosed to patient; referred for biopsy.")
+    ).not.toContain("complete.finding-no-disposition");
+  });
+
+  it("does not treat imaging referral-for-interpretation as an open soft-tissue finding", () => {
+    // Radiolucency language inside a closed imaging/referral sentence should not strand the writer.
+    expect(
+      ids(
+        "4 bitewing radiographs acquired. Interpretation: no radiolucency. Referred for interpretation only if needed — none needed."
+      )
+    ).not.toContain("complete.finding-no-disposition");
+  });
+});
+
+describe("procedure without follow-up", () => {
+  it("fires when a significant procedure has no next step", () => {
+    expect(
+      ids("Crown prep on tooth 14 due to recurrent decay. Patient tolerated well.")
+    ).toContain("complete.procedure-no-followup");
+    expect(
+      ids("Extraction of tooth 32 completed without complication. Hemostasis observed. Post-operative instructions given.")
+    ).toContain("complete.procedure-no-followup");
+  });
+
+  it("is satisfied by recall, RTC, referral, or timed return", () => {
+    expect(
+      ids("Crown prep on tooth 14 due to recurrent decay. RTC for seat in two weeks.")
+    ).not.toContain("complete.procedure-no-followup");
+    expect(
+      ids(
+        "Extraction of tooth 32 completed without complication. Hemostasis observed. Post-operative instructions given. Follow-up in 1 week if needed."
+      )
+    ).not.toContain("complete.procedure-no-followup");
+  });
+
+  it("stays silent on hygiene-only and simple restorative visits", () => {
+    expect(ids("Adult prophylaxis completed. Patient dismissed.")).not.toContain(
+      "complete.procedure-no-followup"
+    );
+    expect(ids("MOD composite placed on tooth 14 due to caries. Patient dismissed.")).not.toContain(
+      "complete.procedure-no-followup"
+    );
+  });
+});
+
 describe("tone", () => {
   it("every message anticipates the reader, never scolds the writer", () => {
     const findings = runCompletenessRules("Extraction of tooth 32 completed. Patient dismissed.");

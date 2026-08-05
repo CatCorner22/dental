@@ -139,6 +139,8 @@ Keep an abbreviation only if the practice has one approved meaning, defines it a
 | unremarkable | name the structure and observed finding |
 | grossly intact | name the tested function and result |
 | no complications | no complication was observed during the stated procedure or observation period |
+| no problems | state what was assessed and the observed result for this encounter — avoid an absolute negative |
+| no issues | state what was assessed and the observed result for this encounter — avoid an absolute negative |
 | and/or | state each option separately; write "A, B, or both" when both are possible |
 | etc. | list each item; do not use etc. |
 | respectively | repeat the tooth, site, drug, device, or actor instead of pairing lists |

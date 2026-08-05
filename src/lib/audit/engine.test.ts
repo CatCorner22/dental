@@ -67,6 +67,9 @@ describe("terminology rules", () => {
     const f = findings("patient tolerated the procedure well", "vague.tolerated-well")[0];
     expect(f.severity).toBe("S2");
     const noComp = findings("there were no complications", "vague.no-complications")[0];
+    expect(findings("without any complications noted", "vague.no-complications")).toHaveLength(1);
+    expect(findings("Crown seated. No problems.", "vague.no-problems")).toHaveLength(1);
+    expect(findings("Crown seated. No issues.", "vague.no-issues")).toHaveLength(1);
     expect(noComp.suggestion).toContain("no complication was observed");
   });
 

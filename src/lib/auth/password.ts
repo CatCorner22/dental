@@ -8,6 +8,13 @@ export const PASSWORD_MIN = 10;
 // Capping here also keeps an unbounded string out of a cost-12 hash.
 export const PASSWORD_MAX = 72;
 
+// Shown under every password field. States WHAT is required and WHAT is not —
+// people were reading username rules ("letters, digits, or …") as if the
+// password allowed only one character class.
+export const PASSWORD_HINT =
+  `At least ${PASSWORD_MIN} characters. Mix letters, numbers, and symbols freely — ` +
+  "there is no rule that limits you to only one type.";
+
 // A short blocklist of long-but-trivial passwords that clear the length bar but
 // are the first things an online guesser tries. Not a full breach corpus — a
 // cheap floor that, combined with per-IP throttling, makes password spraying
@@ -38,7 +45,10 @@ const COMMON_PASSWORDS = new Set([
 // self-service change. Returns an error message, or null when acceptable.
 export function passwordPolicyError(plain: string): string | null {
   if (plain.length < PASSWORD_MIN) {
-    return `Password must be at least ${PASSWORD_MIN} characters.`;
+    return (
+      `Password must be at least ${PASSWORD_MIN} characters. ` +
+      "Letters, numbers, and symbols may all be mixed — no character-type limit."
+    );
   }
   if (Buffer.byteLength(plain, "utf8") > PASSWORD_MAX) {
     return `Password must be at most ${PASSWORD_MAX} bytes.`;

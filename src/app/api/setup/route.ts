@@ -3,6 +3,7 @@ import { countUsers, createFirstAdminGuarded } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword, passwordPolicyError } from "@/lib/auth/password";
+import { usernamePolicyError } from "@/lib/auth/username";
 import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
 
 export const runtime = "nodejs";
@@ -22,9 +23,8 @@ export async function POST(req: Request): Promise<Response> {
   const cleanName = typeof b.displayName === "string" ? sanitizeIdentity(b.displayName) : "";
   const displayName = cleanName || username;
   const password = typeof b.password === "string" ? b.password : "";
-  if (!/^[a-z0-9][a-z0-9._-]{2,39}$/i.test(username)) {
-    return Response.json({ error: "Username must be 3-40 letters, digits, or . _ -" }, { status: 400 });
-  }
+  const userError = usernamePolicyError(username);
+  if (userError) return Response.json({ error: userError }, { status: 400 });
   const pwError = passwordPolicyError(password);
   if (pwError) return Response.json({ error: pwError }, { status: 400 });
   // Atomic: the count re-check and the insert share one serialized

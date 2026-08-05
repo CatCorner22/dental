@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { PASSWORD_MAX, PASSWORD_MIN, passwordPolicyError } from "./password";
+import { PASSWORD_HINT, PASSWORD_MAX, PASSWORD_MIN, passwordPolicyError } from "./password";
 
 describe("passwordPolicyError", () => {
   it("accepts a password within the policy", () => {
@@ -7,7 +7,16 @@ describe("passwordPolicyError", () => {
   });
 
   it("rejects one shorter than the minimum", () => {
-    expect(passwordPolicyError("x".repeat(PASSWORD_MIN - 1))).toContain("at least");
+    const msg = passwordPolicyError("x".repeat(PASSWORD_MIN - 1)) ?? "";
+    expect(msg).toContain("at least");
+    // Must not sound like "pick letters OR digits OR symbols" — that reading
+    // locked a site owner out of /setup thinking only one class was allowed.
+    expect(msg.toLowerCase()).toMatch(/mix|no character-type/);
+  });
+
+  it("exposes a hint that any character mix is fine", () => {
+    expect(PASSWORD_HINT.toLowerCase()).toContain("mix");
+    expect(PASSWORD_HINT.toLowerCase()).toContain("no rule");
   });
 
   // bcrypt ignores bytes past 72, so anything longer is not stronger — it

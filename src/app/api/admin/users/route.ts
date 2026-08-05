@@ -4,6 +4,7 @@ import { getUserByUsername, insertUser, listUsers } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword, passwordPolicyError } from "@/lib/auth/password";
+import { usernamePolicyError } from "@/lib/auth/username";
 import { sanitizeIdentity } from "@/lib/text/sanitizeIdentity";
 import {
   canAddUser,
@@ -82,9 +83,8 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
-  if (!/^[a-z0-9][a-z0-9._-]{2,39}$/i.test(username)) {
-    return Response.json({ error: "Username must be 3-40 letters, digits, or . _ -" }, { status: 400 });
-  }
+  const userError = usernamePolicyError(username);
+  if (userError) return Response.json({ error: userError }, { status: 400 });
 
   const email = typeof b.email === "string" ? normalizeEmail(b.email) : "";
   const groupEmail = typeof b.groupEmail === "string" ? normalizeEmail(b.groupEmail) : "";

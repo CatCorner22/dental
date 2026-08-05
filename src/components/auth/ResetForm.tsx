@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PASSWORD_MIN } from "@/lib/auth/password";
+import { PASSWORD_HINT, PASSWORD_MIN } from "@/lib/auth/password";
 
 export function ResetForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
@@ -53,7 +53,7 @@ export function ResetForm({ token }: { token: string }) {
   return (
     <form onSubmit={submit} className="space-y-3">
       <p className="text-sm text-slate-600">
-        Choose a password of at least {PASSWORD_MIN} characters. Nobody at the practice can see it.
+        {PASSWORD_HINT} Nobody at the practice can see it.
       </p>
       <div>
         <label className="field-label" htmlFor="rs-pass">
@@ -67,6 +67,7 @@ export function ResetForm({ token }: { token: string }) {
           onChange={(e) => setPassword(e.target.value)}
           autoComplete="new-password"
           required
+          minLength={PASSWORD_MIN}
         />
       </div>
       <div>

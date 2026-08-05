@@ -746,7 +746,7 @@ function AddUserDialog({
         )}
         {mayTypePassword ? (
           <TempPasswordField
-            label="Temporary password (10+ chars, or leave blank to email a link)"
+            label="Temporary password (any mix, 10+ chars — or leave blank to email a link)"
             password={password}
             setPassword={setPassword}
             inputId="au-pass"

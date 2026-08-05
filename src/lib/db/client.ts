@@ -104,10 +104,10 @@ async function seedAdmin(db: Db): Promise<void> {
   const username = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!username || !password) return;
-  if (!/^[a-z0-9][a-z0-9._-]{2,39}$/i.test(username)) {
-    console.error(
-      "[db] ADMIN_USERNAME must be 3-40 letters, digits, or . _ - ; skipping first-admin seed. Use /setup or fix the env."
-    );
+  const { usernamePolicyError } = await import("@/lib/auth/username");
+  const userError = usernamePolicyError(username);
+  if (userError) {
+    console.error(`[db] ADMIN_USERNAME rejected (${userError}); skipping first-admin seed. Use /setup or fix the env.`);
     return;
   }
   const { hashPassword, passwordPolicyError } = await import("@/lib/auth/password");
@@ -116,7 +116,43 @@ async function seedAdmin(db: Db): Promise<void> {
     console.error(`[db] ADMIN_PASSWORD rejected (${pwError}); skipping first-admin seed. Use /setup or fix the env.`);
     return;
   }
-  const { countUsers, insertUser } = await import("./repo/users");
+  const { countUsers, getUserByUsername, insertUser } = await import("./repo/users");
+  const { logAction } = await import("./repo/auditLog");
+
+  // One-shot recovery for a locked-out site owner: set ADMIN_PASSWORD_RESET=1
+  // with ADMIN_USERNAME + ADMIN_PASSWORD, redeploy once, sign in, then REMOVE
+  // the flag. Without the flag, a non-empty users table is left alone.
+  const resetRequested = process.env.ADMIN_PASSWORD_RESET?.trim() === "1";
+  if (resetRequested) {
+    const existing = await getUserByUsername(db, username);
+    if (!existing) {
+      console.error(
+        `[db] ADMIN_PASSWORD_RESET=1 but no user "${username}" exists; skipping. Create via /setup or fix ADMIN_USERNAME.`
+      );
+      return;
+    }
+    if (existing.role !== "admin") {
+      console.error(
+        `[db] ADMIN_PASSWORD_RESET=1 refuses to rewrite a non-Developer account ("${username}" is ${existing.role}).`
+      );
+      return;
+    }
+    // passwordChangedAt kills any leftover session cookies from the failed
+    // setup attempts — same rule as an in-app admin password reset.
+    const { setPasswordAndRevokeLinks } = await import("./repo/resetTokens");
+    await setPasswordAndRevokeLinks(db, existing.id, await hashPassword(password), new Date());
+    await logAction(db, {
+      actorId: null,
+      action: "setup.admin-password-reset",
+      target: username,
+      detail: "ADMIN_PASSWORD_RESET=1 — remove this env flag after sign-in"
+    });
+    console.warn(
+      `[db] Reset password for Developer "${username}" via ADMIN_PASSWORD_RESET. Remove that env flag now.`
+    );
+    return;
+  }
+
   if ((await countUsers(db)) > 0) return;
   await insertUser(db, {
     id: crypto.randomUUID(),
@@ -126,7 +162,6 @@ async function seedAdmin(db: Db): Promise<void> {
     passHash: await hashPassword(password),
     active: true
   });
-  const { logAction } = await import("./repo/auditLog");
   await logAction(db, { actorId: null, action: "setup.first-admin", target: username });
 }
 

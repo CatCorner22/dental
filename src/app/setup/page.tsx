@@ -17,8 +17,9 @@ export default async function SetupPage() {
       </p>
       <h1 className="page-title mb-2">Create the first Smile Notes Developer</h1>
       <p className="mb-6 text-sm text-slate-600">
-        This one-time step creates the account that can do everything. From there it adds
-        Hierarchy Managers, who add Team Leads, who add the rest of the team.
+        This one-time step creates your owner account and signs you in. From there you add
+        Hierarchy Managers, who add Team Leads, who add the rest of the team. Passwords may
+        mix letters, numbers, and symbols — there is no single-type limit.
       </p>
       <SetupForm />
       <p className="mt-6 border-t border-slate-200 pt-4 text-xs leading-relaxed text-slate-500">

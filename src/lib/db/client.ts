@@ -3,6 +3,7 @@ import { drizzle as drizzlePg, type NodePgDatabase } from "drizzle-orm/node-post
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
 import { schema } from "./schema";
 import { SCHEMA_STATEMENTS } from "./ddl";
+import { pinPostgresSslMode } from "./postgresUrl";
 
 export type Db = NodePgDatabase<typeof schema> | PgliteDatabase<typeof schema>;
 
@@ -46,7 +47,11 @@ async function build(): Promise<Db> {
   const url = process.env.POSTGRES_URL?.trim();
   if (url) {
     const { Pool } = await import("pg");
-    const db = drizzlePg(new Pool({ connectionString: url }), { schema });
+    // Neon ships sslmode=require; pin verify-full so node-pg stops warning
+    // and we keep today's certificate checks when pg v9 changes the alias.
+    const db = drizzlePg(new Pool({ connectionString: pinPostgresSslMode(url) }), {
+      schema
+    });
     await applySchema(db);
     await seedAdmin(db);
     await seedOffices(db);

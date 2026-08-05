@@ -693,8 +693,8 @@ export function BuilderShell({
             .map((b) => `${b.fields.length} × "${b.licence.label}"`)
             .join(", ")}
           . Worth one more look if any of them could be answered instead: a recorded
-          absence is defensible, and so is a fact, but only one of them is useful to
-          whoever reads this next.
+          absence is a legitimate answer, and so is a fact, but only one of them tells
+          whoever reads this next what happened.
         </p>
       )}
 

@@ -3,7 +3,7 @@ import { RiskManagement } from "@/components/risk/RiskManagement";
 export const metadata = { title: "Risk management" };
 
 // RISK MANAGEMENT — the practice-level view of what this app enforces
-// note-by-note: Curve Hero transfer discipline, defensibility, PHI
+// note-by-note: Curve Hero transfer discipline, later-reader completeness, PHI
 // boundaries, scope/supervision, business practices, incident response.
 // Interactive scaffolding now; content is provisional and labeled as such.
 

@@ -57,13 +57,13 @@ const TOPICS: RiskTopic[] = [
   },
   {
     id: "documentation-defensibility",
-    title: "Documentation defensibility",
+    title: "Writing for a later reader",
     summary:
       "Notes are written for the reader you hope never arrives: a board reviewer, an insurer's auditor, or opposing counsel.",
     points: [
       "Active voice names the actor. \"The dentist extracted tooth 17\" survives cross-examination; \"tooth was extracted\" invites the question the note should have answered.",
       "Informed refusal is documented like informed consent: what was recommended, what the patient was told could happen, and the decision in the patient's own terms.",
-      "A recorded absence (\"not applicable\") is defensible; a blank is not. The omission notice on the builder exists for exactly this.",
+      "A recorded absence (\"not applicable\") answers the question; a blank leaves the reader unable to tell whether anyone looked. The omission notice on the builder exists for exactly this.",
       "The audit report and ruleset version are frozen with every filed note — never edit history, file an addendum."
     ],
     appLinks: [

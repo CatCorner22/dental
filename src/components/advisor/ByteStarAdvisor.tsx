@@ -259,7 +259,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               Drift to NorthStar
               <HelpTip label="About drift gauges" side="top">
                 Each rail shows how this draft sits against practice targets (read coverage, active
-                voice, defensibility pillars, TN cues). Toward / on-target / away is computed
+                voice, later-reader pillars, TN cues). Toward / on-target / away is computed
                 locally — not a model score.
               </HelpTip>
             </h4>

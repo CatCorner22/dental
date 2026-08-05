@@ -57,13 +57,13 @@ const TOPICS: RiskTopic[] = [
   },
   {
     id: "documentation-defensibility",
-    title: "Documentation defensibility",
+    title: "Writing for a later reader",
     summary:
       "Notes are written for the reader you hope never arrives — and claim-file research shows recurring gaps when they do: missing findings, half-documented consent, and procedures without stated rationale.",
     points: [
       "Active voice names the actor. \"The dentist extracted tooth 17\" answers a question the note should not leave open.",
       "Informed refusal is documented like informed consent: what was recommended, what the patient was told could happen, and the decision in the patient's own terms.",
-      "A recorded absence (\"not applicable\") is defensible; a blank is not. The omission notice on the builder exists for exactly this.",
+      "A recorded absence (\"not applicable\") answers the question; a blank leaves the reader unable to tell whether anyone looked. The omission notice on the builder exists for exactly this.",
       "The audit report and ruleset version are frozen with every filed note — never edit history, file an addendum."
     ],
     appLinks: [
@@ -79,7 +79,7 @@ const TOPICS: RiskTopic[] = [
     points: [
       "No names, exact dates, contact details, record numbers, or identifiable photographs — the PHI gate blocks what it can see, and you catch what it cannot.",
       "The privacy-stop override is an attestation with your name on it. Use it for false positives, never for convenience.",
-      "AI assist and ByteStar run behind the same PHI gate; nothing leaves for a provider while an identifier is present.",
+      "AI assist and SuperByte run behind the same PHI gate; nothing leaves for a provider while an identifier is present.",
       "Dictation uses the browser's speech engine, which may process audio off this device — the de-identification rule applies to the SPOKEN words, not just the typed ones. Never say a patient's name into the microphone.",
       "If PHI reaches a filed note anyway, tell the Team Lead the same day — the response plan depends on speed."
     ],

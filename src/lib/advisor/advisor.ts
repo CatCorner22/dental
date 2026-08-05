@@ -29,12 +29,22 @@ export interface Advice {
 }
 
 /**
- * Risk-reduction pillars (language optimizer layer): the four things a later
- * reviewer asks of a treatment note when nobody disputes the dentistry itself.
- * Presence-only — Byte reports which pillars the note already has, never a
- * score, because a percentage invites gaming and a checklist invites completion.
+ * The four questions a later reader asks of a treatment note when nobody
+ * disputes the dentistry itself: was the decision consented, what happened, what
+ * was the patient told to do, and what happens next.
+ *
+ * They used to be called the defensibility pillars, and the rename is the point
+ * rather than tidying. This code counts which of four things a note MENTIONS. It
+ * cannot know whether a note would survive scrutiny, and a name asserting
+ * otherwise invites a clinician to read four ticks as a verdict on their record.
+ * What is actually true is smaller and still worth saying: a reader who arrives
+ * later, with no memory of the visit, will look for these four and will not find
+ * them if they are absent.
+ *
+ * Presence-only — never a score, because a percentage invites gaming and a
+ * checklist invites completion.
  */
-export interface DefensibilityPillars {
+export interface ReaderPillars {
   consent: boolean;
   outcome: boolean;
   instructions: boolean;
@@ -67,7 +77,7 @@ export interface AdvisorGauges {
   density: number;
   words: number;
   facts: number;
-  pillars: DefensibilityPillars;
+  pillars: ReaderPillars;
   /** Present only when a computable anesthetic dose is on the note. */
   dose?: DoseGauge;
   /** Plain explanations for each live gauge. */
@@ -89,7 +99,7 @@ export interface AdvisorReport {
 
 const MAX_ADVICE = 3;
 
-function pillarsOf(facts: ClinicalFact[], lower: string): DefensibilityPillars {
+function pillarsOf(facts: ClinicalFact[], lower: string): ReaderPillars {
   const treated = facts.some(
     (f) =>
       f.kind === "procedure" &&
@@ -223,7 +233,7 @@ export function advise(text: string): AdvisorReport {
       },
       pillars: {
         why: !pillars.applicable
-          ? "Defensibility pillars apply once treatment is documented."
+          ? "These apply once the note documents treatment."
           : missingPillars.length === 0
             ? "Consent, outcome, instructions, and follow-up are all visible."
             : `Still missing: ${missingPillars.join(", ")}.`,

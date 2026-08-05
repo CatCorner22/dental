@@ -43,7 +43,8 @@ function FieldRenderer({
   state,
   onChange,
   describedBy,
-  invalid
+  invalid,
+  required
 }: {
   moduleId: string;
   field: Field;
@@ -51,11 +52,13 @@ function FieldRenderer({
   onChange: (key: string, value: FieldValue) => void;
   describedBy?: string;
   invalid?: boolean;
+  /** Drives the omission-licence chips on free-text fields. See inputs.tsx. */
+  required?: boolean;
 }) {
   const key = fieldKey(moduleId, field.id);
   const value = state.values[key];
   const set = (v: FieldValue) => onChange(key, v);
-  const a = { describedBy, invalid, id: controlId(moduleId, field) };
+  const a = { describedBy, invalid, required, id: controlId(moduleId, field) };
 
   switch (field.type) {
     case "select":
@@ -169,6 +172,7 @@ export function NoteForm({
                           onChange={onChange}
                           describedBy={describedBy}
                           invalid={invalid}
+                          required={required}
                         />
                         {field.helpText && (
                           <p id={helpId} className="mt-1 text-xs text-slate-500">{field.helpText}</p>

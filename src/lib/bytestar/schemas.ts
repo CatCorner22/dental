@@ -1,4 +1,4 @@
-// Structured ByteStar output. Suggestions are advice; optional `rewrite` is a
+// Structured SuperByte output. Suggestions are advice; optional `rewrite` is a
 // single-sentence proposal that must still pass verifyMeaning before a human
 // sees it. Completeness items use `question` and never carry a rewrite.
 //

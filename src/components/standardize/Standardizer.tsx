@@ -771,7 +771,7 @@ export function Standardizer({ assistEnabled = false }: { assistEnabled?: boolea
             assistEnabled={assistEnabled}
             onAskDeeper={() => runAssist("interrogate")}
           />
-          {/* ByteStar is the optional pioneer. Opt-in + disclaimer live inside
+          {/* SuperByte is the optional pioneer. Opt-in + disclaimer live inside
               the panel; deployment gate is server-side and silent. */}
           <ByteStarAdvisor text={deferredInput} />
         </div>

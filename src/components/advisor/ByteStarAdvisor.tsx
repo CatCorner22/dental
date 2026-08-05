@@ -1,7 +1,7 @@
 "use client";
 
 import { useDeferredValue, useEffect, useMemo, useRef, useState } from "react";
-import { ByteStarFace } from "./ByteStar";
+import { ByteStarFace } from "./SuperByte";
 import { BenchmarkRails } from "./BenchmarkRails";
 import { NorthStarCompass } from "./NorthStarCompass";
 import { measureBenchmarks } from "@/lib/bytestar/benchmarks";
@@ -11,7 +11,7 @@ import { BYTESTAR_ONE_WAY_NOTICE } from "@/lib/bytestar/one-way";
 import { TrendSpark, type TrendSample } from "./TrendSpark";
 import { HelpTip } from "@/components/ui/HelpTip";
 
-// BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: ByteStar gives staff
+// BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: SuperByte gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
 // back. Pioneer model when enabled; deterministic instrument readings always.
 
@@ -146,7 +146,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
 
   return (
     <section
-      aria-label="ByteStar observational pioneer"
+      aria-label="SuperByte observational pioneer"
       className="bytestar-panel select-none rounded-xl bg-gradient-to-br from-amber-50/90 via-white to-teal-50/40 p-3 ring-1 ring-amber-300/60"
       onCopy={(e) => e.preventDefault()}
       onCut={(e) => e.preventDefault()}
@@ -163,8 +163,8 @@ export function ByteStarAdvisor({ text }: { text: string }) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-bold text-brand-navy">ByteStar</h3>
-                <HelpTip label="What ByteStar does">
+                <h3 className="text-sm font-bold text-brand-navy">SuperByte</h3>
+                <HelpTip label="What SuperByte does">
                   One-way observations only. You cannot prompt it, rate it, or copy its text into
                   the note. When the pioneer model is off, the gauges still run locally from the
                   same rules Byte uses.
@@ -180,7 +180,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-rose-900 ring-1 ring-rose-300">
                   {readModes.filter((m) => m !== "documentation").join(" + ")} — strict read
                   <HelpTip label="About strict reads">
-                    This draft touches a higher-risk domain, so ByteStar read it under a stricter
+                    This draft touches a higher-risk domain, so SuperByte read it under a stricter
                     profile: unanimous independent reads, no rewrites, named authorities only.
                     Fewer observations here is the system working.
                   </HelpTip>
@@ -243,7 +243,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
           ) : (
             <p className="mt-2 text-xs text-slate-500">
               {observing
-                ? "ByteStar is reading the draft…"
+                ? "SuperByte is reading the draft…"
                 : deferred.trim().length < MIN_CHARS
                   ? "Keep typing — feedback appears when the draft is long enough to analyze."
                   : "Drift gauges below are live. Pioneer observations appear when the deployment door is open."}
@@ -259,7 +259,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               Drift to NorthStar
               <HelpTip label="About drift gauges" side="top">
                 Each rail shows how this draft sits against practice targets (read coverage, active
-                voice, defensibility pillars, TN cues). Toward / on-target / away is computed
+                voice, later-reader pillars, TN cues). Toward / on-target / away is computed
                 locally — not a model score.
               </HelpTip>
             </h4>

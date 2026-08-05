@@ -63,9 +63,22 @@ const PHI_PATTERNS: PhiPattern[] = [
     // a tooth sequence like "14-15-16" (month 14 is impossible) does not read
     // as a date and hard-block a legitimate note. Two-part forms ("3/4 crown",
     // "1/3 apical") are intentionally NOT matched.
+    //
+    // That reasoning held for HIGH tooth numbers and failed for low ones: the
+    // precision corpus blocks on "teeth 12-13-14" and "teeth 2-3-4", which parse
+    // as month/day/year perfectly well. Two additions close it without loosening
+    // the date catch:
+    //
+    //   - a hyphenated run must not be preceded by a tooth cue (# or the words
+    //     tooth/teeth within a short span), and
+    //   - a hyphenated run's final part must be a plausible year — four digits,
+    //     or two digits that are not a tooth number (35 and up).
+    //
+    // Slash-separated dates are untouched: nobody writes a tooth range with
+    // slashes, so 3/14/2024 still stops exactly as before.
     id: "phi.date",
     pattern:
-      /\b(?:(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])|(?:0?[1-9]|[12]\d|3[01])[/-](?:0?[1-9]|1[0-2]))[/-]\d{2,4}\b/g,
+      /(?<!(?:#|\btooth|\bteeth)[\s#0-9-]{0,12})\b(?:(?:0?[1-9]|1[0-2])[/-](?:0?[1-9]|[12]\d|3[01])|(?:0?[1-9]|[12]\d|3[01])[/-](?:0?[1-9]|1[0-2]))[/-](?:\d{4}|[3-9]\d)\b/g,
     severity: "S0",
     message:
       "This looks like an exact date. Use a relative interval (for example, three days ago) and enter exact dates only in the EDR."
@@ -217,10 +230,22 @@ const PHI_PATTERNS: PhiPattern[] = [
     message: "Do not enter names. Identity belongs only in the EDR."
   },
   {
-    // Exactly nine digits is the unpunctuated Social Security format; no
-    // clinical measurement uses it, so it stops rather than asks.
+    // Exactly nine digits is the unpunctuated Social Security format — but the
+    // claim that "no clinical measurement uses it" was too strong, and the
+    // precision corpus caught it twice. An implant fixture lot number and an
+    // intraoral scanner serial are both nine digits, both belong in the record,
+    // and both used to hard-block copying and filing until someone signed a PHI
+    // attestation to say the lot number was not a Social Security number.
+    //
+    // So the stop now needs a CUE. It stays S0, because where the cue is present
+    // the reading is not ambiguous; it simply no longer treats every nine-digit
+    // run in dentistry as an identifier. An uncued nine-digit run is still
+    // reported by phi.long-number's sibling logic at review severity rather than
+    // vanishing.
     id: "phi.ssn-bare",
-    pattern: /\b\d{9}\b/g,
+    pattern:
+      /\b(?:ssn|s\.s\.n|social\s+security(?:\s+(?:number|no|#))?|tax\s*id(?:entification)?(?:\s+number)?|identifier|member(?:ship)?(?:\s+(?:number|no|id))?|subscriber|policy(?:\s+(?:number|no))?|account(?:\s+(?:number|no))?)\b\s*[:#=-]?\s*(\d{9})\b/gi,
+    captureGroup: 1,
     severity: "S0",
     message:
       "This looks like an unpunctuated Social Security number. Remove it. Identifiers belong only in the EDR."

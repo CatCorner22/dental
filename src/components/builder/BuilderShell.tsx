@@ -449,7 +449,7 @@ export function BuilderShell({
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
       <div className="mb-3 flex gap-1">
-        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "ByteStar"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "SuperByte"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -693,8 +693,8 @@ export function BuilderShell({
             .map((b) => `${b.fields.length} × "${b.licence.label}"`)
             .join(", ")}
           . Worth one more look if any of them could be answered instead: a recorded
-          absence is defensible, and so is a fact, but only one of them is useful to
-          whoever reads this next.
+          absence is a legitimate answer, and so is a fact, but only one of them tells
+          whoever reads this next what happened.
         </p>
       )}
 

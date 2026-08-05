@@ -5,7 +5,7 @@ import { encodeByteStarDetail } from "./log";
 const NOW = 1_800_000_000_000;
 const DAY = 24 * 60 * 60 * 1000;
 
-describe("ByteStar period summary (digest rollup)", () => {
+describe("SuperByte period summary (digest rollup)", () => {
   it("aggregates runs, outcomes, kept/refused, tokens, and profiles", () => {
     const rows = [
       {

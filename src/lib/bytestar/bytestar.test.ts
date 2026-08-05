@@ -21,7 +21,7 @@ const ASSIST_ON = {
   BYTESTAR_ENABLED: "1"
 };
 
-describe("one-way feedback — ByteStar → staff, never staff → ByteStar", () => {
+describe("one-way feedback — SuperByte → staff, never staff → SuperByte", () => {
   it("states the direction plainly in the UI notice", () => {
     expect(BYTESTAR_ONE_WAY_NOTICE.toLowerCase()).toContain("gives you");
     expect(BYTESTAR_ONE_WAY_NOTICE.toLowerCase()).toContain("cannot");
@@ -55,7 +55,7 @@ describe("one-way feedback — ByteStar → staff, never staff → ByteStar", ()
   });
 });
 
-describe("ByteStar silent killswitch — the model never sees the cage", () => {
+describe("SuperByte silent killswitch — the model never sees the cage", () => {
   // Pre-go-live posture: the pioneer rides the assist switch. A separate
   // BYTESTAR_ENABLED=1 hunt locked the site owner out of their own feature —
   // the door now opens with assist and closes only on an EXPLICIT "0".
@@ -240,7 +240,10 @@ describe("benchmarks — drift graphics stay local and objective", () => {
 describe("owner disclaimer", () => {
   it("keeps the commissioned disclaimer verbatim", () => {
     expect(BYTESTAR_DISCLAIMER).toContain("experimental, pioneer LLM with ML capabilities");
-    expect(BYTESTAR_DISCLAIMER).toContain("NorthStar, a ByteStar if you will");
+    // The pun was ByteStar <-> NorthStar and did not survive the rename to
+    // SuperByte. Replaced with the owner-supplied tagline, which keeps the
+    // NorthStar idea and reads as a name rather than a broken joke.
+    expect(BYTESTAR_DISCLAIMER).toContain("Smile Notes' NorthStar");
   });
 });
 

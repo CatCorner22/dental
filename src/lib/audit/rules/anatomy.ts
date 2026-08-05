@@ -124,13 +124,30 @@ export function runAnatomyStateRule(state: NoteState, modules: ModuleDef[]): Aud
 const NOT_A_UNIT =
   "(?!\\s*(?:minutes?|mins?|seconds?|secs?|hours?|hrs?|days?|weeks?|months?|years?|mm|cm|ml|mg|%)\\b)";
 
+// ...and not an INSTRUMENT either. "#" introduces a tooth number by convention,
+// but it also introduces a bur, a file, a blade, and a suture gauge — and those
+// numbers run far past 32, so "#557 carbide bur" read as an impossible ADA tooth
+// designation and raised S0, blocking copy, download, and email on one of the
+// commonest tokens in a restorative note. The precision corpus caught it.
+//
+// A tooth number and an instrument number are told apart by the noun that
+// follows, which is how a reader tells them apart too. The residual risk is a
+// wrong-site error phrased as "tooth #36 diamond"; that is not a sentence anyone
+// writes, and trading a near-impossible miss for a frequent false stop is the
+// right way round.
+const NOT_AN_INSTRUMENT =
+  "(?!\\s*(?:carbide|diamond|round|tapered|safe[\\s-]?end)?\\s*" +
+  "(?:burs?|burrs?|blades?|files?|reamers?|spreaders?|pluggers?|curettes?|scalers?|" +
+  "explorers?|mirrors?|needles?|gauge|sutures?|strips?|bands?|matrix|matrices|sensors?|" +
+  "cassettes?|handpieces?|elevators?|forceps|luxators?)\\b)";
+
 // The markers that introduce a tooth number. "no." keeps its period so ordinary
 // prose ("no other findings", "no 3 canals seen") does not read as a tooth ref;
 // "#" is a tooth number in a dental note by convention. Only the word forms can
 // introduce a comma list.
 const TOOTH_MARK = "(?:\\btooth|\\bteeth|#|\\bno\\.)";
 const TOOTH_LIST = new RegExp(
-  `${TOOTH_MARK}\\s*#?\\s*(\\d{1,3}${NOT_A_UNIT}(?:[\\s,]*(?:and|&|through|to|or|-)?[\\s,]*#?\\d{1,3}${NOT_A_UNIT})*)`,
+  `${TOOTH_MARK}\\s*#?\\s*(\\d{1,3}${NOT_A_UNIT}${NOT_AN_INSTRUMENT}(?:[\\s,]*(?:and|&|through|to|or|-)?[\\s,]*#?\\d{1,3}${NOT_A_UNIT}${NOT_AN_INSTRUMENT})*)`,
   "gi"
 );
 

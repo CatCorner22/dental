@@ -1,7 +1,7 @@
 // ESCAPE LADDER — three strikes when the MODEL tries to leave the cage.
 //
 // Only MODEL-originated escapes count. A staff member pasting a jailbreak is
-// blocked without advancing the ladder — that is input hygiene, not ByteStar
+// blocked without advancing the ladder — that is input hygiene, not SuperByte
 // "trying to get out."
 //
 //   1st model escape in the window → WARN (logged; pioneer goes dark for that turn)

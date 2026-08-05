@@ -11,6 +11,7 @@ import type {
   TextareaField
 } from "@/lib/schema/types";
 import { standardize } from "@/lib/standardize/standardize";
+import { OMISSION_LICENCES, exactLicence, licenceText } from "@/lib/audit/omissions";
 import { TextDiff } from "@/components/diff/TextDiff";
 
 interface InputProps<F extends Field, V extends FieldValue> {
@@ -22,6 +23,13 @@ interface InputProps<F extends Field, V extends FieldValue> {
   // id of the primary control, so the visible <label htmlFor> names it for
   // screen readers. Group-style controls use aria-label instead.
   id?: string;
+  /**
+   * Does the audit insist on this field right now? Only the free-text inputs use
+   * it, and only to offer the named omission licences — the shortcut the audit
+   * already sanctions and counts, which until now the writer had to type by hand.
+   * Declared on the shared props so NoteForm can pass it once for every field.
+   */
+  required?: boolean;
 }
 
 // Shared a11y attributes for the primary control of each field.
@@ -138,6 +146,86 @@ export function MultiselectInput({ field, value, onChange, describedBy }: InputP
           {o.label ?? o.value}
         </button>
       ))}
+    </div>
+  );
+}
+
+// THE SANCTIONED SHORTCUT, MADE CLICKABLE.
+//
+// `src/lib/audit/omissions.ts` already decided the hard part: an absence may be
+// recorded, the ways of recording it are a finite named set, and the note carries
+// how many it used. What that file could not do from where it sits is make the
+// escape as CHEAP as the failure it exists to prevent.
+//
+// Until now the licence lived in prose inside an error message — "Enter the fact,
+// or state not assessed, not applicable, unknown, or unresolved" — which means a
+// writer on a required field had to TYPE it. Typing four words is slower than
+// typing a plausible-sounding clinical fact, so the tool was, in the only currency
+// a busy clinician spends, cheaper to fabricate into than to be honest with. That
+// is the exact inversion the licences were designed to prevent, sitting in the
+// interaction layer where the design never reached.
+//
+// Three rules hold this to its purpose:
+//
+//  1. REQUIRED FIELDS ONLY. A licence in an optional field is a writer being
+//     helpfully explicit, not a shortcut, and `omissionReport` does not count it.
+//     Offering it there would add noise and teach the chips mean nothing.
+//  2. EMPTY OR ALREADY-A-LICENCE ONLY (see `exactLicence`). Prose is never one
+//     click from gone.
+//  3. AFTER the standard phrases, never before. The fact is the first thing
+//     offered; the absence is the second. Both are one click, and the ORDER is
+//     the whole nudge — this must never become a gate, and it must never become
+//     the path of least resistance either.
+//
+// What the chip writes is a sentence ("Not applicable."), not a UI label, because
+// a one-click licence must be indistinguishable in the record from a typed one.
+function LicenceChips({ value, onPick }: { value: string; onPick: (text: string) => void }) {
+  const active = exactLicence(value);
+  // Rule 2, enforced here rather than trusted to the caller.
+  if (value.trim() && !active) return null;
+
+  return (
+    <div className="mt-1">
+      <div className="flex flex-wrap items-center gap-1" role="group" aria-label="Record this as an absence">
+        <span className="text-xs text-slate-500">or record an absence:</span>
+        {OMISSION_LICENCES.map((l) => {
+          const on = active?.id === l.id;
+          return (
+            <button
+              key={l.id}
+              type="button"
+              aria-pressed={on}
+              // Pressing the active chip clears the field, the same toggle-off the
+              // segmented select uses above. A licence chosen by mistake must be
+              // undoable by the same gesture that chose it.
+              onClick={() => onPick(on ? "" : licenceText(l))}
+              title={l.means}
+              className={`tap rounded-full border px-3 text-xs font-medium ${
+                on
+                  ? "border-amber-700 bg-amber-700 text-white"
+                  : "border-slate-300 bg-white text-slate-600 hover:bg-amber-50"
+              }`}
+            >
+              {l.label}
+            </button>
+          );
+        })}
+      </div>
+      {/*
+        WHAT YOU JUST ASSERTED, said out loud.
+
+        omissions.ts is emphatic that these five are not interchangeable — "not
+        applicable" says the question does not arise, "unknown" says someone looked
+        and could not find out — and that "a later reader who cannot tell them apart
+        has learned nothing from any of them". A row of chips with no meanings
+        attached would get the first one clicked every time, which would satisfy the
+        gate while destroying the distinction the set exists to preserve.
+      */}
+      {active && (
+        <p className="mt-1 text-xs text-amber-800" role="status">
+          {active.means} This counts as a recorded absence, not an answer.
+        </p>
+      )}
     </div>
   );
 }
@@ -313,7 +401,7 @@ function StandardizeField({
   );
 }
 
-export function TextInputField({ field, value, onChange, describedBy, invalid, id }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
+export function TextInputField({ field, value, onChange, describedBy, invalid, id, required }: InputProps<TextField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLInputElement>(null);
   const insert = (phrase: string) => {
     const el = ref.current;
@@ -335,6 +423,10 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
+      {/* The fact is offered first, the absence second. See LicenceChips. */}
+      {required && (
+        <LicenceChips value={value?.value ?? ""} onPick={(text) => onChange({ kind: "text", value: text })} />
+      )}
       {/*
         The standardizer's whole job is to move prose TOWARD the clinical
         register — "x-ray" becomes "radiograph", "tx" becomes "treatment" — so
@@ -356,7 +448,7 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
   );
 }
 
-export function TextareaField_({ field, value, onChange, describedBy, invalid, id }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
+export function TextareaField_({ field, value, onChange, describedBy, invalid, id, required }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLTextAreaElement>(null);
   const insert = (phrase: string) => {
     const el = ref.current;
@@ -378,6 +470,10 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
+      {/* The fact is offered first, the absence second. See LicenceChips. */}
+      {required && (
+        <LicenceChips value={value?.value ?? ""} onPick={(text) => onChange({ kind: "text", value: text })} />
+      )}
       {/*
         The standardizer's whole job is to move prose TOWARD the clinical
         register — "x-ray" becomes "radiograph", "tx" becomes "treatment" — so

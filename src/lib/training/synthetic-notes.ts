@@ -5,7 +5,7 @@
 // patterns from knowledge/sources/persona-training-corpus-research.md.
 //
 // expectedAuditRulePrefixes: prefixes that MUST fire under runTextAudit today.
-// expectedDefectTags: semantic labels for coach/ByteStar/eval even when a
+// expectedDefectTags: semantic labels for coach/SuperByte/eval even when a
 // deterministic rule does not yet exist for every nuance.
 //
 // These notes are for training and evaluation only. They must never be filed

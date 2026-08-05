@@ -14,6 +14,8 @@ export const metadata = { title: "Audit log" };
 
 const ACTION_LABEL: Record<string, string> = {
   "setup.first-admin": "First admin created",
+  "setup.admin-password-reset": "Developer password reset (env)",
+  "setup.mfa-sweep": "Second factors cleared (MFA off)",
   "auth.signin": "Signed in",
   "auth.failed": "Failed sign-in",
   "auth.lockout": "Sign-in locked (too many attempts)",

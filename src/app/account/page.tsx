@@ -4,6 +4,7 @@ import { AccountForm } from "@/components/account/AccountForm";
 import { RevokeSessions } from "@/components/account/RevokeSessions";
 import { DisplaySettings } from "@/components/shell/DisplaySettings";
 import { MfaSettings } from "@/components/account/MfaSettings";
+import { mfaFeatureEnabled } from "@/lib/auth/mfaFeature";
 import { ROLE_LABEL } from "@/lib/auth/roles";
 import { getDb } from "@/lib/db/client";
 import { getUserById } from "@/lib/db/repo/users";
@@ -28,8 +29,12 @@ export default async function AccountPage() {
       </dl>
       <h2 className="mb-2 text-lg font-semibold">Change password</h2>
       <AccountForm />
-      <h2 className="mb-2 mt-8 text-lg font-semibold">Two-factor authentication</h2>
-      <MfaSettings enabled={row?.mfaEnabled ?? false} />
+      {mfaFeatureEnabled() && (
+        <>
+          <h2 className="mb-2 mt-8 text-lg font-semibold">Two-factor authentication</h2>
+          <MfaSettings enabled={row?.mfaEnabled ?? false} />
+        </>
+      )}
       <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
       <RevokeSessions />
       <DisplaySettings />

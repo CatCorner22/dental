@@ -54,6 +54,7 @@ async function build(): Promise<Db> {
     });
     await applySchema(db);
     await seedAdmin(db);
+    await sweepMfaWhileDisabled(db);
     await seedOffices(db);
     return db;
   }
@@ -81,8 +82,34 @@ async function build(): Promise<Db> {
   const db = drizzlePglite(new PGlite(dir), { schema });
   await applySchema(db);
   await seedAdmin(db);
+  await sweepMfaWhileDisabled(db);
   await seedOffices(db);
   return db;
+}
+
+// While the deployment-level MFA switch is off, stale enrollments are cleared
+// at bootstrap. Login already skips the code check when the switch is off, so
+// this is not what unlocks anyone — it exists so flipping MFA_ENABLED=1 later
+// starts from zero enrollments instead of resurrecting a factor whose device
+// may be long gone. Failure here must not take the app down.
+async function sweepMfaWhileDisabled(db: Db): Promise<void> {
+  try {
+    const { mfaFeatureEnabled } = await import("@/lib/auth/mfaFeature");
+    if (mfaFeatureEnabled()) return;
+    const { clearAllMfa } = await import("./repo/users");
+    const cleared = await clearAllMfa(db);
+    if (cleared.length === 0) return;
+    const { logAction } = await import("./repo/auditLog");
+    await logAction(db, {
+      actorId: null,
+      action: "setup.mfa-sweep",
+      target: cleared.join(", "),
+      detail: "second factors cleared: MFA is turned off on this deployment"
+    });
+    console.warn(`[db] MFA disabled on this deployment; cleared enrollment for: ${cleared.join(", ")}`);
+  } catch (err) {
+    console.warn("[db] MFA sweep skipped:", err);
+  }
 }
 
 // Configured offices, on an empty table only. Never a reconciliation: a
@@ -109,10 +136,10 @@ async function seedAdmin(db: Db): Promise<void> {
   const username = process.env.ADMIN_USERNAME?.trim().toLowerCase();
   const password = process.env.ADMIN_PASSWORD;
   if (!username || !password) return;
-  if (!/^[a-z0-9][a-z0-9._-]{2,39}$/i.test(username)) {
-    console.error(
-      "[db] ADMIN_USERNAME must be 3-40 letters, digits, or . _ - ; skipping first-admin seed. Use /setup or fix the env."
-    );
+  const { usernamePolicyError } = await import("@/lib/auth/username");
+  const userError = usernamePolicyError(username);
+  if (userError) {
+    console.error(`[db] ADMIN_USERNAME rejected (${userError}); skipping first-admin seed. Use /setup or fix the env.`);
     return;
   }
   const { hashPassword, passwordPolicyError } = await import("@/lib/auth/password");
@@ -121,7 +148,50 @@ async function seedAdmin(db: Db): Promise<void> {
     console.error(`[db] ADMIN_PASSWORD rejected (${pwError}); skipping first-admin seed. Use /setup or fix the env.`);
     return;
   }
-  const { countUsers, insertUser } = await import("./repo/users");
+  const { countUsers, getUserByUsername, insertUser } = await import("./repo/users");
+  const { logAction } = await import("./repo/auditLog");
+
+  // One-shot recovery for a locked-out site owner: set ADMIN_PASSWORD_RESET=1
+  // with ADMIN_USERNAME + ADMIN_PASSWORD, redeploy once, sign in, then REMOVE
+  // the flag. Without the flag, a non-empty users table is left alone.
+  const resetRequested = process.env.ADMIN_PASSWORD_RESET?.trim() === "1";
+  if (resetRequested) {
+    const existing = await getUserByUsername(db, username);
+    if (!existing) {
+      console.error(
+        `[db] ADMIN_PASSWORD_RESET=1 but no user "${username}" exists; skipping. Create via /setup or fix ADMIN_USERNAME.`
+      );
+      return;
+    }
+    if (existing.role !== "admin") {
+      console.error(
+        `[db] ADMIN_PASSWORD_RESET=1 refuses to rewrite a non-Developer account ("${username}" is ${existing.role}).`
+      );
+      return;
+    }
+    // passwordChangedAt kills any leftover session cookies from the failed
+    // setup attempts — same rule as an in-app admin password reset.
+    const { setPasswordAndRevokeLinks } = await import("./repo/resetTokens");
+    await setPasswordAndRevokeLinks(db, existing.id, await hashPassword(password), new Date());
+    // Clear the second factor too. This flag exists for exactly one scenario —
+    // the site owner cannot sign in and there is no other Developer to help —
+    // and an enabled authenticator locks that owner out just as completely as
+    // a lost password. Resetting one but not the other left the break-glass
+    // path broken for the person it was built for (a live lockout proved it).
+    const { updateUser } = await import("./repo/users");
+    await updateUser(db, existing.id, { mfaEnabled: false, mfaSecret: null });
+    await logAction(db, {
+      actorId: null,
+      action: "setup.admin-password-reset",
+      target: username,
+      detail: "ADMIN_PASSWORD_RESET=1 — password reset, second factor cleared; remove this env flag after sign-in"
+    });
+    console.warn(
+      `[db] Reset password and cleared MFA for Developer "${username}" via ADMIN_PASSWORD_RESET. Remove that env flag now.`
+    );
+    return;
+  }
+
   if ((await countUsers(db)) > 0) return;
   await insertUser(db, {
     id: crypto.randomUUID(),
@@ -131,7 +201,6 @@ async function seedAdmin(db: Db): Promise<void> {
     passHash: await hashPassword(password),
     active: true
   });
-  const { logAction } = await import("./repo/auditLog");
   await logAction(db, { actorId: null, action: "setup.first-admin", target: username });
 }
 

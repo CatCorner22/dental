@@ -19,6 +19,7 @@ import { withHashSlot } from "./hashGate";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { sessionWatermark } from "./sessionWatermark";
 import { verifyMfaCode } from "./totp";
+import { mfaFeatureEnabled } from "./mfaFeature";
 
 // A real (never-matching) hash so unknown-username logins burn the same
 // bcrypt time as wrong-password logins — otherwise response latency tells
@@ -188,7 +189,10 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // wrong code must cost the same throttle budget as a wrong password —
         // otherwise the second factor becomes a free oracle. The code check is
         // constant-cost (HMAC, no bcrypt), so it sits outside the hash gate.
-        if (user.mfaEnabled && user.mfaSecret) {
+        //
+        // Skipped entirely while the deployment-level MFA switch is off — a
+        // stale enrollment row must not demand a code nobody can produce.
+        if (mfaFeatureEnabled() && user.mfaEnabled && user.mfaSecret) {
           if (!verifyMfaCode(user.username, user.mfaSecret, totpCode)) {
             await chargeFailure();
             await logAuth(db, "auth.failed-mfa", user.username, ip, user.id, user.displayName);

@@ -1,4 +1,4 @@
-import { and, eq, isNull, ne, sql } from "drizzle-orm";
+import { and, eq, isNull, ne, or, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { drafts, submissions, users, type NewUser, type UserRow } from "../schema";
 import { canMergeUsers, type Role } from "@/lib/auth/roles";
@@ -114,6 +114,20 @@ export async function ackNotice(db: Db, id: string, at: Date): Promise<boolean> 
 
 export async function deleteUser(db: Db, id: string): Promise<void> {
   await db.delete(users).where(eq(users.id, id));
+}
+
+// Clear every account's second factor. Called from bootstrap ONLY while the
+// deployment-level MFA switch is off, so that turning the switch back on later
+// starts everyone clean instead of instantly re-locking whoever had enrolled
+// before it was turned off. Returns the usernames actually cleared, so the
+// caller logs a real event or nothing — an empty sweep is not news.
+export async function clearAllMfa(db: Db): Promise<string[]> {
+  const rows = await db
+    .update(users)
+    .set({ mfaEnabled: false, mfaSecret: null })
+    .where(or(eq(users.mfaEnabled, true), sql`${users.mfaSecret} is not null`))
+    .returning();
+  return rows.map((r) => r.username);
 }
 
 // Guard against removing the last way in: count OTHER active admins.

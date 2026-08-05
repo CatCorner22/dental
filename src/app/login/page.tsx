@@ -3,6 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { countUsers } from "@/lib/db/repo/users";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { BrandMark } from "@/components/shell/BrandMark";
+import { mfaFeatureEnabled } from "@/lib/auth/mfaFeature";
 import { APP_TAGLINE, PRIVACY_POLICY } from "@/lib/brand";
 
 export const metadata = { title: "Sign in" };
@@ -26,7 +27,7 @@ export default async function LoginPage() {
           <BrandMark size="lg" />
         </h1>
         <p className="mb-6 text-sm text-slate-600">{APP_TAGLINE}. Sign in to continue.</p>
-        <LoginForm />
+        <LoginForm mfaAvailable={mfaFeatureEnabled()} />
       </div>
       {/* The policy conditions USE on agreement, so it has to be readable
           before the credentials are typed — not only in the footer of pages

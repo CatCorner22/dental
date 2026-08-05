@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import { signOut } from "next-auth/react";
+import { PASSWORD_HINT, PASSWORD_MIN } from "@/lib/auth/password";
 
 export function AccountForm() {
   const [current, setCurrent] = useState("");
@@ -50,15 +51,25 @@ export function AccountForm() {
         <input id="ac-cur" type="password" className="field-input" value={current} onChange={(e) => setCurrent(e.target.value)} autoComplete="current-password" required />
       </div>
       <div>
-        <label className="field-label" htmlFor="ac-new">New password (10+ characters)</label>
-        <input id="ac-new" type="password" className="field-input" value={next} onChange={(e) => setNext(e.target.value)} autoComplete="new-password" required />
+        <label className="field-label" htmlFor="ac-new">New password</label>
+        <input
+          id="ac-new"
+          type="password"
+          className="field-input"
+          value={next}
+          onChange={(e) => setNext(e.target.value)}
+          autoComplete="new-password"
+          required
+          minLength={PASSWORD_MIN}
+        />
+        <p className="mt-1 text-xs text-slate-500">{PASSWORD_HINT}</p>
       </div>
       <div>
         <label className="field-label" htmlFor="ac-conf">Confirm new password</label>
         <input id="ac-conf" type="password" className="field-input" value={confirm} onChange={(e) => setConfirm(e.target.value)} autoComplete="new-password" required />
       </div>
       {msg && <p className={`text-sm ${msg.ok ? "text-green-700" : "text-red-700"}`} role="alert">{msg.text}</p>}
-      <button type="submit" className="btn-primary" disabled={busy || next.length < 10}>
+      <button type="submit" className="btn-primary" disabled={busy || next.length < PASSWORD_MIN}>
         {busy ? "Changing…" : "Change password"}
       </button>
     </form>

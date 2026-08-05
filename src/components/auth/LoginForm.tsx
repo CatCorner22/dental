@@ -4,7 +4,11 @@ import { useState } from "react";
 import { signIn } from "next-auth/react";
 import { markFeedbackNoticeUnseen } from "@/components/notice/FeedbackNotice";
 
-export function LoginForm() {
+// mfaAvailable comes from the server (deployment-level switch). When false,
+// the authenticator-code field never appears — a code box offered on a
+// deployment that will never check a code reads as "you are locked out of
+// something you never set up".
+export function LoginForm({ mfaAvailable = true }: { mfaAvailable?: boolean }) {
   const [username, setUsername] = useState("");
   const [password, setPassword] = useState("");
   const [totp, setTotp] = useState("");
@@ -28,12 +32,15 @@ export function LoginForm() {
       // A failure with correct-looking credentials may be a missing second
       // factor. The server never says which (an attacker must not learn
       // whether an account has MFA from the error), so the form OFFERS the
-      // code field after any failure instead of asserting it is needed.
-      setShowTotp(true);
+      // code field after any failure instead of asserting it is needed —
+      // but only on deployments where a code could ever be the answer.
+      if (mfaAvailable) setShowTotp(true);
       setError(
-        showTotp || totp
-          ? "Sign-in failed. Check the username, password, and authenticator code."
-          : "Sign-in failed. If this account uses an authenticator app, enter the current code below."
+        !mfaAvailable
+          ? "Sign-in failed. Check the username and password."
+          : showTotp || totp
+            ? "Sign-in failed. Check the username, password, and authenticator code."
+            : "Sign-in failed. If this account uses an authenticator app, enter the current code below."
       );
       setBusy(false);
       return;

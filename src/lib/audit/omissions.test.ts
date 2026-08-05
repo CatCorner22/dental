@@ -1,5 +1,5 @@
 import { describe, expect, it } from "vitest";
-import { OMISSION_LICENCES, licenceFor, omissionReport } from "./omissions";
+import { OMISSION_LICENCES, exactLicence, licenceFor, licenceText, omissionReport } from "./omissions";
 import { activeModules } from "@/lib/modules";
 import { isFieldRequired, isFieldVisible } from "@/lib/schema/conditions";
 import { fieldKey, type NoteState } from "@/lib/schema/types";
@@ -61,6 +61,55 @@ describe("which licence a value invokes", () => {
     const means = new Set(OMISSION_LICENCES.map((l) => l.means));
     expect(means.size).toBe(OMISSION_LICENCES.length);
     for (const l of OMISSION_LICENCES) expect(l.means.length).toBeGreaterThan(20);
+  });
+});
+
+describe("the one-click licence chips", () => {
+  // These back a control that OVERWRITES a required field. The tests that matter
+  // are the ones about what it must refuse to touch.
+
+  it("writes a sentence, not a UI label", () => {
+    // A one-click licence has to be indistinguishable in the record from a typed
+    // one, or the note reads as though the tool answered for the clinician.
+    for (const l of OMISSION_LICENCES) {
+      const written = licenceText(l);
+      expect(written[0]).toBe(written[0].toUpperCase());
+      expect(written.endsWith(".")).toBe(true);
+      // Still countable: what the chip writes is what the audit recognises.
+      expect(licenceFor(written)?.id).toBe(l.id);
+    }
+  });
+
+  it("round-trips its own output, so the chip shows as pressed after a click", () => {
+    for (const l of OMISSION_LICENCES) {
+      expect(exactLicence(licenceText(l))?.id).toBe(l.id);
+    }
+  });
+
+  it("recognises a hand-typed licence in any casing or punctuation", () => {
+    expect(exactLicence("not applicable")?.id).toBe("not-applicable");
+    expect(exactLicence("  Not Applicable.  ")?.id).toBe("not-applicable");
+    expect(exactLicence("UNKNOWN")?.id).toBe("unknown");
+  });
+
+  it("refuses prose that merely CONTAINS a licence — the safety property", () => {
+    // The whole reason exactLicence is stricter than licenceFor. Each of these
+    // invokes a licence and is also a real clinical sentence; a chip row that
+    // treated them as licences would be one click from deleting the writer's
+    // account of what happened.
+    for (const prose of [
+      "Radiograph not reviewed at this visit because the sensor failed.",
+      "Unknown allergy history — patient to bring their list next visit.",
+      "Not applicable to the upper arch; lower arch charted below.",
+      "Pending the specialist's report, which the patient will forward."
+    ]) {
+      expect(licenceFor(prose), `licenceFor should still count: ${prose}`).not.toBeNull();
+      expect(exactLicence(prose), `exactLicence must refuse: ${prose}`).toBeNull();
+    }
+  });
+
+  it("treats an empty or whitespace field as no licence", () => {
+    for (const empty of ["", "   ", "\n\t "]) expect(exactLicence(empty)).toBeNull();
   });
 });
 

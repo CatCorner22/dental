@@ -88,6 +88,39 @@ export const OMISSION_LICENCES: readonly OmissionLicence[] = [
   }
 ];
 
+/**
+ * The licence as it should be WRITTEN into a clinical field.
+ *
+ * A record entry is a sentence. "not applicable" is a UI label; "Not applicable."
+ * is what a later reader should find in the note, and matching the shape of a
+ * typed answer keeps a one-click licence indistinguishable from a deliberate one —
+ * which it is.
+ */
+export function licenceText(licence: OmissionLicence): string {
+  return `${licence.label[0].toUpperCase()}${licence.label.slice(1)}.`;
+}
+
+/**
+ * Is this field's whole value nothing but a licence?
+ *
+ * DELIBERATELY STRICTER THAN `licenceFor`, and the difference is a safety
+ * property rather than a nicety. `licenceFor` asks "does this text invoke a
+ * licence anywhere in it", which is the right question for counting. This asks
+ * "is this text ONLY a licence", which is the only safe basis for a control that
+ * OVERWRITES the field: "Radiograph not reviewed at this visit because the sensor
+ * failed" invokes a licence and is also a real clinical sentence, and a chip that
+ * replaced it with the bare licence would silently delete the writer's account of
+ * what happened.
+ *
+ * So the chips appear on an empty field or on one holding exactly a licence, and
+ * on nothing else. Prose is never one click from gone.
+ */
+export function exactLicence(text: string): OmissionLicence | null {
+  const normalized = text.trim().replace(/\.+$/, "").toLowerCase();
+  if (!normalized) return null;
+  return OMISSION_LICENCES.find((l) => l.label.toLowerCase() === normalized) ?? null;
+}
+
 export interface OmissionCount {
   licence: OmissionLicence;
   /** Field labels that used it, so the writer can see WHERE rather than only how many. */

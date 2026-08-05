@@ -28,6 +28,13 @@ export default async function LoginPage() {
         </h1>
         <p className="mb-6 text-sm text-slate-600">{APP_TAGLINE}. Sign in to continue.</p>
         <LoginForm mfaAvailable={mfaFeatureEnabled()} />
+        <p className="mt-4 text-[0.7rem] leading-relaxed text-slate-400">
+          Developers: if the only Developer account is locked, set{" "}
+          <code className="rounded bg-slate-100 px-1">ADMIN_USERNAME</code>,{" "}
+          <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD</code>, and{" "}
+          <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD_RESET=1</code> in Vercel,
+          redeploy once, sign in, then remove the reset flag.
+        </p>
       </div>
       {/* The policy conditions USE on agreement, so it has to be readable
           before the credentials are typed — not only in the footer of pages

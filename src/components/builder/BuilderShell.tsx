@@ -26,6 +26,11 @@ import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { useAutosave } from "@/lib/client/useAutosave";
 import { isDirty } from "@/lib/client/autosaveMachine";
+import {
+  clearDraftBackup,
+  readLatestDraftBackup,
+  writeDraftBackup
+} from "@/lib/client/draftBackup";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
 import { NoteForm } from "./NoteForm";
 import { AuditPanel } from "./AuditPanel";
@@ -96,8 +101,6 @@ export function BuilderShell({
   const [officeId, setOfficeId] = useState<string | null>(initialOfficeId);
   // Has this session made a real edit yet? Distinguishes "nothing has happened"
   // from "something happened and was reverted" — see the autosave effect.
-  // Has this session made a real edit yet? Distinguishes "nothing has happened"
-  // from "something happened and was reverted" — see the autosave effect.
   const hasEdited = useRef(false);
   const [tab, setTab] = useState<"audit" | "chart" | "byte" | "bytestar" | "prior" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
@@ -114,7 +117,7 @@ export function BuilderShell({
   const [showMobileAudit, setShowMobileAudit] = useState(false);
 
   const autosave = useAutosave(draftId, initialVersion);
-  const { markEdited, flush } = autosave;
+  const { markEdited, flush, adoptVersion } = autosave;
   // The stored submitted / send-failed state holds until the first edit here;
   // an edit means the note has changed since it was filed (the server's PATCH
   // recompute makes the same call). A submit in THIS tab flips submittedNow
@@ -269,72 +272,127 @@ export function BuilderShell({
     markEdited(state, title, officeId);
   }, [state, title, officeId, canEdit, markEdited, initialNote, initialTitle, initialOfficeId]);
 
-  // OFFLINE SAFETY NET — a same-device mirror of unsaved work.
+  // OFFLINE SAFETY NET — same-device IndexedDB ring + localStorage fallback.
   //
-  // The autosave chain stops on the first network error and waits for the next
-  // edit; if the tab dies during that window (battery, crash, closed laptop in
-  // an operatory with bad wifi), the work was gone. The mirror holds exactly
-  // what the draft already holds — de-identified note state — and is deleted
-  // the moment the server confirms a save.
-  const backupKey = `smile-notes.draft-backup.${draftId}`;
+  // Autosave retries on reconnect and flushes on pagehide; this mirror covers
+  // the window when the tab dies before the server ack. Deleted on save.
   const [backupOffer, setBackupOffer] = useState<{
     note: NoteState;
     title: string;
     officeId: string | null;
     at: number;
   } | null>(null);
+  const [showRevisions, setShowRevisions] = useState(false);
+  const [revisions, setRevisions] = useState<
+    { id: number; version: number; title: string; savedAt: string }[]
+  >([]);
+  const [revisionsBusy, setRevisionsBusy] = useState(false);
 
   useEffect(() => {
     if (!canEdit) return;
-    try {
-      const raw = window.localStorage.getItem(backupKey);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as {
-        note?: unknown;
-        title?: unknown;
-        officeId?: unknown;
-        at?: unknown;
-      };
-      // The mirror is client storage, so it gets the same suspicion as any
-      // client payload: full schema validation before it may touch the note.
-      const valid = validateNoteState(parsed.note);
-      if (!valid.ok || typeof parsed.at !== "number") {
-        window.localStorage.removeItem(backupKey);
+    let cancelled = false;
+    void (async () => {
+      const mirror = await readLatestDraftBackup(draftId);
+      if (cancelled || !mirror) return;
+      const valid = validateNoteState(mirror.note);
+      if (!valid.ok) {
+        await clearDraftBackup(draftId);
         return;
       }
-      if (JSON.stringify(parsed.note) === JSON.stringify(initialNote)) {
-        // Mirror equals the server copy: a stale leftover, not lost work.
-        window.localStorage.removeItem(backupKey);
+      if (JSON.stringify(mirror.note) === JSON.stringify(initialNote)) {
+        await clearDraftBackup(draftId);
         return;
       }
       setBackupOffer({
-        note: parsed.note as NoteState,
-        title: typeof parsed.title === "string" ? parsed.title : initialTitle,
-        officeId: typeof parsed.officeId === "string" ? parsed.officeId : initialOfficeId,
-        at: parsed.at
+        note: valid.value,
+        title: mirror.title || initialTitle,
+        officeId: mirror.officeId,
+        at: mirror.at
       });
-    } catch {
-      // An unreadable mirror is a missing mirror.
-    }
+    })();
+    return () => {
+      cancelled = true;
+    };
     // Mount-only: the offer describes the state of the world when the page opened.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
   useEffect(() => {
     if (!canEdit || !hasEdited.current) return;
-    try {
-      if (isDirty(autosave.state)) {
-        window.localStorage.setItem(
-          backupKey,
-          JSON.stringify({ note: state, title, officeId, at: Date.now() })
-        );
-      } else if (autosave.state.status === "saved") {
-        window.localStorage.removeItem(backupKey);
-      }
-    } catch {
-      // Quota or private mode: the net is absent, autosave still runs.
+    if (isDirty(autosave.state)) {
+      void writeDraftBackup(draftId, {
+        note: state,
+        title,
+        officeId,
+        at: Date.now()
+      });
+    } else if (autosave.state.status === "saved") {
+      void clearDraftBackup(draftId);
     }
-  }, [state, title, officeId, autosave.state, canEdit, backupKey]);
+  }, [state, title, officeId, autosave.state, canEdit, draftId]);
+
+  const openRevisions = useCallback(async () => {
+    setShowRevisions(true);
+    setRevisionsBusy(true);
+    try {
+      const res = await fetch(`/api/drafts/${draftId}/revisions`);
+      if (!res.ok) {
+        setToast({ text: "Could not load earlier saves.", tone: "error" });
+        setShowRevisions(false);
+        return;
+      }
+      const data = (await res.json()) as {
+        revisions?: { id: number; version: number; title: string; savedAt: string }[];
+      };
+      setRevisions(data.revisions ?? []);
+    } catch {
+      setToast({ text: "Could not load earlier saves.", tone: "error" });
+      setShowRevisions(false);
+    } finally {
+      setRevisionsBusy(false);
+    }
+  }, [draftId]);
+
+  const restoreRevision = useCallback(
+    async (revisionId: number) => {
+      setRevisionsBusy(true);
+      try {
+        const res = await fetch(`/api/drafts/${draftId}/revisions`, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify({ revisionId, baseVersion: autosave.version })
+        });
+        if (res.status === 409) {
+          setToast({
+            text: "Someone else saved while you were restoring — reload, then try again.",
+            tone: "error"
+          });
+          return;
+        }
+        if (!res.ok) {
+          setToast({ text: "Could not restore that save.", tone: "error" });
+          return;
+        }
+        const data = (await res.json()) as {
+          version: number;
+          title: string;
+          officeId: string | null;
+          note: NoteState;
+        };
+        dispatch({ type: "restore", state: data.note });
+        setTitle(data.title);
+        setOfficeId(data.officeId);
+        adoptVersion(data.version);
+        setShowRevisions(false);
+        setToast({ text: "Earlier save restored — autosave will keep it on the server.", tone: "success" });
+      } catch {
+        setToast({ text: "Could not restore that save.", tone: "error" });
+      } finally {
+        setRevisionsBusy(false);
+      }
+    },
+    [draftId, autosave.version, adoptVersion]
+  );
 
   const filename = suggestedFilename(state, ALL_MODULES);
 
@@ -610,6 +668,16 @@ export function BuilderShell({
           )}
           <StatusChip status={liveStatus} size="md" />
           {canEdit && <SaveIndicator state={autosave.state} />}
+          {canEdit && (
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              title="Restore a recent server autosave of this working copy"
+              onClick={() => void openRevisions()}
+            >
+              Earlier saves
+            </button>
+          )}
           {canEdit && liveStatus === "error" && (
             <button
               className="btn-primary border-rose-600 bg-rose-600 hover:bg-rose-700"
@@ -741,11 +809,7 @@ export function BuilderShell({
               type="button"
               className="btn-secondary text-xs"
               onClick={() => {
-                try {
-                  window.localStorage.removeItem(backupKey);
-                } catch {
-                  // Removal failing just means the offer reappears next open.
-                }
+                void clearDraftBackup(draftId);
                 setBackupOffer(null);
               }}
             >
@@ -888,6 +952,45 @@ export function BuilderShell({
           onReload={() => router.refresh()}
           onClose={autosave.resolveConflict}
         />
+      )}
+      {showRevisions && (
+        <Dialog title="Earlier saves" onClose={() => setShowRevisions(false)}>
+          <p className="mb-3 text-sm text-slate-600">
+            Working-copy autosaves on the server (last 20). Restoring replaces what is on screen
+            and saves as a new version — filed submissions are unchanged.
+          </p>
+          {revisionsBusy && revisions.length === 0 ? (
+            <p className="text-sm text-slate-500">Loading…</p>
+          ) : revisions.length === 0 ? (
+            <p className="text-sm text-slate-500">No earlier saves yet — keep typing; autosave builds the list.</p>
+          ) : (
+            <ul className="max-h-80 space-y-2 overflow-y-auto">
+              {revisions.map((r) => (
+                <li
+                  key={r.id}
+                  className="flex flex-wrap items-center justify-between gap-2 rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm"
+                >
+                  <span>
+                    <span className="font-medium text-slate-800">v{r.version}</span>
+                    <span className="text-slate-500">
+                      {" "}
+                      · {new Date(r.savedAt).toLocaleString()}
+                      {r.title ? ` · ${r.title}` : ""}
+                    </span>
+                  </span>
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    disabled={revisionsBusy}
+                    onClick={() => void restoreRevision(r.id)}
+                  >
+                    Restore
+                  </button>
+                </li>
+              ))}
+            </ul>
+          )}
+        </Dialog>
       )}
       {showSubmit && (
         <SubmitDialog

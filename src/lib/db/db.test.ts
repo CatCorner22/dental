@@ -18,9 +18,12 @@ import {
 import {
   claimDraftForSubmit,
   deleteDraft,
+  DRAFT_REVISION_KEEP,
   draftSubmissionCount,
   getDraft,
+  getDraftRevision,
   insertDraft,
+  listDraftRevisions,
   listDraftsByOwner,
   ownerDraftCount,
   transferDraft,
@@ -118,6 +121,53 @@ describe("db layer (PGlite)", () => {
     // Re-using the old baseVersion must not apply.
     const stale = await updateDraftChecked(db, draft.id, 1, { title: "Nope" }, new Date(2026, 0, 1));
     expect(stale).toBeUndefined();
+  });
+
+  // Power-loss / bad-paste recovery: every content autosave appends a working-copy
+  // revision (capped ring). Status-only writes must not pollute that ring.
+  it("records draft revisions on content saves and prunes the ring", async () => {
+    const owner = await freshUser("revkeeper");
+    const draft = await insertDraft(db, {
+      id: crypto.randomUUID(),
+      ownerId: owner.id,
+      noteState: note,
+      title: "v1"
+    });
+    expect(await listDraftRevisions(db, draft.id)).toHaveLength(0);
+
+    let v = 1;
+    const t0 = new Date(2026, 0, 1, 12, 0, 0);
+    for (let i = 0; i < DRAFT_REVISION_KEEP + 3; i++) {
+      const at = new Date(t0.getTime() + i * 60_000);
+      const updated = await updateDraftChecked(
+        db,
+        draft.id,
+        v,
+        { title: `save-${i}`, noteState: { selectedModuleIds: ["extraction"], values: {} } },
+        at
+      );
+      expect(updated?.version).toBe(v + 1);
+      v = updated!.version;
+    }
+    const ring = await listDraftRevisions(db, draft.id);
+    expect(ring).toHaveLength(DRAFT_REVISION_KEEP);
+    expect(ring[0]!.title).toBe(`save-${DRAFT_REVISION_KEEP + 2}`);
+    expect(ring[ring.length - 1]!.title).toBe("save-3");
+
+    const statusOnly = await updateDraftChecked(
+      db,
+      draft.id,
+      v,
+      { status: "ready", lastSendFailed: false },
+      new Date(2026, 0, 2)
+    );
+    expect(statusOnly?.version).toBe(v + 1);
+    expect(await listDraftRevisions(db, draft.id)).toHaveLength(DRAFT_REVISION_KEEP);
+
+    const oldestKept = ring[ring.length - 1]!;
+    const loaded = await getDraftRevision(db, draft.id, oldestKept.id);
+    expect(loaded?.title).toBe("save-3");
+    expect(loaded?.noteState.selectedModuleIds).toEqual(["extraction"]);
   });
 
   it("lists drafts by owner and transfers ownership", async () => {

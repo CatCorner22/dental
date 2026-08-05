@@ -2,11 +2,13 @@ import { getAssistConfig } from "@/lib/assist/service";
 
 // BYTESTAR DEPLOYMENT GATES — the silent cage around the pioneer.
 //
-// Three switches, all required, none of them named in any prompt the model
-// ever sees:
+// The switches, none of them named in any prompt the model ever sees:
 //   1. The assist dual-switch (ASSIST_ENABLED + AI_GATEWAY_API_KEY). ByteStar
 //      rides the same provider; it cannot outrun the deployment that hosts it.
-//   2. BYTESTAR_ENABLED=1 — the operator's opt-in for the pioneer path.
+//   2. BYTESTAR_ENABLED — an explicit "0" closes the pioneer path while the
+//      rest of assist stays up. Unset means OPEN (pre-go-live posture: a
+//      separate =1 hunt locked the site owner out of a feature whose real
+//      gate is the assist key — the cage is the rails below, not this flag).
 //   3. BYTESTAR_KILL — the SILENT killswitch. When set to "1", ByteStar is
 //      unavailable. The model is never told that this variable exists, never
 //      told that it was tripped, and never told why a call returned
@@ -29,19 +31,25 @@ export interface ByteStarConfig {
    * the model, never to the end-user chrome (which sees a bland "unavailable").
    */
   silentlyKilled: boolean;
+  /** Diagnostics for the Team Lead monitor: is the assist dual-switch on? */
+  assistOn: boolean;
+  /** Diagnostics for the Team Lead monitor: did BYTESTAR_ENABLED=0 close it? */
+  pioneerOptedOut: boolean;
 }
 
 export function getByteStarConfig(
   env: Record<string, string | undefined> = process.env
 ): ByteStarConfig {
   const assist = getAssistConfig(env);
-  const optedIn = env.BYTESTAR_ENABLED === "1";
+  const pioneerOptedOut = env.BYTESTAR_ENABLED === "0";
   // The silent kill. Named for operators; invisible to every prompt.
   const silentlyKilled = env.BYTESTAR_KILL === "1";
   return {
-    enabled: assist.enabled && optedIn && !silentlyKilled,
+    enabled: assist.enabled && !pioneerOptedOut && !silentlyKilled,
     model: env.BYTESTAR_MODEL || assist.model,
-    silentlyKilled
+    silentlyKilled,
+    assistOn: assist.enabled,
+    pioneerOptedOut
   };
 }
 

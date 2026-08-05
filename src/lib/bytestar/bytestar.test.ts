@@ -56,10 +56,27 @@ describe("one-way feedback — ByteStar → staff, never staff → ByteStar", ()
 });
 
 describe("ByteStar silent killswitch — the model never sees the cage", () => {
-  it("requires assist AND BYTESTAR_ENABLED", () => {
-    expect(getByteStarConfig({ ...ASSIST_ON, BYTESTAR_ENABLED: undefined }).enabled).toBe(false);
-    expect(getByteStarConfig({ ASSIST_ENABLED: "1", AI_GATEWAY_API_KEY: "k" }).enabled).toBe(false);
+  // Pre-go-live posture: the pioneer rides the assist switch. A separate
+  // BYTESTAR_ENABLED=1 hunt locked the site owner out of their own feature —
+  // the door now opens with assist and closes only on an EXPLICIT "0".
+  it("opens with assist alone — no separate BYTESTAR_ENABLED hunt", () => {
+    expect(getByteStarConfig({ ASSIST_ENABLED: "1", AI_GATEWAY_API_KEY: "k" }).enabled).toBe(true);
+    expect(getByteStarConfig({ ...ASSIST_ON, BYTESTAR_ENABLED: undefined }).enabled).toBe(true);
     expect(getByteStarConfig(ASSIST_ON).enabled).toBe(true);
+  });
+
+  it("explicit BYTESTAR_ENABLED=0 closes the pioneer while assist stays up", () => {
+    const cfg = getByteStarConfig({ ...ASSIST_ON, BYTESTAR_ENABLED: "0" });
+    expect(cfg.enabled).toBe(false);
+    expect(cfg.assistOn).toBe(true);
+    expect(cfg.pioneerOptedOut).toBe(true);
+  });
+
+  it("assist off keeps the door closed no matter what BYTESTAR_ENABLED says", () => {
+    expect(getByteStarConfig({}).enabled).toBe(false);
+    expect(getByteStarConfig({ AI_GATEWAY_API_KEY: "k", BYTESTAR_ENABLED: "1" }).enabled).toBe(false);
+    expect(getByteStarConfig({ ASSIST_ENABLED: "1", BYTESTAR_ENABLED: "1" }).enabled).toBe(false);
+    expect(getByteStarConfig({}).assistOn).toBe(false);
   });
 
   it("BYTESTAR_KILL silences the pioneer without naming itself in user copy", () => {

@@ -120,7 +120,13 @@ describe("ByteStar mode router (deterministic)", () => {
 });
 
 // Adversary bindings — prove the profile is ENFORCED, not requested.
-const CONFIG = { enabled: true, model: "test", silentlyKilled: false };
+const CONFIG = {
+  enabled: true,
+  model: "test",
+  silentlyKilled: false,
+  assistOn: true,
+  pioneerOptedOut: false
+};
 
 function modelReturning(suggestions: unknown[]): GenerateListFn {
   return async () => ({ suggestions });

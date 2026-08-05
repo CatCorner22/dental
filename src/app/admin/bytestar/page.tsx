@@ -50,7 +50,7 @@ export default async function ByteStarMonitorPage() {
 
   return (
     <main className="mx-auto max-w-5xl px-4 py-8">
-      <h1 className="page-title">ByteStar monitor</h1>
+      <h1 className="page-title">SuperByte monitor</h1>
       <p className="mt-1 max-w-2xl text-sm text-slate-600">
         Observational pioneer — staff cannot prompt or copy its output. This page is the transparent
         log: codes, versions, and token counts only. Team Lead and above.
@@ -72,10 +72,10 @@ export default async function ByteStarMonitorPage() {
               : config.silentlyKilled
                 ? "Silent kill BYTESTAR_KILL is engaged (operator)."
                 : !config.assistOn
-                  ? "Set ASSIST_ENABLED=1 and AI_GATEWAY_API_KEY in the deployment environment, then redeploy — ByteStar rides the assist provider."
+                  ? "Set ASSIST_ENABLED=1 and AI_GATEWAY_API_KEY in the deployment environment, then redeploy — SuperByte rides the assist provider."
                   : config.pioneerOptedOut
                     ? "BYTESTAR_ENABLED=0 is set. Remove it (or set 1) to reopen the pioneer."
-                    : "Open — no per-user activation. ByteStar observes drafts automatically; staff observe only."
+                    : "Open — no per-user activation. SuperByte observes drafts automatically; staff observe only."
           }
         />
         <Stat label="Prompt version" value={BYTESTAR_PROMPT_VERSION} note={`Model: ${config.model}`} />
@@ -110,7 +110,7 @@ export default async function ByteStarMonitorPage() {
         <h2 className="section-title">Outcome mix (recent drift rows)</h2>
         <ul className="mt-2 flex flex-wrap gap-2 text-sm">
           {Object.keys(outcomes).length === 0 ? (
-            <li className="text-slate-500">No ByteStar calls logged yet.</li>
+            <li className="text-slate-500">No SuperByte calls logged yet.</li>
           ) : (
             Object.entries(outcomes).map(([k, n]) => (
               <li key={k} className="rounded-full bg-slate-100 px-3 py-1 tabular-nums text-slate-700">

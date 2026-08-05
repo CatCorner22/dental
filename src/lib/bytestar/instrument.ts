@@ -48,7 +48,7 @@ const INSTRUMENT_BY_READING: Record<
     if (missing.length === 0) return null;
     return {
       kind: "completeness",
-      say: `Defensibility pillars still open: ${missing.slice(0, 2).join("; ")}.`,
+      say: `Still open for a later reader: ${missing.slice(0, 2).join("; ")}.`,
       why: "Treatment notes that omit these pillars are harder to defend in review.",
       question: `Was ${missing[0]} documented for this visit?`,
       source: "Risk-reduction completeness checklist (Doctors Company claim-file patterns)"

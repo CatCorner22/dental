@@ -41,12 +41,42 @@ describe("professional tone", () => {
   });
 
   it("does not fire on clinical uses", () => {
-    expect(runProfessionalToneRule("Reviewed the fat pad graft site.")).toHaveLength(1);
-    // ^ deliberate: bare "fat" fires even near clinical text; the fix is to
-    // write the clinical term ("buccal fat pad") — which does not fire:
+    // This assertion used to run the other way: it pinned that "fat pad graft
+    // site" DID fire, on the reasoning that the fix was to write "buccal fat
+    // pad" instead. The precision corpus made the cost visible — the buccal fat
+    // pad is an anatomical structure, "gross debridement" is the literal ADA
+    // D4355 description, and a patient is "lying supine" — and every one of
+    // those blocked a correct note at S1, which blocks email.
+    //
+    // A rule that stops a clinician writing correct anatomy does not teach them
+    // to write better; it teaches them the panel is wrong. So the rule now reads
+    // the words either side, and this test pins BOTH directions, because a
+    // suppression that swallows the real thing is the worse failure.
+    for (const clinical of [
+      "Reviewed the buccal fat pad graft site.",
+      "Full mouth gross debridement completed.",
+      "Gross calculus on the lingual surfaces.",
+      "Patient positioned lying supine.",
+      "The radiolucency lies distal to tooth 14."
+    ]) {
+      expect(runProfessionalToneRule(clinical), clinical).toHaveLength(0);
+    }
+
+    // Still caught — the slur is the point of the rule and survives the gate.
+    for (const rude of [
+      "Patient is fat and will not floss.",
+      "Patient was disgusting.",
+      "Patient is lying about flossing."
+    ]) {
+      expect(runProfessionalToneRule(rude).length, rude).toBeGreaterThan(0);
+    }
+
+    // And a note containing both still reports: the legitimate phrase must not
+    // excuse the slur sitting beside it.
     expect(
-      runProfessionalToneRule("Reviewed the buccal adipose graft site for healing.")
-    ).toHaveLength(0);
+      runProfessionalToneRule("Gross debridement completed. Patient was disgusting about it.")
+        .length
+    ).toBeGreaterThan(0);
   });
 
   it("cold logic, zero condescension: the message names the reader's problem", () => {

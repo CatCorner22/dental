@@ -5,7 +5,7 @@ import type { BenchmarkReading, DriftDirection } from "@/lib/bytestar/benchmarks
 // DRIFT-TO-TARGET GRAPHICS — one rail per benchmark. Direction is the signal;
 // no confidence percentages (a stated AI non-goal). Severity colours stay out:
 // toward / on-target use teal; away uses slate emphasis, not the audit alarm
-// palette, because ByteStar advises and never blocks.
+// palette, because SuperByte advises and never blocks.
 
 function dirLabel(d: DriftDirection): string {
   switch (d) {

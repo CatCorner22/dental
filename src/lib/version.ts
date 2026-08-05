@@ -179,7 +179,7 @@
 // 2.17.0 — staff-adoption + Gate-1 follow-ons without learned weights:
 //         ambiguous-shorthand reading proposals (display-only); unread-clause
 //         category router for the readback panel; provider-only second-line
-//         PHI patterns (email/MRN/street/ZIP) merged before assist/ByteStar
+//         PHI patterns (email/MRN/street/ZIP) merged before assist/SuperByte
 //         calls; learning-ledger surface-variant clustering; Byte next-action
 //         + gauge explanations; TN license-scope retrieval cue.
 // 2.18.0 — frozen disambiguation + unread-routing evals (charter §4.1/§4.2
@@ -202,4 +202,28 @@
 // 2.22.0 — complete.referral-loop-open (Doctors Company referral guidance);
 //         Team Lead+ claim-file research digest on /reference/risk-management;
 //         documentationResearch added to reference doc allowlist.
-export const RULESET_VERSION = "2.22.0";
+// 2.23.0 — precision. The first measurement of how often the audit stops a note
+//         that was already fine (src/lib/audit/precision/), and the five
+//         narrowings it demanded. Every one was a BLOCKING false positive found
+//         by running the rules over 34 notes written to house style:
+//           anatomy.text-tooth (S0) read "#557 carbide bur" as an impossible ADA
+//             tooth designation — one of the commonest tokens in a restorative
+//             note. Instrument nouns now end the tooth run.
+//           medsafe.interaction.* (S1) blocked "no NSAIDs advised" on an
+//             anticoagulated patient — the tool punishing the clinician who
+//             spotted the interaction and documented avoiding it. Bare negation
+//             of the agent now counts as an avoidance cue.
+//           effort.unprofessional (S1) fired on "buccal fat pad", "gross
+//             debridement", "lying supine", "lies distal". Context gates either
+//             side of the hit; the slur itself still fires, including when it
+//             sits beside a legitimate phrase.
+//           effort.gibberish (S1) fired on "------" and on runs of pasted
+//             spaces. Repeated WORD characters only; punctuation is formatting.
+//           phi.ssn-bare (S0) fired on any nine-digit run, so an implant lot
+//             number and a scanner serial both blocked filing. Now requires a
+//             cue (ssn / social security / tax id / identifier / member /
+//             subscriber / policy / account).
+//         No rule was weakened to make the number green: a negative control
+//         asserts the shorthand corpus still blocks, and the recall tests over
+//         the persona and scenario corpora are unchanged.
+export const RULESET_VERSION = "2.23.0";

@@ -20,7 +20,7 @@ import { SEVERITY_LABELS, SEVERITY_MEANING } from "@/lib/audit/types";
 // fails the build with the alternatives printed in the failure message.
 //
 // DELIBERATE EXCLUSIONS, with reasons:
-// - The ByteStar disclaimer is the owner's commissioned copy, verbatim by
+// - The SuperByte disclaimer is the owner's commissioned copy, verbatim by
 //   contract (a pinned test enforces the exact text). It is screened here
 //   too — it currently passes — but if the catalog ever grows to flag it,
 //   the OWNER decides, not this suite. The assertion is therefore soft:
@@ -66,7 +66,7 @@ describe("Byte's knowledge base speaks to the standard", () => {
   }
 });
 
-describe("ByteStar's voice speaks to the standard", () => {
+describe("SuperByte's voice speaks to the standard", () => {
   it("system prompt is clean", () => {
     expectClean("BYTESTAR_SYSTEM_PROMPT", BYTESTAR_SYSTEM_PROMPT);
   });

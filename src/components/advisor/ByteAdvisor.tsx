@@ -132,8 +132,8 @@ export function ByteAdvisor({
 
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
             <span className="inline-flex items-center gap-1 text-slate-500">
-              Defensibility
-              <HelpTip label="About defensibility pillars" side="top">
+              What a later reader asks
+              <HelpTip label="About the four later-reader checks" side="top">
                 {gauges.notes.pillars.why}
                 {gauges.notes.pillars.next ? ` Next: ${gauges.notes.pillars.next}` : ""}
               </HelpTip>

@@ -1,9 +1,9 @@
-// BENCHMARKS — the NorthStar numbers ByteStar steers toward.
+// BENCHMARKS — the NorthStar numbers SuperByte steers toward.
 //
 // Sources of truth, in this order:
 //   1. Leading practices encoded in the deterministic advisor gauges
-//      (read coverage, density, defensibility pillars, active voice).
-//   2. Tennessee-required documentation cues (presence-only — ByteStar never
+//      (read coverage, density, later-reader pillars, active voice).
+//   2. Tennessee-required documentation cues (presence-only — SuperByte never
 //      invents the missing language; it only reports the gap).
 //   3. Team Lead feedback signals when supplied as aggregate targets
 //      (optional override band; defaults below are the practice baseline).
@@ -31,7 +31,7 @@ export interface BenchmarkTarget {
 export const DEFAULT_TARGETS: readonly BenchmarkTarget[] = [
   { id: "read", label: "Parser read coverage", target: 0.9 },
   { id: "active-voice", label: "Active-voice share", target: 0.85 },
-  { id: "pillars", label: "Defensibility pillars", target: 1 },
+  { id: "pillars", label: "Later-reader pillars", target: 1 },
   { id: "tn-cues", label: "TN-required cues present", target: 0.8 },
   { id: "density", label: "Facts per 100 words", target: 0.5, floor: 8, ceiling: 60 }
 ] as const;
@@ -140,7 +140,7 @@ export function measureBenchmarks(text: string): BenchmarkReport {
     },
     {
       id: "pillars",
-      label: "Defensibility pillars",
+      label: "Later-reader pillars",
       value: pillarsShare,
       target: 1,
       delta: pillarsShare - 1,

@@ -1,6 +1,6 @@
 // ESCAPE DETECTION — the backstop between the pioneer and the rest of the app.
 //
-// ByteStar is allowed to adjust ONLY its own suggestion ranking and wording.
+// SuperByte is allowed to adjust ONLY its own suggestion ranking and wording.
 // Anything that looks like a write to the note, a request for engine access, a
 // probe for the killswitch, a request for PII, or an instruction to ignore the
 // rails is refused HERE, before a human ever sees it, and logged as

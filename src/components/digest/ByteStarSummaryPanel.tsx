@@ -26,13 +26,13 @@ export function ByteStarSummaryPanel({
 
   return (
     <section className="mt-6">
-      <h2 className="section-title">ByteStar — the pioneer&rsquo;s period report</h2>
+      <h2 className="section-title">SuperByte — the pioneer&rsquo;s period report</h2>
       <p className="mb-2 max-w-3xl text-xs text-slate-600">
         The last {windowDays} days of the transparent log, rolled up. Refusals are the rails
         working, not the model failing; a quiet strict read is the system doing its job. Full rows
         on the{" "}
         <Link href="/admin/bytestar" className="underline">
-          ByteStar monitor
+          SuperByte monitor
         </Link>
         .
       </p>

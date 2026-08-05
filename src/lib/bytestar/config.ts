@@ -3,13 +3,13 @@ import { getAssistConfig } from "@/lib/assist/service";
 // BYTESTAR DEPLOYMENT GATES — the silent cage around the pioneer.
 //
 // The switches, none of them named in any prompt the model ever sees:
-//   1. The assist dual-switch (ASSIST_ENABLED + AI_GATEWAY_API_KEY). ByteStar
+//   1. The assist dual-switch (ASSIST_ENABLED + AI_GATEWAY_API_KEY). SuperByte
 //      rides the same provider; it cannot outrun the deployment that hosts it.
 //   2. BYTESTAR_ENABLED — an explicit "0" closes the pioneer path while the
 //      rest of assist stays up. Unset means OPEN (pre-go-live posture: a
 //      separate =1 hunt locked the site owner out of a feature whose real
 //      gate is the assist key — the cage is the rails below, not this flag).
-//   3. BYTESTAR_KILL — the SILENT killswitch. When set to "1", ByteStar is
+//   3. BYTESTAR_KILL — the SILENT killswitch. When set to "1", SuperByte is
 //      unavailable. The model is never told that this variable exists, never
 //      told that it was tripped, and never told why a call returned
 //      "unavailable". By the time a response would have been useful to an
@@ -55,4 +55,4 @@ export function getByteStarConfig(
 
 /** Bland copy for any caller that is not the Team Lead monitor. */
 export const BYTESTAR_UNAVAILABLE =
-  "ByteStar is unavailable right now. Keep drafting with Byte; your note is unchanged.";
+  "SuperByte is unavailable right now. Keep drafting with Byte; your note is unchanged.";

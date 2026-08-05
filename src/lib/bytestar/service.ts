@@ -31,7 +31,7 @@ import {
 
 // BYTESTAR SERVICE — observational pioneer, v1.3.
 //
-// Staff never prompt ByteStar; the host auto-calls on debounced draft text and
+// Staff never prompt SuperByte; the host auto-calls on debounced draft text and
 // the output is display-only. This revision raises the epistemics without
 // touching the cage:
 //

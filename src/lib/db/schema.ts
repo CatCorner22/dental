@@ -134,6 +134,21 @@ export const drafts = pgTable("drafts", {
   updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
 });
 
+// In-progress draft revisions — a capped ring of successful autosaves so a
+// bad paste or power-loss window can restore "a few minutes ago". Not a filed
+// submission; not legal history. Working-copy recovery only.
+export const draftRevisions = pgTable("draft_revisions", {
+  id: serial("id").primaryKey(),
+  draftId: text("draft_id")
+    .notNull()
+    .references(() => drafts.id, { onDelete: "cascade" }),
+  version: integer("version").notNull(),
+  title: text("title").notNull(),
+  officeId: text("office_id"),
+  noteState: jsonb("note_state").$type<NoteState>().notNull(),
+  savedAt: timestamp("saved_at", { withTimezone: true }).notNull().defaultNow()
+});
+
 export const submissions = pgTable("submissions", {
   id: serial("id").primaryKey(), // ticket = formatTicket(id)
   draftId: text("draft_id")
@@ -259,6 +274,7 @@ export type OfficeRow = typeof offices.$inferSelect;
 export type UserOfficeRow = typeof userOffices.$inferSelect;
 export type DraftRow = typeof drafts.$inferSelect;
 export type NewDraft = typeof drafts.$inferInsert;
+export type DraftRevisionRow = typeof draftRevisions.$inferSelect;
 export type SubmissionRow = typeof submissions.$inferSelect;
 export type AuditLogRow = typeof auditLog.$inferSelect;
 
@@ -322,6 +338,7 @@ export const schema = {
   roleEnum,
   users,
   drafts,
+  draftRevisions,
   submissions,
   auditLog,
   authThrottle,

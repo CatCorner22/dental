@@ -8,7 +8,7 @@
 //   ADVICE  — the highest-priority knowledge entries whose predicates match.
 //   GAUGES  — live numbers a drafting screen can draw: how much of the note
 //             the tools can read, how dense it is, how much anesthetic
-//             headroom remains, and which later-reader pillars are present.
+//             headroom remains, and which risk-reduction pillars are present.
 //   MOOD    — which face Byte makes. Derived from the same numbers, because a
 //             mascot whose expression disagrees with the dashboard is a
 //             mascot nobody trusts.

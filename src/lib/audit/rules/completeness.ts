@@ -73,6 +73,40 @@ const RULES: CompletenessRule[] = [
       /\b(?:consented|consent\s+(?:was\s+)?(?:obtained|given|signed|recorded)|agreed|accepted|declined|refused|chose|elected|deferred)\b/i,
     what: "A consent conversation is documented without the patient's decision.",
     how: "Record what the patient decided — agreed, declined, or deferred — in their own terms. A discussion without a decision is half a consent record."
+  },
+  {
+    id: "complete.consent-thin-assertion",
+    // Doctors Company: "patient consented" and signed forms are not the conversation.
+    // Fires on checkbox theater — assertion without risks, alternatives, or questions.
+    trigger:
+      /\b(?:patient\s+)?consented\b|\bconsent\s+(?:was\s+)?(?:obtained|given|signed|on\s+file|recorded)\b|\b(?:signed|verbal)\s+consent\b/i,
+    satisfiedBy:
+      /\b(?:risks?|benefits?|alternatives?|options?|questions?|declined|deferred|teach-?back|understands?|informed\s+of|material\s+risks?|no\s+treatment|consequence)\b/i,
+    what: "Consent is asserted, but the note never records what was discussed.",
+    how:
+      "Name the diagnosis, material risks, alternatives (including no treatment), any patient questions, and the decision. A signature or \"patient consented\" is not the conversation."
+  },
+  {
+    id: "complete.clinical-rationale",
+    // Doctors Company #3 insufficient-documentation gap: procedure without documented reasoning.
+    trigger:
+      /\b(?:crown(?:\s+prep)?|root\s+canal|RCT|endodont|extraction|extracted|SRP|scaling\s+and\s+root\s+planing|root\s+planing|implant\s+placement|bridge\s+prep|core\s+buildup|build-?up|apicoectomy|pulpotomy|pulpectomy|bone\s+graft|sinus\s+(?:lift|augment)|restoration|composite|amalgam|onlay|inlay|veneer)\b/i,
+    satisfiedBy:
+      /\b(?:because|due\s+to|indicated\s+(?:for|by)|recommended\s+(?:for|because)|in\s+order\s+to|secondary\s+to|based\s+on|given\s+(?:the|patient)|to\s+address|to\s+treat|for\s+treatment\s+of|diagnosed|diagnosis|fracture|recurrent\s+decay|caries|infection|abscess|periodont|bone\s+loss|mobility|radiolucen|radiopaque|symptom|pain|swelling|failed\s+restoration|cracked|broken|non-?restorable|periapical|lesion|defect|defective|leak|secondary\s+caries|deep\s+caries|irreversible\s+pulpitis|necrotic|symptomatic|asymptomatic|moderate|severe|advanced|stage\s+(?:I{1,3}|IV|[1-4]))\b/i,
+    what: "A significant procedure is documented without clinical reasoning.",
+    how:
+      "State why this treatment was indicated — the finding, diagnosis, or symptom it addresses. Procedure codes and billing narratives are not a substitute for clinical rationale."
+  },
+  {
+    id: "complete.referral-loop-open",
+    // Doctors Company referral documentation guidance; delayed-diagnosis claim pattern.
+    trigger:
+      /\b(?:referred|referral\s+(?:to|placed|made|given|pending)|refer\s+to|will\s+refer)\b/i,
+    satisfiedBy:
+      /\b(?:endodontist|periodontist|oral\s+surgeon|oral\s+surgery|OMFS|orthodont|prosthodont|pedodont|physician|PCP|primary\s+care|specialist|Dr\.|to\s+Dr\b|for\s+(?:evaluation|consult|biopsy|extraction|surgical|periodontal|orthodontic|urgent|stat)|because|due\s+to|regarding|evaluate|periapical|lesion|radiolucen|pain|swelling|abscess|fracture|impacted|interpretation|interpreted|read\s+by)\b/i,
+    what: "A referral is documented without naming the recipient or the clinical reason.",
+    how:
+      "Record to whom (named specialist or service), why (finding or symptom), and urgency when time-sensitive. \"Referral placed\" alone does not close the loop."
   }
 ];
 

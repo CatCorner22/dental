@@ -80,6 +80,75 @@ describe("consent without decision", () => {
   });
 });
 
+describe("consent thin assertion", () => {
+  it("fires when consent is asserted without conversation substance", () => {
+    expect(ids("Patient consented. Crown prep on tooth 14 completed.")).toContain(
+      "complete.consent-thin-assertion"
+    );
+    expect(ids("Consent was obtained. Extraction of tooth 32 completed.")).toContain(
+      "complete.consent-thin-assertion"
+    );
+  });
+
+  it("stays silent when risks or alternatives are recorded", () => {
+    expect(
+      ids(
+        "Risks, benefits, and alternatives including no treatment discussed. Patient consented after questions."
+      )
+    ).not.toContain("complete.consent-thin-assertion");
+  });
+
+  it("does not double-fire when a full discussion-and-decision note is present", () => {
+    const text =
+      "Risks and benefits discussed for extraction. Patient declined antibiotics and consented to extraction.";
+    expect(ids(text)).not.toContain("complete.consent-thin-assertion");
+    expect(ids(text)).not.toContain("complete.consent-no-decision");
+  });
+});
+
+describe("procedure without clinical rationale", () => {
+  it("fires when a significant procedure has no documented reasoning", () => {
+    expect(ids("Crown prep on tooth 14 completed. Patient tolerated well.")).toContain(
+      "complete.clinical-rationale"
+    );
+    expect(ids("SRP UR quadrant completed.")).toContain("complete.clinical-rationale");
+  });
+
+  it("is satisfied by diagnosis or indication language", () => {
+    expect(
+      ids("Crown prep on tooth 14 due to recurrent decay under existing restoration. Patient tolerated well.")
+    ).not.toContain("complete.clinical-rationale");
+    expect(
+      ids("SRP UR quadrant for generalized moderate chronic periodontitis. Patient tolerated well.")
+    ).not.toContain("complete.clinical-rationale");
+  });
+
+  it("stays silent on hygiene-only visits", () => {
+    expect(ids("Adult prophylaxis completed. Patient dismissed.")).not.toContain(
+      "complete.clinical-rationale"
+    );
+  });
+});
+
+describe("referral without loop closure", () => {
+  it("fires when a referral is stated without recipient or reason", () => {
+    expect(ids("Referral placed. Patient dismissed.")).toContain("complete.referral-loop-open");
+    expect(ids("Patient referred. Recall in six months.")).toContain("complete.referral-loop-open");
+  });
+
+  it("is satisfied by a named recipient or clinical reason", () => {
+    expect(
+      ids("Referred to oral surgery for evaluation of tooth 32 periapical radiolucency.")
+    ).not.toContain("complete.referral-loop-open");
+    expect(ids("4 bitewing radiographs acquired. Referred for interpretation.")).not.toContain(
+      "complete.referral-loop-open"
+    );
+    expect(ids("Refer to endodontist for retreatment of tooth 19 due to persistent pain.")).not.toContain(
+      "complete.referral-loop-open"
+    );
+  });
+});
+
 describe("tone", () => {
   it("every message anticipates the reader, never scolds the writer", () => {
     const findings = runCompletenessRules("Extraction of tooth 32 completed. Patient dismissed.");

@@ -51,7 +51,7 @@ const INSTRUMENT_BY_READING: Record<
       say: `Still open for a later reader: ${missing.slice(0, 2).join("; ")}.`,
       why: "Treatment notes that omit these pillars are harder to defend in review.",
       question: `Was ${missing[0]} documented for this visit?`,
-      source: "Practice later-reader checklist"
+      source: "Risk-reduction completeness checklist (Doctors Company claim-file patterns)"
     };
   },
   "tn-cues": (report) => {

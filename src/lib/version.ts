@@ -194,7 +194,15 @@
 //         "chatgpt" token and retired-assistant deployment doc are gone).
 //         Same bump covers the personal-blocks PHI refusal at save — a new
 //         place the identifier rules run, not a change to what they match.
-// 2.21.0 — precision. The first measurement of how often the audit stops a note
+// 2.21.0 — claim-file documentation research encoded as anticipatory rules:
+//         complete.clinical-rationale (Doctors Company #3 gap) and
+//         complete.consent-thin-assertion (checkbox theater); advisor entry
+//         byte.clinical-rationale; internal "language optimizer for risk
+//         reduction" terminology; knowledge/sources/litigation-documentation-research.md.
+// 2.22.0 — complete.referral-loop-open (Doctors Company referral guidance);
+//         Team Lead+ claim-file research digest on /reference/risk-management;
+//         documentationResearch added to reference doc allowlist.
+// 2.23.0 — precision. The first measurement of how often the audit stops a note
 //         that was already fine (src/lib/audit/precision/), and the five
 //         narrowings it demanded. Every one was a BLOCKING false positive found
 //         by running the rules over 34 notes written to house style:
@@ -218,4 +226,4 @@
 //         No rule was weakened to make the number green: a negative control
 //         asserts the shorthand corpus still blocks, and the recall tests over
 //         the persona and scenario corpora are unchanged.
-export const RULESET_VERSION = "2.21.0";
+export const RULESET_VERSION = "2.23.0";

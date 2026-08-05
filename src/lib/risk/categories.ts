@@ -161,11 +161,22 @@ export const RULE_RISK_CATEGORY: Record<string, RiskCategoryId> = {
   "complete.extraction-no-outcome": "material-omission",
   "complete.imaging-no-interpretation": "material-omission",
   "complete.rx-no-duration": "material-omission",
+  // Arrived with the claim-file research on main, and the exhaustiveness test
+  // demanded them before the merge could land — which is the taxonomy working
+  // rather than a chore. A consent line thin enough to be checkbox theatre and a
+  // referral whose loop never closes are both facts the visit produced that the
+  // note does not carry.
+  "complete.consent-thin-assertion": "material-omission",
+  "complete.referral-loop-open": "material-omission",
   "required.missing": "material-omission",
   "supervision.pc1107-new-patient": "material-omission",
   "supervision.pc1107-unanswered": "material-omission",
 
   // ── rationale absent ───────────────────────────────────────────────────────
+  // The general case main added beside the three procedure-specific rules: a
+  // procedure recorded with no reasoning attached. This was the thinnest
+  // category in the taxonomy when it was written, and it is now less thin.
+  "complete.clinical-rationale": "rationale-absent",
   "justify.buildup-retention": "rationale-absent",
   "justify.crown-necessity": "rationale-absent",
   "justify.srp-periodontal-evidence": "rationale-absent",

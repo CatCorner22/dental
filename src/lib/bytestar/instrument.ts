@@ -51,7 +51,7 @@ const INSTRUMENT_BY_READING: Record<
       say: `Defensibility pillars still open: ${missing.slice(0, 2).join("; ")}.`,
       why: "Treatment notes that omit these pillars are harder to defend in review.",
       question: `Was ${missing[0]} documented for this visit?`,
-      source: "Practice defensibility checklist"
+      source: "Risk-reduction completeness checklist (Doctors Company claim-file patterns)"
     };
   },
   "tn-cues": (report) => {

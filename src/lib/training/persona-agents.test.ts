@@ -48,7 +48,7 @@ describe("persona agents", () => {
     for (const agent of PERSONA_AGENTS) {
       expect(agent.failureModes.length).toBeGreaterThan(0);
       expect(agent.commonComplaints.length).toBeGreaterThan(0);
-      expect(agent.litigationPatterns.length).toBeGreaterThan(0);
+      expect(agent.documentationRiskPatterns.length).toBeGreaterThan(0);
       expect(agent.openness).toBeGreaterThanOrEqual(0);
       expect(agent.openness).toBeLessThanOrEqual(100);
     }

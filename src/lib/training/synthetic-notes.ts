@@ -1,7 +1,7 @@
 // SYNTHETIC TRAINING NOTES — one primary draft per persona agent.
 //
 // Fully de-identified. No real patient existed. Notes are written in the voice
-// of persona-agents.ts and tagged with litigation / Curve Hero / staff-complaint
+// of persona-agents.ts and tagged with documentation-risk / Curve Hero / staff-complaint
 // patterns from knowledge/sources/persona-training-corpus-research.md.
 //
 // expectedAuditRulePrefixes: prefixes that MUST fire under runTextAudit today.
@@ -138,6 +138,7 @@ export const SYNTHETIC_TRAINING_NOTES: readonly SyntheticTrainingNote[] = [
     ],
     expectedAuditRulePrefixes: [
       "complete.anesthetic-no-amount",
+      "complete.clinical-rationale",
       "justify.buildup-retention",
       "justify.crown-necessity",
       "residue.square-brackets",
@@ -183,7 +184,7 @@ export const SYNTHETIC_TRAINING_NOTES: readonly SyntheticTrainingNote[] = [
       "insufficient-detail",
       "near-retirement-brevity"
     ],
-    expectedAuditRulePrefixes: ["vague.tolerated-well", "vague.no-complications"],
+    expectedAuditRulePrefixes: ["vague.tolerated-well", "vague.no-complications", "complete.clinical-rationale"],
     expectedDefectTags: [
       "sparse-operative",
       "anesthetic-as-with-local",

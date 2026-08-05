@@ -59,6 +59,9 @@ The short list that dental prescribing actually produces, encoded flag-only in
 
 ## Litigation patterns (public risk-management sources)
 
+See **`litigation-documentation-research.md`** for the full epistemic frame, quantitative
+Doctors Company cohort data, case-pattern themes, and rule mapping table. Summary:
+
 - "If it wasn't written down, it didn't happen" — sparse entries ("RCT complete #30
   with local") leave the defense unable to reconstruct findings, consent, anesthetic,
   technique, or reasoning years later (WSDA case study).

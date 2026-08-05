@@ -31,6 +31,7 @@ export default async function StandardizePage() {
       <Standardizer
         assistEnabled={getAssistConfig().enabled}
         clinicalRole={user.clinicalRole}
+        username={user.username}
       />
     </div>
   );

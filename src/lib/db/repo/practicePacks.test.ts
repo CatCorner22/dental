@@ -55,6 +55,21 @@ describe("practice packs dual-control", () => {
     if (!self.ok) expect(self.error).toMatch(/second Team Lead/i);
   });
 
+  it("refuses the author even when a buddy submitted", async () => {
+    const author = { id: "lead-a", name: "A Lead" };
+    const buddy = { id: "lead-buddy", name: "Buddy Lead" };
+    const pack = await createPracticePack(db, BODY, author);
+    await submitPack(db, pack.id, buddy);
+    const byAuthor = await decidePack(db, {
+      id: pack.id,
+      approve: true,
+      note: "",
+      actor: author
+    });
+    expect(byAuthor.ok).toBe(false);
+    if (!byAuthor.ok) expect(byAuthor.error).toMatch(/author/i);
+  });
+
   it("lets a second lead approve and publish", async () => {
     const author = { id: "lead-a", name: "A Lead" };
     const reviewer = { id: "lead-b", name: "B Lead" };

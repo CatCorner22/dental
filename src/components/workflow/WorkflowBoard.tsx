@@ -16,6 +16,7 @@ type Pack = {
   moduleIds: string[];
   blockIds: string[];
   authorRoles: string[];
+  createdById: string | null;
   createdByName: string;
   submittedById: string | null;
   submittedByName: string | null;
@@ -320,7 +321,9 @@ export function WorkflowBoard({
               <li className="text-sm text-slate-500">No packs yet. Create one for a common visit type.</li>
             )}
             {packs.map((p) => {
-              const isSubmitter = p.submittedById != null && p.submittedById === currentUserId;
+              const cannotDecide =
+                (p.createdById != null && p.createdById === currentUserId) ||
+                (p.submittedById != null && p.submittedById === currentUserId);
               return (
                 <li key={p.id} className="card p-3 text-sm">
                   <div className="flex flex-wrap items-baseline justify-between gap-2">
@@ -370,9 +373,10 @@ export function WorkflowBoard({
                       </>
                     )}
                     {p.status === "in_review" &&
-                      (isSubmitter ? (
+                      (cannotDecide ? (
                         <p className="text-xs text-slate-600">
-                          Waiting for a second Team Lead — you cannot approve your own submission.
+                          Waiting for a second Team Lead — the author and the submitter cannot
+                          decide this review.
                         </p>
                       ) : (
                         <>

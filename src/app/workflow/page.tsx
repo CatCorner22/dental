@@ -35,6 +35,7 @@ export default async function WorkflowPage() {
           moduleIds: p.moduleIds ?? [],
           blockIds: p.blockIds ?? [],
           authorRoles: p.authorRoles ?? [],
+          createdById: p.createdById,
           createdByName: p.createdByName,
           submittedById: p.submittedById,
           submittedByName: p.submittedByName,

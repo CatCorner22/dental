@@ -203,8 +203,19 @@ export async function decidePack(
   if (existing.status !== "in_review") {
     return { ok: false, error: "Pack is not waiting for review." };
   }
+  // Dual-control: neither the author nor the submitter may decide. A buddy
+  // submit must not let the creator approve their own pack.
+  if (existing.createdById && existing.createdById === args.actor.id) {
+    return {
+      ok: false,
+      error: "A second Team Lead must approve — the pack author cannot decide this review."
+    };
+  }
   if (existing.submittedById && existing.submittedById === args.actor.id) {
-    return { ok: false, error: "A second Team Lead must approve — you cannot approve your own submission." };
+    return {
+      ok: false,
+      error: "A second Team Lead must approve — you cannot approve your own submission."
+    };
   }
   if (!args.approve && !args.note.trim()) {
     return { ok: false, error: "A reject needs a short note so the author knows what to fix." };

@@ -1,7 +1,7 @@
 import { describe, expect, it } from "vitest";
 import { FIRST_PASS_STATUS, computeStats } from "./computeStats";
 import { deriveBadges } from "./badges";
-import { ALL_SPARKLE_LINES, daySeed, sparkleLine } from "./sparkle";
+import { ALL_SPARKLE_LINES, daySeed, sparkleLine, type SparkleContext } from "./sparkle";
 
 const pass = (daysAgo: number) => ({
   auditStatus: FIRST_PASS_STATUS,
@@ -51,6 +51,30 @@ describe("sparkleLine", () => {
     expect(sparkleLine("dashboard", -7)).toMatch(/Sparkle says:/); // negative seed safe
     expect(sparkleLine("empty", 3)).toMatch(/Sparkle says:/);
     expect(sparkleLine("conflict", 3)).toMatch(/Sparkle says:/);
+  });
+
+  it("answers for every context, so a new one cannot ship empty", () => {
+    // The modulo in sparkleLine divides by lines.length. A context added with
+    // an empty array does not throw — it returns undefined and renders as
+    // nothing, which is exactly the kind of miss that survives a code review.
+    const contexts: SparkleContext[] = [
+      "dashboard",
+      "afterSubmit",
+      "firstPass",
+      "empty",
+      "conflict",
+      "paste",
+      "resolving",
+      "scoped",
+      "saved",
+      "history"
+    ];
+    for (const context of contexts) {
+      // Two different seeds: a single-line context would pass a one-seed check
+      // while still having nothing to rotate.
+      expect(sparkleLine(context, 0), context).toMatch(/^Sparkle says:/);
+      expect(sparkleLine(context, 1), context).toMatch(/^Sparkle says:/);
+    }
   });
 
   it("daySeed is stable within a day and advances the next day", () => {

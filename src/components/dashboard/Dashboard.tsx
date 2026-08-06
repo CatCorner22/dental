@@ -8,10 +8,9 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { authorCapabilities } from "@/lib/scope/authorCapabilities";
 import { featuredPicksForRole, quickPicksForRole } from "@/lib/presets/quickPicks";
-import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
-import { Character } from "@/components/mascot/Sparkle";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { OnboardingChecklist } from "./OnboardingChecklist";
+import { GreetingBar } from "./GreetingBar";
 import type { DraftRow } from "@/components/notes/DraftList";
 
 export function Dashboard({
@@ -72,19 +71,7 @@ export function Dashboard({
     <div className="space-y-6">
       {canEdit && <OnboardingChecklist username={username} />}
       <div className="flex flex-wrap items-end justify-between gap-3">
-        <div className="flex items-center gap-3">
-          <Character id="sparkle" size="lg" />
-          <div>
-            <div className="flex items-center gap-1.5">
-              <h1 className="page-title">Hi {displayName} 👋</h1>
-              <HelpTip label="About your dashboard">
-                Your drafts live here. Start a blank note or a quick pick. Filter by status when the
-                list grows. Nothing here is the patient chart — open a note to write.
-              </HelpTip>
-            </div>
-            <p className="text-sm text-slate-600">{sparkleLine("dashboard", daySeed(new Date()))}</p>
-          </div>
-        </div>
+        <GreetingBar displayName={displayName} />
         {canEdit && (
           <div className="relative">
             <div className="flex items-center gap-2">

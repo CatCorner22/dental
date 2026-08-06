@@ -44,6 +44,7 @@ import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -384,7 +385,10 @@ export function BuilderShell({
         setOfficeId(data.officeId);
         adoptVersion(data.version);
         setShowRevisions(false);
-        setToast({ text: "Earlier save restored — autosave will keep it on the server.", tone: "success" });
+        setToast({
+          text: `Earlier save restored — autosave will keep it on the server. ${sparkleLine("saved", daySeed(new Date()))}`,
+          tone: "success"
+        });
       } catch {
         setToast({ text: "Could not restore that save.", tone: "error" });
       } finally {
@@ -800,7 +804,10 @@ export function BuilderShell({
                 setTitle(backupOffer.title);
                 setOfficeId(backupOffer.officeId);
                 setBackupOffer(null);
-                setToast({ text: "Local backup restored — it will autosave like any edit.", tone: "success" });
+                setToast({
+                  text: `Local backup restored — it will autosave like any edit. ${sparkleLine("saved", daySeed(new Date()))}`,
+                  tone: "success"
+                });
               }}
             >
               Restore local backup

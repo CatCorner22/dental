@@ -10,6 +10,8 @@ import {
   STATUS_CLASS
 } from "@/lib/audit/types";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { Character } from "@/components/mascot/Sparkle";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 
 function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () => void }) {
@@ -126,7 +128,19 @@ export function AuditPanel({
             ))
         )}
         {report.findings.length === 0 && (
+          // The one moment in the note worth celebrating, and it earns exactly
+          // one sparkle. The sentence underneath is unchanged: a clean checker
+          // is not a signed note, and this is the last place to blur that.
           <li className="rounded border border-green-200 bg-green-50 px-2.5 py-2 text-xs text-green-900">
+            <span className="mb-1.5 flex items-center gap-2">
+              <span className="relative inline-flex">
+                <Character id="sparkle" size="sm" />
+                <span aria-hidden className="sparkle-pop absolute -right-1 -top-1 text-brand-gold">
+                  ✦
+                </span>
+              </span>
+              <span className="font-semibold">{sparkleLine("firstPass", daySeed(new Date()))}</span>
+            </span>
             No finding from the deterministic checker. A licensed clinician still compares every
             fact with the source record and signs in the EDR.
           </li>

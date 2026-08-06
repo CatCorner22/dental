@@ -122,8 +122,12 @@ const nextConfig = {
   // URLs; webpack bundling breaks that. Keep the DB drivers external so they
   // load from node_modules at runtime.
   serverExternalPackages: ["@electric-sql/pglite", "pg"],
+  // Reference pages call readReferenceDoc() against skill/ and knowledge/
+  // markdown at runtime. Without these includes, Vercel’s serverless trace
+  // omits the files and /reference/risk-management throws ENOENT on the
+  // litigation / integrity digests (seen in production 2026-08-06).
   outputFileTracingIncludes: {
-    "/reference/**": ["./skill/**"]
+    "/reference/**": ["./skill/**", "./knowledge/sources/**"]
   },
   // Next advertises its version in a response header. It tells an attacker
   // which CVEs to try and tells a legitimate user nothing.

@@ -11,6 +11,7 @@ import {
   countAllDrafts
 } from "@/lib/db/repo/drafts";
 import { getOffice, officesForPicker } from "@/lib/db/repo/offices";
+import { edrProductShort } from "@/lib/edr/product";
 import { listUsers } from "@/lib/db/repo/users";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { BuilderShell } from "@/components/builder/BuilderShell";
@@ -118,6 +119,8 @@ export default async function HomePage() {
         initialSubmitted={draft.status === "submitted"}
         initialSendFailed={draft.lastSendFailed}
         canEdit={canWriteNote(user.role, draft.ownerId, user.id)}
+        edrName={edrProductShort()}
+        username={user.username}
         // The one thing the home page does that /note/[id] does not: land the
         // cursor. Time-to-first-editable-field is the metric this whole page
         // exists to move, and it is zero only if something is focused.

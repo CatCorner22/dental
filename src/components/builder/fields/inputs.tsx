@@ -13,6 +13,7 @@ import type {
 import { standardize } from "@/lib/standardize/standardize";
 import { OMISSION_LICENCES, exactLicence, licenceText } from "@/lib/audit/omissions";
 import { TextDiff } from "@/components/diff/TextDiff";
+import { DictationField } from "./DictationField";
 
 interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
@@ -469,6 +470,12 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
+      {/* The microphone, for anyone who set dictation up in My account. It
+          renders nothing at all when the browser has no speech engine or when
+          the device is not enrolled, so it costs a writer who types exactly
+          nothing — which is the arrangement the standardize screen got wrong by
+          putting a five-minute enrollment wall in front of the textarea. */}
+      <DictationField onText={(t) => insert(t)} />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
       {/* The fact is offered first, the absence second. See LicenceChips. */}
       {required && (

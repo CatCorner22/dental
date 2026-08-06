@@ -3,6 +3,7 @@ import { freshSessionUser } from "@/lib/auth/freshUser";
 import { AccountForm } from "@/components/account/AccountForm";
 import { RevokeSessions } from "@/components/account/RevokeSessions";
 import { DisplaySettings } from "@/components/shell/DisplaySettings";
+import { DictationSettings } from "@/components/account/DictationSettings";
 import { MfaSettings } from "@/components/account/MfaSettings";
 import { mfaFeatureEnabled } from "@/lib/auth/mfaFeature";
 import { ROLE_LABEL } from "@/lib/auth/roles";
@@ -38,6 +39,7 @@ export default async function AccountPage() {
       <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
       <RevokeSessions />
       <DisplaySettings />
+      <DictationSettings username={user.username} />
     </div>
   );
 }

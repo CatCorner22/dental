@@ -53,7 +53,7 @@ function transferTopic(): RiskTopic {
       ]
     },
     appLinks: [
-      { href: "/standardize", label: "Standardize" },
+      { href: "/", label: "The note builder" },
       { href: "/reference/curve-hero-header", label: `${edr} header reference` }
     ]
   };

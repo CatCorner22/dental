@@ -124,6 +124,20 @@ const nextConfig = {
   // Next advertises its version in a response header. It tells an attacker
   // which CVEs to try and tells a legitimate user nothing.
   poweredByHeader: false,
+  async redirects() {
+    return [
+      {
+        // /standardize was a top-level destination for the life of the app, so
+        // it is in bookmarks and pasted into chat. Its whole job — checking
+        // wording, sorting prose into sections, resolving what the checker
+        // raises — happens inside the note now. Permanent, because it is not
+        // coming back.
+        source: "/standardize",
+        destination: "/",
+        permanent: true
+      }
+    ];
+  },
   async headers() {
     return [
       {

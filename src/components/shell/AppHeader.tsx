@@ -60,7 +60,13 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                 identity={`${user.displayName} (${ROLE_LABEL[user.role]})`}
                 items={[
                   ...(meetsRole(user.role, "user")
-                    ? [{ href: "/standardize", label: "Standardize" }]
+                    ? [
+                        {
+                          href: "/notes/batch",
+                          label: "Batch check",
+                          hint: "End-of-day triage"
+                        }
+                      ]
                     : []),
                   { href: "/account", label: "Account" },
                   // Team Lead and above. Named "Digest" rather than "Quality"

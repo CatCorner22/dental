@@ -36,6 +36,8 @@ import type { AuditFinding } from "@/lib/audit/types";
 import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
 import { PasteIntake } from "./PasteIntake";
+import { DictationUserContext } from "./fields/DictationField";
+import { BlockInsert } from "./BlockInsert";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
 import { PriorNotes } from "./PriorNotes";
@@ -87,7 +89,9 @@ export function BuilderShell({
   initialSubmitted,
   initialSendFailed,
   canEdit,
-  autoFocusKey
+  autoFocusKey,
+  edrName,
+  username
 }: {
   draftId: string;
   initialTitle: string;
@@ -106,6 +110,15 @@ export function BuilderShell({
    * who was reading it.
    */
   autoFocusKey?: string;
+  /**
+   * The practice's charting product, resolved on the server (see lib/edr).
+   * A prop rather than a call here because the override lives in a server-only
+   * environment variable, and reading it from a client bundle silently gives
+   * every practice the default name instead of theirs.
+   */
+  edrName: string;
+  /** Whose dictation enrollment to look for. See DictationUserContext. */
+  username: string;
 }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(noteReducer, initialNote);
@@ -133,6 +146,8 @@ export function BuilderShell({
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pasteConfirmOpen, setPasteConfirmOpen] = useState(false);
+  const [pasteConfirmed, setPasteConfirmed] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   // Below `lg` the module rail, form, and Sidekick stack vertically (see the
   // flex-col wrapper below), which buried live audit feedback under the
@@ -584,10 +599,25 @@ export function BuilderShell({
     }
   };
 
+  // TWO IDENTIFIERS BEFORE THE CLIPBOARD.
+  //
+  // Carried over from the standardize screen, which asked for this and which
+  // the builder never did — so the copy that went into a chart was the one with
+  // no check on it. A perfect note in the wrong chart is a records error this
+  // tool cannot see, and the only person who can is the one about to paste.
+  //
+  // Two presses, not a dialog: the first opens the confirmation, the second
+  // writes the clipboard. A modal here would be dismissed by reflex.
   const copy = async () => {
+    if (!pasteConfirmed) {
+      setPasteConfirmOpen(true);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(markdown);
       setCopied(true);
+      setPasteConfirmOpen(false);
+      setPasteConfirmed(false);
       setTimeout(() => setCopied(false), 1500);
     } catch {
       download(`${filename}.md`, markdown);
@@ -706,7 +736,11 @@ export function BuilderShell({
           }
           onClick={copy}
         >
-          {copied ? "Copied ✓" : !gates.exportAllowed && hasContent ? "🔒 Copy locked" : "Copy"}
+          {copied
+            ? "Copied ✓"
+            : !gates.exportAllowed && hasContent
+              ? "🔒 Copy locked"
+              : `Copy for ${edrName}`}
         </button>
         <button
           className="btn-secondary"
@@ -740,6 +774,26 @@ export function BuilderShell({
         >
           Download .txt
         </button>
+        {pasteConfirmOpen && !copied && (
+          <div className="mt-2 w-full rounded border border-brand-blue/40 bg-brand-blue/10 p-3">
+            <label className="flex items-start gap-2 text-xs text-brand-navy">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={pasteConfirmed}
+                onChange={(e) => setPasteConfirmed(e.target.checked)}
+              />
+              <span>
+                The correct chart is open in {edrName} and I matched <strong>two</strong>{" "}
+                identifiers there (for example name and date of birth). A perfect note in the
+                wrong chart is a records error this tool cannot see — only you can.
+              </span>
+            </label>
+            <button className="btn-primary mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
+              Copy to clipboard
+            </button>
+          </div>
+        )}
         <HelpTip label="About copy and download">
           Copy and download stay locked while any STOP finding is open. A privacy STOP can be
           attested; other STOPs must be fixed in the note. Required fields block Submit but not
@@ -1046,7 +1100,11 @@ export function BuilderShell({
               note, and it has to be findable without being in the way of the
               writer who is simply going to type. */}
           <PasteIntake onSend={appendToField} canEdit={canEdit} lockedSections={lockedFieldKeys} />
+          {canEdit && (
+            <BlockInsert onInsert={appendToField} lockedSections={lockedFieldKeys} />
+          )}
           <fieldset disabled={!canEdit} className="min-w-0">
+            <DictationUserContext.Provider value={username}>
             <NoteForm
               modules={modules}
               state={state}
@@ -1054,6 +1112,7 @@ export function BuilderShell({
               findingsByField={fieldFindings}
               clinicalRole={clinicalRole}
             />
+            </DictationUserContext.Provider>
           </fieldset>
         </section>
 

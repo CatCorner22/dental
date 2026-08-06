@@ -20,9 +20,12 @@ import type { OverallStatus } from "./types";
 // These tests exist so it cannot happen again: one ramp, complete, and no
 // component may define a second one.
 
+// Every surface that renders a severity. The standardize screen was retired;
+// the two surfaces that show findings now are the note's audit panel and the
+// paste intake, and both must read the shared ramp rather than restate it.
 const COMPONENTS = [
   "src/components/builder/AuditPanel.tsx",
-  "src/components/standardize/Standardizer.tsx"
+  "src/components/builder/PasteIntake.tsx"
 ];
 
 const STATUSES: OverallStatus[] = [

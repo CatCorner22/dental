@@ -60,8 +60,8 @@ export function StandardizeDrill({ notes }: { notes: SyntheticTrainingNote[] }) 
         >
           Next draft ({(index % notes.length) + 1} of {notes.length})
         </button>
-        <Link href="/standardize" className="btn-secondary text-xs">
-          Try fixing it in Standardize →
+        <Link href="/" className="btn-secondary text-xs">
+          Try fixing it in a note →
         </Link>
       </div>
       {answer && (

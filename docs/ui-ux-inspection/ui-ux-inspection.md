@@ -61,9 +61,18 @@ flowchart LR
 
 - No change to PHI gates. SuperByte copy still forbids prompt/copy/feedback.
 
-## Quick wins shipped
+## Showtime residuals (second pass)
 
-Listed above. Infra gate remains open PR **#91** (production `POSTGRES_URL`).
+| Residual | Fix |
+|---|---|
+| Mobile audit sheet = full Sidekick dump | Dedicated `mobileSheetBody`: finish + Copy + Audit first; Byte/SuperByte and Chart/Prior/Preview in closed details |
+| Toast vs expanded Ways-into | Toast offset raised above expanded finish bar |
+| Ways-into tiny hit target | `.tap` + larger summary text |
+| HomeAside picks Escape/outside | Dismiss on Escape / outside click; More scaffolds collapsed |
+| Wrong copy “More → Notes” | “My notes” link only |
+| Feedback modal optional path | Dismiss labeled **Not now** (still once per browser) |
+
+Infra gate remains open PR **#91** (production `POSTGRES_URL`). Prefer merge **#91** then this UX PR.
 
 ## Verification checklist
 

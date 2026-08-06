@@ -76,6 +76,36 @@
       "remediation_shipped": "observe tagline; quieter tip; local gauges label; dark copy without AI_GATEWAY in chairside"
     }
   ],
+  "showtime_residuals": [
+    {
+      "id": "UIX-008",
+      "title": "Mobile audit sheet dumped full Sidekick",
+      "severity": "moderate",
+      "status": "resolved",
+      "remediation_shipped": "mobileSheetBody: finish+Copy+Audit first; advisors/tabs in details"
+    },
+    {
+      "id": "UIX-009",
+      "title": "HomeAside Start-another menu Escape/outside",
+      "severity": "moderate",
+      "status": "resolved",
+      "remediation_shipped": "Escape + mousedown-outside; More scaffolds collapsed"
+    },
+    {
+      "id": "UIX-010",
+      "title": "Stale More → Notes transfer copy",
+      "severity": "low",
+      "status": "resolved",
+      "remediation_shipped": "My notes link; no More → path"
+    },
+    {
+      "id": "UIX-011",
+      "title": "Feedback modal optional dismiss label",
+      "severity": "low",
+      "status": "resolved",
+      "remediation_shipped": "Not now dismiss; once-per-browser unchanged"
+    }
+  ],
   "open_infra": [
     {
       "id": "INFRA-91",

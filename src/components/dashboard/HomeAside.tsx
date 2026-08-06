@@ -1,6 +1,6 @@
 "use client";
 
-import { useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { StatusChip } from "@/components/ui/StatusChip";
@@ -44,6 +44,7 @@ export function HomeAside({
   const [busy, setBusy] = useState(false);
   const [showPicks, setShowPicks] = useState(false);
   const [error, setError] = useState("");
+  const picksRef = useRef<HTMLDivElement>(null);
   const picks = useMemo(() => quickPicksForRole(clinicalRole), [clinicalRole]);
   const featured = useMemo(() => featuredPicksForRole(clinicalRole), [clinicalRole]);
   const featuredIds = useMemo(() => new Set(featured.map((p) => p.id)), [featured]);
@@ -52,6 +53,29 @@ export function HomeAside({
     [picks, featuredIds]
   );
   const structureCue = authorCapabilities(clinicalRole).structureCue;
+
+  // Escape + outside click — same pattern as NavMenu. Without this the picks
+  // panel stays open over the note list after the next tap elsewhere, which
+  // reads as a stuck overlay on a shared tablet (showtime residual).
+  useEffect(() => {
+    if (!showPicks) return;
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key !== "Escape") return;
+      setShowPicks(false);
+      picksRef.current?.querySelector("button")?.focus();
+    };
+    const onPointer = (e: MouseEvent) => {
+      if (picksRef.current && !picksRef.current.contains(e.target as Node)) {
+        setShowPicks(false);
+      }
+    };
+    document.addEventListener("keydown", onKey);
+    document.addEventListener("mousedown", onPointer);
+    return () => {
+      document.removeEventListener("keydown", onKey);
+      document.removeEventListener("mousedown", onPointer);
+    };
+  }, [showPicks]);
 
   // Title is optional on purpose. Fast Lane scaffolds must NOT stamp the
   // visit-type label as the draft title — that fights autoDraftTitle and
@@ -92,12 +116,13 @@ export function HomeAside({
     <section className="space-y-3 border-t border-slate-200 pt-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="section-title">Other notes</h2>
-        <div className="relative">
+        <div className="relative" ref={picksRef}>
           <button
             className="btn-secondary"
             disabled={busy}
             onClick={() => setShowPicks((s) => !s)}
             aria-expanded={showPicks}
+            aria-haspopup="menu"
           >
             Start another note ▾
           </button>
@@ -106,8 +131,12 @@ export function HomeAside({
             // narrower button computed a negative left edge on a phone, putting
             // the labels off-screen with no way to scroll to them (absolute
             // overflow to the left creates no scrollbar).
-            <div className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200 sm:left-auto sm:w-80">
+            <div
+              role="menu"
+              className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200 sm:left-auto sm:w-80"
+            >
               <button
+                role="menuitem"
                 className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                 disabled={busy}
                 onClick={() => createDraft([], "Untitled note")}
@@ -123,6 +152,7 @@ export function HomeAside({
               </p>
               {featured.map((p) => (
                 <button
+                  role="menuitem"
                   key={p.id}
                   className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                   disabled={busy}
@@ -133,21 +163,26 @@ export function HomeAside({
                 </button>
               ))}
               {morePicks.length > 0 && (
-                <p className="label-micro mb-1 mt-2 border-t border-slate-100 px-2 pt-2">
-                  More scaffolds
-                </p>
+                <details className="mt-2 border-t border-slate-100 pt-2">
+                  <summary className="tap cursor-pointer px-2 py-1 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                    More scaffolds
+                  </summary>
+                  <div className="mt-1">
+                    {morePicks.map((p) => (
+                      <button
+                        role="menuitem"
+                        key={p.id}
+                        className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
+                        disabled={busy}
+                        onClick={() => createDraft(p.moduleIds)}
+                      >
+                        <span className="text-sm font-semibold text-slate-800">{p.label}</span>
+                        <span className="block text-xs text-slate-500">{p.description}</span>
+                      </button>
+                    ))}
+                  </div>
+                </details>
               )}
-              {morePicks.map((p) => (
-                <button
-                  key={p.id}
-                  className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
-                  disabled={busy}
-                  onClick={() => createDraft(p.moduleIds)}
-                >
-                  <span className="text-sm font-semibold text-slate-800">{p.label}</span>
-                  <span className="block text-xs text-slate-500">{p.description}</span>
-                </button>
-              ))}
             </div>
           )}
         </div>

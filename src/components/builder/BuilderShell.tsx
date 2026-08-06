@@ -967,6 +967,109 @@ export function BuilderShell({
     </>
   );
 
+  // Tablet/phone sheet — audit + Copy first. Dumping the full desktop Sidekick
+  // (advisors always open + four tabs) into a max-w-lg dialog buried the finish
+  // reason under scroll (showtime residual #1).
+  const mobileSheetBody = (
+    <>
+      <div className="mb-3 flex items-center gap-3">
+        <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
+        <div className="min-w-0 flex-1">
+          <StatusChip status={liveStatus} />
+          <p className="mt-1 text-xs font-medium text-slate-800">{finishLine}</p>
+        </div>
+      </div>
+      <div className="mb-3 flex flex-wrap gap-2">
+        <button
+          className={!hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"}
+          disabled={!hasContent || !gates.exportAllowed}
+          onClick={copy}
+        >
+          {copied
+            ? "Copied — ready to paste ✓"
+            : !gates.exportAllowed && hasContent
+              ? "🔒 Copy locked"
+              : `Copy for ${edrName}`}
+        </button>
+        {report.phiStops.length > 0 && !overrideActive && (
+          <button
+            type="button"
+            className="btn-secondary border-rose-300 text-rose-800"
+            onClick={() => {
+              setShowMobileAudit(false);
+              setShowOverride(true);
+            }}
+          >
+            Review privacy stop
+          </button>
+        )}
+      </div>
+      {hasContent && !gates.exportAllowed && (
+        <p className="mb-3 text-xs text-rose-800" role="status">
+          Copy locked until every stop is fixed
+          {report.phiStops.length > 0 && !overrideActive
+            ? " (or a privacy stop is attested)"
+            : ""}
+          . Findings are listed below.
+        </p>
+      )}
+      <AuditPanel
+        report={report}
+        onJump={() => setShowMobileAudit(false)}
+        started={hasContent}
+        attestations={resolutionsForNote.attested}
+        escalated={resolutionsForNote.escalated}
+        onAttest={canEdit ? recordAttestation : undefined}
+        onEscalate={canEdit ? escalateFinding : undefined}
+      />
+      <details className="mt-3 rounded-lg border border-slate-200 p-2">
+        <summary className="tap cursor-pointer text-xs font-semibold text-slate-700">
+          Byte & SuperByte
+        </summary>
+        <div className="mt-2 space-y-2">
+          <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
+          <ByteStarAdvisor text={markdown} />
+        </div>
+      </details>
+      <details className="mt-2 rounded-lg border border-slate-200 p-2">
+        <summary className="tap cursor-pointer text-xs font-semibold text-slate-700">
+          Chart · Prior · Preview
+        </summary>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {([["chart", "Chart"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(
+            ([t, label]) => {
+              // Desktop Sidekick defaults to "audit"; on mobile audit lives
+              // above this disclosure, so treat unset as Chart.
+              const pressed = t === "chart" ? tab === "chart" || tab === "audit" : tab === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  aria-pressed={pressed}
+                  className={`tap rounded px-3 text-sm font-medium ${pressed ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-600"}`}
+                >
+                  {label}
+                </button>
+              );
+            }
+          )}
+        </div>
+        <div className="pane-40 mt-2">
+          {tab === "prior" ? (
+            <PriorNotes />
+          ) : tab === "preview" ? (
+            <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">
+              {markdown}
+            </pre>
+          ) : (
+            <NoteReadback text={markdown} />
+          )}
+        </div>
+      </details>
+    </>
+  );
+
   return (
     <div className={canEdit ? "pb-36 sm:pb-28" : undefined}>
       {/* Sticky patient-header-style bar — IDENTITY AND STATE ONLY.
@@ -1137,6 +1240,7 @@ export function BuilderShell({
           type="button"
           onClick={() => setShowMobileAudit(true)}
           className="tap flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm"
+          aria-label="Open audit, copy, and preview"
         >
           <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
           <span className="min-w-0 flex-1">
@@ -1148,8 +1252,8 @@ export function BuilderShell({
             </span>
             <span className="mt-0.5 block truncate text-[0.65rem] text-slate-500">
               {report.findings.length === 0
-                ? "Tap for audit, Byte, SuperByte, Copy"
-                : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — tap for audit & preview`}
+                ? "Tap for audit & copy"
+                : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — tap for audit & copy`}
             </span>
           </span>
           <span aria-hidden className="shrink-0 text-slate-400">
@@ -1195,9 +1299,9 @@ export function BuilderShell({
                   </button>
                 ) : (
                   <p className="text-xs text-slate-700">
-                    Ask a Team Lead to transfer this note (More → Notes), or open{" "}
+                    Ask a Team Lead to transfer this note, or open{" "}
                     <Link href="/notes" className="font-medium text-brand-blue underline">
-                      Notes
+                      My notes
                     </Link>{" "}
                     if you have transfer rights on another account.
                   </p>
@@ -1336,7 +1440,7 @@ export function BuilderShell({
               </button>
             </div>
             <details className="group">
-              <summary className="cursor-pointer list-none text-[0.65rem] font-medium text-slate-500 underline decoration-dotted underline-offset-2 marker:content-none [&::-webkit-details-marker]:hidden">
+              <summary className="tap cursor-pointer list-none py-1 text-xs font-medium text-slate-500 underline decoration-dotted underline-offset-2 marker:content-none [&::-webkit-details-marker]:hidden">
                 Ways into this note
               </summary>
               <div className="mt-1.5 flex flex-wrap gap-2">
@@ -1421,7 +1525,8 @@ export function BuilderShell({
         <div
           className={`fixed inset-x-4 z-40 mx-auto w-fit max-w-md rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
             canEdit
-              ? "bottom-[calc(5.5rem+env(safe-area-inset-bottom))] sm:bottom-[calc(4.75rem+env(safe-area-inset-bottom))]"
+              ? // Clear the finish bar even when "Ways into this note" is open.
+                "bottom-[calc(8.5rem+env(safe-area-inset-bottom))] sm:bottom-[calc(7.5rem+env(safe-area-inset-bottom))]"
               : "bottom-4"
           } ${
             toast.tone === "error"
@@ -1435,8 +1540,8 @@ export function BuilderShell({
       )}
 
       {showMobileAudit && (
-        <Dialog title="Audit & preview" onClose={() => setShowMobileAudit(false)}>
-          {sidekickBody}
+        <Dialog title="Audit & copy" onClose={() => setShowMobileAudit(false)}>
+          {mobileSheetBody}
         </Dialog>
       )}
       {showOverride && (

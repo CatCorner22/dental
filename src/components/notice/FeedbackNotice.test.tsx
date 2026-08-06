@@ -18,11 +18,11 @@ describe("FeedbackNotice — once per browser (first impression)", () => {
     expect(await screen.findByRole("heading", { name: /feedback shapes/i })).toBeTruthy();
   });
 
-  it("stays closed after Got it — and login re-arm is a no-op", async () => {
+  it("stays closed after Not now — and login re-arm is a no-op", async () => {
     const { unmount } = render(<FeedbackNotice enabled />);
-    const gotIt = await screen.findByRole("button", { name: /got it/i });
+    const notNow = await screen.findByRole("button", { name: /not now/i });
     await act(async () => {
-      gotIt.click();
+      notNow.click();
     });
     expect(localStorage.getItem(SEEN_KEY)).toBe("1");
     unmount();

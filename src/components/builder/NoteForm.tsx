@@ -24,6 +24,12 @@ import {
 } from "./fields/inputs";
 import { ToothPicker } from "./fields/ToothPicker";
 import { SurfacePicker } from "./fields/SurfacePicker";
+import { SectionReview } from "./SectionReview";
+import {
+  nextSectionKey,
+  reviewSection,
+  sectionSignature
+} from "@/lib/review/sectionReview";
 
 // A single labelable control gets an id so the visible label can name it via
 // htmlFor. Group-style fields (chips, pickers, segmented selects) are named
@@ -175,6 +181,37 @@ export function NoteForm({
     return initial;
   });
 
+  // THE SECTION LOOP.
+  //
+  // `reviewed` maps a section key to the SIGNATURE of its contents at the
+  // moment it was accepted, not to `true`. That is what makes the tick honest:
+  // edit the section afterwards and the signature moves, the tick drops, and it
+  // asks to be checked again — because "I read this and it was right" was said
+  // about words that have since changed.
+  //
+  // `reviewing` is the one section currently showing its findings. One at a
+  // time on purpose: the loop is write-check-accept-next, and three panels open
+  // at once is the wall of feedback this replaced.
+  const [reviewed, setReviewed] = useState<Record<string, string>>({});
+  const [reviewing, setReviewing] = useState<string | null>(null);
+
+  // Open a section, scroll to it, and put the cursor in its first control.
+  // Landing somebody at the top of the next section without focus means they
+  // have to find their place again, which is most of what "and continue" was
+  // supposed to save them.
+  const goToSection = (key: string) => {
+    setOpenSections((s) => ({ ...s, [key]: true }));
+    // After the open state has painted, or scrollIntoView measures a collapsed
+    // element and scrolls to the wrong place.
+    requestAnimationFrame(() => {
+      const el = document.querySelector<HTMLElement>(`details[data-section="${key}"]`);
+      if (!el) return;
+      const reduce = window.matchMedia?.("(prefers-reduced-motion: reduce)").matches;
+      el.scrollIntoView({ behavior: reduce ? "auto" : "smooth", block: "start" });
+      el.querySelector<HTMLElement>("input, select, textarea")?.focus({ preventScroll: true });
+    });
+  };
+
   // The sections of one module. Extracted so the two module wrappers below —
   // a real disclosure when there is more than one module, a plain box when
   // Universal Core is on its own — render identical content.
@@ -189,6 +226,7 @@ export function NoteForm({
                 !canRecordClinicalJudgement(clinicalRole) &&
                 isDentistOwnedSection(mod.id, section.id);
               const sectionKey = `${mod.id}.${section.id}`;
+              const signature = sectionSignature(mod, section, state);
               const open = openSections[sectionKey] ?? true;
               // What the summary line has to earn its collapse: how much of
               // this section is still outstanding. A closed section that says
@@ -259,6 +297,13 @@ export function NoteForm({
                     )}
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5 font-normal">
+                    {/* A collapsed section has to say whether it is done, or the
+                        loop is invisible the moment you move past it. */}
+                    {reviewed[sectionKey] === signature && (
+                      <span className="rounded-full bg-green-100 px-1.5 text-[0.7rem] font-semibold text-green-900">
+                        ✓ checked
+                      </span>
+                    )}
                     {findingCount > 0 && (
                       <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
                         {findingCount} to review
@@ -322,6 +367,35 @@ export function NoteForm({
                     );
                   })}
                 </div>
+                {/* THE LOOP, at the end of the section it is about. */}
+                <SectionReview
+                  review={reviewSection(mod, section, state, findingsByField, clinicalRole)}
+                  phase={
+                    reviewed[sectionKey] === signature
+                      ? "checked"
+                      : reviewing === sectionKey
+                        ? "reviewing"
+                        : "idle"
+                  }
+                  hasNext={nextSectionKey(modules, sectionKey) !== null}
+                  canEdit={!outOfScope}
+                  onCheck={() => setReviewing(sectionKey)}
+                  onApply={(key, next) => onChange(key, { kind: "text", value: next })}
+                  onKeepEditing={() => setReviewing(null)}
+                  onAcceptAndContinue={() => {
+                    // Recorded against the CONTENT, so a later edit un-checks it.
+                    setReviewed((r) => ({ ...r, [sectionKey]: signature }));
+                    setReviewing(null);
+                    const next = nextSectionKey(modules, sectionKey);
+                    if (next) {
+                      // Collapse the one just finished. The note gets shorter as
+                      // it gets more complete, which is the opposite of what a
+                      // long form usually does to a person.
+                      setOpenSections((s) => ({ ...s, [sectionKey]: false }));
+                      goToSection(next);
+                    }
+                  }}
+                />
                 </fieldset>
               </details>
               );

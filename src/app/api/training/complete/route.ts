@@ -11,7 +11,7 @@ export const runtime = "nodejs";
 
 // Completing a practice case. VERIFIED SERVER-SIDE with the same audit that
 // gates real notes — a tampered client earns nothing. The repaired text is
-// audited in memory and discarded, exactly like /api/standardize; the only
+// audited in memory and discarded, like the paste intake in the note; the only
 // thing stored is the ledger row, and the unique index makes the bounty
 // once-per-scenario however many times completion is posted.
 export async function POST(req: Request): Promise<Response> {

@@ -708,7 +708,31 @@ export function BuilderShell({
           a real-time helper you have to go and find is not a real-time helper.
           They live here now, above the tabs, on screen the whole time the note
           is open, for every role. Nothing gates them: both read the composed
-          note locally and neither can write to it. */}
+          note locally and neither can write to it.
+          Jump links scroll inside the aside only — they do not swap panels. */}
+      <nav
+        aria-label="Advisor jump links"
+        className="mb-1.5 flex flex-wrap items-center gap-1.5 text-[0.7rem]"
+      >
+        <span className="text-slate-400">Jump to</span>
+        {(
+          [
+            ["advisor-byte", "Byte"],
+            ["advisor-superbyte", "SuperByte"]
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200/80"
+            onClick={() =>
+              document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
       <div className="mb-3 space-y-2">
         {/* Byte first: it is the deterministic advisor reading the note that was
             just typed, and it is the one whose advice cites a rule. SuperByte

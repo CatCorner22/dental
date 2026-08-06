@@ -1,15 +1,15 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
+import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { canTransferNotes, seesAllNotes, type Role } from "@/lib/auth/roles";
-import { Dialog } from "@/components/ui/Dialog";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { Character } from "@/components/mascot/Sparkle";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { STATUS_META } from "@/lib/status/draftStatus";
 import type { DraftStatus } from "@/lib/status/draftStatus";
+import { TransferDraftDialog } from "./TransferDraftDialog";
 
 // THE DRAFT LIST — search, status filters, and the per-row actions.
 //
@@ -238,8 +238,9 @@ export function DraftList({
       )}
 
       {transferFor && (
-        <TransferDialog
-          draft={transferFor}
+        <TransferDraftDialog
+          draftId={transferFor.id}
+          draftTitle={transferFor.title}
           onClose={() => setTransferFor(null)}
           onDone={() => {
             setTransferFor(null);
@@ -248,87 +249,5 @@ export function DraftList({
         />
       )}
     </div>
-  );
-}
-
-function TransferDialog({
-  draft,
-  onClose,
-  onDone
-}: {
-  draft: DraftRow;
-  onClose: () => void;
-  onDone: () => void;
-}) {
-  const [users, setUsers] = useState<
-    { id: string; username: string; displayName: string; role: string; active: boolean }[]
-  >([]);
-  const [toUserId, setToUserId] = useState("");
-  const [error, setError] = useState("");
-
-  useEffect(() => {
-    fetch("/api/admin/users")
-      .then((r) => r.json())
-      .then((d) =>
-        setUsers(
-          (d.users ?? []).filter(
-            (u: { active: boolean; role: string }) => u.active && u.role !== "readonly"
-          )
-        )
-      )
-      .catch(() => setError("Could not load users."));
-  }, []);
-
-  const submit = async () => {
-    setError("");
-    try {
-      const res = await fetch(`/api/admin/drafts/${draft.id}/transfer`, {
-        method: "POST",
-        headers: { "content-type": "application/json" },
-        body: JSON.stringify({ toUserId })
-      });
-      if (res.ok) return onDone();
-      setError(
-        ((await res.json().catch(() => ({}))) as { error?: string }).error ?? "Transfer failed."
-      );
-    } catch {
-      setError("Transfer failed — check the connection and try again.");
-    }
-  };
-
-  return (
-    <Dialog title={`Transfer "${draft.title}"`} onClose={onClose}>
-      <div className="space-y-3">
-        <label className="field-label" htmlFor="transfer-to">
-          Transfer to
-        </label>
-        <select
-          id="transfer-to"
-          className="field-input"
-          value={toUserId}
-          onChange={(e) => setToUserId(e.target.value)}
-        >
-          <option value="">— select a user —</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.displayName} ({u.username})
-            </option>
-          ))}
-        </select>
-        {error && (
-          <p className="text-sm text-red-700" role="alert">
-            {error}
-          </p>
-        )}
-        <div className="flex justify-end gap-2">
-          <button className="btn-secondary" onClick={onClose}>
-            Cancel
-          </button>
-          <button className="btn-primary" disabled={!toUserId} onClick={submit}>
-            Transfer
-          </button>
-        </div>
-      </div>
-    </Dialog>
   );
 }

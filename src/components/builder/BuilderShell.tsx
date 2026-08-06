@@ -1,6 +1,7 @@
 "use client";
 
 import { canRecordClinicalJudgement, type ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { checkFilingAuthority } from "@/lib/auth/approval";
 
 import {
   useCallback,
@@ -12,6 +13,7 @@ import {
   useState
 } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { moduleVisibleInRail } from "@/lib/scope/authorCapabilities";
@@ -51,6 +53,7 @@ import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
+import { TransferDraftDialog } from "@/components/notes/TransferDraftDialog";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import type { UsaRegionId } from "@/lib/dictation/regional";
 
@@ -92,6 +95,7 @@ export function BuilderShell({
   initialSubmitted,
   initialSendFailed,
   canEdit,
+  canTransfer = false,
   autoFocusKey,
   edrName,
   username,
@@ -108,6 +112,11 @@ export function BuilderShell({
   initialSubmitted: boolean;
   initialSendFailed: boolean;
   canEdit: boolean;
+  /**
+   * System-role transfer power (Team Lead+). Distinct from clinical handoff
+   * copy: a hygienist is told to transfer, but only a lead can run the API.
+   */
+  canTransfer?: boolean;
   /**
    * `moduleId.fieldId` to land the cursor in on mount. The home page sets it;
    * /note/[id] does not, because arriving at a specific note from a link is a
@@ -169,6 +178,7 @@ export function BuilderShell({
   // the Sidekick into a reachable sheet on those screens instead; the desktop
   // sticky aside is untouched.
   const [showMobileAudit, setShowMobileAudit] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   // Paste is an ENTRY mode — reached for once, at the start of a note, and
   // never again in it. As a permanent card above the fields it spent the top of
   // the busiest screen on something used at most once per note; behind a button
@@ -362,6 +372,24 @@ export function BuilderShell({
   // Why Submit is off. Pure and in lib/status so it can be tested — it named a
   // count of zero as a second task when a stop was the only blocker.
   const blockedReason = useMemo(() => submitBlockedReason(report.counts), [report.counts]);
+
+  // Same rule the submit API enforces — surface it before the dialog fails.
+  const filing = useMemo(
+    () => checkFilingAuthority(clinicalRole, auditModules, deferredState),
+    [clinicalRole, auditModules, deferredState]
+  );
+  const needsDentistHandoff = !canRecordClinicalJudgement(clinicalRole) || !filing.allowed;
+  const topStop = report.findings.find((f) => f.severity === "S0");
+  const finishLine =
+    !hasContent
+      ? "Write something to unlock Submit and Copy."
+      : !filing.allowed
+        ? "Dentist must file this note — transfer ownership first."
+        : !gates.exportAllowed
+          ? blockedReason || "Copy locked until every stop is fixed."
+          : gates.emailAllowed
+            ? "Ready to file."
+            : blockedReason || "Fix open stops before filing.";
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -566,7 +594,12 @@ export function BuilderShell({
   // Keyboard shortcuts, Curve-style: Ctrl/Cmd+S saves, Ctrl/Cmd+Enter submits.
   const submitEnabledRef = useRef(false);
   submitEnabledRef.current =
-    canEdit && hasContent && gates.emailAllowed && liveStatus !== "submitted" && !showSubmit;
+    canEdit &&
+    hasContent &&
+    gates.emailAllowed &&
+    filing.allowed &&
+    liveStatus !== "submitted" &&
+    !showSubmit;
   useEffect(() => {
     if (!canEdit) return;
     const onKey = (e: KeyboardEvent) => {
@@ -1052,28 +1085,79 @@ export function BuilderShell({
         </div>
       )}
 
-      {/* Mobile/tablet audit bar. Below `lg` the module rail, form, and
-          Sidekick stack vertically (see the flex-col wrapper just below),
-          which buried live audit feedback under the entire form — reaching
-          it meant scrolling past every field first. Placed here, above that
-          stack, it is visible without scrolling and opens the same Sidekick
-          content in a dismissible sheet. */}
-      <button
-        type="button"
-        onClick={() => setShowMobileAudit(true)}
-        className="tap mb-4 flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm lg:hidden"
-      >
-        <ProgressRing counts={report.counts} />
-        <span className="min-w-0 flex-1">
-          <StatusChip status={liveStatus} />
-          <span className="mt-0.5 block truncate text-xs text-slate-500">
-            {report.findings.length === 0
-              ? "No findings — view audit & preview"
-              : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — view audit & preview`}
+      {/* Mobile/tablet finish strip — one line for the blocker that matters,
+          then the audit sheet. Hygienists on a tablet should not archaeology
+          the Sidekick to learn why Copy/Submit is off. */}
+      <div className="mb-4 space-y-2 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setShowMobileAudit(true)}
+          className="tap flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm"
+        >
+          <ProgressRing counts={report.counts} />
+          <span className="min-w-0 flex-1">
+            <StatusChip status={liveStatus} />
+            <span className="mt-0.5 block truncate text-xs text-slate-700">
+              {topStop
+                ? `Stop: ${topStop.message}`
+                : finishLine}
+            </span>
+            <span className="mt-0.5 block truncate text-[0.65rem] text-slate-500">
+              {report.findings.length === 0
+                ? "Tap for audit, Byte, SuperByte, Copy"
+                : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — tap for audit & preview`}
+            </span>
           </span>
-        </span>
-        <span aria-hidden className="shrink-0 text-slate-400">▸</span>
-      </button>
+          <span aria-hidden className="shrink-0 text-slate-400">
+            ▸
+          </span>
+        </button>
+      </div>
+
+      {clinicalRole === "unset" && canEdit && (
+        <div
+          className="mb-4 rounded-xl border border-amber-300 bg-amber-50 px-3 py-2.5 text-sm text-amber-950"
+          role="status"
+        >
+          <p className="font-semibold">Clinical role is not recorded on this account</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            Scope locks and templates stay open until a Team Lead sets Assistant, Hygienist, or
+            Dentist in User admin. Go-live tests on an unset role do not exercise the license map.
+          </p>
+        </div>
+      )}
+
+      {needsDentistHandoff && canEdit && liveStatus !== "submitted" && (
+        <div
+          className="mb-4 rounded-xl border border-slate-300 bg-slate-50 px-3 py-2.5 text-sm text-slate-800"
+          role="status"
+        >
+          <p className="font-semibold">Dentist completes Assessment, Plan, and filing</p>
+          <p className="mt-1 text-xs leading-relaxed">
+            {filing.message ??
+              "Record findings in Objective. Assessment and Plan stay for the dentist. When the draft is ready, ownership must move to a dentist before it files under the right license."}
+          </p>
+          <div className="mt-2 flex flex-wrap gap-2">
+            {canTransfer ? (
+              <button
+                type="button"
+                className="btn-secondary text-xs"
+                onClick={() => setShowTransfer(true)}
+              >
+                Transfer to dentist
+              </button>
+            ) : (
+              <p className="text-xs text-slate-600">
+                Ask a Team Lead to transfer this note to the dentist (More → Notes), or open{" "}
+                <Link href="/notes" className="font-medium text-brand-blue underline">
+                  Notes
+                </Link>{" "}
+                if you have transfer rights on another account.
+              </p>
+            )}
+          </div>
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Form. THE NOTE IS FIRST.
@@ -1174,19 +1258,27 @@ export function BuilderShell({
             <p className="min-w-0 flex-1 text-xs text-slate-600" id="builder-submit-blocked">
               {liveStatus === "submitted"
                 ? "Filed. Edit the note to submit again."
-                : !hasContent
-                  ? "Write something and Submit turns on."
-                  : gates.emailAllowed
-                    ? "Ready to file."
-                    : blockedReason}
+                : !filing.allowed
+                  ? "A dentist must file this note — transfer ownership first."
+                  : finishLine}
             </p>
             <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>
               Save
             </button>
             <button
               className="btn-primary"
-              disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
-              aria-disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+              disabled={
+                !hasContent ||
+                !gates.emailAllowed ||
+                !filing.allowed ||
+                liveStatus === "submitted"
+              }
+              aria-disabled={
+                !hasContent ||
+                !gates.emailAllowed ||
+                !filing.allowed ||
+                liveStatus === "submitted"
+              }
               aria-describedby="builder-submit-blocked"
               onClick={() => void trySubmit()}
             >
@@ -1353,6 +1445,18 @@ export function BuilderShell({
           }}
           onStartAnother={() => void startAnother()}
           onGoToDashboard={() => router.push("/")}
+        />
+      )}
+      {showTransfer && (
+        <TransferDraftDialog
+          draftId={draftId}
+          draftTitle={title}
+          onClose={() => setShowTransfer(false)}
+          onDone={() => {
+            setShowTransfer(false);
+            router.push("/notes");
+            router.refresh();
+          }}
         />
       )}
     </div>

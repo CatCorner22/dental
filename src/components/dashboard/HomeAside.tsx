@@ -164,7 +164,7 @@ export function HomeAside({
               ))}
               {morePicks.length > 0 && (
                 <details className="mt-2 border-t border-slate-100 pt-2">
-                  <summary className="tap cursor-pointer px-2 py-1 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                  <summary className="label-micro tap cursor-pointer px-2 py-1 text-slate-500">
                     More scaffolds
                   </summary>
                   <div className="mt-1">

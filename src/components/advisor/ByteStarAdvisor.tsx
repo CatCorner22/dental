@@ -246,7 +246,9 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 ? "SuperByte is reading the draft…"
                 : deferred.trim().length < MIN_CHARS
                   ? "Keep typing — feedback appears when the draft is long enough to analyze."
-                  : "Drift gauges below are live. Pioneer observations appear when the deployment door is open."}
+                  : deploy === "off"
+                    ? "Pioneer model is dark on this deployment. A Team Lead opens it by setting AI_GATEWAY_API_KEY (see SuperByte monitor), then redeploying. Gauges below still run locally."
+                    : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
             </p>
           )}
         </div>

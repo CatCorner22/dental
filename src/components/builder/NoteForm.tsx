@@ -25,11 +25,18 @@ import {
 import { ToothPicker } from "./fields/ToothPicker";
 import { SurfacePicker } from "./fields/SurfacePicker";
 import { SectionReview } from "./SectionReview";
+import { SuggestedBlocks } from "./SuggestedBlocks";
 import {
   nextSectionKey,
   reviewSection,
   sectionSignature
 } from "@/lib/review/sectionReview";
+/** Append verified-block text to an existing prose field without clobbering. */
+function appendProse(existing: FieldValue | undefined, text: string): FieldValue {
+  const prior =
+    existing?.kind === "text" && existing.value.trim() !== "" ? `${existing.value.trim()}\n\n` : "";
+  return { kind: "text", value: prior + text };
+}
 
 // A single labelable control gets an id so the visible label can name it via
 // htmlFor. Group-style fields (chips, pickers, segmented selects) are named
@@ -363,6 +370,33 @@ export function NoteForm({
                     {scopeExplanation(clinicalRole)}
                   </p>
                 )}
+                {/* Section starters: one closed chip under the section chrome,
+                    never on narrative (first-paint), never when locked. Full
+                    catalog stays on focused textareas via BlockChips. */}
+                <SuggestedBlocks
+                  moduleId={mod.id}
+                  sectionId={section.id}
+                  selectedModuleIds={state.selectedModuleIds}
+                  clinicalRole={clinicalRole}
+                  outOfScope={outOfScope}
+                  sectionOpen={open}
+                  fields={section.fields}
+                  onInsert={(fieldId, text) => {
+                    const key = fieldKey(mod.id, fieldId);
+                    onChange(key, appendProse(state.values[key], text));
+                    // Land the writer on the field that received the text —
+                    // otherwise insert into an unfocused box looks like a no-op
+                    // until filing stops on leftover placeholders.
+                    requestAnimationFrame(() => {
+                      const root = document.getElementById(`field-${mod.id}-${fieldId}`);
+                      const control =
+                        (document.getElementById(`ctl-${key}`) as HTMLElement | null) ??
+                        root?.querySelector<HTMLElement>("textarea, input");
+                      root?.scrollIntoView({ block: "nearest" });
+                      control?.focus({ preventScroll: true });
+                    });
+                  }}
+                />
                 <div className="space-y-3">
                   {section.fields.map((field) => {
                     if (!isFieldVisible(field, mod.id, state)) return null;

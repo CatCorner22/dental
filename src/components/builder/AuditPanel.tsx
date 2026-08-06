@@ -217,7 +217,8 @@ export function AuditPanel({
   attestations,
   escalated,
   onAttest,
-  onEscalate
+  onEscalate,
+  started = true
 }: {
   report: AuditReport;
   /** Called just before a "Go to field" jump scrolls — used to dismiss the
@@ -229,7 +230,26 @@ export function AuditPanel({
   escalated?: Record<string, boolean>;
   onAttest?: (key: string, reason: string) => void;
   onEscalate?: (finding: AuditFinding) => void;
+  /**
+   * Has the writer put anything in this note yet?
+   *
+   * On an untouched note every required field raises required.missing, so the
+   * panel opened as a wall of thirteen identical orange cards saying the note
+   * was not ready — before a single character had been typed. That is the tool
+   * grading a blank page, and it is the loudest thing on the busiest screen at
+   * the exact moment there is nothing to say.
+   *
+   * Until the note has content those become one quiet line with a count. Every
+   * finding comes back the moment there is something to have an opinion about,
+   * and the per-section "N required" badges have been carrying the same
+   * information all along, in the place the work actually happens.
+   */
+  started?: boolean;
 }) {
+  const requiredMissing = report.findings.filter((f) => f.ruleId === "required.missing");
+  const visible = started ? report.findings : report.findings.filter((f) => f.ruleId !== "required.missing");
+  const quietRequired = !started && requiredMissing.length > 0;
+
   return (
     <div>
       <div className="mb-3 flex items-center gap-1.5">
@@ -242,15 +262,25 @@ export function AuditPanel({
           Nothing here is applied to the note for you.
         </HelpTip>
       </div>
-      <p className="mb-3 text-xs text-slate-500">
-        Deterministic checks only — this audit never scores the note or replaces clinician review.
-        Suggestions are never applied automatically.
-      </p>
+      {/* The "deterministic checks only / nothing is applied for you" disclaimer
+          used to live here as its own paragraph. It said the same thing as the
+          line beside the ring directly above it AND the help tip beside this
+          status banner — three statements of one promise inside 200px. The line
+          above carries it now; the tip carries the detail. */}
       {/* Breathing room between items. At space-y-1.5 eleven open required fields
           smashed into one another vertically and read as a single block of alarm. */}
+      {quietRequired && (
+        <p className="mb-3 rounded border border-slate-200 bg-slate-50 px-2.5 py-2 text-xs text-slate-600">
+          <strong className="font-semibold text-slate-800">
+            {requiredMissing.length} required field{requiredMissing.length === 1 ? "" : "s"} to fill.
+          </strong>{" "}
+          Each section below carries its own count. They are listed here one by one once you start
+          writing.
+        </p>
+      )}
       <ul className="space-y-2.5">
         {SEVERITY_ORDER.flatMap((sev) =>
-          report.findings
+          visible
             .filter((f) => f.severity === sev)
             .map((f, i) => (
               // moduleId is part of the key: field ids are only unique within
@@ -267,7 +297,7 @@ export function AuditPanel({
               />
             ))
         )}
-        {report.findings.length === 0 && (
+        {visible.length === 0 && !quietRequired && (
           // The one moment in the note worth celebrating, and it earns exactly
           // one sparkle. The sentence underneath is unchanged: a clean checker
           // is not a signed note, and this is the last place to blur that.

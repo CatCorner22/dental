@@ -209,7 +209,7 @@ function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
   );
 }
 
-function BlockRow({
+export function BlockRow({
   block,
   open,
   onToggle,

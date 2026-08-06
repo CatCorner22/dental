@@ -14,6 +14,7 @@ import { standardize } from "@/lib/standardize/standardize";
 import { OMISSION_LICENCES, exactLicence, licenceText } from "@/lib/audit/omissions";
 import { TextDiff } from "@/components/diff/TextDiff";
 import { DictationField } from "./DictationField";
+import { BlockChips } from "./BlockChips";
 
 interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
@@ -451,6 +452,7 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
 
 export function TextareaField_({ field, value, onChange, describedBy, invalid, id, required }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [focused, setFocused] = useState(false);
   const insert = (phrase: string) => {
     const el = ref.current;
     const text = value?.value ?? "";
@@ -468,6 +470,13 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         placeholder={field.placeholderHint}
         value={value?.value ?? ""}
         {...aria(describedBy, invalid)}
+        onFocus={() => setFocused(true)}
+        // A blur that lands INSIDE this field's own controls is not leaving the
+        // field — without the relatedTarget check, clicking the very chip the
+        // focus revealed would unmount it mid-click.
+        onBlur={(e) => {
+          if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setFocused(false);
+        }}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       {/* The microphone, for anyone who set dictation up in My account. It
@@ -476,6 +485,15 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
           nothing — which is the arrangement the standardize screen got wrong by
           putting a five-minute enrollment wall in front of the textarea. */}
       <DictationField onText={(t) => insert(t)} />
+      {/* Verified blocks, in the field they go into.
+          They used to sit in a card ABOVE the note behind a "insert verified
+          blocks into [destination]" dropdown — which asked the writer to choose
+          where before they had chosen what, and put an occasional tool in front
+          of the thing they do every time. Here there is no destination to pick:
+          the block lands in the box the cursor is already in. All three locks
+          are unchanged — every assertion ticked, insert disabled until they are,
+          and placeholders the residue rule blocks at S1 until they are replaced. */}
+      <BlockChips onInsert={insert} active={focused || (value?.value ?? "") !== ""} />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
       {/* The fact is offered first, the absence second. See LicenceChips. */}
       {required && (

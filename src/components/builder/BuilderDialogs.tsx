@@ -108,15 +108,19 @@ export function PhiOverrideDialog({
   );
 }
 
-interface SubmitCapability {
-  emailConfigured: boolean;
-}
+/** Email setup probe — never treat a network miss as "email off". */
+type SubmitCapState =
+  | { status: "loading" }
+  | { status: "ready"; emailConfigured: boolean }
+  | { status: "unreachable" };
 
 export interface FiledResult {
   ticket: string;
   sparkle: string;
   emailed: boolean;
   emailConfigured: boolean;
+  /** True when /api/submit-config could not be reached before filing. */
+  emailStatusUnknown?: boolean;
   // The server bumps the draft version when it claims the submit; the builder
   // adopts this so its next autosave is not a false 409.
   version?: number;
@@ -139,7 +143,7 @@ export function SubmitDialog({
   onStartAnother: () => void;
   onGoToDashboard: () => void;
 }) {
-  const [cap, setCap] = useState<SubmitCapability | null>(null);
+  const [cap, setCap] = useState<SubmitCapState>({ status: "loading" });
   const [format, setFormat] = useState<"md" | "txt">("md");
   const [status, setStatus] = useState<"idle" | "sending" | "error">("idle");
   const [error, setError] = useState("");
@@ -162,10 +166,24 @@ export function SubmitDialog({
   };
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/submit-config")
-      .then((r) => r.json())
-      .then(setCap)
-      .catch(() => setCap({ emailConfigured: false }));
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<{ emailConfigured?: boolean }>;
+      })
+      .then((d) => {
+        if (!cancelled) {
+          setCap({ status: "ready", emailConfigured: !!d.emailConfigured });
+        }
+      })
+      .catch(() => {
+        // Outage ≠ ops misconfiguration. Staff must see the difference.
+        if (!cancelled) setCap({ status: "unreachable" });
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const submit = async () => {
@@ -191,7 +209,8 @@ export function SubmitDialog({
           ticket: data.ticket,
           sparkle: data.sparkle,
           emailed: data.emailed,
-          emailConfigured: cap?.emailConfigured ?? false,
+          emailConfigured: cap.status === "ready" ? cap.emailConfigured : false,
+          emailStatusUnknown: cap.status === "unreachable",
           version: data.version
         };
         setFiled(result);
@@ -208,15 +227,20 @@ export function SubmitDialog({
   };
 
   if (filed) {
-    const sendFailed = !filed.emailed && filed.emailConfigured;
+    // Offer Resend when email was expected or status was unknown — never when
+    // the server confirmed email is simply not configured.
+    const sendFailed =
+      !filed.emailed && (filed.emailConfigured || !!filed.emailStatusUnknown);
     return (
       <Dialog title={`Filed as ${filed.ticket}`} onClose={onClose}>
         <p className="mb-2 text-sm text-slate-700">
           {filed.emailed
             ? "The note and its audit report were emailed to the office."
-            : filed.emailConfigured
-              ? "The note was filed, but the email did not send. The ticket is safe — use Resend to try the same filed copy again."
-              : "The note was filed and appears in History. Email is not configured, so nothing was sent."}
+            : filed.emailStatusUnknown
+              ? "The note was filed and appears in History. Email status could not be confirmed — if the office did not receive it, use Resend or ask a Team Lead."
+              : filed.emailConfigured
+                ? "The note was filed, but the email did not send. The ticket is safe — use Resend to try the same filed copy again."
+                : "The note was filed and appears in History. Email is not configured, so nothing was sent."}
         </p>
         {sendFailed && (
           <div className="mb-3 rounded border border-rose-300 bg-rose-50 p-2 text-xs text-rose-900" role="alert">
@@ -276,10 +300,16 @@ export function SubmitDialog({
         This files the note with a ticket number and emails it (with its audit report) to the
         corporate address. Identifiers are completed later in the EDR.
       </p>
-      {cap && !cap.emailConfigured && (
+      {cap.status === "ready" && !cap.emailConfigured && (
         <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
           Email is not configured on the server, so the note will be filed with a ticket and shown
           in History, but not emailed. Ask your administrator to configure email.
+        </p>
+      )}
+      {cap.status === "unreachable" && (
+        <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+          Could not reach the server to check email setup. You can still file — email may or may
+          not send. If the office does not receive it, use Resend after filing.
         </p>
       )}
       {/* A shared `name` is what makes these one radio group: without it both
@@ -307,10 +337,14 @@ export function SubmitDialog({
           className="btn-primary"
           // Wait for the email-config check so the filed panel reports "sent"
           // vs "not sent" from real server state, never a pre-load guess.
-          disabled={status === "sending" || cap === null}
+          disabled={status === "sending" || cap.status === "loading"}
           onClick={submit}
         >
-          {status === "sending" ? "Submitting…" : cap === null ? "Checking…" : "Submit note"}
+          {status === "sending"
+            ? "Submitting…"
+            : cap.status === "loading"
+              ? "Checking…"
+              : "Submit note"}
         </button>
       </div>
     </Dialog>

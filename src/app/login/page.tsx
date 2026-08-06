@@ -37,13 +37,20 @@ export default async function LoginPage() {
           <p className="text-xs text-slate-600">{sparkleLine("signIn", daySeed(new Date()))}</p>
         </div>
         <LoginForm mfaAvailable={mfaFeatureEnabled()} />
-        <p className="mt-4 text-[0.7rem] leading-relaxed text-slate-400">
-          Developers: if the only Developer account is locked, set{" "}
-          <code className="rounded bg-slate-100 px-1">ADMIN_USERNAME</code>,{" "}
-          <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD</code>, and{" "}
-          <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD_RESET=1</code> in Vercel,
-          redeploy once, sign in, then remove the reset flag.
-        </p>
+        {/* Break-glass recovery is for Developers — not part of the staff first
+            viewport. Collapsed so shared-clinic sign-in stays calm. */}
+        <details className="mt-4">
+          <summary className="cursor-pointer text-[0.7rem] text-slate-400 hover:text-slate-600">
+            Developer account recovery
+          </summary>
+          <p className="mt-2 text-[0.7rem] leading-relaxed text-slate-400">
+            If the only Developer account is locked, set{" "}
+            <code className="rounded bg-slate-100 px-1">ADMIN_USERNAME</code>,{" "}
+            <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD</code>, and{" "}
+            <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD_RESET=1</code> in Vercel,
+            redeploy once, sign in, then remove the reset flag.
+          </p>
+        </details>
       </div>
       {/* The policy conditions USE on agreement, so it has to be readable
           before the credentials are typed — not only in the footer of pages

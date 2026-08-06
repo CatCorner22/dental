@@ -151,12 +151,15 @@ export function NoteForm({
   state,
   onChange,
   findingsByField = {},
-  clinicalRole
+  clinicalRole,
+  packBlockIds = []
 }: {
   modules: ModuleDef[];
   state: NoteState;
   onChange: (key: string, value: FieldValue) => void;
   findingsByField?: FieldFindings;
+  /** Published practice-pack block ids matching this visit (optional boost). */
+  packBlockIds?: readonly string[];
   /**
    * REQUIRED, with no default, and that is the point.
    *
@@ -389,6 +392,7 @@ export function NoteForm({
                   sectionId={section.id}
                   selectedModuleIds={state.selectedModuleIds}
                   clinicalRole={clinicalRole}
+                  packBlockIds={packBlockIds}
                   outOfScope={outOfScope}
                   sectionOpen={open}
                   fields={section.fields}

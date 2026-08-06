@@ -261,6 +261,43 @@ export const SCHEMA_STATEMENTS: string[] = [
      "saved_at" timestamp with time zone DEFAULT now() NOT NULL
    );`,
   `CREATE INDEX IF NOT EXISTS "draft_revisions_draft_saved_idx" ON "draft_revisions" ("draft_id", "saved_at" DESC);`,
+  // Practice packs Workflow (Team Lead+): composition of shipped block ids +
+  // module ids, dual-control approve, append-only event history.
+  `CREATE TABLE IF NOT EXISTS "practice_packs" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "title" text NOT NULL,
+     "description" text NOT NULL DEFAULT '',
+     "status" text NOT NULL DEFAULT 'draft',
+     "version" integer NOT NULL DEFAULT 1,
+     "module_ids" jsonb NOT NULL DEFAULT '[]'::jsonb,
+     "block_ids" jsonb NOT NULL DEFAULT '[]'::jsonb,
+     "author_roles" jsonb NOT NULL DEFAULT '[]'::jsonb,
+     "created_by_id" text,
+     "created_by_name" text NOT NULL,
+     "updated_by_name" text,
+     "submitted_by_id" text,
+     "submitted_by_name" text,
+     "decided_by_id" text,
+     "decided_by_name" text,
+     "decided_note" text,
+     "published_at" timestamp with time zone,
+     "created_at" timestamp with time zone NOT NULL DEFAULT now(),
+     "updated_at" timestamp with time zone NOT NULL DEFAULT now()
+   );`,
+  `CREATE INDEX IF NOT EXISTS "practice_packs_status_idx" ON "practice_packs" ("status", "updated_at" DESC);`,
+  `CREATE TABLE IF NOT EXISTS "practice_pack_events" (
+     "id" serial PRIMARY KEY NOT NULL,
+     "pack_id" integer NOT NULL REFERENCES "practice_packs"("id") ON DELETE CASCADE,
+     "at" timestamp with time zone NOT NULL DEFAULT now(),
+     "actor_id" text,
+     "actor_name" text NOT NULL,
+     "action" text NOT NULL,
+     "from_version" integer,
+     "to_version" integer,
+     "diff_json" jsonb,
+     "decision_note" text
+   );`,
+  `CREATE INDEX IF NOT EXISTS "practice_pack_events_pack_idx" ON "practice_pack_events" ("pack_id", "at" DESC, "id" DESC);`,
   // Singleton row: which SCHEMA_BOOT_VERSION this database has applied. Cold
   // starts read this before re-running ~55 IF NOT EXISTS statements.
   `CREATE TABLE IF NOT EXISTS "schema_boot" (

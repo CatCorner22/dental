@@ -6,6 +6,7 @@ import {
   canAssignRole,
   canDeactivateOrDelete,
   canEditContact,
+  canManagePracticePacks,
   canManageUsers,
   canMergeUsers,
   canReadAuditLog,
@@ -159,6 +160,14 @@ describe("other capabilities", () => {
     expect(canSubmitChangeRequest("user")).toBe(false);
     expect(canSubmitChangeRequest("lead")).toBe(true);
     expect(canSubmitChangeRequest("manager")).toBe(true);
+  });
+
+  it("opens practice packs Workflow to lead and above", () => {
+    expect(canManagePracticePacks("user")).toBe(false);
+    expect(canManagePracticePacks("readonly")).toBe(false);
+    expect(canManagePracticePacks("lead")).toBe(true);
+    expect(canManagePracticePacks("manager")).toBe(true);
+    expect(canManagePracticePacks("admin")).toBe(true);
   });
 
   // Whoever controls the address receives the reset link, so editing contact

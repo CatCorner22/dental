@@ -3,6 +3,14 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 
+type TransferUser = {
+  id: string;
+  username: string;
+  displayName: string;
+  role: string;
+  active: boolean;
+};
+
 /**
  * Ownership handoff — shared by DraftList and the note builder.
  *
@@ -21,24 +29,34 @@ export function TransferDraftDialog({
   onClose: () => void;
   onDone: () => void;
 }) {
-  const [users, setUsers] = useState<
-    { id: string; username: string; displayName: string; role: string; active: boolean }[]
-  >([]);
+  const [users, setUsers] = useState<TransferUser[]>([]);
+  const [loadState, setLoadState] = useState<"loading" | "ready" | "error">("loading");
   const [toUserId, setToUserId] = useState("");
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
 
   useEffect(() => {
+    let cancelled = false;
     fetch("/api/admin/users")
-      .then((r) => r.json())
-      .then((d) =>
+      .then(async (r) => {
+        if (!r.ok) throw new Error(`HTTP ${r.status}`);
+        return r.json() as Promise<{ users?: TransferUser[] }>;
+      })
+      .then((d) => {
+        if (cancelled) return;
         setUsers(
-          (d.users ?? []).filter(
-            (u: { active: boolean; role: string }) => u.active && u.role !== "readonly"
-          )
-        )
-      )
-      .catch(() => setError("Could not load users."));
+          (d.users ?? []).filter((u) => u.active && u.role !== "readonly")
+        );
+        setLoadState("ready");
+      })
+      .catch(() => {
+        if (cancelled) return;
+        setError("Could not load users — check the connection and try again.");
+        setLoadState("error");
+      });
+    return () => {
+      cancelled = true;
+    };
   }, []);
 
   const submit = async () => {
@@ -79,13 +97,24 @@ export function TransferDraftDialog({
           className="field-input"
           value={toUserId}
           onChange={(e) => setToUserId(e.target.value)}
+          disabled={loadState !== "ready" || users.length === 0}
         >
-          <option value="">— select a user —</option>
-          {users.map((u) => (
-            <option key={u.id} value={u.id}>
-              {u.displayName} ({u.username})
-            </option>
-          ))}
+          {loadState === "loading" ? (
+            <option value="">Loading users…</option>
+          ) : loadState === "error" ? (
+            <option value="">Could not load users</option>
+          ) : users.length === 0 ? (
+            <option value="">No active users available</option>
+          ) : (
+            <>
+              <option value="">— select a user —</option>
+              {users.map((u) => (
+                <option key={u.id} value={u.id}>
+                  {u.displayName} ({u.username})
+                </option>
+              ))}
+            </>
+          )}
         </select>
         {error && (
           <p className="text-sm text-red-700" role="alert">
@@ -99,7 +128,7 @@ export function TransferDraftDialog({
           <button
             type="button"
             className="btn-primary"
-            disabled={!toUserId || busy}
+            disabled={!toUserId || busy || loadState !== "ready"}
             onClick={() => void submit()}
           >
             Transfer

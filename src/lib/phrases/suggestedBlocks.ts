@@ -123,6 +123,11 @@ export interface SuggestedBlocksQuery {
   /** All selected add-on ids plus always-on core. */
   selectedModuleIds: readonly string[];
   clinicalRole: ClinicalRole;
+  /**
+   * Block ids from published practice packs that match this visit.
+   * Boosted only when they have a field home in this section.
+   */
+  packBlockIds?: readonly string[];
   /** Hard cap — keep the strip scannable. */
   limit?: number;
 }
@@ -159,6 +164,13 @@ export function suggestedBlocksFor(q: SuggestedBlocksQuery): VerifiedBlock[] {
 
   for (const id of SECTION_BLOCKS[q.sectionId] ?? []) {
     bump(id, 10);
+  }
+
+  // Published practice packs: raise matching starters for this section only.
+  for (const id of q.packBlockIds ?? []) {
+    if (BLOCK_FIELD_HINTS[q.sectionId]?.[id as SuggestableBlockId]) {
+      bump(id, 20);
+    }
   }
 
   const anestheticVisit = hasAny(selected, ANESTHETIC_MODULES);

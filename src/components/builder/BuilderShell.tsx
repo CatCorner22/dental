@@ -25,6 +25,7 @@ import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { submitBlockedReason } from "@/lib/status/submitBlocked";
+import { builderFinishLine } from "@/lib/status/finishLine";
 import { withOffice } from "@/lib/drafts/autoTitle";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
@@ -41,6 +42,11 @@ import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
 import { FastLane } from "./FastLane";
 import { PasteIntake } from "./PasteIntake";
+import {
+  packBlockIdsForVisit,
+  type PublishedPackLite
+} from "@/lib/packs/publishedForVisit";
+import { fieldKey } from "@/lib/schema/types";
 import { DictationUserContext } from "./fields/DictationField";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
@@ -205,11 +211,42 @@ export function BuilderShell({
   const [resentNow, setResentNow] = useState(false);
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
+  // Published practice packs (Team Lead Workflow) — boost Section starters and
+  // reorder Fast Lane featured picks (no pack-browser chip wall).
+  const [practicePacks, setPracticePacks] = useState<PublishedPackLite[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/workflow/packs?status=published")
+      .then((r) => (r.ok ? r.json() : { packs: [] }))
+      .then((d: { packs?: Array<Record<string, unknown>> }) => {
+        if (cancelled || !Array.isArray(d.packs)) return;
+        setPracticePacks(
+          d.packs.map((p) => ({
+            id: Number(p.id),
+            title: String(p.title ?? ""),
+            description: String(p.description ?? ""),
+            moduleIds: Array.isArray(p.moduleIds) ? (p.moduleIds as string[]) : [],
+            blockIds: Array.isArray(p.blockIds) ? (p.blockIds as string[]) : [],
+            authorRoles: Array.isArray(p.authorRoles) ? (p.authorRoles as string[]) : []
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setPracticePacks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Add-ons beyond the always-on Universal Core. Drives the module rail's
   // summary line so a closed rail still says what the note covers.
   const extraModuleCount = state.selectedModuleIds.filter(
     (id) => !ALL_MODULES.find((m) => m.id === id)?.alwaysOn
   ).length;
+  const packBlockIds = useMemo(
+    () => packBlockIdsForVisit(practicePacks, clinicalRole, state.selectedModuleIds),
+    [practicePacks, clinicalRole, state.selectedModuleIds]
+  );
 
   // TYPING FIRST, GRADING A BEAT LATER.
   //
@@ -380,16 +417,13 @@ export function BuilderShell({
   );
   const needsDentistHandoff = !canRecordClinicalJudgement(clinicalRole) || !filing.allowed;
   const topStop = report.findings.find((f) => f.severity === "S0");
-  const finishLine =
-    !hasContent
-      ? "Write something to unlock Submit and Copy."
-      : !filing.allowed
-        ? "Dentist must file this note — transfer ownership first."
-        : !gates.exportAllowed
-          ? blockedReason || "Copy locked until every stop is fixed."
-          : gates.emailAllowed
-            ? "Ready to file."
-            : blockedReason || "Fix open stops before filing.";
+  const finishLine = builderFinishLine({
+    hasContent,
+    filingAllowed: filing.allowed,
+    exportAllowed: gates.exportAllowed,
+    emailAllowed: gates.emailAllowed,
+    blockedReason
+  });
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -1121,8 +1155,8 @@ export function BuilderShell({
         >
           <p className="font-semibold">Clinical role is not recorded on this account</p>
           <p className="mt-1 text-xs leading-relaxed">
-            Scope locks and templates stay open until a Team Lead sets Assistant, Hygienist, or
-            Dentist in User admin. Go-live tests on an unset role do not exercise the license map.
+            Scope locks and role templates stay open until a Team Lead sets Assistant, Hygienist, or
+            Dentist on this account in User admin.
           </p>
         </div>
       )}
@@ -1180,11 +1214,24 @@ export function BuilderShell({
             clinicalRole={clinicalRole}
             canEdit={canEdit}
             visible={extraModuleCount === 0}
-            // Structure only — it does NOT rename the note. Drafts now name
-            // themselves date_Who_Where_time, and overwriting that with
-            // "Restoration" would trade four facts a person can search on for
-            // one they can already see in the modules the card just added.
+            practicePacks={practicePacks}
+            // Structure only — packs re-rank Section starters and featured
+            // pick order; they are not a second Fast Lane chip browser.
             onApply={(pick) => dispatch({ type: "applyModules", moduleIds: pick.moduleIds })}
+            onInsertMyBlock={(text) => {
+              // Prefer the focused prose control; fall back to Visit narrative.
+              const active = document.activeElement as HTMLElement | null;
+              const fieldRoot = active?.closest?.("[id^='field-']") as HTMLElement | null;
+              const id = fieldRoot?.id?.replace(/^field-/, "");
+              const key =
+                id && id.includes(".")
+                  ? id
+                  : fieldKey("universal-core", "narrative-subjective");
+              const cur = state.values[key];
+              const prior =
+                cur?.kind === "text" && cur.value.trim() !== "" ? `${cur.value.trim()}\n\n` : "";
+              setValue(key, { kind: "text", value: prior + text });
+            }}
           />
           <fieldset disabled={!canEdit} className="min-w-0">
             <DictationUserContext.Provider
@@ -1200,6 +1247,7 @@ export function BuilderShell({
               onChange={setValue}
               findingsByField={fieldFindings}
               clinicalRole={clinicalRole}
+              packBlockIds={packBlockIds}
             />
             </DictationUserContext.Provider>
           </fieldset>
@@ -1227,7 +1275,7 @@ export function BuilderShell({
           old banner deliberately skipped, leaving the disabled control with no
           on-screen explanation at all. */}
       {canEdit && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
             {/* SAY WHAT THEY DO.
                 "Paste a note" and "Earlier saves" were two two-word labels in

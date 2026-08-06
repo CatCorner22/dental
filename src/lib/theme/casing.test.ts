@@ -6,6 +6,9 @@ import { findShouting, isUnshouted, ALLOWED_ACRONYMS } from "./casing";
 import { SEVERITY_LABELS, SEVERITY_MEANING, STATUS_DISPLAY, statusLabel } from "@/lib/audit/types";
 import type { OverallStatus } from "@/lib/audit/types";
 import { ALL_MODULES } from "@/lib/modules";
+import { composeTicket } from "@/lib/requests/composeTicket";
+import { CHECKLIST, CYCLES } from "@/lib/requests/gauntlet";
+import { LICENSE_SCOPE_MERMAID } from "@/lib/law/license-scope";
 
 // THE BAN.
 //
@@ -107,6 +110,62 @@ describe("no copy shouts", () => {
       }
     }
     expect(offenders).toEqual([]);
+  });
+});
+
+describe("documents this app generates for a person to read", () => {
+  // Adams was writing about DOCUMENTS, so a guard that only watched the screen
+  // was watching the smaller half. The generated change-request ticket opened
+  // "SMILE NOTES — DATA CHANGE REQUEST" with "THE FIVE CYCLES" and "PRE-FLIGHT
+  // CHECKLIST" as section rules — three shouted headings in a document written
+  // to be read — and nothing here would have noticed.
+  //
+  // Asserted on the OUTPUT rather than the source, so it covers the headings,
+  // the cycle titles and the checklist labels in one pass and cannot be fooled
+  // by how any of them are assembled.
+  it("does not shout in the change-request ticket", () => {
+    const ticket = composeTicket(
+      {
+        summary: "Correct a mistyped office name.",
+        changeType: "Correction",
+        answers: Object.fromEntries(CYCLES.map((c) => [c.id, "Answered specifically."])) as never,
+        checklist: Object.fromEntries(CHECKLIST.map((c) => [c.id, true])) as never,
+        dataOwner: "Practice manager",
+        downstream: ["Digest"]
+      },
+      { requestedBy: "A person", requestedAtEt: "2026-01-01 09:00 ET" }
+    );
+    expect(findShouting(ticket)).toEqual([]);
+  });
+});
+
+describe("diagrams a person reads", () => {
+  // The Mermaid scope charts said "DENTIST ONLY", "HYGIENIST ONLY among
+  // auxiliaries" and "CERTIFICATION GATES". They render as a picture, so no
+  // amount of watching JSX would have found them.
+  //
+  // Only the LABELS are checked. In `ONLYDDS["Dentist only — …"]` the
+  // identifier is a node id that arrows elsewhere in the graph point at, and
+  // renaming it would break the diagram rather than quieten it — so the guard
+  // reads what is inside the quotes and nothing else.
+  const LABEL = /"([^"]+)"/g;
+
+  it("does not shout in any scope diagram's labels", () => {
+    const offenders: string[] = [];
+    for (const [name, source] of Object.entries(LICENSE_SCOPE_MERMAID)) {
+      for (const m of source.matchAll(LABEL)) {
+        // <br/> is layout inside a label, not a word.
+        const label = m[1].replace(/<br\s*\/?>/g, " ");
+        for (const word of findShouting(label)) offenders.push(`${name}: "${label}" (${word})`);
+      }
+    }
+    expect(offenders).toEqual([]);
+  });
+
+  it("still has labels to check, so a renamed export cannot silently pass", () => {
+    // The failure mode of the test above is finding nothing to look at.
+    const labels = Object.values(LICENSE_SCOPE_MERMAID).flatMap((s) => [...s.matchAll(LABEL)]);
+    expect(labels.length).toBeGreaterThan(20);
   });
 });
 

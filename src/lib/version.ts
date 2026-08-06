@@ -254,4 +254,13 @@
 //          greps for any diff under src/lib/modules/ — and a stamped report
 //          should be able to say which text a clinician was reading, even when
 //          the difference is only that it was not being shouted at them.
-export const RULESET_VERSION = "2.25.1";
+// 2.25.2 — Two audit FINDING messages stopped shouting: the supervision rule's
+//          "require DIRECT supervision" (both the blocking and the advance-notice
+//          variant) and the justification rule's "State WHY the buildup was
+//          needed". Wording, severity, rule ids and what triggers them are all
+//          unchanged — only the capitals. This one is called out separately from
+//          2.25.1 because a finding message is rendered in the audit panel AND
+//          frozen into the submitted report, so a reader comparing an old filed
+//          note with a new one will see the difference and is entitled to know
+//          it was typography rather than a changed rule.
+export const RULESET_VERSION = "2.25.2";

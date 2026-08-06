@@ -72,7 +72,7 @@ export const TN_AUTHORITIES: readonly Authority[] = [
     summary:
       "Defines the practice of dentistry and dental hygiene, what may be delegated under direct supervision and full dentist responsibility, which acts require professional judgment (diagnosis, treatment planning, surgery/cutting except hygiene curettage/root planing, radiograph interpretation, most anesthesia), hygienist-only scaling among auxiliaries, general-supervision conditions for hygienists, hygienist:dentist ratios, and limited hygienist prescribing.",
     practiceImpact:
-      "Radiographs AND their interpretations are part of the dental record. Scope charts on this page summarize can / cannot by license level — staff still verify the current Code text before relying on any boundary.",
+      "Radiographs and their interpretations are part of the dental record. Scope charts on this page summarize can / cannot by license level — staff still verify the current Code text before relying on any boundary.",
     appEnforcement: [
       "imaging-interpretation completeness rule",
       "Byte: radiograph-interpretation advice",
@@ -138,7 +138,7 @@ export const TN_AUTHORITIES: readonly Authority[] = [
     citation: "2026 Tenn. Pub. Ch. 1107, effective January 1, 2027",
     url: "https://www.capitol.tn.gov/",
     summary:
-      "From January 1, 2027, a dental hygienist must be under DIRECT supervision of a dentist who has seen a NEW patient before completing diagnostic radiographs, hard- or soft-tissue data collection, prophylaxis, or fluoride application.",
+      "From January 1, 2027, a dental hygienist must be under direct supervision of a dentist who has seen a new patient before completing diagnostic radiographs, hard- or soft-tissue data collection, prophylaxis, or fluoride application.",
     practiceImpact:
       "New-patient hygiene workflows change on a date certain. Scheduling, supervision documentation, and the note's patient-status and supervision fields all have to agree before the law is in force.",
     appEnforcement: ["supervision-2027 effective-dated audit rule", "patient-status and supervision fields in universal-core"],

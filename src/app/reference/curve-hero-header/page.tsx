@@ -21,7 +21,7 @@ const ROWS: Row[] = [
     field: "Patient name",
     where: "curve",
     detail:
-      "A direct identifier. Typing one here is flagged at STOP severity and the note cannot leave the tool until it is removed."
+      "A direct identifier. Typing one here is flagged at stop severity and the note cannot leave the tool until it is removed."
   },
   {
     field: "Patient ID or chart number",

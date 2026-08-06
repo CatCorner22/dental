@@ -41,7 +41,7 @@ const RULES: JustificationRule[] = [
       /\binsufficient\s+(?:retentive\s+)?(?:tooth\s+)?structure\b|\binadequate\s+(?:remaining\s+)?(?:tooth\s+)?structure\b|\bfractured?\b|\bundermined\b|\bless\s+than\s+\d+\s*%?\s*(?:of\s+)?(?:coronal|tooth)\s+structure\b/i,
     what: "A core buildup is documented without the retention narrative carriers look for.",
     how:
-      'State WHY the buildup was needed in the tooth\'s own facts: "insufficient retentive tooth ' +
+      'State why the buildup was needed in the tooth\'s own facts: "insufficient retentive tooth ' +
       'structure remains after caries excavation" or the fracture that removed it.'
   },
   {

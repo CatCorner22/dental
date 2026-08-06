@@ -22,7 +22,7 @@ export const roboticSurgery: ModuleDef = {
   title: "Robotic-Assisted Surgery Add-On",
   order: 105,
   description:
-    "Robotic and dynamic-navigation guided implant surgery: Yomi, robot, haptic guidance, navigation, registration, planned versus actual, deviation, override. Use WITH the Implant add-on — this records the guidance system's part of the visit.",
+    "Robotic and dynamic-navigation guided implant surgery: Yomi, robot, haptic guidance, navigation, registration, planned versus actual, deviation, override. Use with the Implant add-on — this records the guidance system's part of the visit.",
   sections: [
     {
       id: "planning",

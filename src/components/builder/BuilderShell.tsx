@@ -752,7 +752,7 @@ export function BuilderShell({
               ? "Add note content before copying"
               : gates.exportAllowed
                 ? "Copy the composed note"
-                : "Resolve every STOP finding before copy or download"
+                : "Resolve every stop finding before copy or download"
           }
           onClick={copy}
         >
@@ -772,7 +772,7 @@ export function BuilderShell({
               ? "Add note content before downloading"
               : gates.exportAllowed
                 ? "Download as Markdown"
-                : "Resolve every STOP finding before copy or download"
+                : "Resolve every stop finding before copy or download"
           }
           onClick={() => download(`${filename}.md`, markdown)}
         >
@@ -788,7 +788,7 @@ export function BuilderShell({
               ? "Add note content before downloading"
               : gates.exportAllowed
                 ? "Download as plain text"
-                : "Resolve every STOP finding before copy or download"
+                : "Resolve every stop finding before copy or download"
           }
           onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}
         >
@@ -815,8 +815,8 @@ export function BuilderShell({
           </div>
         )}
         <HelpTip label="About copy and download">
-          Copy and download stay locked while any STOP finding is open. A privacy STOP can be
-          attested; other STOPs must be fixed in the note. Required fields block Submit but not
+          Copy and download stay locked while any stop finding is open. A privacy stop can be
+          attested; other stops must be fixed in the note. Required fields block Submit but not
           copy.
         </HelpTip>
         {report.phiStops.length > 0 && !overrideActive && (
@@ -834,7 +834,7 @@ export function BuilderShell({
       </div>
       {hasContent && !gates.exportAllowed && (
         <p id="builder-export-locked" className="mt-2 text-xs text-rose-800" role="status">
-          Copy and download are locked until every STOP is fixed
+          Copy and download are locked until every stop is fixed
           {report.phiStops.length > 0 && !overrideActive
             ? " (or a privacy stop is attested)"
             : ""}

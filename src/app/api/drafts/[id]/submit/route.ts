@@ -174,7 +174,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   if (!gates.emailAllowed) {
     return Response.json(
       {
-        error: "The audit found open STOP or REQUIRED findings. Resolve them, then submit again.",
+        error: "The audit found open stop or required findings. Resolve them, then submit again.",
         findings: report.findings
           .filter((f) => f.severity === "S0" || f.severity === "S1")
           .map((f) => ({ ruleId: f.ruleId, severity: f.severity, message: f.message }))

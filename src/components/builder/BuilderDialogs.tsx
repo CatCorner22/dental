@@ -71,7 +71,7 @@ export function PhiOverrideDialog({
       {maskableCount > 0 && (
         <div className="mb-4 rounded border border-green-300 bg-green-50 p-3">
           <p className="mb-2 text-sm text-green-900">
-            <strong>If any of these IS an identifier, redact it instead.</strong> Each one is
+            <strong>If any of these is an identifier, redact it instead.</strong> Each one is
             replaced in place with a random token like <code>[PERSON-A7K2]</code>. The token is not
             derived from the text, so nothing can be recovered from it, and repeats of the same
             identifier become the same token so the note still reads.

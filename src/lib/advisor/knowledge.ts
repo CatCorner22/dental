@@ -136,7 +136,7 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
     say: "A prescription is here — is the allergy status?",
     why:
       "The allergy line is the single most safety-relevant sentence in a dental chart, and it is " +
-      "either verified at THIS visit or it is a rumor from the last one. NKDA when verified, the " +
+      "either verified at this visit or it is a rumor from the last one. NKDA when verified, the " +
       "allergy when present — either is defensible, and only silence is not.",
     source: "Tenn. Comp. R. 0460-02-.12 (concise medical history); ISMP",
     priority: 80,
@@ -194,10 +194,10 @@ export const KNOWLEDGE: KnowledgeEntry[] = [
   // --- Tennessee law and the record ---------------------------------------
   {
     id: "byte.radiograph-interpretation",
-    say: "Images taken — Tennessee counts the INTERPRETATION as part of the record.",
+    say: "Images taken — Tennessee counts the interpretation as part of the record.",
     why:
       "\"BWs taken\" documents an exposure, not a diagnostic act. Tennessee expressly includes " +
-      "radiographs AND their interpretations in the dental record, and interpretation is dentist " +
+      "radiographs and their interpretations in the dental record, and interpretation is dentist " +
       "work. One line — who read it, what they saw, or interpretation pending with an owner — " +
       "closes the gap.",
     source: "Tenn. Comp. R. 0460-02-.12; Tenn. Code Ann. § 63-5-108",

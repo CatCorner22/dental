@@ -243,12 +243,61 @@ export function structureIntoSoap(input: string): StructureResult {
     };
   }
 
+  const { partitions, inherited } = partition(source);
+  if (partitions.length < 2) {
+    return { text: input, sections: [], inherited, alreadyStructured: false, declined: true };
+  }
+
+  const text = partitions.map((p) => `${p.section}\n${p.text}`).join("\n\n");
+
+  return {
+    text,
+    sections: partitions.map((p) => p.section),
+    inherited,
+    alreadyStructured: false,
+    declined: false
+  };
+}
+
+/** One SOAP section's worth of the input, in the order the sentences arrived. */
+export interface SoapPartition {
+  section: SoapSection;
+  /** The sentences of this section, joined — byte-identical to the input's. */
+  text: string;
+  sentences: string[];
+}
+
+/**
+ * The same sort, handed back as parts rather than as one re-headed string.
+ *
+ * structureIntoSoap answers "what does this note look like sectioned", which is
+ * the right answer when the destination is a textarea. The note builder's
+ * destination is FIELDS, and it needs to know which sentences belong to which
+ * one so a person can send them there — a joined string with headings in it
+ * would have to be re-split by whoever received it, and a second splitter is a
+ * second thing to disagree with this one.
+ *
+ * Same guarantee as structureIntoSoap, and the same test enforces it on both:
+ * this MOVES sentences. It does not reword, merge, split, drop, or add. Every
+ * sentence of the input appears in exactly one partition, byte-identical.
+ *
+ * Returns [] where structureIntoSoap would decline — already sectioned, under
+ * three sentences, or everything landing in one section. An empty result means
+ * "there is no sorting to offer here", and the caller should show the writer
+ * their text as they typed it rather than an empty panel.
+ */
+export function partitionIntoSoap(input: string): SoapPartition[] {
+  const source = input.trim();
+  if (looksStructured(source)) return [];
+  const { partitions } = partition(source);
+  return partitions.length < 2 ? [] : partitions;
+}
+
+function partition(source: string): { partitions: SoapPartition[]; inherited: number } {
   const sentences = splitSentences(source);
   // Below three sentences there is nothing to sort, and a two-line note under five
   // headings reads worse than the two lines did.
-  if (sentences.length < 3) {
-    return { text: input, sections: [], inherited: 0, alreadyStructured: false, declined: true };
-  }
+  if (sentences.length < 3) return { partitions: [], inherited: 0 };
 
   const buckets = new Map<SoapSection, string[]>();
   let previous: SoapSection | null = null;
@@ -267,16 +316,12 @@ export function structureIntoSoap(input: string): StructureResult {
     previous = placed;
   }
 
-  const used = SOAP_SECTIONS.filter((s) => (buckets.get(s)?.length ?? 0) > 0);
-  // Everything landed in one section, so there is no structure to add — only five
-  // words of ceremony around the note it already was.
-  if (used.length < 2) {
-    return { text: input, sections: [], inherited, alreadyStructured: false, declined: true };
-  }
+  // Canonical section order, not first-appearance order: a reader expects
+  // Safety before Subjective before Objective whatever order they were written.
+  const partitions = SOAP_SECTIONS.filter((s) => (buckets.get(s)?.length ?? 0) > 0).map((s) => {
+    const sentences = buckets.get(s)!;
+    return { section: s, sentences, text: sentences.join(" ") };
+  });
 
-  const text = used
-    .map((section) => `${section}\n${buckets.get(section)!.join(" ")}`)
-    .join("\n\n");
-
-  return { text, sections: used, inherited, alreadyStructured: false, declined: false };
+  return { partitions, inherited };
 }

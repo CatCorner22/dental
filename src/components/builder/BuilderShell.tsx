@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { canRecordClinicalJudgement, type ClinicalRole } from "@/lib/auth/clinicalRoles";
 
 import {
   useCallback,
@@ -32,7 +32,9 @@ import {
   writeDraftBackup
 } from "@/lib/client/draftBackup";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
+import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
+import { PasteIntake } from "./PasteIntake";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
 import { PriorNotes } from "./PriorNotes";
@@ -535,6 +537,29 @@ export function BuilderShell({
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
 
+  // Paste intake destination. APPENDS rather than replaces: sending a second
+  // partition to the same field must not silently delete the first, and a
+  // writer who already typed something there is not expecting it overwritten.
+  // Everything else about it is an ordinary edit — same reducer, same autosave,
+  // same audit, same undo story as typing.
+  const appendToField = (key: string, text: string) => {
+    const existing = state.values[key];
+    const prior = existing?.kind === "text" ? existing.value.trim() : "";
+    dispatch({
+      type: "setValue",
+      key,
+      value: { kind: "text", value: prior ? `${prior} ${text.trim()}` : text.trim() }
+    });
+  };
+
+  // Which narrative destinations this licence may not write. The scope guard
+  // already refuses these on save; offering a button that is going to 403 is
+  // how a person learns a rule from an error message instead of from the UI.
+  const lockedFieldKeys = useMemo(() => {
+    if (canRecordClinicalJudgement(clinicalRole)) return new Set<string>();
+    return dentistOwnedKeys(modules);
+  }, [clinicalRole, modules]);
+
   // Shared between the desktop sticky aside and the mobile audit sheet, so
   // the two never drift into two different implementations of the same
   // panel. Closes over local state directly rather than taking props — it is
@@ -950,7 +975,11 @@ export function BuilderShell({
         </aside>
 
         {/* Form */}
-        <section className="min-w-0 flex-1">
+        <section className="min-w-0 flex-1 space-y-4">
+          {/* Paste sits ABOVE the form and closed. It is the other way into a
+              note, and it has to be findable without being in the way of the
+              writer who is simply going to type. */}
+          <PasteIntake onSend={appendToField} canEdit={canEdit} lockedSections={lockedFieldKeys} />
           <fieldset disabled={!canEdit} className="min-w-0">
             <NoteForm
               modules={modules}

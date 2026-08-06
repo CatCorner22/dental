@@ -58,6 +58,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       canEdit={canEdit}
       edrName={edrProductShort()}
       username={user.username}
+      dictationEnrolled={user.dictationEnrolled ?? false}
+      dictationRegion={user.dictationRegion ?? null}
     />
   );
 }

@@ -122,6 +122,8 @@ export default async function HomePage() {
         canEdit={canWriteNote(user.role, draft.ownerId, user.id)}
         edrName={edrProductShort()}
         username={user.username}
+        dictationEnrolled={user.dictationEnrolled ?? false}
+        dictationRegion={user.dictationRegion ?? null}
         // The one thing the home page does that /note/[id] does not: land the
         // cursor. Time-to-first-editable-field is the metric this whole page
         // exists to move, and it is zero only if something is focused.

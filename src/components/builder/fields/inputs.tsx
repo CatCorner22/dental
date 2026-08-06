@@ -541,12 +541,13 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
-      {/* The microphone, for anyone who set dictation up in My account. It
-          renders nothing at all when the browser has no speech engine or when
-          the device is not enrolled, so it costs a writer who types exactly
-          nothing — which is the arrangement the standardize screen got wrong by
-          putting a five-minute enrollment wall in front of the textarea. */}
-      <DictationField onText={(t) => insert(t)} />
+      {/* The microphone — or, when there is not one, the reason. It used to
+          render nothing in every case except "enrolled and supported", so the
+          note page contained no mic and never said the word dictation: a
+          writer who wanted to talk to the app could not discover that the
+          feature existed. `active` keeps the explanation in the box the cursor
+          is in, so somebody who is simply typing still pays nothing for it. */}
+      <DictationField onText={(t) => insert(t)} active={focused || (value?.value ?? "") !== ""} />
       {/* Verified blocks, in the field they go into.
           They used to sit in a card ABOVE the note behind a "insert verified
           blocks into [destination]" dropdown — which asked the writer to choose

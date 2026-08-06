@@ -108,6 +108,16 @@ export const SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "clinical_role" text DEFAULT 'unset' NOT NULL;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_secret" text;`,
   `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "mfa_enabled" boolean DEFAULT false NOT NULL;`,
+  // DICTATION ENROLLMENT, on the PERSON rather than the browser.
+  //
+  // This lived in localStorage, so the three-minute read-aloud came back on
+  // every new computer, every browser profile, every private window and after
+  // any "clear site data" — which in an operatory of shared workstations meant
+  // it effectively never stayed done. No audio and no transcript is stored:
+  // only that the practice session happened, when, and which regional prompt
+  // set was used to boost the recognizer.
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "dictation_enrolled_at" timestamp with time zone;`,
+  `ALTER TABLE "users" ADD COLUMN IF NOT EXISTS "dictation_region" text;`,
   // Which offices a person works at — MANY, not one. A lone "default office"
   // was the wrong shape: staff rotate, so most people belong to several.
   //

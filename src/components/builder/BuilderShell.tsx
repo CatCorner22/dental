@@ -52,6 +52,7 @@ import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
+import type { UsaRegionId } from "@/lib/dictation/regional";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -93,7 +94,9 @@ export function BuilderShell({
   canEdit,
   autoFocusKey,
   edrName,
-  username
+  username,
+  dictationEnrolled = false,
+  dictationRegion = null
 }: {
   draftId: string;
   initialTitle: string;
@@ -121,6 +124,14 @@ export function BuilderShell({
   edrName: string;
   /** Whose dictation enrollment to look for. See DictationUserContext. */
   username: string;
+  /**
+   * Has this person finished the dictation practice session, and with which
+   * regional prompt set? Resolved on the SERVER and passed down — a client
+   * fetch would race the legal-notice gate on a page that mounts the instant
+   * somebody signs in.
+   */
+  dictationEnrolled?: boolean;
+  dictationRegion?: string | null;
 }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(noteReducer, initialNote);
@@ -1068,7 +1079,13 @@ export function BuilderShell({
             onApply={(pick) => dispatch({ type: "applyModules", moduleIds: pick.moduleIds })}
           />
           <fieldset disabled={!canEdit} className="min-w-0">
-            <DictationUserContext.Provider value={username}>
+            <DictationUserContext.Provider
+              value={{
+                username,
+                enrolled: dictationEnrolled,
+                region: (dictationRegion as UsaRegionId | null) ?? null
+              }}
+            >
             <NoteForm
               modules={modules}
               state={state}

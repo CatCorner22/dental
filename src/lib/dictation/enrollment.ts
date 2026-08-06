@@ -11,19 +11,37 @@
 
 import type { UsaRegionId } from "./regional";
 
-/** Frozen contract — bump when unlock rules or min duration change. */
-export const DICTATION_ENROLLMENT_VERSION = "1.0.0";
+/**
+ * Frozen contract — bump when unlock rules or min duration change.
+ *
+ * 2.0.0 shortened the session and moved the record onto the user row. Any
+ * 1.0.0 record in a browser's localStorage is deliberately not honoured: it
+ * proves a session that met the OLD rule on ONE browser, and the thing being
+ * asserted now is a person-level fact. Re-enrolling costs ninety seconds.
+ */
+export const DICTATION_ENROLLMENT_VERSION = "2.0.0";
 
-/** Minimum active listening before unlock may complete (3 minutes). */
-export const ENROLLMENT_MIN_MS = 3 * 60 * 1000;
-/** Target session length shown to the writer (5 minutes). */
-export const ENROLLMENT_TARGET_MS = 5 * 60 * 1000;
+/**
+ * Minimum active listening before unlock may complete.
+ *
+ * Was three minutes, on the theory that the engine adapts to the speaker.
+ * Chrome's speech service does no per-speaker adaptation from a web page —
+ * there is no profile to train and nothing is persisted on the vendor side by
+ * this app. What the session actually buys is real: the writer finds out
+ * whether the microphone works, hears how the engine handles dental words,
+ * and reads prompts that seed the grammar hint list. Ninety seconds buys all
+ * of that. Three minutes bought the same thing and then charged for it again
+ * on the next computer.
+ */
+export const ENROLLMENT_MIN_MS = 90 * 1000;
+/** Target session length shown to the writer. */
+export const ENROLLMENT_TARGET_MS = 2 * 60 * 1000;
 /** Soft ceiling — session auto-stops; unlock already allowed after MIN. */
-export const ENROLLMENT_MAX_MS = 6 * 60 * 1000;
+export const ENROLLMENT_MAX_MS = 4 * 60 * 1000;
 /** Need enough final utterances so a silent mic cannot unlock. */
-export const ENROLLMENT_MIN_UTTERANCES = 12;
+export const ENROLLMENT_MIN_UTTERANCES = 8;
 /** Distinct script prompts the writer should cover. */
-export const ENROLLMENT_MIN_PROMPTS = 8;
+export const ENROLLMENT_MIN_PROMPTS = 6;
 
 export interface EnrollmentRecord {
   version: typeof DICTATION_ENROLLMENT_VERSION;

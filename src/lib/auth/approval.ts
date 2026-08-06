@@ -56,7 +56,10 @@ export function checkFilingAuthority(
   modules: ModuleDef[],
   note: NoteState
 ): FilingVerdict {
-  if (role === "unset" || role === "dentist") return { allowed: true };
+  // "smilenotes" joins the unrestricted set for the same reason it exists: a
+  // developer account that cannot file a sedation note cannot check that filing
+  // a sedation note works.
+  if (role === "unset" || role === "dentist" || role === "smilenotes") return { allowed: true };
 
   const selectedHighRisk = modules.filter(
     (m) => note.selectedModuleIds.includes(m.id) && DENTIST_FILED_MODULE_IDS.has(m.id)

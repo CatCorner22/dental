@@ -19,9 +19,41 @@
 // an assistant as the author of a diagnosis is not merely untidy; it documents
 // an act outside that person's scope.
 
-export type ClinicalRole = "unset" | "assistant" | "hygienist" | "dentist";
+// "smilenotes" is the one value on this axis that is NOT a Tennessee credential.
+// It is the product's own developer tier: an account that must be able to reach
+// every path in the app in order to build and check it, including the ones a
+// licence would close. It claims no credential — licenseLevel stays null, so the
+// scope charts never assert that a developer holds one — and it may only be
+// assigned by a Smile Notes Developer, enforced on the server in
+// PATCH /api/admin/users/[id].
+export type ClinicalRole = "unset" | "assistant" | "hygienist" | "dentist" | "smilenotes";
 
-export const CLINICAL_ROLES: ClinicalRole[] = ["unset", "assistant", "hygienist", "dentist"];
+export const CLINICAL_ROLES: ClinicalRole[] = [
+  "unset",
+  "assistant",
+  "hygienist",
+  "dentist",
+  "smilenotes"
+];
+
+/**
+ * The subset a Team Lead or Hierarchy Manager may choose from.
+ *
+ * The developer tier is deliberately absent: it is not a licence, and handing
+ * it out is not a practice-management decision.
+ */
+export const ASSIGNABLE_CLINICAL_ROLES: ClinicalRole[] = [
+  "unset",
+  "assistant",
+  "hygienist",
+  "dentist"
+];
+
+/** May this SYSTEM role hand out this clinical role? */
+export function canAssignClinicalRole(actorSystemRole: string, target: ClinicalRole): boolean {
+  if (target !== "smilenotes") return true;
+  return actorSystemRole === "admin";
+}
 
 export const CLINICAL_ROLE_LABEL: Record<ClinicalRole, string> = {
   // "Not recorded" rather than "None": the practice has not said yet, which is
@@ -29,18 +61,42 @@ export const CLINICAL_ROLE_LABEL: Record<ClinicalRole, string> = {
   unset: "Not recorded",
   assistant: "Dental assistant",
   hygienist: "Dental hygienist",
-  dentist: "Dentist"
+  dentist: "Dentist",
+  smilenotes: "Smile Notes"
 };
 
 export const CLINICAL_ROLE_HINT: Record<ClinicalRole, string> = {
   unset: "No clinical restriction is applied. Record a role to enforce scope of practice.",
   assistant: "May document what they performed and observed. May not record a diagnosis or a treatment plan.",
   hygienist: "May record clinical findings and measurements for diagnosis by the dentist. May not diagnose or treatment-plan.",
-  dentist: "May record everything, including diagnosis and treatment planning."
+  dentist: "May record everything, including diagnosis and treatment planning.",
+  smilenotes:
+    "Smile Notes Developer tier. Reaches every path in the app for building and checking it. Not a Tennessee credential and not a claim to one."
 };
 
 export function isClinicalRole(v: unknown): v is ClinicalRole {
   return typeof v === "string" && (CLINICAL_ROLES as string[]).includes(v);
+}
+
+/**
+ * The clinical role an account effectively holds, from what is stored and the
+ * system role it holds.
+ *
+ * A Smile Notes Developer with nothing recorded resolves to the developer tier.
+ * Derived rather than written into the database on sign-in, for two reasons: a
+ * read path that writes is a read path that can fail, and deriving means the
+ * tier follows the system role — demote the developer and the tier goes with
+ * it, instead of leaving a stale row behind that outranks the account holding
+ * it. A developer who genuinely holds a licence can still be set to it
+ * explicitly, and that stored value wins.
+ *
+ * Both server read paths (freshSessionUser and requireRole) go through here, so
+ * a page and its API can never disagree about what an account may write.
+ */
+export function resolveClinicalRole(systemRole: string, stored: unknown): ClinicalRole {
+  const role = isClinicalRole(stored) ? stored : "unset";
+  if (role === "unset" && systemRole === "admin") return "smilenotes";
+  return role;
 }
 
 /**
@@ -74,7 +130,7 @@ export function isDentistOwnedSection(moduleId: string, sectionId: string): bool
  * is not grounds to refuse someone their work.
  */
 export function canRecordClinicalJudgement(role: ClinicalRole): boolean {
-  return role === "unset" || role === "dentist";
+  return role === "unset" || role === "dentist" || role === "smilenotes";
 }
 
 /**

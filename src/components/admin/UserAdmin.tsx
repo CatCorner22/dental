@@ -23,9 +23,11 @@ import {
   type Role
 } from "@/lib/auth/roles";
 import {
-  CLINICAL_ROLES,
+  ASSIGNABLE_CLINICAL_ROLES,
+  canAssignClinicalRole,
   CLINICAL_ROLE_HINT,
   CLINICAL_ROLE_LABEL,
+  resolveClinicalRole,
   type ClinicalRole
 } from "@/lib/auth/clinicalRoles";
 
@@ -66,6 +68,7 @@ interface Perms {
   showContact: boolean;
   showOffices: boolean;
   showClinicalRole: boolean;
+  clinicalRoleOptions: ClinicalRole[];
   showMerge: boolean;
   showDelete: boolean;
 }
@@ -95,6 +98,17 @@ function permsFor(u: Row, selfId: string, selfRole: Role): Perms {
     // clinical record, so unlike an office assignment it is NOT self-service —
     // same ceiling as every other account field.
     showClinicalRole: !isSelf && canActOn(selfRole, u.role),
+    // The developer tier is not a Tennessee credential and is not a Hierarchy
+    // Manager's to hand out, so it only appears in the picker for a Smile Notes
+    // Developer. Keep it listed when the target already HOLDS it, or a manager
+    // opening the row would see a <select> whose value is not among its options
+    // and silently reset the account to whatever renders first.
+    clinicalRoleOptions: ASSIGNABLE_CLINICAL_ROLES.concat(
+      canAssignClinicalRole(selfRole, "smilenotes") ||
+        resolveClinicalRole(u.role, u.clinicalRole) === "smilenotes"
+        ? ["smilenotes"]
+        : []
+    ),
     showMerge: !isSelf && u.active && canMergeUsers(selfRole, u.role),
     showDelete: !isSelf && canDeleteUser(selfRole, u.role)
   };
@@ -182,6 +196,11 @@ function RowActions({
   perms: Perms;
   handlers: RowHandlers;
 }) {
+  // A Smile Notes Developer with nothing recorded holds the developer tier by
+  // derivation, not by a stored value — show what the account actually has, or
+  // this row says "Not recorded" about an account the rest of the app is
+  // treating as unrestricted.
+  const effective = resolveClinicalRole(user.role, user.clinicalRole);
   // Real tap targets with padding between them. These were bare ~16px text
   // links, and "Delete" sat directly beside "Deactivate" — a near-miss on a
   // phone destroyed an account instead of suspending one.
@@ -230,12 +249,12 @@ function RowActions({
       {perms.showClinicalRole && (
         <select
           className="tap rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
-          value={user.clinicalRole}
+          value={effective}
           aria-label={`Clinical role for ${user.username}`}
-          title={CLINICAL_ROLE_HINT[user.clinicalRole]}
+          title={CLINICAL_ROLE_HINT[effective]}
           onChange={(e) => handlers.onClinicalRole(user, e.target.value as ClinicalRole)}
         >
-          {CLINICAL_ROLES.map((r) => (
+          {perms.clinicalRoleOptions.map((r) => (
             <option key={r} value={r}>
               {CLINICAL_ROLE_LABEL[r]}
             </option>

@@ -1,4 +1,4 @@
-import { isClinicalRole } from "./clinicalRoles";
+import { resolveClinicalRole } from "./clinicalRoles";
 import { auth } from "./auth";
 import { getDb } from "@/lib/db/client";
 import { getUserById } from "@/lib/db/repo/users";
@@ -73,7 +73,7 @@ export async function requireRole(
       noticeAcked: row.noticeAckAt !== null,
       // Fresh from the row, like role and active. A scope corrected after
       // someone signed in has to bite on their next request.
-      clinicalRole: isClinicalRole(row.clinicalRole) ? row.clinicalRole : "unset"
+      clinicalRole: resolveClinicalRole(row.role, row.clinicalRole)
     }
   };
 }

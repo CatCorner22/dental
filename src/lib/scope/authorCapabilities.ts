@@ -103,6 +103,24 @@ const PROFILES: Record<ClinicalRole, AuthorCapabilityProfile> = {
     featuredPickIds: ["dentist-exam", "restorative", "simple-extraction", "emergency"],
     structureCue:
       "Exam and operative scaffolds include Assessment and Plan — your judgement sections."
+  },
+  // The product's own developer tier. Not a Tennessee credential, which is why
+  // licenseLevel is null: LicenseScopeCard renders nothing for it rather than
+  // showing a chart row that would assert a licence this account does not hold.
+  //
+  // It is unrestricted on every product gate, because the account exists to
+  // exercise the paths a licence closes. The lens says so out loud so SuperByte
+  // does not read the absence of a stated licence as a dentist's.
+  smilenotes: {
+    role: "smilenotes",
+    label: CLINICAL_ROLE_LABEL.smilenotes,
+    licenseLevel: null,
+    mayRecordJudgement: true,
+    bytestarLens:
+      "AUTHOR LICENSE: none claimed — this is a Smile Notes developer account exercising the tool, not a licensed clinician writing a patient record. Observe documentation completeness for a Tennessee dental record without assuming who may diagnose or treatment-plan, and do not coach as though a credential were on file.",
+    advisorScope: "any",
+    featuredPickIds: ["recall-exam", "restorative", "simple-extraction", "emergency"],
+    structureCue: "Developer account — every scaffold is available, including dentist sections."
   }
 };
 

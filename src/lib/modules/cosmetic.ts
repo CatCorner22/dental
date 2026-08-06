@@ -47,7 +47,7 @@ export const cosmetic: ModuleDef = {
           required: true,
           placeholderHint: "<de-identified patient-reported words>",
           helpText:
-            "Elective care has no disease to point at. What the patient wanted IS the indication, so it is recorded as they said it."
+            "Elective care has no disease to point at. What the patient wanted is the indication, so it is recorded as they said it."
         },
         {
           id: "expectations",

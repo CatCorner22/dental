@@ -1,6 +1,7 @@
 "use client";
 
 import { useState } from "react";
+import { statusLabel } from "@/lib/audit/types";
 
 // Getting a filed Smile Note back OUT of the tool.
 //
@@ -77,7 +78,7 @@ export function SubmissionActions({
     submittedByName ? `| Filed by | ${submittedByName} |` : null,
     submittedAtEt ? `| Filed at (Eastern) | ${submittedAtEt} |` : null,
     ruleVersion ? `| Ruleset version (frozen) | ${ruleVersion} |` : null,
-    auditStatus ? `| Audit status at filing | ${auditStatus} |` : null,
+    auditStatus ? `| Audit status at filing | ${statusLabel(auditStatus)} |` : null,
     "",
     "This is the frozen record exactly as submitted. Patient identity, exact dates,",
     "and signatures live only in the electronic dental record (EDR); pair this",

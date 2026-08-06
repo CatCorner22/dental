@@ -138,7 +138,7 @@ export function NoteReadback({ text, onJumpTo }: { text: string; onJumpTo?: (off
             {unread.slice(0, 6).map((item, i) => (
               <li key={i} className="rounded border border-slate-200 bg-white/80 px-2 py-1.5">
                 <div className="flex flex-wrap items-baseline gap-2">
-                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.65rem] font-semibold uppercase tracking-wide text-slate-600">
+                  <span className="rounded bg-slate-100 px-1.5 py-0.5 text-[0.65rem] font-semibold text-slate-600">
                     {UNPARSED_CATEGORY_LABEL[item.category]}
                   </span>
                   <button

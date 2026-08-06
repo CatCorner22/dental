@@ -131,7 +131,7 @@ export const sedationAnesthesia: ModuleDef = {
           ),
           joiner: ", ",
           helpText:
-            "WHICH monitors ran is narrative; their readings live in the time-oriented record. Capnography is expected for moderate sedation and deeper unless the record explains otherwise."
+            "Which monitors ran is narrative; their readings live in the time-oriented record. Capnography is expected for moderate sedation and deeper unless the record explains otherwise."
         },
         {
           id: "monitors",

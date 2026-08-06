@@ -230,16 +230,23 @@ export function NoteForm({
                 data-section={sectionKey}
                 className="rounded-lg border border-slate-200"
               >
-                <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                {/* label-section, not the old `text-xs font-bold uppercase
+                    tracking-wide text-slate-500`. This is the most-read label in
+                    the app — every section of every note passes through it — and
+                    it was shouted, shrunk and greyed all at once, so it was both
+                    the loudest thing on the row and the hardest part of it to
+                    read. Sentence case at text-sm also gives the disclosure a
+                    bigger tap target, which it needed on a phone anyway. */}
+                <summary className="label-section flex cursor-pointer select-none list-none items-center justify-between gap-2 rounded-lg px-3 py-2 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
                   <span>
                     {section.title}
                     {outOfScope && (
-                      <span className="ml-2 font-normal normal-case tracking-normal text-amber-800">
+                      <span className="ml-2 font-normal text-amber-800">
                         — dentist records this
                       </span>
                     )}
                   </span>
-                  <span className="flex shrink-0 items-center gap-1.5 font-normal normal-case tracking-normal">
+                  <span className="flex shrink-0 items-center gap-1.5 font-normal">
                     {findingCount > 0 && (
                       <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
                         {findingCount} to review

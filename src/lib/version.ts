@@ -247,4 +247,11 @@
 //         tailoring and the filing check all cover prose without learning a new
 //         rule. Composed notes now carry the narrative headings, which is why
 //         this is a ruleset bump and not a UI change.
-export const RULESET_VERSION = "2.25.0";
+// 2.25.1 — Help text in five modules stopped shouting: WORKING, DIRECT, NEW,
+//          DIFFERENT, WHICH and IS became lower case. No rule, threshold,
+//          vocabulary entry or field changed, and no audit output moves. It is
+//          a patch rather than a minor because the guard is mechanical — it
+//          greps for any diff under src/lib/modules/ — and a stamped report
+//          should be able to say which text a clinician was reading, even when
+//          the difference is only that it was not being shouted at them.
+export const RULESET_VERSION = "2.25.1";

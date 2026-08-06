@@ -1,5 +1,5 @@
 import type { AuditReport } from "@/lib/audit/types";
-import { SEVERITY_LABELS } from "@/lib/audit/types";
+import { SEVERITY_LABELS, statusLabel } from "@/lib/audit/types";
 import type { ModuleDef } from "@/lib/schema/types";
 import { MODULES_BY_ID } from "@/lib/modules";
 import { RULESET_VERSION } from "@/lib/version";
@@ -79,7 +79,7 @@ export function composeAuditReport(
   const lines: string[] = [
     "# Dental-note audit",
     "",
-    `- Status: ${report.status}`,
+    `- Status: ${statusLabel(report.status)}`,
     "- Rule profile: national + Tennessee",
     `- Modules confirmed: ${activeModules.map((m) => m.title).join("; ")}`,
     `- Audit version: ${AUDIT_VERSION}`,

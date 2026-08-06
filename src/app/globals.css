@@ -246,11 +246,42 @@
   .section-title {
     @apply text-title-3 font-bold text-brand-navy;
   }
-  /* An editorial eyebrow: the small tracked-caps label above a section title.
-     One more rung on the heading ladder for dense pages, in teal because it
-     is chrome — never state. */
+  /* An editorial eyebrow: the small label above a section title. One more rung
+     on the heading ladder for dense pages, in lilac because it is chrome —
+     never state.
+
+     It was tracked small-caps, which is the classic recipe and is also the
+     thing this app no longer does (see src/lib/theme/casing.ts). Caps were
+     doing two jobs here: marking the line as chrome rather than content, and
+     separating it from the title below. A short leading rule does the first
+     more clearly than shouting did, and the colour does the second. Letter
+     spacing goes with the caps — it is what makes an all-caps line breathe,
+     and on lower-case it just loosens the word. */
   .eyebrow {
-    @apply text-[0.7rem] font-semibold uppercase tracking-[0.12em] text-brand-teal;
+    @apply flex items-center gap-2 text-xs font-semibold text-brand-teal;
+  }
+  .eyebrow::before {
+    content: "";
+    @apply h-px w-4 flex-none rounded-full bg-brand-teal/60;
+  }
+
+  /* A section label: the heading on a collapsed section, a panel sub-head, a
+     column of fields. The rung BELOW .section-title and above body text.
+
+     This is the direct replacement for `text-xs uppercase tracking-wide
+     text-slate-500`, which was the most-copied string in the app. That recipe
+     shouted and then apologised for it by going small and grey, so the label
+     ended up both louder and harder to read than the content it introduced.
+     Sentence case at a legible size, with weight and ink doing the separating. */
+  .label-section {
+    @apply text-sm font-semibold text-slate-700;
+  }
+
+  /* The same idea one rung quieter, for table column headers and micro-labels
+     where the label must stay under the data it names rather than competing
+     with it. Weight and colour only — no size gymnastics, no caps. */
+  .label-micro {
+    @apply text-xs font-semibold text-slate-500;
   }
 
   /* Level 1: the ordinary content surface. A hairline ring instead of a full

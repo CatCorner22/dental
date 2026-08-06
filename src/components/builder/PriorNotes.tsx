@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { statusLabel } from "@/lib/audit/types";
 
 // PRIOR-NOTE COMPARISON — a frozen filed note beside the draft in progress.
 //
@@ -67,7 +68,7 @@ export function PriorNotes() {
         </button>
         <p className="text-xs text-slate-600">
           <span className="font-semibold">{detail.ticket}</span> · {detail.submittedByName} ·{" "}
-          {detail.submittedAtEt} · {detail.auditStatus} · ruleset {detail.ruleVersion}
+          {detail.submittedAtEt} · {statusLabel(detail.auditStatus)} · ruleset {detail.ruleVersion}
         </p>
         <p className="mt-1 rounded border border-amber-200 bg-amber-50 px-2 py-1 text-[0.65rem] text-amber-900">
           Frozen record, shown for comparison. Write this visit&rsquo;s facts fresh — copied-forward
@@ -107,7 +108,7 @@ export function PriorNotes() {
               >
                 <span className="font-medium text-slate-800">{r.ticket}</span>
                 <span className="text-slate-500">
-                  {r.submittedAtEt} · {r.auditStatus}
+                  {r.submittedAtEt} · {statusLabel(r.auditStatus)}
                 </span>
               </button>
             </li>

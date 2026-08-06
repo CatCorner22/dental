@@ -237,7 +237,7 @@ export function VoiceEnrollment({
             target {formatMs(ENROLLMENT_TARGET_MS)}.
           </p>
         </div>
-        <span className="rounded bg-amber-900/90 px-2 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide text-amber-50">
+        <span className="rounded bg-amber-900/90 px-2 py-0.5 text-[0.65rem] font-bold text-amber-50">
           No changes allowed
         </span>
       </div>
@@ -267,7 +267,7 @@ export function VoiceEnrollment({
       </label>
 
       <div className="mb-3 rounded-lg bg-white p-3 ring-1 ring-slate-200">
-        <p className="text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="text-[0.7rem] font-semibold text-slate-500">
           Say this aloud
         </p>
         <p className="mt-1 text-base font-medium text-slate-900">&ldquo;{currentPrompt}&rdquo;</p>
@@ -342,7 +342,7 @@ export function VoiceEnrollment({
       )}
 
       <div className="rounded-lg border border-dashed border-slate-300 bg-slate-50 p-3">
-        <p className="mb-1 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+        <p className="mb-1 text-[0.7rem] font-semibold text-slate-500">
           Live preview — not written to any note
         </p>
         {interim && (

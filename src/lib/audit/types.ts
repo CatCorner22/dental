@@ -7,12 +7,25 @@ import type { ModuleDef, NoteState } from "@/lib/schema/types";
 
 export type Severity = "S0" | "S1" | "S2" | "S3" | "S4";
 
+/**
+ * The severity word, in sentence case.
+ *
+ * These were "STOP" / "REQUIRED" / "REVIEW" / "STYLE" / "INFO" and are now
+ * "Stop" / "Required" / "Review" / "Style" / "Info". The vocabulary did not
+ * change — only the shouting did. All-caps text is read letter by letter
+ * rather than by word shape, so it is measurably SLOWER to read than the
+ * sentence case it replaces, and it does not make a label conspicuous; weight,
+ * colour and position do that. A findings list where every row opens with a
+ * shouted word reads as an argument rather than a checklist.
+ *
+ * See src/lib/theme/casing.ts, which holds the rule and the test that keeps it.
+ */
 export const SEVERITY_LABELS: Record<Severity, string> = {
-  S0: "STOP",
-  S1: "REQUIRED",
-  S2: "REVIEW",
-  S3: "STYLE",
-  S4: "INFO"
+  S0: "Stop",
+  S1: "Required",
+  S2: "Review",
+  S3: "Style",
+  S4: "Info"
 };
 
 /**
@@ -162,3 +175,48 @@ export const STATUS_CLASS: Record<OverallStatus, string> = {
   "READY FOR CLINICIAN REVIEW": "border-amber-300 bg-amber-100 text-amber-900",
   "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "border-green-300 bg-green-100 text-green-900"
 };
+
+/**
+ * The overall status as a person should read it.
+ *
+ * `OverallStatus` itself stays shouted, and that is deliberate: it is a STORED
+ * value, not a label. It is frozen into `submissions.auditStatus` at filing,
+ * counted by name in computeStats, and keyed by name in STATUS_CLASS above.
+ * Renaming the union would rewrite the meaning of every note already filed —
+ * a note's audit status at the moment it was filed is a compliance fact, and
+ * facts about the past do not get restyled.
+ *
+ * So the enum is the record and this is the presentation. Every screen renders
+ * through `statusLabel`; nothing renders the raw union.
+ */
+export const STATUS_DISPLAY: Record<OverallStatus, string> = {
+  BLOCKED: "Blocked",
+  "NEEDS CLINICIAN ACTION": "Needs clinician action",
+  "READY FOR CLINICIAN REVIEW": "Ready for clinician review",
+  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "Audit pass — clinician review still required"
+};
+
+/**
+ * Present a stored audit status.
+ *
+ * Takes a plain string rather than an `OverallStatus` because the callers that
+ * need it most are reading history: `submissions.auditStatus` is text written
+ * by whichever ruleset was current at filing time, and a status this build has
+ * never heard of is a real possibility on an old row. An unknown value comes
+ * back verbatim — showing what was actually recorded beats showing nothing, and
+ * a filed note's status is not something to guess at.
+ */
+export function statusLabel(stored: string): string {
+  return STATUS_DISPLAY[stored as OverallStatus] ?? stored;
+}
+
+/**
+ * Present a severity that arrived as a plain string.
+ *
+ * Same reason as `statusLabel`: some callers hold a severity that was widened
+ * to `string` on its way through a scenario fixture or a stored row. Falling
+ * back to the raw code keeps an unknown severity visible rather than blank.
+ */
+export function severityLabel(stored: string): string {
+  return SEVERITY_LABELS[stored as Severity] ?? stored;
+}

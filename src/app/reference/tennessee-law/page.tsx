@@ -69,7 +69,7 @@ export default async function Page() {
             if (entries.length === 0) return null;
             return (
               <div key={cat}>
-                <h3 className="mb-2 text-sm font-bold uppercase tracking-wide text-slate-500">
+                <h3 className="label-section mb-2">
                   {CATEGORY_LABEL[cat]}
                 </h3>
                 <div className="space-y-3">

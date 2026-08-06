@@ -7,7 +7,8 @@ import {
   SEVERITY_RAIL,
   SEVERITY_MEANING,
   SEVERITY_ORDER,
-  STATUS_CLASS
+  STATUS_CLASS,
+  statusLabel
 } from "@/lib/audit/types";
 import { useState } from "react";
 import { ATTESTATION_RULE, isValidAttestation } from "@/lib/standardize/resolution";
@@ -101,7 +102,7 @@ function FindingRow({
               of a person trying to finish a note — a reviewer with no clinical
               training read "S1 REQUIRED" as an error code they had caused. */}
           <span
-            className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold uppercase tracking-wide ${
+            className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold ${
               SEVERITY_CHIP[finding.severity]
             }`}
           >
@@ -253,13 +254,15 @@ export function AuditPanel({
   return (
     <div>
       <div className="mb-3 flex items-center gap-1.5">
+        {/* statusLabel, not report.status. The union is the stored value that
+            gets frozen into the submission; this is the sentence a person reads. */}
         <div className={`flex-1 rounded border px-3 py-2 text-sm font-semibold ${STATUS_CLASS[report.status]}`}>
-          {report.status}
+          {statusLabel(report.status)}
         </div>
         <HelpTip label="How to read the audit">
-          STOP blocks copy and filing until fixed or (for privacy stops) attested. REQUIRED blocks
-          filing only. Advice never stops the line. Tap a finding with a field link to jump there.
-          Nothing here is applied to the note for you.
+          A stop blocks copy and filing until it is fixed or (for privacy stops) attested. A
+          required item blocks filing only. Advice never stops the line. Tap a finding with a field
+          link to jump there. Nothing here is applied to the note for you.
         </HelpTip>
       </div>
       {/* The "deterministic checks only / nothing is applied for you" disclaimer

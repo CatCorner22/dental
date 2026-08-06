@@ -116,7 +116,7 @@ export function DriftPanel({
           ]
         ].map(([label, value, hint]) => (
           <div key={label} className="rounded border border-slate-200 bg-slate-50 px-3 py-2">
-            <dt className="text-xs font-semibold uppercase tracking-wide text-slate-500">{label}</dt>
+            <dt className="label-micro">{label}</dt>
             <dd className="text-xl font-bold text-slate-900">{value}</dd>
             <dd className="text-xs text-slate-500">{hint}</dd>
           </div>

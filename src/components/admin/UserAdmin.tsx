@@ -421,7 +421,7 @@ export function UserAdmin({
       <div className="hidden overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200 sm:block">
         <table className="w-full text-sm">
           <thead>
-            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs uppercase text-slate-500">
+            <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold text-slate-500">
               <th scope="col" className="px-3 py-2">Username</th>
               <th scope="col" className="px-3 py-2">Display name</th>
               <th scope="col" className="px-3 py-2">Role</th>

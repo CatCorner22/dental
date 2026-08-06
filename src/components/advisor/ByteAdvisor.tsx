@@ -54,7 +54,7 @@ export function ByteAdvisor({
                 writes the note and never blocks filing — the audit panel owns stops.
               </HelpTip>
             </div>
-            <span className="text-[0.65rem] uppercase tracking-wide text-slate-400">
+            <span className="text-[0.65rem] text-slate-400">
               advisor · reads only · never blocks
             </span>
           </div>

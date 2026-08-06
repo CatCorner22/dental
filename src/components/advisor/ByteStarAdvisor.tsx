@@ -102,7 +102,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         if (!cancelled) setDeploy(d.enabled ? "on" : "off");
       })
       .catch(() => {
-        // Outage ≠ intentional dark — keep gauges honest.
+        // Network/DB failure is not "feature off" — keep gauges honest.
         if (!cancelled) setDeploy("unreachable");
       });
     return () => {
@@ -309,7 +309,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   : deploy === "off"
                     ? "Pioneer dark on this deployment — gauges below still run locally. A Team Lead opens the pioneer from the SuperByte monitor."
                     : deploy === "unreachable"
-                      ? "Could not reach the pioneer just now — gauges below still run locally."
+                      ? "Could not reach the pioneer just now — try again shortly. Gauges below still run locally."
                       : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
             </p>
           )}

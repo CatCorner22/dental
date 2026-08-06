@@ -3,6 +3,12 @@
 // runs identically on node-postgres, PGlite, and in tests. Keep in sync with
 // schema.ts; the drizzle/ migrations remain for reference and optional
 // build-step migration on managed Postgres.
+//
+// Bump SCHEMA_BOOT_VERSION whenever SCHEMA_STATEMENTS gains a statement that
+// must run on existing databases. Cold starts skip the full DDL loop when the
+// stored boot version already matches (see ensureSchema in client.ts).
+export const SCHEMA_BOOT_VERSION = 1;
+
 export const SCHEMA_STATEMENTS: string[] = [
   `DO $$ BEGIN
      IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'role') THEN
@@ -241,6 +247,9 @@ export const SCHEMA_STATEMENTS: string[] = [
   `CREATE INDEX IF NOT EXISTS "submissions_by_user_idx" ON "submissions" ("submitted_by_id", "submitted_at_utc" DESC);`,
   `CREATE INDEX IF NOT EXISTS "submissions_at_idx" ON "submissions" ("submitted_at_utc" DESC);`,
   `CREATE INDEX IF NOT EXISTS "audit_log_at_idx" ON "audit_log" ("at" DESC, "id" DESC);`,
+  // Assist / SuperByte / digest filter by action (or action prefix). The at-only
+  // index forces a time-ordered scan then filter as the log grows under AI use.
+  `CREATE INDEX IF NOT EXISTS "audit_log_action_at_idx" ON "audit_log" ("action", "at" DESC, "id" DESC);`,
   // Working-copy revision ring for autosave recovery (not filed history).
   `CREATE TABLE IF NOT EXISTS "draft_revisions" (
      "id" serial PRIMARY KEY NOT NULL,
@@ -288,5 +297,13 @@ export const SCHEMA_STATEMENTS: string[] = [
      "diff_json" jsonb,
      "decision_note" text
    );`,
-  `CREATE INDEX IF NOT EXISTS "practice_pack_events_pack_idx" ON "practice_pack_events" ("pack_id", "at" DESC, "id" DESC);`
+  `CREATE INDEX IF NOT EXISTS "practice_pack_events_pack_idx" ON "practice_pack_events" ("pack_id", "at" DESC, "id" DESC);`,
+  // Singleton row: which SCHEMA_BOOT_VERSION this database has applied. Cold
+  // starts read this before re-running ~55 IF NOT EXISTS statements.
+  `CREATE TABLE IF NOT EXISTS "schema_boot" (
+     "id" integer PRIMARY KEY NOT NULL,
+     "version" integer NOT NULL,
+     "applied_at" timestamp with time zone DEFAULT now() NOT NULL,
+     CONSTRAINT "schema_boot_singleton" CHECK ("id" = 1)
+   );`
 ];

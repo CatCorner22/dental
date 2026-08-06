@@ -21,6 +21,7 @@ export function SuggestedBlocks({
   sectionId,
   selectedModuleIds,
   clinicalRole,
+  packBlockIds = [],
   outOfScope,
   sectionOpen,
   fields,
@@ -30,6 +31,8 @@ export function SuggestedBlocks({
   sectionId: string;
   selectedModuleIds: readonly string[];
   clinicalRole: ClinicalRole;
+  /** From published practice packs matching this visit. */
+  packBlockIds?: readonly string[];
   outOfScope: boolean;
   /** Collapsed sections must not mount an open panel. */
   sectionOpen: boolean;
@@ -45,7 +48,8 @@ export function SuggestedBlocks({
     moduleId,
     sectionId,
     selectedModuleIds,
-    clinicalRole
+    clinicalRole,
+    packBlockIds
   }).filter((b) => insertFieldForBlock(sectionId, b.id, fields) !== null);
   if (blocks.length === 0) return null;
 

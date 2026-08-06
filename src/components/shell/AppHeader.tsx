@@ -1,5 +1,6 @@
 import Link from "next/link";
 import {
+  canManagePracticePacks,
   canManageUsers,
   canReadAuditLog,
   canSubmitChangeRequest,
@@ -76,6 +77,15 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                   ...(meetsRole(user.role, "lead")
                     ? [
                         { href: "/digest", label: "Digest", hint: "Documentation patterns" },
+                        ...(canManagePracticePacks(user.role)
+                          ? [
+                              {
+                                href: "/workflow",
+                                label: "Workflow",
+                                hint: "Practice packs — approve and history"
+                              }
+                            ]
+                          : []),
                         { href: "/admin/bytestar", label: "SuperByte", hint: "Deployment and ladder" }
                       ]
                     : []),

@@ -128,6 +128,27 @@ describe("suggestedBlocksFor", () => {
     expect(ids).not.toContain("des12-master");
   });
 
+  it("boosts pack block ids into the shortlist when they have a field home", () => {
+    const without = suggestedBlocksFor({
+      moduleId: "universal-core",
+      sectionId: "history-review",
+      selectedModuleIds: ["universal-core"],
+      clinicalRole: "dentist"
+    }).map((b) => b.id);
+    expect(without).toContain("medical-history-reviewed");
+
+    const withPack = suggestedBlocksFor({
+      moduleId: "universal-core",
+      sectionId: "history-review",
+      selectedModuleIds: ["universal-core"],
+      clinicalRole: "dentist",
+      packBlockIds: ["medical-history-reviewed", "consent-conversation"]
+    }).map((b) => b.id);
+    // consent belongs on plan, not history-review — pack boost must not invent a home.
+    expect(withPack[0]).toBe("medical-history-reviewed");
+    expect(withPack).not.toContain("consent-conversation");
+  });
+
   it("returns at most three blocks", () => {
     const blocks = suggestedBlocksFor({
       moduleId: "universal-core",

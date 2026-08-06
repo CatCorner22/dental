@@ -216,6 +216,12 @@ export function canSubmitChangeRequest(role: Role): boolean {
   return meetsRole(role, "lead");
 }
 
+// Practice packs Workflow — compose shipped verified blocks + module sets,
+// dual-control approve, publish. Team Lead+; never writes another clinician's note.
+export function canManagePracticePacks(role: Role): boolean {
+  return meetsRole(role, "lead");
+}
+
 // A Hierarchy Manager is the practice's escalation path, so their contact
 // details must not be a single personal mailbox that can go unread. The
 // account carries a personal address AND a management group address.

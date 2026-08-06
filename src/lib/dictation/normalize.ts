@@ -24,6 +24,10 @@ interface JoinRule {
   replacement: string;
 }
 
+// Frozen join table version — bump when rules change; enrollment unlock does
+// not depend on this, but drift tests pin the contract.
+export const DICTATION_JOIN_VERSION = "1.1.0";
+
 const JOIN_RULES: readonly JoinRule[] = [
   { pattern: /\b(bite)[ \t]+(wings?)\b/gi, replacement: "$1$2" },
   { pattern: /\b(peri)[ \t]+(apicals?)\b/gi, replacement: "$1$2" },
@@ -36,7 +40,12 @@ const JOIN_RULES: readonly JoinRule[] = [
   { pattern: /\b(post)[ \t]+(operative(?:ly)?)\b/gi, replacement: "$1$2" },
   { pattern: /\b(pre)[ \t]+(operative(?:ly)?)\b/gi, replacement: "$1$2" },
   { pattern: /\b(post)[ \t]+(op)\b/gi, replacement: "$1-$2" },
-  { pattern: /\b(pre)[ \t]+(op)\b/gi, replacement: "$1-$2" }
+  { pattern: /\b(pre)[ \t]+(op)\b/gi, replacement: "$1-$2" },
+  // Additional speech-split compounds (join/hyphen only — never synonyms).
+  { pattern: /\b(full)[ \t]+(mouth)\b/gi, replacement: "$1-$2" },
+  { pattern: /\b(open)[ \t]+(tray)\b/gi, replacement: "$1-$2" },
+  { pattern: /\b(closed)[ \t]+(tray)\b/gi, replacement: "$1-$2" },
+  { pattern: /\b(tooth)[ \t]+(ache)\b/gi, replacement: "$1ache" }
 ];
 
 export interface DictationChange {

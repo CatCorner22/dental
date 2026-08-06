@@ -41,6 +41,23 @@ describe("dictation normalization — what it fixes", () => {
     );
   });
 
+  it("joins additional speech-split compounds without synonym swaps", () => {
+    expect(normalizeDictation("full mouth series reviewed").text).toBe("full-mouth series reviewed");
+    expect(normalizeDictation("open tray impression").text).toBe("open-tray impression");
+    expect(normalizeDictation("closed tray impression").text).toBe("closed-tray impression");
+    expect(normalizeDictation("tooth ache resolved").text).toBe("toothache resolved");
+  });
+
+  it("never autocorrects regional colloquialisms into formal English", () => {
+    const southern = "y'all gonna wait a spell for the x ray";
+    const out = normalizeDictation(southern);
+    expect(out.text).toBe("y'all gonna wait a spell for the x-ray");
+    expect(out.text).toContain("y'all");
+    expect(out.text).toContain("gonna");
+    expect(out.text).not.toContain("you all");
+    expect(out.text).not.toContain("going to");
+  });
+
   it("preserves the speaker's casing at the join", () => {
     expect(normalizeDictation("Bite wings taken").text).toBe("Bitewings taken");
     expect(normalizeDictation("X ray reviewed").text).toBe("X-ray reviewed");

@@ -9,6 +9,7 @@ import type { AppliedChange, RaisedFlag } from "@/lib/standardize/standardize";
 import { BlockPicker } from "./BlockPicker";
 import { BatchCheck } from "./BatchCheck";
 import { DictationButton } from "./DictationButton";
+import { useDictationUnlock, VoiceEnrollment } from "./VoiceEnrollment";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { TextDiff } from "@/components/diff/TextDiff";
@@ -73,13 +74,17 @@ const toFindingLike = (f: AuditFinding): FindingLike => ({
 
 export function Standardizer({
   assistEnabled = false,
-  clinicalRole = "unset"
+  clinicalRole = "unset",
+  username = ""
 }: {
   assistEnabled?: boolean;
   clinicalRole?: ClinicalRole;
+  /** Required for voice enrollment unlock persistence (per browser user). */
+  username?: string;
 }) {
   const edrName = edrProductName();
   const copyLabel = copyForEdrLabel();
+  const voice = useDictationUnlock(username);
   const [input, setInput] = useState("");
   const [result, setResult] = useState<Result | null>(null);
   const [items, setItems] = useState<QueueItem[]>([]);
@@ -265,6 +270,20 @@ export function Standardizer({
   const infoItems = items.filter((i) => !i.concern.blocking);
 
   return (
+    <div className="space-y-6">
+      {!voice.unlocked && username && (
+        <VoiceEnrollment
+          username={username}
+          onUnlocked={(record) => voice.markUnlocked(record)}
+        />
+      )}
+      {voice.unlocked && voice.record && (
+        <p className="rounded-lg bg-teal-50 px-3 py-2 text-xs text-teal-900 ring-1 ring-teal-200">
+          Voice enrollment complete for this browser ({voice.record.region} ·{" "}
+          {Math.round(voice.record.listenedMs / 60000)} min spoken). Dictate may append into the box
+          below — join-only dental repairs, no autocorrect.
+        </p>
+      )}
     <div className="grid gap-6 lg:grid-cols-2">
       <div>
         <div className="flex items-center gap-1.5">
@@ -286,6 +305,11 @@ export function Standardizer({
           className="field-input min-h-[16rem] font-mono text-sm lg:min-h-[45vh]"
           value={input}
           onChange={(e) => setInput(e.target.value)}
+          // Dictation and clinical text must not be rewritten by the browser.
+          spellCheck={false}
+          autoCorrect="off"
+          autoCapitalize="off"
+          autoComplete="off"
           onKeyDown={(e) => {
             // The hands-stay-on-keys path. Anyone fast enough to want this
             // knows the convention from every chat box on earth.
@@ -330,12 +354,19 @@ export function Standardizer({
           >
             Clear
           </button>
-          <DictationButton
-            disabled={busy}
-            onText={(t) =>
-              setInput((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${t}` : t))
-            }
-          />
+          {voice.unlocked ? (
+            <DictationButton
+              disabled={busy}
+              region={voice.record?.region ?? "general"}
+              onText={(t) =>
+                setInput((prev) => (prev.trim() ? `${prev.replace(/\s+$/, "")} ${t}` : t))
+              }
+            />
+          ) : (
+            <span className="text-xs text-amber-900" role="status">
+              Dictate unlocks after voice enrollment (read-only, 3–5 minutes) below.
+            </span>
+          )}
           {result?.soap && (
             /* Always available, unlike the AI button further down — this pass needs
                no model, which matters because AI is off by default and this is the
@@ -923,6 +954,7 @@ export function Standardizer({
           </div>
         )}
       </div>
+    </div>
     </div>
   );
 }

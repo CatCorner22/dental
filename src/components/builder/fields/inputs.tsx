@@ -13,6 +13,7 @@ import type {
 import { standardize } from "@/lib/standardize/standardize";
 import { OMISSION_LICENCES, exactLicence, licenceText } from "@/lib/audit/omissions";
 import { TextDiff } from "@/components/diff/TextDiff";
+import { DictationField } from "./DictationField";
 
 interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
@@ -74,8 +75,8 @@ export function SelectInput({ field, value, onChange, describedBy, invalid, id }
               // here. Sized for a finger below sm, unchanged on desktop.
               className={`tap rounded-full border px-3 text-xs font-medium ${
                 on
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : `bg-white text-slate-700 hover:bg-blue-50 ${invalid ? "border-rose-400" : "border-slate-300"}`
+                  ? "border-brand-blue bg-brand-blue text-white"
+                  : `bg-white text-slate-700 hover:bg-brand-blue/10 ${invalid ? "border-rose-400" : "border-slate-300"}`
               }`}
             >
               {o.label ?? o.value}
@@ -139,8 +140,8 @@ export function MultiselectInput({ field, value, onChange, describedBy }: InputP
               // here. Sized for a finger below sm, unchanged on desktop.
               className={`tap rounded-full border px-3 text-xs font-medium ${
             selected.includes(o.value)
-              ? "border-blue-700 bg-blue-700 text-white"
-              : "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"
+              ? "border-brand-blue bg-brand-blue text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-brand-blue/10"
           }`}
         >
           {o.label ?? o.value}
@@ -469,6 +470,12 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         {...aria(describedBy, invalid)}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
+      {/* The microphone, for anyone who set dictation up in My account. It
+          renders nothing at all when the browser has no speech engine or when
+          the device is not enrolled, so it costs a writer who types exactly
+          nothing — which is the arrangement the standardize screen got wrong by
+          putting a five-minute enrollment wall in front of the textarea. */}
+      <DictationField onText={(t) => insert(t)} />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
       {/* The fact is offered first, the absence second. See LicenceChips. */}
       {required && (

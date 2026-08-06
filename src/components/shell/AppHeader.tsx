@@ -7,8 +7,8 @@ import {
   ROLE_LABEL
 } from "@/lib/auth/roles";
 import type { SessionUser } from "@/lib/auth/roles";
-import { SignOutButton } from "./SignOutButton";
 import { NavLinks } from "./NavLinks";
+import { NavMenu } from "./NavMenu";
 import { BrandMark } from "./BrandMark";
 
 // Server component. The banner is always visible; nav adapts to role.
@@ -38,46 +38,65 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
         <nav className="flex min-w-0 flex-wrap items-center gap-x-1.5 gap-y-1.5 text-sm">
           {user ? (
             <>
+              {/* FOUR pills, not twelve.
+                  Twelve equally-weighted destinations is not navigation, it is
+                  a list: the eye has to read all of them to find one, on every
+                  page, forever — and on a phone the row wrapped to three lines
+                  before the content started. These four are what a clinician
+                  touches while working. Everything else is administration and
+                  settings, which are visited deliberately and can afford the
+                  one extra click of the More menu. Nothing was dropped. */}
               <NavLinks
                 items={[
-                  { href: "/", label: "Dashboard" },
+                  // Owns "/" and the note routes, so opening a specific draft
+                  // does not un-highlight the place you are working.
+                  { href: "/", label: "Notes", alsoOwns: ["/note/"] },
+                  { href: "/notes", label: "My notes" },
+                  { href: "/reference/templates", label: "Learn", activePrefix: "/reference" },
+                  { href: "/wishes", label: "Ask" }
+                ]}
+              />
+              <NavMenu
+                identity={`${user.displayName} (${ROLE_LABEL[user.role]})`}
+                items={[
                   ...(meetsRole(user.role, "user")
-                    ? [{ href: "/standardize", label: "Standardize" }]
+                    ? [
+                        {
+                          href: "/notes/batch",
+                          label: "Batch check",
+                          hint: "End-of-day triage"
+                        }
+                      ]
                     : []),
-                  { href: "/history", label: "History" },
+                  { href: "/account", label: "Account" },
                   // Team Lead and above. Named "Digest" rather than "Quality"
                   // or "Review": those words describe judging people, and this
                   // page reports patterns and explicitly re-scopes anything
                   // most of the practice would be flagged for onto the tool.
-                  ...(meetsRole(user.role, "lead") ? [{ href: "/digest", label: "Digest" }, { href: "/admin/bytestar", label: "SuperByte" }] : []),
-                  // Store stays at /store for anyone who bookmarks it, but it is
-                  // not in the primary nav — a points shop next to "start a note"
-                  // invites comparison and hallway scorekeeping. (Same reasoning
-                  // the digest itself follows: patterns, never a scoreboard.)
-                  { href: "/wishes", label: "Wish list" },
+                  ...(meetsRole(user.role, "lead")
+                    ? [
+                        { href: "/digest", label: "Digest", hint: "Documentation patterns" },
+                        { href: "/admin/bytestar", label: "SuperByte", hint: "Deployment and ladder" }
+                      ]
+                    : []),
                   ...(canManageUsers(user.role)
                     ? [{ href: "/admin/team", label: "Team", activePrefix: "/admin/team" }]
                     : []),
-                  { href: "/reference/templates", label: "References", activePrefix: "/reference" },
                   ...(canSubmitChangeRequest(user.role)
-                    ? [{ href: "/requests", label: "Requests" }]
+                    ? [{ href: "/requests", label: "Requests", hint: "Data Hygiene Gauntlet" }]
                     : []),
                   ...(canManageUsers(user.role) ? [{ href: "/admin/users", label: "Users" }] : []),
-                  ...(canReadAuditLog(user.role) ? [{ href: "/admin/audit", label: "Audit log" }] : []),
-                  { href: "/account", label: "Account" }
+                  ...(canReadAuditLog(user.role) ? [{ href: "/admin/audit", label: "Audit log" }] : [])
+                  // Store stays at /store for anyone who bookmarks it, but it is
+                  // in neither the pills nor this menu — a points shop next to
+                  // "start a note" invites comparison and hallway scorekeeping.
+                  // (Same reasoning the digest itself follows: patterns, never a
+                  // scoreboard.)
                 ]}
               />
-              <span className="hidden text-brand-navy/30 sm:inline">·</span>
-              {/* The human label, not the enum value. "lead" told nobody what
-                  they could do; "Team Lead" is the word the hierarchy is
-                  actually documented in. */}
-              <span className="hidden text-xs text-slate-600 sm:inline">
-                {user.displayName} ({ROLE_LABEL[user.role]})
-              </span>
-              <SignOutButton />
             </>
           ) : (
-            <Link href="/login" className="font-medium text-blue-700 hover:text-blue-900">Sign in</Link>
+            <Link href="/login" className="font-medium text-brand-blue hover:text-brand-navy">Sign in</Link>
           )}
         </nav>
       </div>

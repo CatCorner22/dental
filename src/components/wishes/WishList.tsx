@@ -1,5 +1,7 @@
 "use client";
 
+import { Character } from "@/components/mascot/Sparkle";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -28,7 +30,7 @@ export interface WishRowView {
 }
 
 const STATUS_CLASS: Record<string, string> = {
-  new: "bg-blue-100 text-blue-900",
+  new: "bg-brand-blue/20 text-brand-navy",
   looking: "bg-amber-100 text-amber-900",
   planned: "bg-violet-100 text-violet-900",
   done: "bg-green-100 text-green-900",
@@ -121,7 +123,7 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
             onClick={() => setFilter(key as typeof filter)}
             className={`tap rounded-full border px-3 text-sm ${
               filter === key
-                ? "border-blue-700 bg-blue-700 text-white"
+                ? "border-brand-blue bg-brand-blue text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
             }`}
           >
@@ -131,10 +133,13 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
       </div>
 
       {shown.length === 0 ? (
-        <p className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Nothing here yet. If you have noticed something — a supply running low, a step that takes
-          too long, anything below standard — add it above.
-        </p>
+        <div className="flex items-center gap-3 rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          <Character id="sparkle" size="sm" />
+          <p>
+            Nothing here yet. If you have noticed something — a supply running low, a step that
+            takes too long, anything below standard — add it above.
+          </p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {shown.map((w) => (
@@ -281,7 +286,7 @@ function WishCard({
             </div>
           ) : (
             <button
-              className="tap rounded px-2 text-xs text-blue-700 hover:underline"
+              className="tap rounded px-2 text-xs text-brand-blue hover:underline"
               onClick={() => setOpen(true)}
             >
               Update status
@@ -341,7 +346,7 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
                 onClick={() => setCategory(c.id)}
                 className={`tap rounded-full border px-3 text-sm ${
                   category === c.id
-                    ? "border-blue-700 bg-blue-700 text-white"
+                    ? "border-brand-blue bg-brand-blue text-white"
                     : c.urgent
                       ? "border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100"
                       : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"

@@ -18,7 +18,10 @@ export function ConflictDialog({ onReload, onClose }: { onReload: () => void; on
         A teammate (or another tab) saved a newer version after you opened this one. Reloading
         keeps you both in sync; the unsaved edits in this tab will be replaced.
       </p>
-      <p className="mb-4 text-xs text-slate-500">
+      {/* A save conflict is the most alarming thing that happens to a note that
+          is not actually a problem. Sparkle's face is here to say so. */}
+      <p className="mb-4 flex items-center gap-2 text-xs text-slate-500">
+        <Character id="sparkle" size="xs" />
         {sparkleLine("conflict", daySeed(new Date()))}
       </p>
       <div className="flex justify-end gap-2">
@@ -245,7 +248,10 @@ export function SubmitDialog({
             Stay here
           </button>
           <button type="button" className="btn-secondary" onClick={onGoToDashboard}>
-            Dashboard
+            {/* "Home" rather than "Dashboard": there is no dashboard any more.
+                Home is a fresh note, which is exactly where someone who has
+                just filed one wants to land. */}
+            Home
           </button>
           <button
             type="button"

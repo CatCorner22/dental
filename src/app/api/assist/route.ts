@@ -8,6 +8,7 @@ import { logAction } from "@/lib/db/repo/auditLog";
 import { encodeDriftDetail } from "@/lib/assist/drift";
 import { ASSIST_CAPABILITIES, ASSIST_PROMPT_VERSION, type AssistCapability } from "@/lib/assist/prompts";
 import { RULESET_VERSION } from "@/lib/version";
+import { capabilityTier, tierExplanation } from "@/lib/assist/tier";
 
 export const runtime = "nodejs";
 
@@ -53,6 +54,31 @@ export async function POST(req: Request): Promise<Response> {
       { error: `That is longer than ${MAX_INPUT.toLocaleString()} characters. Work in sections.` },
       { status: 413 }
     );
+  }
+
+  // CAPABILITY FOLLOWS LICENCE.
+  //
+  // Checked here, on the server, against the clinical role read fresh from the
+  // database by requireRole — not from the token, and not from anything the
+  // browser sent. A licence gate the client could set is not a gate.
+  //
+  // A deterministic verdict is NOT a refusal, and the status code says so: 200,
+  // with the tier named and an explanation of what would change it. The
+  // deterministic twin of every capability ships in this repository and needs
+  // no provider, so the honest answer here is "the other half answered", not
+  // "no". The client runs the twin — the same pure functions the note is
+  // already checked with — rather than the server round-tripping a result it
+  // would have to re-derive.
+  //
+  // It also comes BEFORE the throttle and the model call, so a deterministic
+  // tier spends neither the practice's run meter nor its money.
+  const tier = capabilityTier(guard.user.clinicalRole, capability as AssistCapability);
+  if (tier === "deterministic") {
+    return Response.json({
+      tier,
+      capability,
+      explanation: tierExplanation(guard.user.clinicalRole)
+    });
   }
 
   const db = await getDb();

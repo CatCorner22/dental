@@ -127,7 +127,7 @@ function ToothGlyph({
             }
           : undefined
       }
-      className={onSelect ? "cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-blue-700" : undefined}
+      className={onSelect ? "cursor-pointer focus:outline-none focus-visible:outline-2 focus-visible:outline-brand-blue" : undefined}
       opacity={isHinted ? 0.45 : 1}
     >
       <title>{summary}</title>

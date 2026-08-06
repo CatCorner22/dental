@@ -1,6 +1,6 @@
 "use client";
 
-import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { canRecordClinicalJudgement, type ClinicalRole } from "@/lib/auth/clinicalRoles";
 
 import {
   useCallback,
@@ -32,7 +32,12 @@ import {
   writeDraftBackup
 } from "@/lib/client/draftBackup";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
+import type { AuditFinding } from "@/lib/audit/types";
+import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
+import { PasteIntake } from "./PasteIntake";
+import { DictationUserContext } from "./fields/DictationField";
+import { BlockInsert } from "./BlockInsert";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
 import { PriorNotes } from "./PriorNotes";
@@ -44,6 +49,7 @@ import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -82,7 +88,10 @@ export function BuilderShell({
   initialVersion,
   initialSubmitted,
   initialSendFailed,
-  canEdit
+  canEdit,
+  autoFocusKey,
+  edrName,
+  username
 }: {
   draftId: string;
   initialTitle: string;
@@ -94,6 +103,22 @@ export function BuilderShell({
   initialSubmitted: boolean;
   initialSendFailed: boolean;
   canEdit: boolean;
+  /**
+   * `moduleId.fieldId` to land the cursor in on mount. The home page sets it;
+   * /note/[id] does not, because arriving at a specific note from a link is a
+   * navigation, and stealing focus mid-navigation moves the page under someone
+   * who was reading it.
+   */
+  autoFocusKey?: string;
+  /**
+   * The practice's charting product, resolved on the server (see lib/edr).
+   * A prop rather than a call here because the override lives in a server-only
+   * environment variable, and reading it from a client bundle silently gives
+   * every practice the default name instead of theirs.
+   */
+  edrName: string;
+  /** Whose dictation enrollment to look for. See DictationUserContext. */
+  username: string;
 }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(noteReducer, initialNote);
@@ -104,9 +129,25 @@ export function BuilderShell({
   const hasEdited = useRef(false);
   const [tab, setTab] = useState<"audit" | "chart" | "byte" | "bytestar" | "prior" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
+  // ATTESTATIONS AND ESCALATIONS on ordinary findings.
+  //
+  // Held in component state and keyed by a signature of the note's content,
+  // exactly like the PHI override above — not in drafts.noteState, and not in a
+  // new drafts column. A compliance artifact does not belong in the mutable
+  // working copy: the note it describes can change under it, and the revision
+  // ring would carry copies of a judgement about text that no longer exists.
+  // Edit the note and the signature moves, which is the correct behaviour —
+  // "this wording is right" was said about wording, and the wording changed.
+  const [resolutions, setResolutions] = useState<{
+    signature: string;
+    attested: Record<string, string>;
+    escalated: Record<string, boolean>;
+  }>({ signature: "", attested: {}, escalated: {} });
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
+  const [pasteConfirmOpen, setPasteConfirmOpen] = useState(false);
+  const [pasteConfirmed, setPasteConfirmed] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   // Below `lg` the module rail, form, and Sidekick stack vertically (see the
   // flex-col wrapper below), which buried live audit feedback under the
@@ -130,6 +171,11 @@ export function BuilderShell({
   const [resentNow, setResentNow] = useState(false);
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
+  // Add-ons beyond the always-on Universal Core. Drives the module rail's
+  // summary line so a closed rail still says what the note covers.
+  const extraModuleCount = state.selectedModuleIds.filter(
+    (id) => !ALL_MODULES.find((m) => m.id === id)?.alwaysOn
+  ).length;
 
   // TYPING FIRST, GRADING A BEAT LATER.
   //
@@ -194,6 +240,50 @@ export function BuilderShell({
     [report.phiStops]
   );
   const overrideActive = override !== null && override.signature === phiSignature;
+
+  // The signature attestations are held against: the composed note itself.
+  // Coarser than tracking each finding's own text, and deliberately so —
+  // "this reads correctly" is a statement about the note, and once the note has
+  // moved on it is a statement about something else.
+  const resolutionsForNote =
+    resolutions.signature === markdown
+      ? resolutions
+      : { signature: markdown, attested: {}, escalated: {} };
+
+  const recordAttestation = (key: string, reason: string) =>
+    setResolutions((r) => {
+      const base = r.signature === markdown ? r : { signature: markdown, attested: {}, escalated: {} };
+      return { ...base, signature: markdown, attested: { ...base.attested, [key]: reason } };
+    });
+
+  // A disagreement is about the RULE. The reason and the rule id travel; the
+  // note text never does — a wish is read by a Team Lead in a different screen,
+  // and clinical content has no business being copied there.
+  const escalateFinding = async (finding: AuditFinding) => {
+    const key = `finding:${finding.ruleId}:${finding.fieldRef ? `${finding.fieldRef.moduleId}.${finding.fieldRef.fieldId}` : ""}:${finding.matchedText ?? ""}`;
+    try {
+      const res = await fetch("/api/wishes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          category: "rule-disagreement",
+          title: `Rule disagreement: ${finding.ruleId}`,
+          detail: `A writer disagreed with this rule while composing a note.\n\n(Rule: ${finding.ruleId} — raised in the note builder.)`
+        })
+      });
+      if (!res.ok) {
+        setToast({ text: "Could not reach the wish list — try again shortly.", tone: "error" });
+        return;
+      }
+      setResolutions((r) => {
+        const base = r.signature === markdown ? r : { signature: markdown, attested: {}, escalated: {} };
+        return { ...base, signature: markdown, escalated: { ...base.escalated, [key]: true } };
+      });
+      setToast({ text: "Sent to a Team Lead as a rule disagreement.", tone: "success" });
+    } catch {
+      setToast({ text: "Could not reach the wish list — check the connection.", tone: "error" });
+    }
+  };
 
   // Everything the privacy screen flagged that has literal text to replace —
   // the S0 stops AND the S2 name heuristics, because if a clinician has
@@ -384,7 +474,10 @@ export function BuilderShell({
         setOfficeId(data.officeId);
         adoptVersion(data.version);
         setShowRevisions(false);
-        setToast({ text: "Earlier save restored — autosave will keep it on the server.", tone: "success" });
+        setToast({
+          text: `Earlier save restored — autosave will keep it on the server. ${sparkleLine("saved", daySeed(new Date()))}`,
+          tone: "success"
+        });
       } catch {
         setToast({ text: "Could not restore that save.", tone: "error" });
       } finally {
@@ -408,6 +501,32 @@ export function BuilderShell({
     }
     // "conflict": the ConflictDialog is already on screen; nothing to add.
   }, [flush]);
+
+  // Land the cursor, once, on the field the host page nominated.
+  //
+  // Done here by DOM lookup rather than by threading an autoFocus prop through
+  // NoteForm and all seven input components: every field already carries a
+  // `field-${moduleId}-${fieldId}` anchor for the audit panel's "go to field"
+  // jump, and reusing it keeps the focus rule in one place instead of seven.
+  //
+  // Guarded on document.activeElement. Hydration is not instant, and someone
+  // who has already clicked into a different field — or started scrolling with
+  // a control focused — must not have the page yanked out from under them a
+  // moment later. No scroll: the narrative sits at the top of the note, and
+  // scrolling on arrival is disorienting when nothing asked for it.
+  useEffect(() => {
+    if (!autoFocusKey || !canEdit) return;
+    const [moduleId, fieldId] = autoFocusKey.split(".");
+    if (!moduleId || !fieldId) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    document
+      .getElementById(`field-${moduleId}-${fieldId}`)
+      ?.querySelector<HTMLElement>("input, select, textarea")
+      ?.focus({ preventScroll: true });
+    // Mount only. A re-run on any later render would steal focus mid-edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
 
   // Toasts announce and then get out of the way.
   useEffect(() => {
@@ -480,10 +599,25 @@ export function BuilderShell({
     }
   };
 
+  // TWO IDENTIFIERS BEFORE THE CLIPBOARD.
+  //
+  // Carried over from the standardize screen, which asked for this and which
+  // the builder never did — so the copy that went into a chart was the one with
+  // no check on it. A perfect note in the wrong chart is a records error this
+  // tool cannot see, and the only person who can is the one about to paste.
+  //
+  // Two presses, not a dialog: the first opens the confirmation, the second
+  // writes the clipboard. A modal here would be dismissed by reflex.
   const copy = async () => {
+    if (!pasteConfirmed) {
+      setPasteConfirmOpen(true);
+      return;
+    }
     try {
       await navigator.clipboard.writeText(markdown);
       setCopied(true);
+      setPasteConfirmOpen(false);
+      setPasteConfirmed(false);
       setTimeout(() => setCopied(false), 1500);
     } catch {
       download(`${filename}.md`, markdown);
@@ -491,6 +625,29 @@ export function BuilderShell({
   };
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
+
+  // Paste intake destination. APPENDS rather than replaces: sending a second
+  // partition to the same field must not silently delete the first, and a
+  // writer who already typed something there is not expecting it overwritten.
+  // Everything else about it is an ordinary edit — same reducer, same autosave,
+  // same audit, same undo story as typing.
+  const appendToField = (key: string, text: string) => {
+    const existing = state.values[key];
+    const prior = existing?.kind === "text" ? existing.value.trim() : "";
+    dispatch({
+      type: "setValue",
+      key,
+      value: { kind: "text", value: prior ? `${prior} ${text.trim()}` : text.trim() }
+    });
+  };
+
+  // Which narrative destinations this licence may not write. The scope guard
+  // already refuses these on save; offering a button that is going to 403 is
+  // how a person learns a rule from an error message instead of from the UI.
+  const lockedFieldKeys = useMemo(() => {
+    if (canRecordClinicalJudgement(clinicalRole)) return new Set<string>();
+    return dentistOwnedKeys(modules);
+  }, [clinicalRole, modules]);
 
   // Shared between the desktop sticky aside and the mobile audit sheet, so
   // the two never drift into two different implementations of the same
@@ -513,13 +670,19 @@ export function BuilderShell({
       <div className="mb-3">
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
-      <div className="mb-3 flex gap-1">
+      {/* flex-wrap, not a single row. Six tabs do not fit the aside at any
+          desktop width, and without wrapping the last one pushed the whole
+          PAGE two pixels wider than the viewport — which the cross-browser
+          smoke test asserts against. It went unseen because that suite never
+          visits the builder; the builder moving onto the home page is what
+          finally put it in front of the check. */}
+      <div className="mb-3 flex flex-wrap gap-1">
         {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "SuperByte"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
             aria-pressed={tab === t}
-            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
+            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-600"}`}
           >
             {label}
           </button>
@@ -527,7 +690,14 @@ export function BuilderShell({
       </div>
       <div className="pane-60">
         {tab === "audit" ? (
-          <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+          <AuditPanel
+            report={report}
+            onJump={() => setShowMobileAudit(false)}
+            attestations={resolutionsForNote.attested}
+            escalated={resolutionsForNote.escalated}
+            onAttest={canEdit ? recordAttestation : undefined}
+            onEscalate={canEdit ? escalateFinding : undefined}
+          />
         ) : tab === "byte" ? (
           /* Byte reads the same composed markdown the chart does — one
              memoized composition, one deferred cadence. Advice-only here; the
@@ -566,7 +736,11 @@ export function BuilderShell({
           }
           onClick={copy}
         >
-          {copied ? "Copied ✓" : !gates.exportAllowed && hasContent ? "🔒 Copy locked" : "Copy"}
+          {copied
+            ? "Copied ✓"
+            : !gates.exportAllowed && hasContent
+              ? "🔒 Copy locked"
+              : `Copy for ${edrName}`}
         </button>
         <button
           className="btn-secondary"
@@ -600,6 +774,26 @@ export function BuilderShell({
         >
           Download .txt
         </button>
+        {pasteConfirmOpen && !copied && (
+          <div className="mt-2 w-full rounded border border-brand-blue/40 bg-brand-blue/10 p-3">
+            <label className="flex items-start gap-2 text-xs text-brand-navy">
+              <input
+                type="checkbox"
+                className="mt-0.5"
+                checked={pasteConfirmed}
+                onChange={(e) => setPasteConfirmed(e.target.checked)}
+              />
+              <span>
+                The correct chart is open in {edrName} and I matched <strong>two</strong>{" "}
+                identifiers there (for example name and date of birth). A perfect note in the
+                wrong chart is a records error this tool cannot see — only you can.
+              </span>
+            </label>
+            <button className="btn-primary mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
+              Copy to clipboard
+            </button>
+          </div>
+        )}
         <HelpTip label="About copy and download">
           Copy and download stay locked while any STOP finding is open. A privacy STOP can be
           attested; other STOPs must be fixed in the note. Required fields block Submit but not
@@ -636,7 +830,7 @@ export function BuilderShell({
       <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
         <div className="flex flex-wrap items-center gap-3">
           <input
-            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent"
+            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-brand-blue focus:outline-none disabled:bg-transparent"
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
@@ -800,7 +994,10 @@ export function BuilderShell({
                 setTitle(backupOffer.title);
                 setOfficeId(backupOffer.officeId);
                 setBackupOffer(null);
-                setToast({ text: "Local backup restored — it will autosave like any edit.", tone: "success" });
+                setToast({
+                  text: `Local backup restored — it will autosave like any edit. ${sparkleLine("saved", daySeed(new Date()))}`,
+                  tone: "success"
+                });
               }}
             >
               Restore local backup
@@ -843,10 +1040,22 @@ export function BuilderShell({
       </button>
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Module rail */}
+        {/* Module rail.
+            A DISCLOSURE, closed by default. Thirty-one checkboxes down the
+            left-hand side of the busiest screen in the app is a permanent
+            column of things not to click: most notes use Universal Core and one
+            add-on, chosen once at the start and never revisited. The summary
+            carries the count, so what the note covers is still readable at a
+            glance without the list being open. */}
         <aside className="shrink-0 lg:w-60">
-          <div className="card p-3 lg:sticky lg:top-20">
-            <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
+          <details className="card p-0 lg:sticky lg:top-20" open={extraModuleCount > 0}>
+            <summary className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 [&::-webkit-details-marker]:hidden">
+              <span>Modules</span>
+              <span className="font-normal text-slate-500">
+                {extraModuleCount === 0 ? "Core only" : `Core + ${extraModuleCount}`}
+              </span>
+            </summary>
+            <div className="px-3 pb-3">
             <input
               type="search"
               className="field-input mb-1.5 py-1 text-xs"
@@ -865,7 +1074,7 @@ export function BuilderShell({
                   moduleVisibleInRail(clinicalRole, m.id) &&
                   moduleMatches(m, moduleQuery)
               ).map((m) => (
-                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
+                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-brand-blue/10">
                   <input
                     type="checkbox"
                     disabled={!canEdit}
@@ -881,12 +1090,21 @@ export function BuilderShell({
                 </label>
               ))}
             </div>
-          </div>
+            </div>
+          </details>
         </aside>
 
         {/* Form */}
-        <section className="min-w-0 flex-1">
+        <section className="min-w-0 flex-1 space-y-4">
+          {/* Paste sits ABOVE the form and closed. It is the other way into a
+              note, and it has to be findable without being in the way of the
+              writer who is simply going to type. */}
+          <PasteIntake onSend={appendToField} canEdit={canEdit} lockedSections={lockedFieldKeys} />
+          {canEdit && (
+            <BlockInsert onInsert={appendToField} lockedSections={lockedFieldKeys} />
+          )}
           <fieldset disabled={!canEdit} className="min-w-0">
+            <DictationUserContext.Provider value={username}>
             <NoteForm
               modules={modules}
               state={state}
@@ -894,6 +1112,7 @@ export function BuilderShell({
               findingsByField={fieldFindings}
               clinicalRole={clinicalRole}
             />
+            </DictationUserContext.Provider>
           </fieldset>
         </section>
 

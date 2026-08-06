@@ -21,7 +21,7 @@ export function BrandFooter() {
         Support, upgrade requests, ideas and suggestions, or a bug to report?{" "}
         <a
           href={feedbackMailto()}
-          className="tap rounded font-semibold text-blue-700 underline underline-offset-2 hover:text-blue-900 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-blue-700"
+          className="tap rounded font-semibold text-brand-blue underline underline-offset-2 hover:text-brand-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
         >
           Send feedback
         </a>{" "}

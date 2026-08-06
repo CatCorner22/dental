@@ -8,7 +8,21 @@
 // draw on plain ownership-and-teamwork ideas in our own words — no quotes,
 // no branding. Roughly one line in three carries a team principle; the rest
 // stay light so the principle lines feel subtle, not preachy.
-type SparkleContext = "dashboard" | "afterSubmit" | "firstPass" | "empty" | "conflict";
+export type SparkleContext =
+  | "dashboard"
+  | "afterSubmit"
+  | "firstPass"
+  | "empty"
+  | "conflict"
+  | "paste"
+  | "resolving"
+  | "scoped"
+  | "saved"
+  | "history"
+  | "signIn"
+  | "lost"
+  | "batch"
+  | "training";
 
 const LINES: Record<SparkleContext, string[]> = {
   dashboard: [
@@ -43,6 +57,52 @@ const LINES: Record<SparkleContext, string[]> = {
   conflict: [
     "Sparkle says: two hands on one note — reloading keeps the team in sync.",
     "Sparkle says: teamwork moment! The newer save wins, nothing is lost."
+  ],
+  // Pasting an existing note in. The reassurance that matters here is that
+  // nothing lands in the record without the writer putting it there.
+  paste: [
+    "Sparkle says: paste it in — the tidy-up happens where you can see it.",
+    "Sparkle says: your words, sorted into sections. Move anything that landed oddly.",
+    "Sparkle says: nothing moves into the note until you say so."
+  ],
+  // Working through the audit findings.
+  resolving: [
+    "Sparkle says: one finding at a time is plenty.",
+    "Sparkle says: the panel shrinks as you work. That is the whole idea.",
+    "Sparkle says: each one you close makes the next reader's day easier."
+  ],
+  // A section this licence hands to someone else. Said as a handoff, which is
+  // what it is, rather than as a refusal.
+  scoped: [
+    "Sparkle says: the dentist signs this section. Everything else is yours.",
+    "Sparkle says: this part goes to the dentist — your half is already solid."
+  ],
+  saved: [
+    "Sparkle says: saved. Your work is safe on the server.",
+    "Sparkle says: tucked away safely. Carry on."
+  ],
+  history: [
+    "Sparkle says: filed notes land here once you submit your first one.",
+    "Sparkle says: a quiet record is a fine place to start."
+  ],
+  // The sign-in card. The first thing anyone sees all day.
+  signIn: [
+    "Sparkle says: welcome back. Let's make today's notes easy to read.",
+    "Sparkle says: good to see you. Every note you write covers a teammate."
+  ],
+  // A page that is not there. Softening it is the whole job — a person who
+  // took a wrong turn has already had the unhelpful part of the experience.
+  lost: [
+    "Sparkle says: that page is not here. Your notes are, and they are fine.",
+    "Sparkle says: nothing at this address — the note is one tap away."
+  ],
+  batch: [
+    "Sparkle says: end of the day — let's see which ones are ready.",
+    "Sparkle says: a quick sweep now saves a phone call later."
+  ],
+  training: [
+    "Sparkle says: practice here costs nothing and helps every real note.",
+    "Sparkle says: a few minutes here makes tomorrow's notes quicker."
   ]
 };
 

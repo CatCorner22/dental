@@ -14,9 +14,23 @@ import { VERIFIED_BLOCKS, type VerifiedBlock } from "@/lib/phrases/blocks";
 
 export function BlockPicker({ onInsert }: { onInsert: (text: string) => void }) {
   const [openId, setOpenId] = useState<string | null>(null);
+  // Whether the picker has ever been opened. A <details> renders its children
+  // whether or not it is open, so MyBlocks used to fetch on mount — which was
+  // harmless on a page you navigated to and is not on the home page, where the
+  // note builder mounts the instant someone signs in. Every API refuses with
+  // 403 until the legal-record notice is acknowledged, so that fetch raced the
+  // notice dialog and lost, logging a console error on the first load of the
+  // app. Fetching when the picker is actually opened fixes the race and stops
+  // a request nobody asked for on every note.
+  const [everOpened, setEverOpened] = useState(false);
 
   return (
-    <details className="mt-3 rounded border border-slate-200 bg-white p-3">
+    <details
+      className="mt-3 rounded border border-slate-200 bg-white p-3"
+      onToggle={(e) => {
+        if ((e.currentTarget as HTMLDetailsElement).open) setEverOpened(true);
+      }}
+    >
       <summary className="cursor-pointer text-sm font-semibold text-slate-700">
         Insert a verified block — faster than typing, impossible to file untouched
       </summary>
@@ -40,7 +54,7 @@ export function BlockPicker({ onInsert }: { onInsert: (text: string) => void }) 
           </li>
         ))}
       </ul>
-      <MyBlocks onInsert={onInsert} />
+      {everOpened && <MyBlocks onInsert={onInsert} />}
     </details>
   );
 }
@@ -118,7 +132,7 @@ function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
         <p className="text-xs font-semibold text-slate-700">My blocks — your own starting text</p>
         <button
           type="button"
-          className="text-xs text-blue-700 underline"
+          className="text-xs text-brand-blue underline"
           onClick={() => setFormOpen((v) => !v)}
         >
           {formOpen ? "Cancel" : "+ Save a new block"}

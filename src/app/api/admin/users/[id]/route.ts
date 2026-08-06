@@ -1,4 +1,8 @@
-import { isClinicalRole, type ClinicalRole } from "@/lib/auth/clinicalRoles";
+import {
+  canAssignClinicalRole,
+  isClinicalRole,
+  type ClinicalRole
+} from "@/lib/auth/clinicalRoles";
 import { requireRole } from "@/lib/auth/guards";
 import { getDb } from "@/lib/db/client";
 import { deleteUser, getUserById, mutateAdminGuarded, updateUser } from "@/lib/db/repo/users";
@@ -151,6 +155,20 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
         {
           error:
             "Only a Hierarchy Manager or the Smile Notes Developer may set a clinical role. It decides who may record a diagnosis."
+        },
+        { status: 403 }
+      );
+    }
+    // The developer tier is not a licence and handing it out is not a
+    // practice-management decision, so it sits one tier above the rest: a
+    // Hierarchy Manager may set every Tennessee credential and not this.
+    // Checked here and not only in the picker, because the picker is a <select>
+    // in someone else's browser.
+    if (!canAssignClinicalRole(guard.user.role, b.clinicalRole)) {
+      return Response.json(
+        {
+          error:
+            "Only a Smile Notes Developer may set the Smile Notes tier. It is the product's own developer level, not a Tennessee credential."
         },
         { status: 403 }
       );

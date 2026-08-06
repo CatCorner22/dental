@@ -9,6 +9,7 @@ const LINKS = [
   { href: "/reference/terminology", label: "Terminology & style" },
   { href: "/reference/abbreviations", label: "Abbreviation rules" },
   { href: "/reference/shorthand", label: "Shorthand expansions" },
+  { href: "/reference/word-map", label: "Word map" },
   { href: "/reference/tooth-chart", label: "Tooth chart" },
   { href: "/reference/curve-hero-header", label: "Curve Hero header" },
   { href: "/reference/sedation-imaging", label: "Sedation & imaging" },

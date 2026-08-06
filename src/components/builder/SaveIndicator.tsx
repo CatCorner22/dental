@@ -1,6 +1,7 @@
 "use client";
 
 import type { AutosaveState } from "@/lib/client/autosaveMachine";
+import { Character } from "@/components/mascot/Sparkle";
 
 export function SaveIndicator({ state }: { state: AutosaveState }) {
   let text: string;
@@ -30,7 +31,14 @@ export function SaveIndicator({ state }: { state: AutosaveState }) {
       break;
   }
   return (
-    <span className={`text-xs font-medium ${cls}`} role="status" aria-live="polite">
+    <span
+      className={`inline-flex items-center gap-1 text-xs font-medium ${cls}`}
+      role="status"
+      aria-live="polite"
+    >
+      {/* Sparkle turns up for the good news only. On "saving", "dirty" or an
+          error she would be decorating a state the writer needs to read. */}
+      {state.status === "saved" && <Character id="sparkle" size="xs" />}
       {text}
     </span>
   );

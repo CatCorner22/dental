@@ -1,5 +1,6 @@
 "use client";
 
+import { useState } from "react";
 import {
   canRecordClinicalJudgement,
   isDentistOwnedSection,
@@ -28,6 +29,24 @@ import { SurfacePicker } from "./fields/SurfacePicker";
 // htmlFor. Group-style fields (chips, pickers, segmented selects) are named
 // by aria-label on the group instead — and must NOT get htmlFor, because a
 // label pointed at a button would activate it, changing a clinical value.
+/** Does this stored value actually hold anything? Mirrors the audit's own test. */
+function isEmptyValue(v: FieldValue): boolean {
+  switch (v.kind) {
+    case "select":
+      return v.value.trim() === "";
+    case "multiselect":
+      return v.values.length === 0;
+    case "text":
+      return v.value.trim() === "";
+    case "teeth":
+      return v.teeth.length === 0;
+    case "surfaces":
+      return Object.keys(v.byTooth).length === 0;
+    case "measurement":
+      return v.value === null;
+  }
+}
+
 function controlId(moduleId: string, field: Field): string | undefined {
   const labelable =
     field.type === "text" ||
@@ -114,6 +133,48 @@ export function NoteForm({
    */
   clinicalRole: ClinicalRole;
 }) {
+  // WHICH SECTIONS START OPEN.
+  //
+  // Universal Core alone is eleven sections and around sixty controls. Rendered
+  // all at once that is roughly nine thousand pixels of form, and putting the
+  // builder on the home page made it the first thing anyone sees after signing
+  // in — which is the "too busy" problem moved rather than solved.
+  //
+  // So: prose first, structure on demand. The narrative opens; a section with
+  // something already in it opens, because hiding a person's own work is worse
+  // than showing too much; a section carrying an audit finding opens, because
+  // that is the one the writer is being asked to look at. Everything else is a
+  // one-line summary with its open-required count, ready when it is wanted.
+  //
+  // Computed ONCE, lazily, and then owned by the user. Deriving `open` on every
+  // render would re-open a section the moment its first value was typed —
+  // including one the writer had just deliberately collapsed.
+  const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
+    const initial: Record<string, boolean> = {};
+    for (const mod of modules) {
+      for (const section of mod.sections) {
+        const key = `${mod.id}.${section.id}`;
+        const hasValue = section.fields.some((f) => {
+          const v = state.values[fieldKey(mod.id, f.id)];
+          return v !== undefined && !isEmptyValue(v);
+        });
+        // "required.missing" is excluded on purpose. On a brand-new note every
+        // required field raises one, so counting them would open ten of eleven
+        // sections and the collapse would do nothing at all on the one screen
+        // it exists for. An empty note is not a note with problems; it is an
+        // empty note. Any OTHER finding means something in here has been
+        // written and needs a second look, which is worth opening for.
+        const hasIssue = section.fields.some((f) =>
+          (findingsByField[fieldKey(mod.id, f.id)] ?? []).some(
+            (finding) => finding.ruleId !== "required.missing"
+          )
+        );
+        initial[key] = section.id === "narrative" || hasValue || hasIssue;
+      }
+    }
+    return initial;
+  });
+
   return (
     <div className="space-y-4">
       {modules.map((mod) => (
@@ -133,16 +194,66 @@ export function NoteForm({
               const outOfScope =
                 !canRecordClinicalJudgement(clinicalRole) &&
                 isDentistOwnedSection(mod.id, section.id);
+              const sectionKey = `${mod.id}.${section.id}`;
+              const open = openSections[sectionKey] ?? true;
+              // What the summary line has to earn its collapse: how much of
+              // this section is still outstanding. A closed section that says
+              // nothing is a section people forget, which is precisely how a
+              // required field goes unnoticed until the submit is refused.
+              const openRequired = section.fields.filter(
+                (f) =>
+                  isFieldVisible(f, mod.id, state) &&
+                  isFieldRequired(f, mod.id, state) &&
+                  (() => {
+                    const v = state.values[fieldKey(mod.id, f.id)];
+                    return v === undefined || isEmptyValue(v);
+                  })()
+              ).length;
+              const findingCount = section.fields.reduce(
+                (n, f) => n + (findingsByField[fieldKey(mod.id, f.id)]?.length ?? 0),
+                0
+              );
               return (
-              <fieldset key={section.id} disabled={outOfScope}>
-                <legend className="mb-2 text-xs font-bold uppercase tracking-wide text-slate-500">
-                  {section.title}
-                  {outOfScope && (
-                    <span className="ml-2 font-normal normal-case tracking-normal text-amber-800">
-                      — dentist records this
+              <details
+                key={section.id}
+                open={open}
+                onToggle={(e) =>
+                  setOpenSections((s) => ({
+                    ...s,
+                    [sectionKey]: (e.currentTarget as HTMLDetailsElement).open
+                  }))
+                }
+                // The anchor the audit panel's "go to field" walks up to when
+                // the field it wants is inside a collapsed section.
+                data-section={sectionKey}
+                className="rounded-lg border border-slate-200"
+              >
+                <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                  <span>
+                    {section.title}
+                    {outOfScope && (
+                      <span className="ml-2 font-normal normal-case tracking-normal text-amber-800">
+                        — dentist records this
+                      </span>
+                    )}
+                  </span>
+                  <span className="flex shrink-0 items-center gap-1.5 font-normal normal-case tracking-normal">
+                    {findingCount > 0 && (
+                      <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
+                        {findingCount} to review
+                      </span>
+                    )}
+                    {openRequired > 0 && (
+                      <span className="rounded-full bg-orange-100 px-1.5 text-[0.7rem] font-semibold text-orange-900">
+                        {openRequired} required
+                      </span>
+                    )}
+                    <span aria-hidden className="text-slate-400">
+                      {open ? "▾" : "▸"}
                     </span>
-                  )}
-                </legend>
+                  </span>
+                </summary>
+                <fieldset disabled={outOfScope} className="px-3 pb-3">
                 {outOfScope && (
                   <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
                     {scopeExplanation(clinicalRole)}
@@ -190,7 +301,8 @@ export function NoteForm({
                     );
                   })}
                 </div>
-              </fieldset>
+                </fieldset>
+              </details>
               );
             })}
           </div>

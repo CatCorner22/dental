@@ -111,7 +111,7 @@ export function GauntletForm({ initialSummary = "" }: { initialSummary?: string 
                 onClick={() => setStep(i)}
                 aria-current={step === i ? "step" : undefined}
                 className={`tap rounded-full border px-3 text-xs font-semibold ${
-                  step === i ? "ring-2 ring-blue-600 ring-offset-1 " : ""
+                  step === i ? "ring-2 ring-brand-blue ring-offset-1 " : ""
                 }${
                   state === "sterile"
                     ? "border-green-400 bg-green-100 text-green-900"
@@ -131,7 +131,7 @@ export function GauntletForm({ initialSummary = "" }: { initialSummary?: string 
             onClick={() => setStep(5)}
             aria-current={step === 5 ? "step" : undefined}
             className={`tap rounded-full border px-3 text-xs font-semibold ${
-              step === 5 ? "ring-2 ring-blue-600 ring-offset-1 " : ""
+              step === 5 ? "ring-2 ring-brand-blue ring-offset-1 " : ""
             }${
               verdict.general.length === 0
                 ? "border-green-400 bg-green-100 text-green-900"
@@ -249,7 +249,7 @@ function PreFlight({
           >
             <input
               type="checkbox"
-              className="mt-0.5 h-4 w-4 shrink-0 accent-blue-700"
+              className="mt-0.5 h-4 w-4 shrink-0 accent-brand-blue"
               checked={form.checklist[item.id]}
               onChange={(e) =>
                 setForm((f) => ({
@@ -298,8 +298,8 @@ function PreFlight({
                   }
                   className={`tap rounded-full border px-3 text-xs font-medium ${
                     on
-                      ? "border-blue-700 bg-blue-700 text-white"
-                      : "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"
+                      ? "border-brand-blue bg-brand-blue text-white"
+                      : "border-slate-300 bg-white text-slate-700 hover:bg-brand-blue/10"
                   }`}
                 >
                   {m}

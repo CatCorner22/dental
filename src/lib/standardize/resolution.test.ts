@@ -12,6 +12,7 @@ import {
   type FindingLike,
   type QueueItem
 } from "./resolution";
+import type { Severity } from "@/lib/audit/types";
 
 const finding = (over: Partial<FindingLike> = {}): FindingLike => ({
   ruleId: "vague.tolerated-well",
@@ -167,5 +168,79 @@ describe("attestation substance", () => {
     expect(isValidAttestation("ok")).toBe(false);
     expect(isValidAttestation("asdf asdf asdf asdf asdf")).toBe(false);
     expect(isValidAttestation("the response is recorded in the vitals block")).toBe(true);
+  });
+});
+
+describe("serving a note builder as well as a paste box", () => {
+  const empty = { applied: [], flags: [] };
+
+  it("keeps two required-missing findings in different fields apart", () => {
+    // The bug this exists to stop: required.missing carries no matched text, so
+    // every one of a note's thirteen produced the identical key. The reconcile
+    // Map collapsed them to one, and resolving any one of them resolved all
+    // thirteen — thirteen open required fields reported as done.
+    const required = (moduleId: string, fieldId: string): FindingLike => ({
+      ruleId: "required.missing",
+      category: "required",
+      severity: "S1",
+      message: `"${fieldId}" is required and empty.`,
+      matchedText: null,
+      occurrences: 1,
+      fieldRef: { moduleId, fieldId }
+    });
+    const concerns = buildConcerns(empty, [
+      required("universal-core", "visit-purpose"),
+      required("universal-core", "diagnosis")
+    ]);
+    expect(concerns).toHaveLength(2);
+    expect(new Set(concerns.map((c) => c.key)).size).toBe(2);
+
+    // And resolving one leaves the other open.
+    const q = reconcile([], concerns);
+    const after = resolveItem(q, concerns[0].key, { kind: "attested", reason: "n/a" });
+    expect(after.filter((i) => i.state.kind === "open")).toHaveLength(1);
+  });
+
+  it("never offers an attestation on a missing required field", () => {
+    // The server re-runs computeGates at submit and returns 422 on any open S1.
+    // An attestation here would turn the row green and then be refused — a dead
+    // end built on purpose.
+    const [concern] = buildConcerns(empty, [
+      {
+        ruleId: "required.missing",
+        category: "required",
+        severity: "S1",
+        message: '"Visit purpose" is required and empty.',
+        matchedText: null,
+        occurrences: 1,
+        fieldRef: { moduleId: "universal-core", fieldId: "visit-purpose" }
+      }
+    ]);
+    expect(concern.attestable).toBe(false);
+  });
+
+  it("still lets an ordinary S1 be attested", () => {
+    const [concern] = buildConcerns(empty, [
+      finding({ ruleId: "medsafe.interaction", severity: "S1", category: "medication-safety" })
+    ]);
+    expect(concern.attestable).toBe(true);
+  });
+
+  it("takes the caller's definition of blocking", () => {
+    // The paste box blocks on S0/S1/S2. The note builder blocks on what
+    // computeGates blocks on, or the panel would demand work the filing gate
+    // does not want on a note that is one click from ready.
+    const findings = [finding({ severity: "S2" })];
+    expect(buildConcerns(empty, findings)[0].blocking).toBe(true);
+    const builderRule = buildConcerns(empty, findings, {
+      blockingSeverities: new Set<Severity>(["S0", "S1"])
+    });
+    expect(builderRule[0].blocking).toBe(false);
+  });
+
+  it("leaves the paste box's own behaviour untouched by default", () => {
+    // No options passed must mean exactly what it meant before.
+    const concerns = buildConcerns(standardize("Pt tolerated tx well"), [finding()]);
+    expect(concerns.some((c) => c.source === "finding" && c.blocking)).toBe(true);
   });
 });

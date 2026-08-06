@@ -5,6 +5,8 @@ import Link from "next/link";
 import { LICENSE_SCOPES } from "@/lib/law/license-scope";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { clinicalRoleToLicenseLevel } from "@/lib/scope/authorCapabilities";
+import { Character } from "@/components/mascot/Sparkle";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 // LICENSE SCOPE, IN THE BUILDER — the chart row that applies to the person
 // writing, one click from the note instead of three pages away.
@@ -37,6 +39,13 @@ export function LicenseScopeCard({ clinicalRole }: { clinicalRole: ClinicalRole 
       </button>
       {open && (
         <div className="mt-2 space-y-2 text-xs leading-relaxed text-slate-700">
+          {/* Said as a handoff, which is what it is. A locked section reads as
+              a refusal unless something in the panel says out loud that the
+              rest of the note is yours and the lock is somebody else's job. */}
+          <div className="flex items-center gap-2 rounded bg-white/70 px-2 py-1.5">
+            <Character id="sparkle" size="xs" />
+            <span className="text-slate-600">{sparkleLine("scoped", daySeed(new Date()))}</span>
+          </div>
           <p>
             <span className="font-semibold">Supervision: </span>
             {scope.supervision}

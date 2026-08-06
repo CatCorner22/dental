@@ -232,4 +232,19 @@
 //         (scope.author-handoff S3); Byte knowledge gains authorScope; SuperByte
 //         receives an AUTHOR LICENSE lens. EDR product seam (edr/product.ts)
 //         replaces hard-coded Curve Hero handoff copy for multi-PMS deploys.
-export const RULESET_VERSION = "2.24.0";
+// 2.25.0 — the visit narrative: universal-core gains a "Visit narrative"
+//         section (narrative-safety / -subjective / -objective) plus a
+//         narrative field inside Assessment and inside Plan. These are the
+//         second note surface — the free-prose page — brought inside the note,
+//         so a note can be written in sentences and still be saved, audited,
+//         composed, filed and copied like any other.
+//         None of the five is required: runRequiredRule only tests emptiness,
+//         so a required prose field is satisfied by any paragraph at all, which
+//         is not a gate. The structured fields keep the requirements.
+//         The assessment and plan narratives sit INSIDE the dentist-owned
+//         sections rather than with the other three, so dentistOwnedKeys picks
+//         them up from the module definitions and the scope lock, the audit
+//         tailoring and the filing check all cover prose without learning a new
+//         rule. Composed notes now carry the narrative headings, which is why
+//         this is a ruleset bump and not a UI change.
+export const RULESET_VERSION = "2.25.0";

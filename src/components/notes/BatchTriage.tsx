@@ -6,10 +6,15 @@ import { runTextAudit } from "@/lib/audit/engine";
 
 // BATCH RE-CHECK — end-of-day charting runs several short notes at once.
 //
-// Each note still goes through the full single-note path before it can be
-// copied: this view TRIAGES (which notes are clean, which need work) and
-// loads one into the main checker. It deliberately has no copy button of its
-// own — the resolution queue stays the only door out.
+// This view TRIAGES: which notes are clean, which need work. It is deliberately
+// not a way OUT of the tool. A note reaches a chart through the note builder,
+// past the audit and the two-identifier check, or it does not reach one — so
+// the only action per row is to copy that note's own text back out so it can be
+// pasted into a note and finished properly.
+//
+// It used to live inside the standardize screen and take an onLoad callback
+// that dropped a note into "the main box". There is no main box now; the note
+// builder is the page, and one note at a time is the point.
 
 interface BatchRow {
   index: number;
@@ -19,9 +24,10 @@ interface BatchRow {
   text: string;
 }
 
-export function BatchCheck({ onLoad }: { onLoad: (text: string) => void }) {
+export function BatchTriage() {
   const [batchInput, setBatchInput] = useState("");
   const [rows, setRows] = useState<BatchRow[] | null>(null);
+  const [copiedIndex, setCopiedIndex] = useState<number | null>(null);
 
   const check = () => {
     const parts = batchInput
@@ -48,17 +54,19 @@ export function BatchCheck({ onLoad }: { onLoad: (text: string) => void }) {
     );
   };
 
+  const copyOne = async (index: number, text: string) => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopiedIndex(index);
+      setTimeout(() => setCopiedIndex(null), 1500);
+    } catch {
+      // Clipboard refused (permissions, insecure origin). The text is on
+      // screen; saying nothing is better than a false confirmation.
+    }
+  };
+
   return (
-    <details className="mt-3 rounded border border-slate-200 bg-white p-3">
-      <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-        Check several notes at once — end-of-day triage
-      </summary>
-      <p className="mt-1 text-xs text-slate-500">
-        Paste multiple de-identified notes separated by a line containing only{" "}
-        <code className="rounded bg-slate-100 px-1">---</code>. Each is checked read-only; load one
-        into the main box to resolve and copy it. There is no batch copy — every note still clears
-        its own queue.
-      </p>
+    <div className="card">
       <textarea
         className="field-input mt-2 min-h-[8rem] font-mono text-xs"
         value={batchInput}
@@ -92,13 +100,17 @@ export function BatchCheck({ onLoad }: { onLoad: (text: string) => void }) {
               <span className="shrink-0 tabular-nums">
                 {r.blocking > 0 ? `${r.blocking} to resolve` : "clean"}
               </span>
-              <button type="button" className="btn-secondary shrink-0 text-xs" onClick={() => onLoad(r.text)}>
-                Load
+              <button
+                type="button"
+                className="btn-secondary shrink-0 text-xs"
+                onClick={() => copyOne(r.index, r.text)}
+              >
+                {copiedIndex === r.index ? "Copied ✓" : "Copy this one"}
               </button>
             </li>
           ))}
         </ul>
       )}
-    </details>
+    </div>
   );
 }

@@ -81,6 +81,8 @@ export function entryMatchesAuthorScope(
 ): boolean {
   const scope = entry.authorScope ?? "any";
   if (scope === "any") return true;
+  // The developer tier sees every lens: the account exists to check them.
+  if (role === "smilenotes") return true;
   // Unconfigured accounts keep general + dentist judgement coaching — same
   // load-bearing default as canRecordClinicalJudgement (restrict only once roles are set).
   if (!role || role === "unset") return scope === "dentist";

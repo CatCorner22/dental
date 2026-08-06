@@ -69,7 +69,7 @@ export function ToothPicker({
               aria-pressed={dentition === d}
               onClick={() => setDentition(d)}
               className={`tap rounded px-3 py-0.5 text-xs font-medium ${
-                dentition === d ? "bg-blue-700 text-white" : "bg-white text-slate-600 border border-slate-300"
+                dentition === d ? "bg-brand-blue text-white" : "bg-white text-slate-600 border border-slate-300"
               }`}
             >
               {DENTITION_LABELS[d]}
@@ -95,8 +95,8 @@ export function ToothPicker({
               // record, so the touch case gets the larger target.
               className={`tap-sq h-8 min-w-8 rounded border px-1 text-xs font-semibold ${
                 selected.includes(tooth.id)
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"
+                  ? "border-brand-blue bg-brand-blue text-white"
+                  : "border-slate-300 bg-white text-slate-700 hover:bg-brand-blue/10"
               }`}
             >
               {tooth.id}

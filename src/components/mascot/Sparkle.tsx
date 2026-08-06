@@ -38,7 +38,10 @@ const FILES: Record<CharacterId, string> = {
   bo: "09-dr-bo-bobcat-labcoat.svg"
 };
 
-const SIZES = { sm: 32, md: 48, lg: 72 } as const;
+// xs exists for inline company beside a line of small text — a save indicator,
+// a chip. At 32 the mascot sets the line height of whatever row it joins, which
+// is how a friendly touch turns into a layout problem.
+const SIZES = { xs: 20, sm: 32, md: 48, lg: 72 } as const;
 
 export function Character({
   id,

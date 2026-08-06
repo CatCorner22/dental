@@ -155,7 +155,7 @@
   select:focus-visible,
   textarea:focus-visible,
   [tabindex]:focus-visible {
-    @apply outline-none ring-2 ring-blue-600 ring-offset-1;
+    @apply outline-none ring-2 ring-brand-blue ring-offset-1;
   }
   [aria-invalid="true"] {
     @apply border-red-500;
@@ -185,14 +185,15 @@
 [data-contrast="high"] .text-slate-400,
 [data-contrast="high"] .text-slate-500,
 [data-contrast="high"] .text-slate-600 {
-  /* slate-400 on white is 2.6:1 — below the 4.5:1 that normal text needs, and it
-     is what help text and timestamps were rendered in. */
-  color: #334155 !important;
+  /* slate-400 on white is 2.9:1 — below the 4.5:1 that normal text needs, and it
+     is what help text and timestamps were rendered in. This is slate-700, which
+     is 10.1:1; src/lib/theme/contrast.test.ts asserts it beats what it replaces. */
+  color: #433e58 !important;
 }
 [data-contrast="high"] .border-slate-100,
 [data-contrast="high"] .border-slate-200,
 [data-contrast="high"] .border-slate-300 {
-  border-color: #475569 !important;
+  border-color: #565070 !important;
 }
 [data-contrast="high"] .field-input,
 [data-contrast="high"] .chip,
@@ -205,7 +206,7 @@
 [data-contrast="high"] ::placeholder {
   /* Placeholders were the worst offender: grey-on-white at 11px, holding the
      format hint a writer needs most on their first note. */
-  color: #475569 !important;
+  color: #565070 !important;
   opacity: 1;
 }
 
@@ -259,7 +260,7 @@
     /* shadow-sm alone did not lift a white card off a near-white page. The ring
        gives the edge and the shadow gives the elevation; neither works without
        the other at this little contrast. */
-    @apply rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(30,58,95,0.08),0_1px_2px_rgba(30,58,95,0.04)] ring-1 ring-slate-200;
+    @apply rounded-xl bg-white p-4 shadow-[0_1px_3px_rgba(59,43,102,0.08),0_1px_2px_rgba(59,43,102,0.04)] ring-1 ring-slate-200;
   }
 
   /* Level 2: something nested INSIDE a card — a summary strip, a metric, a quiet
@@ -284,7 +285,7 @@
      come back up or the surface hierarchy vanishes for the people who most need
      to see it. */
   --tw-ring-opacity: 1;
-  --tw-ring-color: #475569;
+  --tw-ring-color: #565070;
 }
 
 /* Rendered reference markdown */
@@ -371,11 +372,11 @@
      was decorative, not an affordance. This is the only thing distinguishing
      an input from the white card it sits on, and the room it is used in is a
      bright operatory.
-     focus-visible + the same 2px ring-blue-600 as the global rule: the old
+     focus-visible + the same 2px ring-brand-blue as the global rule: the old
      `focus:ring-1 ring-blue-500` was 1px, fired on mouse clicks too, and beat
      the global ring on specificity, so every labelled field in the app had a
      thinner, lower-contrast focus ring than every other control. */
-  @apply w-full rounded border border-slate-500 bg-white px-2.5 py-1.5 text-sm shadow-sm focus-visible:border-blue-600 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-600;
+  @apply w-full rounded border border-slate-500 bg-white px-2.5 py-1.5 text-sm shadow-sm focus-visible:border-brand-blue focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue;
   /* Date/select controls inherit a different face on iOS unless told not to. */
   font-family: inherit;
 }
@@ -399,7 +400,7 @@
   @apply mb-1 block text-xs font-semibold text-slate-700;
 }
 .chip {
-  @apply inline-flex cursor-pointer items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:border-blue-400 hover:bg-blue-50;
+  @apply inline-flex cursor-pointer items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:border-brand-blue/60 hover:bg-brand-cream;
 }
 .btn {
   /* Capsule buttons: the one place the atomic-age brand shows up in every
@@ -479,29 +480,30 @@
   }
 }
 .btn-primary {
-  /* A navy-to-blue vertical gradient instead of a flat fill. One brand
+  /* An ink-to-interactive vertical gradient instead of a flat fill. One brand
      gesture, applied to the single most-pressed control in the app: the
-     gradient is dark enough at BOTH stops that white text clears 4.5:1, and
-     hover brightens the whole surface rather than swapping colour, so the
-     state still snaps. */
-  @apply btn border-transparent bg-gradient-to-b from-brand-navy to-blue-700 text-white shadow-[0_2px_6px_rgba(30,58,95,0.35)] hover:brightness-110 disabled:hover:brightness-100;
+     gradient is dark enough at BOTH stops that white text clears 4.5:1 —
+     asserted in src/lib/theme/contrast.test.ts, because checking only one stop
+     is how a gradient button ships half-unreadable — and hover brightens the
+     whole surface rather than swapping colour, so the state still snaps. */
+  @apply btn border-transparent bg-gradient-to-b from-brand-navy to-brand-blue text-white shadow-[0_2px_6px_rgba(59,43,102,0.35)] hover:brightness-110 disabled:hover:brightness-100;
 }
 .btn-secondary {
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
 }
 }
 
-/* THE GROUND WASH — what makes the page bespoke instead of flat cream.
-   Two enormous, almost-invisible radial tints in the brand's own navy and
-   teal, fixed to the viewport so cards glide over them on scroll. At 4-5%
-   alpha they read as depth, not colour: every contrast ratio measured on
-   the solid cream still holds, because the wash only ever LIGHTENS toward
-   white at the top. Print stylesheets drop backgrounds by default, so the
-   record on paper is untouched. */
+/* THE GROUND WASH — what makes the page bespoke instead of flat lilac.
+   Two enormous, almost-invisible radial tints in the brand's own interactive
+   purple and quiet chrome purple, fixed to the viewport so cards glide over
+   them on scroll. At 5% alpha they read as depth, not colour: every contrast
+   ratio measured on the solid ground still holds, because the wash only ever
+   LIGHTENS toward white at the top. Print stylesheets drop backgrounds by
+   default, so the record on paper is untouched. */
 body {
   background-image:
-    radial-gradient(1200px 500px at 85% -10%, rgba(43, 108, 184, 0.05), transparent 60%),
-    radial-gradient(1000px 420px at -10% 0%, rgba(95, 179, 168, 0.05), transparent 55%),
+    radial-gradient(1200px 500px at 85% -10%, rgba(109, 74, 196, 0.05), transparent 60%),
+    radial-gradient(1000px 420px at -10% 0%, rgba(91, 74, 143, 0.05), transparent 55%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.55), transparent 240px);
   background-attachment: fixed, fixed, scroll;
 }

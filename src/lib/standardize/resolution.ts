@@ -34,7 +34,34 @@ export interface FindingLike {
   matchedText: string | null;
   occurrences: number;
   suggestion?: string | null;
+  /**
+   * Which field raised it, when the caller has fields.
+   *
+   * Load-bearing for identity, not just for display. The paste screen audits
+   * one string, so a rule id plus the matched text names a finding uniquely
+   * there. The note builder audits a note with sixty controls, and its
+   * "required.missing" findings carry no matched text at all — every one of the
+   * thirteen produced exactly the same key, the reconcile Map collapsed them to
+   * one, and resolving any one of them resolved all thirteen.
+   */
+  fieldRef?: { moduleId: string; fieldId: string } | null;
 }
+
+export interface BuildConcernsOptions {
+  /**
+   * Which severities stop the line. Defaults to the paste screen's rule
+   * (S0/S1/S2), which is deliberately stricter than the note builder's gate.
+   *
+   * The builder passes its own, because computeGates blocks export on S0 and
+   * email on S0+S1 and nothing else — and it is the SERVER re-running
+   * computeGates that decides whether a note may be filed. A panel that
+   * demanded resolution of every S2 would be asking for work the filing gate
+   * does not want, on a note that is one click from ready.
+   */
+  blockingSeverities?: ReadonlySet<Severity>;
+}
+
+const DEFAULT_BLOCKING: ReadonlySet<Severity> = new Set<Severity>(["S0", "S1", "S2"]);
 
 export interface Concern {
   /** Stable across re-runs, so a fixed concern disappears and an attested one keeps its state. */
@@ -107,8 +134,10 @@ function flagWhy(flag: RaisedFlag): string {
 
 export function buildConcerns(
   result: Pick<StandardizeResult, "applied" | "flags">,
-  findings: FindingLike[]
+  findings: FindingLike[],
+  opts: BuildConcernsOptions = {}
 ): Concern[] {
+  const blockingSeverities = opts.blockingSeverities ?? DEFAULT_BLOCKING;
   const concerns: Concern[] = [];
 
   for (const change of result.applied) {
@@ -154,10 +183,11 @@ export function buildConcerns(
   }
 
   for (const f of findings) {
-    const blocking = f.severity === "S0" || f.severity === "S1" || f.severity === "S2";
+    const blocking = blockingSeverities.has(f.severity);
     const phi = f.category === "phi";
+    const field = f.fieldRef ? `${f.fieldRef.moduleId}.${f.fieldRef.fieldId}` : "";
     concerns.push({
-      key: `finding:${f.ruleId}:${f.matchedText ?? ""}`,
+      key: `finding:${f.ruleId}:${field}:${f.matchedText ?? ""}`,
       source: "finding",
       severity: f.severity,
       blocking,
@@ -176,7 +206,14 @@ export function buildConcerns(
       // paste screen it is fix-only, because copying an identifier out of the
       // tool is the exact harm. Non-PHI S0 (wrong site, invalid tooth) is
       // fix-only everywhere.
-      attestable: f.severity !== "S0",
+      //
+      // A missing REQUIRED field is fix-only too, and for a harder reason: the
+      // server re-runs runAudit and computeGates at submit and returns 422 on
+      // any open S1. Offering an attestation would let someone write a reason,
+      // watch the row go green, press Submit and be refused — a dead end built
+      // on purpose. The field is empty; the only thing that resolves it is
+      // filling it in.
+      attestable: f.severity !== "S0" && f.ruleId !== "required.missing",
       // Escalating a PHI catch would copy the flagged fragment into a wish.
       escalatable: !phi
     });

@@ -19,6 +19,8 @@ import {
   claimDraftForSubmit,
   deleteDraft,
   DRAFT_REVISION_KEEP,
+  newestOpenDraftForOwner,
+  setDraftStatus,
   draftSubmissionCount,
   getDraft,
   getDraftRevision,
@@ -168,6 +170,82 @@ describe("db layer (PGlite)", () => {
     const loaded = await getDraftRevision(db, draft.id, oldestKept.id);
     expect(loaded?.title).toBe("save-3");
     expect(loaded?.noteState.selectedModuleIds).toEqual(["extraction"]);
+  });
+
+  // The home page IS the builder now, so which draft it opens is a product
+  // decision expressed as a query. Getting it wrong is not a subtle bug: open
+  // the wrong one and someone types into a filed record or into a teammate's
+  // unfinished note.
+  describe("the draft the home page opens", () => {
+    it("returns nothing for a writer with no drafts", async () => {
+      const owner = await freshUser("newcomer");
+      expect(await newestOpenDraftForOwner(db, owner.id)).toBeUndefined();
+    });
+
+    it("resumes the most recently touched open draft", async () => {
+      const owner = await freshUser("resumer");
+      const older = await insertDraft(db, {
+        id: crypto.randomUUID(),
+        ownerId: owner.id,
+        noteState: note,
+        title: "older"
+      });
+      const newer = await insertDraft(db, {
+        id: crypto.randomUUID(),
+        ownerId: owner.id,
+        noteState: note,
+        title: "newer"
+      });
+      // insertDraft stamps its own updatedAt, so order them explicitly rather
+      // than trusting two inserts in the same millisecond to sort.
+      await updateDraftChecked(db, older.id, 1, { title: "older" }, new Date(2026, 0, 1));
+      await updateDraftChecked(db, newer.id, 1, { title: "newer" }, new Date(2026, 0, 2));
+      expect((await newestOpenDraftForOwner(db, owner.id))?.id).toBe(newer.id);
+    });
+
+    it("never reopens a filed note", async () => {
+      // A submitted note is frozen. Landing a cursor in one is not resuming,
+      // it is editing a record.
+      const owner = await freshUser("filer");
+      const d = await insertDraft(db, {
+        id: crypto.randomUUID(),
+        ownerId: owner.id,
+        noteState: note
+      });
+      await setDraftStatus(db, d.id, "submitted", false, new Date(2026, 0, 3));
+      expect(await newestOpenDraftForOwner(db, owner.id)).toBeUndefined();
+    });
+
+    it("still offers a send-failed draft, which needs a person", async () => {
+      const owner = await freshUser("resender");
+      const d = await insertDraft(db, {
+        id: crypto.randomUUID(),
+        ownerId: owner.id,
+        noteState: note
+      });
+      await setDraftStatus(db, d.id, "send-failed", true, new Date(2026, 0, 3));
+      expect((await newestOpenDraftForOwner(db, owner.id))?.id).toBe(d.id);
+    });
+
+    it("never opens someone else's draft, however new it is", async () => {
+      // Ownership is not negotiable here even for an account that may READ
+      // every note in the practice.
+      const mine = await freshUser("mine");
+      const theirs = await freshUser("theirs");
+      const ours = await insertDraft(db, {
+        id: crypto.randomUUID(),
+        ownerId: mine.id,
+        noteState: note
+      });
+      const other = await insertDraft(db, {
+        id: crypto.randomUUID(),
+        ownerId: theirs.id,
+        noteState: note
+      });
+      await updateDraftChecked(db, ours.id, 1, { title: "mine" }, new Date(2026, 0, 1));
+      await updateDraftChecked(db, other.id, 1, { title: "theirs" }, new Date(2026, 0, 9));
+      expect((await newestOpenDraftForOwner(db, mine.id))?.id).toBe(ours.id);
+    });
   });
 
   it("lists drafts by owner and transfers ownership", async () => {

@@ -35,7 +35,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         <dt className="font-semibold text-slate-600">Ruleset version</dt>
         <dd>{s.ruleVersion}</dd>
       </dl>
-      <p className="mb-4 rounded border border-blue-200 bg-blue-50 px-3 py-2 text-xs text-blue-900">
+      <p className="mb-4 rounded border border-brand-blue/30 bg-brand-blue/10 px-3 py-2 text-xs text-brand-navy">
         This is the frozen record exactly as submitted — it never changes, even if the templates or
         rules are later updated. It may form part of a legal and medical record.
       </p>

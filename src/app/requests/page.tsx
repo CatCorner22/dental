@@ -27,7 +27,7 @@ export default async function RequestsPage({
         Adding, removing, or changing a field is structural, not cosmetic — it reaches charts,
         recalls, medical alerts, claims, and every report. Treat this proposal as contaminated until
         it clears all five sterilization cycles.{" "}
-        <Link className="font-semibold text-blue-700 underline" href="/reference/data-hygiene">
+        <Link className="font-semibold text-brand-blue underline" href="/reference/data-hygiene">
           Read the full Data Hygiene Guide
         </Link>
         .

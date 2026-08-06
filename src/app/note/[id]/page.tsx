@@ -5,6 +5,7 @@ import { getDb } from "@/lib/db/client";
 import { getDraft } from "@/lib/db/repo/drafts";
 import { BuilderShell } from "@/components/builder/BuilderShell";
 import { getOffice, officesForPicker } from "@/lib/db/repo/offices";
+import { edrProductShort } from "@/lib/edr/product";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Note" };
@@ -55,6 +56,8 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       initialSubmitted={draft.status === "submitted"}
       initialSendFailed={draft.lastSendFailed}
       canEdit={canEdit}
+      edrName={edrProductShort()}
+      username={user.username}
     />
   );
 }

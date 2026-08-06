@@ -74,8 +74,12 @@ const securityHeaders = [
   // A password-reset token lives in a URL path. Sending a full URL to another
   // origin as a Referer would leak it; this sends nothing cross-origin.
   { key: "Referrer-Policy", value: "no-referrer" },
-  // The app needs none of these. Denying them means a compromised dependency
-  // cannot quietly ask for a microphone in a dental operatory.
+  // Deny device APIs the app does not use. Microphone is the exception:
+  // Standardize dictation (browser SpeechRecognition) must be able to prompt
+  // on this origin. `microphone=(self)` allows same-origin only — embedded
+  // third parties and a compromised cross-origin frame still cannot ask.
+  // Camera and the rest stay fully denied so an operatory tab cannot be
+  // quietly turned into a silent camera.
   {
     key: "Permissions-Policy",
     value: [
@@ -84,7 +88,7 @@ const securityHeaders = [
       "geolocation=()",
       "gyroscope=()",
       "magnetometer=()",
-      "microphone=()",
+      "microphone=(self)",
       "payment=()",
       "usb=()",
       "interest-cohort=()"

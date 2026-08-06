@@ -7,7 +7,7 @@ import { StatusChip } from "@/components/ui/StatusChip";
 import { Character } from "@/components/mascot/Sparkle";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { authorCapabilities } from "@/lib/scope/authorCapabilities";
-import { quickPicksForRole } from "@/lib/presets/quickPicks";
+import { featuredPicksForRole, quickPicksForRole } from "@/lib/presets/quickPicks";
 import type { DraftStatus } from "@/lib/status/draftStatus";
 
 export interface RecentRow {
@@ -45,6 +45,12 @@ export function HomeAside({
   const [showPicks, setShowPicks] = useState(false);
   const [error, setError] = useState("");
   const picks = useMemo(() => quickPicksForRole(clinicalRole), [clinicalRole]);
+  const featured = useMemo(() => featuredPicksForRole(clinicalRole), [clinicalRole]);
+  const featuredIds = useMemo(() => new Set(featured.map((p) => p.id)), [featured]);
+  const morePicks = useMemo(
+    () => picks.filter((p) => !featuredIds.has(p.id)),
+    [picks, featuredIds]
+  );
   const structureCue = authorCapabilities(clinicalRole).structureCue;
 
   const createDraft = async (moduleIds: string[], title: string) => {
@@ -102,10 +108,29 @@ export function HomeAside({
                 <span className="text-sm font-semibold text-slate-800">Blank note</span>
                 <span className="block text-xs text-slate-500">Universal Core only.</span>
               </button>
-              <p className="mb-1 mt-2 border-t border-slate-100 px-2 pt-2 text-[0.7rem] leading-snug text-slate-500">
+              <p className="mb-1 mt-2 border-t border-slate-100 px-2 pt-2 text-[0.7rem] font-semibold uppercase tracking-wide text-brand-teal">
+                Fast Lane
+              </p>
+              <p className="mb-1 px-2 text-[0.7rem] leading-snug text-slate-500">
                 {structureCue}
               </p>
-              {picks.map((p) => (
+              {featured.map((p) => (
+                <button
+                  key={p.id}
+                  className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
+                  disabled={busy}
+                  onClick={() => createDraft(p.moduleIds, p.label)}
+                >
+                  <span className="text-sm font-semibold text-slate-800">{p.label}</span>
+                  <span className="block text-xs text-slate-500">{p.description}</span>
+                </button>
+              ))}
+              {morePicks.length > 0 && (
+                <p className="mb-1 mt-2 border-t border-slate-100 px-2 pt-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                  More scaffolds
+                </p>
+              )}
+              {morePicks.map((p) => (
                 <button
                   key={p.id}
                   className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"

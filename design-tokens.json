@@ -1,0 +1,97 @@
+{
+  "$schema": "https://design-tokens.org/schema/2025.10/format.json",
+  "name": "Smile Notes",
+  "version": "1.0.0",
+  "description": "Production design tokens for Smile Notes. Purple brand (cream/navy/blue/teal). Primitive → semantic → component. Severity colors are NOT in this sheet — they live in audit types.",
+  "primitive": {
+    "color": {
+      "brand": {
+        "cream": { "$type": "color", "$value": "#EDE9F6" },
+        "navy": { "$type": "color", "$value": "#3B2B66" },
+        "blue": { "$type": "color", "$value": "#6D4AC4" },
+        "teal": { "$type": "color", "$value": "#5B4A8F" },
+        "gold": { "$type": "color", "$value": "#F2CE4B" }
+      },
+      "slate": {
+        "50": { "$type": "color", "$value": "#F8F7FB" },
+        "100": { "$type": "color", "$value": "#F1EFF6" },
+        "200": { "$type": "color", "$value": "#E4E1EC" },
+        "300": { "$type": "color", "$value": "#CFCADB" },
+        "400": { "$type": "color", "$value": "#9C93B3" },
+        "500": { "$type": "color", "$value": "#6E6685" },
+        "600": { "$type": "color", "$value": "#565070" },
+        "700": { "$type": "color", "$value": "#433E58" },
+        "800": { "$type": "color", "$value": "#322E44" },
+        "900": { "$type": "color", "$value": "#23202F" }
+      },
+      "white": { "$type": "color", "$value": "#FFFFFF" }
+    },
+    "space": {
+      "1": { "$type": "dimension", "$value": "4px" },
+      "2": { "$type": "dimension", "$value": "8px" },
+      "3": { "$type": "dimension", "$value": "12px" },
+      "4": { "$type": "dimension", "$value": "16px" },
+      "5": { "$type": "dimension", "$value": "24px" },
+      "6": { "$type": "dimension", "$value": "32px" }
+    },
+    "radius": {
+      "sm": { "$type": "dimension", "$value": "8px" },
+      "md": { "$type": "dimension", "$value": "12px" },
+      "lg": { "$type": "dimension", "$value": "16px" },
+      "pill": { "$type": "dimension", "$value": "9999px" }
+    },
+    "target": {
+      "min": { "$type": "dimension", "$value": "44px" }
+    }
+  },
+  "semantic": {
+    "color": {
+      "surface": {
+        "page": { "$type": "color", "$value": "{primitive.color.brand.cream}" },
+        "card": { "$type": "color", "$value": "{primitive.color.white}" },
+        "inset": { "$type": "color", "$value": "{primitive.color.brand.cream}" },
+        "soft": { "$type": "color", "$value": "{primitive.color.slate.50}" }
+      },
+      "fg": {
+        "brand": { "$type": "color", "$value": "{primitive.color.brand.navy}" },
+        "body": { "$type": "color", "$value": "{primitive.color.slate.800}" },
+        "muted": { "$type": "color", "$value": "{primitive.color.slate.500}" },
+        "subtle": { "$type": "color", "$value": "{primitive.color.slate.400}" },
+        "chrome": { "$type": "color", "$value": "{primitive.color.brand.teal}" }
+      },
+      "action": {
+        "primary": { "$type": "color", "$value": "{primitive.color.brand.navy}" },
+        "primary.interactive": { "$type": "color", "$value": "{primitive.color.brand.blue}" },
+        "primary.on": { "$type": "color", "$value": "{primitive.color.white}" },
+        "complete": { "$type": "color", "$value": "{primitive.color.brand.teal}" },
+        "complete.on": { "$type": "color", "$value": "{primitive.color.white}" }
+      },
+      "border": {
+        "default": { "$type": "color", "$value": "{primitive.color.slate.200}" },
+        "strong": { "$type": "color", "$value": "{primitive.color.slate.300}" },
+        "field": { "$type": "color", "$value": "{primitive.color.slate.500}" },
+        "focus": { "$type": "color", "$value": "{primitive.color.brand.blue}" }
+      }
+    }
+  },
+  "component": {
+    "button": {
+      "primary": {
+        "bgFrom": { "$type": "color", "$value": "{semantic.color.action.primary}" },
+        "bgTo": { "$type": "color", "$value": "{semantic.color.action.primary.interactive}" },
+        "fg": { "$type": "color", "$value": "{semantic.color.action.primary.on}" }
+      },
+      "complete": {
+        "bg": { "$type": "color", "$value": "{semantic.color.action.complete}" },
+        "fg": { "$type": "color", "$value": "{semantic.color.action.complete.on}" }
+      }
+    },
+    "fastLane": {
+      "card": {
+        "bg": { "$type": "color", "$value": "{semantic.color.surface.card}" },
+        "border": { "$type": "color", "$value": "{semantic.color.border.default}" },
+        "radius": { "$type": "dimension", "$value": "{primitive.radius.lg}" }
+      }
+    }
+  }
+}

@@ -69,6 +69,11 @@ export const users = pgTable("users", {
   // returned by any API after enrollment confirms.
   mfaSecret: text("mfa_secret"),
   mfaEnabled: boolean("mfa_enabled").notNull().default(false),
+  // Dictation enrollment lives on the person, not the browser. Null = never
+  // completed. No audio or transcript is retained — only the fact, the moment,
+  // and the regional prompt set used to boost the recognizer.
+  dictationEnrolledAt: timestamp("dictation_enrolled_at", { withTimezone: true }),
+  dictationRegion: text("dictation_region"),
   createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow()
 });
 

@@ -29,6 +29,13 @@ export const freshSessionUser = cache(async (): Promise<SessionUser | null> => {
     username: row.username,
     displayName: row.displayName,
     role: row.role,
-    noticeAcked: row.noticeAckAt !== null
+    noticeAcked: row.noticeAckAt !== null,
+    // Dictation enrollment travels with the user rather than being fetched by
+    // the note page. A client fetch here would race the legal-notice gate —
+    // every API refuses with 403 until the notice is acknowledged, and the
+    // builder mounts the instant somebody signs in. This is the same lesson
+    // the personal-blocks panel taught, applied before it could bite.
+    dictationEnrolled: row.dictationEnrolledAt !== null,
+    dictationRegion: row.dictationRegion ?? null
   };
 });

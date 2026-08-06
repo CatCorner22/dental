@@ -53,6 +53,18 @@ export interface SessionUser {
    * effect on their next request, not in thirty days.
    */
   clinicalRole: ClinicalRole;
+  /**
+   * Has this person finished the dictation practice session?
+   *
+   * On the PERSON, not the browser. It used to be a localStorage key, so the
+   * read-aloud came back on every new computer, profile and private window —
+   * which in an operatory of shared workstations meant it never stayed done.
+   * Optional on the interface because requireRole builds a SessionUser too and
+   * has no reason to carry it.
+   */
+  dictationEnrolled?: boolean;
+  /** Which regional prompt set was used, for recognizer hinting. */
+  dictationRegion?: string | null;
 }
 
 export function meetsRole(role: Role | undefined, min: Role): boolean {

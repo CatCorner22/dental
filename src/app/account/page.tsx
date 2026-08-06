@@ -39,7 +39,11 @@ export default async function AccountPage() {
       <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
       <RevokeSessions />
       <DisplaySettings />
-      <DictationSettings username={user.username} />
+      <DictationSettings
+        username={user.username}
+        enrolled={user.dictationEnrolled ?? false}
+        region={user.dictationRegion ?? null}
+      />
     </div>
   );
 }

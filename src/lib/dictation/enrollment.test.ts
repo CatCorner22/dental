@@ -27,10 +27,31 @@ function memoryStorage() {
 
 describe("dictation enrollment gate", () => {
   it("pins the unlock contract (drift guard)", () => {
-    expect(DICTATION_ENROLLMENT_VERSION).toBe("1.0.0");
-    expect(ENROLLMENT_MIN_MS).toBe(180_000);
-    expect(ENROLLMENT_MIN_UTTERANCES).toBe(12);
-    expect(ENROLLMENT_MIN_PROMPTS).toBe(8);
+    // 2.0.0: the session went from three minutes to ninety seconds and the
+    // record moved from a browser's localStorage onto the user row. The
+    // version is bumped WITH the thresholds on purpose — a stored 1.0.0
+    // record proves a session that met the old rule on one browser, and the
+    // thing being asserted now is a fact about a person.
+    expect(DICTATION_ENROLLMENT_VERSION).toBe("2.0.0");
+    expect(ENROLLMENT_MIN_MS).toBe(90_000);
+    expect(ENROLLMENT_MIN_UTTERANCES).toBe(8);
+    expect(ENROLLMENT_MIN_PROMPTS).toBe(6);
+  });
+
+  it("does not honour a record written under the previous contract", () => {
+    // The migration boundary, stated as a test. An old localStorage record
+    // would otherwise unlock the microphone on the strength of a rule that no
+    // longer exists.
+    const stale = JSON.stringify({
+      version: "1.0.0",
+      username: "amanda",
+      region: "general",
+      completedAt: new Date().toISOString(),
+      listenedMs: 200_000,
+      utterances: 30,
+      promptsCompleted: 12
+    });
+    expect(readEnrollment("amanda", { getItem: () => stale })).toBeNull();
   });
 
   it("refuses unlock until time, utterances, and prompts are met", () => {

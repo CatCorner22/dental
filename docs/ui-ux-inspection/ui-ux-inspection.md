@@ -78,7 +78,7 @@ Infra gate remains open PR **#91** (production `POSTGRES_URL`). Prefer merge **#
 
 - [x] `deriveDraftStatus` handoff tests
 - [x] ProgressRing filing cap tests
-- [ ] Full `npm test` / `tsc` / `build` on branch
+- [x] Full `npm test` / `tsc` / `build` on branch (2375 tests)
 - [ ] Manual: hygienist in-scope vs out-of-scope chip + banner
 - [ ] Manual: toast does not cover Submit on phone width
 

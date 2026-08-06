@@ -163,14 +163,16 @@ export function ByteStarAdvisor({ text }: { text: string }) {
           <div className="flex items-start justify-between gap-2">
             <div>
               <div className="flex items-center gap-1.5">
-                <h3 className="text-sm font-bold text-brand-navy">SuperByte</h3>
+                <h3 className="text-base font-bold text-brand-navy">SuperByte</h3>
                 <HelpTip label="What SuperByte does">
                   One-way observations only. You cannot prompt it, rate it, or copy its text into
                   the note. When the pioneer model is off, the gauges still run locally from the
                   same rules Byte uses.
+                  {" "}
+                  {BYTESTAR_DISCLAIMER}
                 </HelpTip>
               </div>
-              <p className="text-[0.65rem] text-amber-900/60">
+              <p className="text-xs text-amber-900/70">
                 gives you feedback · you do not give it feedback
               </p>
               {profile && profile !== "documentation" && (
@@ -195,10 +197,15 @@ export function ByteStarAdvisor({ text }: { text: string }) {
             </p>
           )}
 
-          <p className="mt-2 text-[0.65rem] font-medium leading-relaxed text-amber-950/80">
+          {/* The one-way rule stays on screen — it governs how you may USE the
+              panel, so it has to be readable without asking. The long
+              experimental disclaimer moved into the help tip beside the title:
+              it describes what SuperByte IS rather than anything happening now,
+              and a permanent 60-word paragraph in an always-visible panel
+              pushed Byte off the bottom of the aside entirely. */}
+          <p className="mt-2 text-xs font-medium leading-relaxed text-amber-950/80">
             {BYTESTAR_ONE_WAY_NOTICE}
           </p>
-          <p className="mt-1 text-[0.65rem] leading-relaxed text-slate-600">{BYTESTAR_DISCLAIMER}</p>
 
           {tip ? (
             <div
@@ -207,7 +214,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               aria-atomic
             >
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
-              <p className="text-[0.65rem] text-amber-900/70">
+              <p className="text-xs font-semibold text-amber-900">
                 {tip.kind}
                 {feedbackSource === "instrument" && (
                   <span className="ml-1 normal-case text-slate-400">· instrument reading</span>
@@ -220,10 +227,10 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   </span>
                 )}
               </p>
-              <p className="text-sm font-medium text-slate-900">{tip.say}</p>
-              <p className="mt-1 text-xs leading-relaxed text-slate-600">{tip.why}</p>
+              <p className="text-base font-semibold leading-snug text-slate-900">{tip.say}</p>
+              <p className="mt-1 text-sm leading-relaxed text-slate-700">{tip.why}</p>
               {tip.question && (
-                <p className="mt-1 text-xs font-medium text-brand-navy">{tip.question}</p>
+                <p className="mt-1.5 text-sm font-semibold text-brand-navy">{tip.question}</p>
               )}
               <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-400">
                 Source: {tip.source}

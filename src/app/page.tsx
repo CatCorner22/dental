@@ -2,6 +2,7 @@ import { redirect } from "next/navigation";
 import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
+import { autoDraftTitle } from "@/lib/drafts/autoTitle";
 import {
   insertDraft,
   listAllDrafts,
@@ -88,7 +89,7 @@ export default async function HomePage() {
       id: crypto.randomUUID(),
       ownerId: user.id,
       noteState: { selectedModuleIds: [], values: {} },
-      title: "Untitled note"
+      title: autoDraftTitle({ now: new Date(), displayName: user.displayName })
     });
   }
 

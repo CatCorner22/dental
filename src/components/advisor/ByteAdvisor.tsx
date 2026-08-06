@@ -58,6 +58,20 @@ export function ByteAdvisor({
               advisor · reads only · never blocks
             </span>
           </div>
+          {/* WHAT BYTE IS DOING, RIGHT NOW.
+              "advisor · reads only · never blocks" describes what Byte IS. It
+              never said what it is doing at this moment, so a writer watching
+              a panel change while they typed had no account of why. Byte is
+              always in one of three states and now says which. */}
+          <p className="mt-0.5 text-xs font-medium text-slate-600" aria-live="polite">
+            {text.trim().length === 0
+              ? "Waiting for you to start writing."
+              : report.advice.length === 0
+                ? "Read your draft — nothing to raise."
+                : `Read your draft — ${report.advice.length} thing${
+                    report.advice.length === 1 ? "" : "s"
+                  } worth a look.`}
+          </p>
 
           {tip ? (
             <div className="relative mt-1 rounded-lg rounded-tl-none bg-white p-2.5 ring-1 ring-slate-200">
@@ -95,15 +109,11 @@ export function ByteAdvisor({
           face. Severity colours are absent on purpose — these are gauges, not
           findings, and the audit panel owns the alarm palette. */}
       {gauges.words > 0 && (
-        <div className="mt-3 grid grid-cols-2 gap-2 text-xs sm:grid-cols-4">
+        <div className="mt-3 grid grid-cols-2 gap-2 text-xs">
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
             <div className="flex items-baseline justify-between">
               <span className="inline-flex items-center gap-1 text-slate-500">
                 Read
-                <HelpTip label="About read coverage" side="top">
-                  {gauges.notes.read.why}
-                  {gauges.notes.read.next ? ` ${gauges.notes.read.next}` : ""}
-                </HelpTip>
               </span>
               <span className="font-bold tabular-nums text-brand-navy">
                 {Math.round(gauges.readCoverage * 100)}%
@@ -122,9 +132,6 @@ export function ByteAdvisor({
             <div className="flex items-baseline justify-between">
               <span className="inline-flex items-center gap-1 text-slate-500">
                 Facts
-                <HelpTip label="About fact density" side="top">
-                  {gauges.notes.density.why}
-                </HelpTip>
               </span>
               <span className="font-bold tabular-nums text-brand-navy">{gauges.facts}</span>
             </div>
@@ -137,10 +144,6 @@ export function ByteAdvisor({
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
             <span className="inline-flex items-center gap-1 text-slate-500">
               What a later reader asks
-              <HelpTip label="About the four later-reader checks" side="top">
-                {gauges.notes.pillars.why}
-                {gauges.notes.pillars.next ? ` Next: ${gauges.notes.pillars.next}` : ""}
-              </HelpTip>
             </span>
             {gauges.pillars.applicable ? (
               <ul className="mt-1 space-y-0.5 text-[0.65rem]">
@@ -166,10 +169,6 @@ export function ByteAdvisor({
           <div className="rounded-lg bg-white p-2 ring-1 ring-slate-200/70">
             <span className="inline-flex items-center gap-1 text-slate-500">
               Anesthetic
-              <HelpTip label="About anesthetic gauge" side="top">
-                {gauges.notes.dose.why}
-                {gauges.notes.dose.next ? ` ${gauges.notes.dose.next}` : ""}
-              </HelpTip>
             </span>
             {gauges.dose ? (
               <>

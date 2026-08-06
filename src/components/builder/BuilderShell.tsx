@@ -23,6 +23,7 @@ import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { submitBlockedReason } from "@/lib/status/submitBlocked";
+import { withOffice } from "@/lib/drafts/autoTitle";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { useAutosave } from "@/lib/client/useAutosave";
@@ -128,7 +129,7 @@ export function BuilderShell({
   // Has this session made a real edit yet? Distinguishes "nothing has happened"
   // from "something happened and was reverted" — see the autosave effect.
   const hasEdited = useRef(false);
-  const [tab, setTab] = useState<"audit" | "chart" | "byte" | "bytestar" | "prior" | "preview">("audit");
+  const [tab, setTab] = useState<"audit" | "chart" | "prior" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
   // ATTESTATIONS AND ESCALATIONS on ordinary findings.
   //
@@ -690,14 +691,26 @@ export function BuilderShell({
       <div className="mb-3">
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
-      {/* flex-wrap, not a single row. Six tabs do not fit the aside at any
-          desktop width, and without wrapping the last one pushed the whole
-          PAGE two pixels wider than the viewport — which the cross-browser
-          smoke test asserts against. It went unseen because that suite never
-          visits the builder; the builder moving onto the home page is what
-          finally put it in front of the check. */}
+      {/* BYTE AND SUPERBYTE ARE NOT TABS.
+          They were two of six, so seeing either one meant losing sight of the
+          audit, and a writer who never pressed a tab never met them at all —
+          a real-time helper you have to go and find is not a real-time helper.
+          They live here now, above the tabs, on screen the whole time the note
+          is open, for every role. Nothing gates them: both read the composed
+          note locally and neither can write to it. */}
+      <div className="mb-3 space-y-2">
+        {/* Byte first: it is the deterministic advisor reading the note that was
+            just typed, and it is the one whose advice cites a rule. SuperByte
+            is the experimental one and sits under it. */}
+        <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
+        <ByteStarAdvisor text={markdown} />
+      </div>
+      {/* flex-wrap, not a single row. Even at four, tabs do not reliably fit
+          the aside at every desktop width, and without wrapping the last one
+          pushed the whole PAGE two pixels wider than the viewport — which the
+          cross-browser smoke test asserts against. */}
       <div className="mb-3 flex flex-wrap gap-1">
-        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "SuperByte"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
+        {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
             onClick={() => setTab(t)}
@@ -719,14 +732,6 @@ export function BuilderShell({
             onAttest={canEdit ? recordAttestation : undefined}
             onEscalate={canEdit ? escalateFinding : undefined}
           />
-        ) : tab === "byte" ? (
-          /* Byte reads the same composed markdown the chart does — one
-             memoized composition, one deferred cadence. Advice-only here; the
-             "think deeper" path lives on the Standardize screen where the
-             assist consent and queue already are. */
-          <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
-        ) : tab === "bytestar" ? (
-          <ByteStarAdvisor text={markdown} />
         ) : tab === "prior" ? (
           /* A frozen filed note beside the draft — for checking against the
              last visit, never for copying it forward. */
@@ -886,7 +891,20 @@ export function BuilderShell({
               className="tap-input rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
               value={officeId ?? ""}
               disabled={!canEdit}
-              onChange={(e) => setOfficeId(e.target.value || null)}
+              // Picking the office also completes the note's own name.
+              //
+              // A draft is created before anyone has chosen where the visit
+              // happened, so it is born as date_Who_time and gains the place
+              // here. withOffice rebuilds from the date and time ALREADY in the
+              // title rather than from the clock — the last segment is when the
+              // note was started, and restamping it at the moment somebody
+              // touched a dropdown would falsify the one fact in the title that
+              // could later matter. A title the writer typed is left alone.
+              onChange={(e) => {
+                const id = e.target.value || null;
+                setOfficeId(id);
+                setTitle((t) => withOffice(t, offices.find((o) => o.id === id)?.name ?? null));
+              }}
               aria-label="Office where this encounter happened"
               title="Which office this visit happened at. Staff rotate, so this is per note, not per person."
             >
@@ -1043,12 +1061,11 @@ export function BuilderShell({
             clinicalRole={clinicalRole}
             canEdit={canEdit}
             visible={extraModuleCount === 0}
-            onApply={(pick) => {
-              dispatch({ type: "applyModules", moduleIds: pick.moduleIds });
-              if (!title.trim() || title.trim() === "Untitled note") {
-                setTitle(pick.label);
-              }
-            }}
+            // Structure only — it does NOT rename the note. Drafts now name
+            // themselves date_Who_Where_time, and overwriting that with
+            // "Restoration" would trade four facts a person can search on for
+            // one they can already see in the modules the card just added.
+            onApply={(pick) => dispatch({ type: "applyModules", moduleIds: pick.moduleIds })}
           />
           <fieldset disabled={!canEdit} className="min-w-0">
             <DictationUserContext.Provider value={username}>
@@ -1087,22 +1104,32 @@ export function BuilderShell({
       {canEdit && (
         <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
+            {/* SAY WHAT THEY DO.
+                "Paste a note" and "Earlier saves" were two two-word labels in
+                the corner of the screen, and neither says what pressing it
+                does: the first sounds like it pastes something INTO the note
+                from somewhere, and the second could as easily mean other
+                people's notes as older copies of this one. Both are named for
+                their outcome now, and the pair is separated from Save and
+                Submit by a rule — these two are ways INTO this note, not ways
+                to finish it. */}
             <button
               type="button"
               className="btn-secondary text-xs"
               onClick={() => setShowPaste(true)}
-              title="Paste a note you already wrote and choose where its sections go"
+              title="Already written this note somewhere else? Paste the text here and Smile Notes will sort it into sections for you to place."
             >
-              Paste a note
+              Start from text I wrote
             </button>
             <button
               type="button"
               className="btn-secondary text-xs"
-              title="Restore a recent server autosave of this working copy"
+              title="Go back to an automatically saved earlier version of THIS note. Nothing is lost — the current version is kept too."
               onClick={() => void openRevisions()}
             >
-              Earlier saves
+              Undo back to an earlier version
             </button>
+            <span aria-hidden className="hidden h-5 w-px bg-slate-200 sm:block" />
             <p className="min-w-0 flex-1 text-xs text-slate-600" id="builder-submit-blocked">
               {liveStatus === "submitted"
                 ? "Filed. Edit the note to submit again."

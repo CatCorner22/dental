@@ -15,6 +15,7 @@ import { checkScope } from "@/lib/schema/scopeGuard";
 import { activeModules } from "@/lib/modules";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { statusForNote } from "@/lib/status/statusForNote";
+import { autoDraftTitle } from "@/lib/drafts/autoTitle";
 import type { NoteState } from "@/lib/schema/types";
 
 export const runtime = "nodejs";
@@ -57,7 +58,14 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: "Request body must be a JSON object." }, { status: 400 });
   }
   const b: Record<string, unknown> = parsed.kind === "object" ? parsed.value : {};
-  const title = typeof b.title === "string" && b.title.trim() ? b.title.trim().slice(0, 200) : "Untitled note";
+  // A draft names itself: date_Who_Where_time (see lib/drafts/autoTitle). The
+  // office is not known here — it is chosen in the note bar a moment later, and
+  // the builder fills that segment in then. An explicit client title still wins,
+  // because that is a person naming their own note.
+  const title =
+    typeof b.title === "string" && b.title.trim()
+      ? b.title.trim().slice(0, 200)
+      : autoDraftTitle({ now: new Date(), displayName: guard.user.displayName });
   let note: NoteState = EMPTY;
   if (b.note !== undefined) {
     const res = validateNoteState(b.note);

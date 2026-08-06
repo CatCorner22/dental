@@ -219,12 +219,24 @@ export function NoteForm({
               <details
                 key={section.id}
                 open={open}
-                onToggle={(e) =>
-                  setOpenSections((s) => ({
-                    ...s,
-                    [sectionKey]: (e.currentTarget as HTMLDetailsElement).open
-                  }))
-                }
+                // Read the element BEFORE handing anything to setState.
+                //
+                // This used to dereference `e.currentTarget` inside the
+                // functional updater, and React does not run that updater
+                // synchronously — it runs during the next render, by which time
+                // it has nulled currentTarget on the pooled event. Any toggle
+                // that landed in the same batch as a re-render therefore threw
+                // "Cannot read properties of null (reading 'open')" and the
+                // error boundary swallowed the whole page.
+                //
+                // Adding an add-on module was exactly that batch: it changes
+                // how many modules render, which remounts these <details>, which
+                // fires toggle on the way. So every Fast Lane card looked like a
+                // dead link.
+                onToggle={(e) => {
+                  const isOpen = (e.currentTarget as HTMLDetailsElement).open;
+                  setOpenSections((s) => ({ ...s, [sectionKey]: isOpen }));
+                }}
                 // The anchor the audit panel's "go to field" walks up to when
                 // the field it wants is inside a collapsed section.
                 data-section={sectionKey}

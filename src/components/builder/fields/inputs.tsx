@@ -272,6 +272,10 @@ function StandardizeField({
   // produced. Both, because Undo is only offered while the field still holds
   // exactly what was produced — see below.
   const [prior, setPrior] = useState<{ before: string; after: string } | null>(null);
+  // A rewrite that has been COMPUTED but not accepted. This is the whole
+  // "are you sure" — the deterministic pass proposes into here, and only the
+  // writer pressing Apply moves it into the note.
+  const [pending, setPending] = useState<{ before: string; after: string } | null>(null);
   // The diff is opt-in per run rather than always-on: it is the answer to "what
   // did you just do", and pinning it open would push the next field off screen
   // on a busy note.
@@ -294,16 +298,24 @@ function StandardizeField({
       setNote("⚠ too long to standardize — nothing was changed. Shorten the field or standardize it in sections.");
       return;
     }
+    // PROPOSE. DO NOT APPLY.
+    //
+    // This used to rewrite the field on the spot and offer Undo afterwards,
+    // which asks a clinician to notice an unrequested edit to a legal record
+    // and object to it. The burden is the wrong way round: the deterministic
+    // pass is very good, and "very good" is still not consent. Nothing reaches
+    // the note now until somebody reads the diff and says yes.
     if (r.text !== text) {
-      setPrior({ before: text, after: r.text });
-      setShowDiff(false);
-      onApply(r.text);
+      setPending({ before: text, after: r.text });
+      setShowDiff(true);
     }
     const parts: string[] = [];
     // Loudest first: something was LOST, which matters more than what changed.
     const changes = r.applied.filter((a) => a.kind !== "formatting").length;
     if (r.text !== text) {
-      parts.push(changes > 0 ? `${changes} change${changes === 1 ? "" : "s"} applied` : "tidied");
+      parts.push(
+        changes > 0 ? `${changes} change${changes === 1 ? "" : "s"} proposed` : "tidying proposed"
+      );
     }
     if (r.flags.length > 0) {
       // Named, not just counted: "1 needs your judgement" tells the writer
@@ -321,11 +333,46 @@ function StandardizeField({
       <button
         type="button"
         className="chip"
-        title="Rewrite this field in the practice's standard wording"
+        title="Show what the practice's standard wording would change here — nothing is applied until you accept it"
         onClick={run}
+        disabled={pending !== null}
       >
         ✨ Standardize
       </button>
+      {/* THE ARE-YOU-SURE. Both buttons, side by side, with the diff open
+          underneath: the question is "is this right?", and it cannot be
+          answered by a button alone. Keep mine is listed second but is the
+          zero-cost option — declining changes nothing at all. */}
+      {pending && (
+        <>
+          <button
+            type="button"
+            className="btn-primary text-xs"
+            onClick={() => {
+              onApply(pending.after);
+              setPrior(pending);
+              setPending(null);
+              setShowDiff(false);
+              setNote("applied — Undo puts your wording back");
+              setTimeout(() => setNote(null), 6000);
+            }}
+          >
+            Apply this wording
+          </button>
+          <button
+            type="button"
+            className="chip"
+            onClick={() => {
+              setPending(null);
+              setShowDiff(false);
+              setNote("kept your wording");
+              setTimeout(() => setNote(null), 6000);
+            }}
+          >
+            Keep mine
+          </button>
+        </>
+      )}
       {/*
         The way back.
 
@@ -394,9 +441,14 @@ function StandardizeField({
       {caution && (
         <span className="basis-full text-xs text-amber-700">{caution}</span>
       )}
-      {showDiff && prior && (
+      {showDiff && (pending ?? prior) && (
         <div className="basis-full">
-          <TextDiff before={prior.before} after={prior.after} />
+          {pending && (
+            <p className="mb-1 text-xs font-semibold text-slate-700">
+              Proposed. Nothing has changed in your note yet.
+            </p>
+          )}
+          <TextDiff before={(pending ?? prior)!.before} after={(pending ?? prior)!.after} />
         </div>
       )}
     </div>

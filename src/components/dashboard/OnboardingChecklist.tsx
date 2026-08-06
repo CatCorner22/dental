@@ -13,15 +13,15 @@ import Link from "next/link";
 const STEPS = [
   {
     id: "note",
-    label: "Start a Smile Note and watch the audit panel react as you type",
+    label: "Write a couple of sentences and watch the audit panel react",
     href: "/",
-    hint: "The + New Smile Note button above."
+    hint: "The note is already open, with the cursor in it."
   },
   {
     id: "standardize",
-    label: "Paste a messy note into Standardize and clear its resolution queue",
-    href: "/standardize",
-    hint: "Copy unlocks only when the queue is clear — that is the point."
+    label: "Press ✨ Standardize on a free-text field and read what changed",
+    href: "/",
+    hint: "It shows the diff and lets you undo. Nothing is applied for you."
   },
   {
     id: "wordmap",
@@ -86,24 +86,38 @@ export function OnboardingChecklist({ username }: { username: string }) {
     save({ ...state, done });
   };
 
+  // A DISCLOSURE, not a card.
+  //
+  // As an always-open card this was around 220 pixels of first-week reading
+  // sitting between the greeting and the note, on every visit until it was
+  // ticked off or dismissed. The note is the point of the page; onboarding gets
+  // one line and opens when it is wanted.
   return (
-    <section className="card border-l-4 border-l-brand-teal" aria-label="Getting started checklist">
-      <div className="flex items-start justify-between gap-2">
-        <div>
-          <h2 className="text-sm font-bold text-brand-navy">Getting started</h2>
-          <p className="mt-0.5 text-xs text-slate-600">
-            Five short stops. Tick them off as you go — this card leaves when you finish or
-            dismiss it, and never comes back.
-          </p>
-        </div>
+    <details className="rounded-lg border-l-4 border-l-brand-teal bg-white px-3 py-2 ring-1 ring-slate-200">
+      <summary className="flex cursor-pointer select-none items-center justify-between gap-2 text-sm [&::-webkit-details-marker]:hidden">
+        <span className="font-semibold text-brand-navy">
+          First week? Five short stops{" "}
+          <span className="font-normal text-slate-500">
+            ({state.done.length} of {STEPS.length} done)
+          </span>
+        </span>
         <button
           type="button"
           className="shrink-0 text-xs text-slate-500 underline hover:text-slate-700"
-          onClick={() => save({ ...state, dismissed: true })}
+          onClick={(e) => {
+            // Inside a <summary>: without this the click also toggles the
+            // disclosure, so dismissing visibly opens the thing being dismissed.
+            e.preventDefault();
+            e.stopPropagation();
+            save({ ...state, dismissed: true });
+          }}
         >
           Dismiss
         </button>
-      </div>
+      </summary>
+      <p className="mt-1.5 text-xs text-slate-600">
+        Tick them off as you go — this leaves when you finish or dismiss it, and never comes back.
+      </p>
       <ul className="mt-2 space-y-1.5">
         {STEPS.map((s) => {
           const done = state.done.includes(s.id);
@@ -126,9 +140,6 @@ export function OnboardingChecklist({ username }: { username: string }) {
           );
         })}
       </ul>
-      <p className="mt-2 text-xs text-slate-500" role="status">
-        {state.done.length} of {STEPS.length} done
-      </p>
-    </section>
+    </details>
   );
 }

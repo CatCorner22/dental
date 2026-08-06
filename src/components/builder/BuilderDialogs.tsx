@@ -248,7 +248,10 @@ export function SubmitDialog({
             Stay here
           </button>
           <button type="button" className="btn-secondary" onClick={onGoToDashboard}>
-            Dashboard
+            {/* "Home" rather than "Dashboard": there is no dashboard any more.
+                Home is a fresh note, which is exactly where someone who has
+                just filed one wants to land. */}
+            Home
           </button>
           <button
             type="button"

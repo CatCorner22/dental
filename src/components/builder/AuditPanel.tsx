@@ -24,6 +24,13 @@ function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () =>
     onJump?.();
     const el = document.getElementById(`field-${finding.fieldRef.moduleId}-${finding.fieldRef.fieldId}`);
     if (!el) return;
+    // Sections collapse now, so the field this finding points at may be inside
+    // a closed <details>. scrollIntoView on a hidden element scrolls nowhere
+    // and focus() does nothing — the jump would silently fail, on exactly the
+    // findings a writer most needs to reach. Open every ancestor first.
+    for (let node = el.parentElement; node; node = node.parentElement) {
+      if (node instanceof HTMLDetailsElement) node.open = true;
+    }
     // The CSS reduced-motion block cannot reach a JS smooth scroll, and this
     // file was reintroducing in JS exactly the animated scrolling globals.css
     // argues against — a control still gliding when a tap lands takes the tap.

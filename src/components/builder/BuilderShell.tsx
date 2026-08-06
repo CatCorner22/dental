@@ -83,7 +83,8 @@ export function BuilderShell({
   initialVersion,
   initialSubmitted,
   initialSendFailed,
-  canEdit
+  canEdit,
+  autoFocusKey
 }: {
   draftId: string;
   initialTitle: string;
@@ -95,6 +96,13 @@ export function BuilderShell({
   initialSubmitted: boolean;
   initialSendFailed: boolean;
   canEdit: boolean;
+  /**
+   * `moduleId.fieldId` to land the cursor in on mount. The home page sets it;
+   * /note/[id] does not, because arriving at a specific note from a link is a
+   * navigation, and stealing focus mid-navigation moves the page under someone
+   * who was reading it.
+   */
+  autoFocusKey?: string;
 }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(noteReducer, initialNote);
@@ -131,6 +139,11 @@ export function BuilderShell({
   const [resentNow, setResentNow] = useState(false);
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
+  // Add-ons beyond the always-on Universal Core. Drives the module rail's
+  // summary line so a closed rail still says what the note covers.
+  const extraModuleCount = state.selectedModuleIds.filter(
+    (id) => !ALL_MODULES.find((m) => m.id === id)?.alwaysOn
+  ).length;
 
   // TYPING FIRST, GRADING A BEAT LATER.
   //
@@ -413,6 +426,32 @@ export function BuilderShell({
     // "conflict": the ConflictDialog is already on screen; nothing to add.
   }, [flush]);
 
+  // Land the cursor, once, on the field the host page nominated.
+  //
+  // Done here by DOM lookup rather than by threading an autoFocus prop through
+  // NoteForm and all seven input components: every field already carries a
+  // `field-${moduleId}-${fieldId}` anchor for the audit panel's "go to field"
+  // jump, and reusing it keeps the focus rule in one place instead of seven.
+  //
+  // Guarded on document.activeElement. Hydration is not instant, and someone
+  // who has already clicked into a different field — or started scrolling with
+  // a control focused — must not have the page yanked out from under them a
+  // moment later. No scroll: the narrative sits at the top of the note, and
+  // scrolling on arrival is disorienting when nothing asked for it.
+  useEffect(() => {
+    if (!autoFocusKey || !canEdit) return;
+    const [moduleId, fieldId] = autoFocusKey.split(".");
+    if (!moduleId || !fieldId) return;
+    const active = document.activeElement;
+    if (active && active !== document.body) return;
+    document
+      .getElementById(`field-${moduleId}-${fieldId}`)
+      ?.querySelector<HTMLElement>("input, select, textarea")
+      ?.focus({ preventScroll: true });
+    // Mount only. A re-run on any later render would steal focus mid-edit.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   // Toasts announce and then get out of the way.
   useEffect(() => {
     if (!toast) return;
@@ -517,7 +556,13 @@ export function BuilderShell({
       <div className="mb-3">
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
-      <div className="mb-3 flex gap-1">
+      {/* flex-wrap, not a single row. Six tabs do not fit the aside at any
+          desktop width, and without wrapping the last one pushed the whole
+          PAGE two pixels wider than the viewport — which the cross-browser
+          smoke test asserts against. It went unseen because that suite never
+          visits the builder; the builder moving onto the home page is what
+          finally put it in front of the check. */}
+      <div className="mb-3 flex flex-wrap gap-1">
         {([["audit", `Audit (${report.findings.length})`], ["chart", "Chart"], ["byte", "Byte"], ["bytestar", "SuperByte"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(([t, label]) => (
           <button
             key={t}
@@ -850,10 +895,22 @@ export function BuilderShell({
       </button>
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Module rail */}
+        {/* Module rail.
+            A DISCLOSURE, closed by default. Thirty-one checkboxes down the
+            left-hand side of the busiest screen in the app is a permanent
+            column of things not to click: most notes use Universal Core and one
+            add-on, chosen once at the start and never revisited. The summary
+            carries the count, so what the note covers is still readable at a
+            glance without the list being open. */}
         <aside className="shrink-0 lg:w-60">
-          <div className="card p-3 lg:sticky lg:top-20">
-            <h2 className="mb-2 text-sm font-bold text-slate-800">Modules</h2>
+          <details className="card p-0 lg:sticky lg:top-20" open={extraModuleCount > 0}>
+            <summary className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 [&::-webkit-details-marker]:hidden">
+              <span>Modules</span>
+              <span className="font-normal text-slate-500">
+                {extraModuleCount === 0 ? "Core only" : `Core + ${extraModuleCount}`}
+              </span>
+            </summary>
+            <div className="px-3 pb-3">
             <input
               type="search"
               className="field-input mb-1.5 py-1 text-xs"
@@ -888,7 +945,8 @@ export function BuilderShell({
                 </label>
               ))}
             </div>
-          </div>
+            </div>
+          </details>
         </aside>
 
         {/* Form */}

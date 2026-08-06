@@ -73,6 +73,35 @@ export async function listDraftsByOwner(
     .offset(page.offset);
 }
 
+/**
+ * The draft the home page should open, for a writer who just signed in.
+ *
+ * Newest unsubmitted draft this person owns, or undefined. That is deliberately
+ * a resume rather than a new note: the home page IS the builder now, so landing
+ * on a fresh empty draft every visit would bury the note you were in the middle
+ * of under a new one, and leave a trail of blanks behind you.
+ *
+ * "submitted" is excluded rather than filtered client-side because a filed note
+ * is frozen — reopening one to type into is not resuming, it is editing a
+ * record. Send-failed drafts ARE offered: those still need a person.
+ *
+ * Ownership is not negotiable here even for an account that may read every
+ * note. Opening a teammate's draft because it happens to be the newest in the
+ * practice would put someone else's unfinished note under your cursor.
+ */
+export async function newestOpenDraftForOwner(
+  db: Db,
+  ownerId: string
+): Promise<DraftRow | undefined> {
+  const [row] = await db
+    .select()
+    .from(drafts)
+    .where(and(eq(drafts.ownerId, ownerId), ne(drafts.status, "submitted")))
+    .orderBy(desc(drafts.updatedAt))
+    .limit(1);
+  return row;
+}
+
 export async function countAllDrafts(db: Db): Promise<number> {
   const rows = await db.select({ n: sql<number>`count(*)::int` }).from(drafts);
   return rows[0]?.n ?? 0;

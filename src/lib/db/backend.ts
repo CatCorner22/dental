@@ -18,6 +18,15 @@ export function resolveDbBackend(
   if (url) return { kind: "postgres", url };
 
   if (env.NODE_ENV === "production") {
+    const explicitDir = env.PGLITE_DIR?.trim();
+    // CI cross-browser smoke runs `next start` with PGLITE_DIR=memory:// on
+    // purpose. Allow only that explicit in-memory path — not Vercel /tmp.
+    if (
+      explicitDir &&
+      (explicitDir === "memory://" || explicitDir.startsWith("memory"))
+    ) {
+      return { kind: "pglite", dir: explicitDir };
+    }
     return {
       kind: "reject",
       reason:

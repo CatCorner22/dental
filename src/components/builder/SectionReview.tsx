@@ -69,7 +69,16 @@ export function SectionReview({
   if (phase === "idle") {
     return (
       <div className="mt-3 border-t border-slate-100 pt-2.5">
-        <button type="button" className="btn-secondary text-xs" onClick={onCheck}>
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() => {
+            // A fresh check must re-offer proposals. Leaving `answered` stuck
+            // from a prior pass hid every rewrite after "Keep editing".
+            setAnswered({});
+            onCheck();
+          }}
+        >
           Check this section
         </button>
         <span className="ml-2 text-xs text-slate-500">
@@ -163,7 +172,14 @@ export function SectionReview({
         >
           {hasNext ? "Accept and go to the next section" : "Accept — this is the last section"}
         </button>
-        <button type="button" className="btn-secondary text-xs" onClick={onKeepEditing}>
+        <button
+          type="button"
+          className="btn-secondary text-xs"
+          onClick={() => {
+            setAnswered({});
+            onKeepEditing();
+          }}
+        >
           Keep editing this one
         </button>
         {/* The disabled button says why, next to itself, rather than in a

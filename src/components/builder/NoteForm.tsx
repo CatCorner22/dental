@@ -377,7 +377,7 @@ export function NoteForm({
                         ? "reviewing"
                         : "idle"
                   }
-                  hasNext={nextSectionKey(modules, sectionKey) !== null}
+                  hasNext={nextSectionKey(modules, sectionKey, clinicalRole) !== null}
                   canEdit={!outOfScope}
                   onCheck={() => setReviewing(sectionKey)}
                   onApply={(key, next) => onChange(key, { kind: "text", value: next })}
@@ -386,7 +386,7 @@ export function NoteForm({
                     // Recorded against the CONTENT, so a later edit un-checks it.
                     setReviewed((r) => ({ ...r, [sectionKey]: signature }));
                     setReviewing(null);
-                    const next = nextSectionKey(modules, sectionKey);
+                    const next = nextSectionKey(modules, sectionKey, clinicalRole);
                     if (next) {
                       // Collapse the one just finished. The note gets shorter as
                       // it gets more complete, which is the opposite of what a

@@ -35,6 +35,7 @@ import type { FieldValue, NoteState } from "@/lib/schema/types";
 import type { AuditFinding } from "@/lib/audit/types";
 import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
+import { FastLane } from "./FastLane";
 import { PasteIntake } from "./PasteIntake";
 import { DictationUserContext } from "./fields/DictationField";
 import { BlockInsert } from "./BlockInsert";
@@ -723,7 +724,9 @@ export function BuilderShell({
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
         <button
-          className="btn-secondary"
+          className={
+            !hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"
+          }
           disabled={!hasContent || !gates.exportAllowed}
           aria-disabled={!hasContent || !gates.exportAllowed}
           aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
@@ -731,13 +734,13 @@ export function BuilderShell({
             !hasContent
               ? "Add note content before copying"
               : gates.exportAllowed
-                ? "Copy the composed note"
+                ? `Copy a clean note for pasting into ${edrName}`
                 : "Resolve every STOP finding before copy or download"
           }
           onClick={copy}
         >
           {copied
-            ? "Copied ✓"
+            ? "Copied — ready to paste ✓"
             : !gates.exportAllowed && hasContent
               ? "🔒 Copy locked"
               : `Copy for ${edrName}`}
@@ -789,7 +792,7 @@ export function BuilderShell({
                 wrong chart is a records error this tool cannot see — only you can.
               </span>
             </label>
-            <button className="btn-primary mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
+            <button className="btn-complete mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
               Copy to clipboard
             </button>
           </div>
@@ -1096,6 +1099,21 @@ export function BuilderShell({
 
         {/* Form */}
         <section className="min-w-0 flex-1 space-y-4">
+          {/* Progressive Fast Lane: when this note is still Core-only, offer
+              role-aware visit scaffolds IN PLACE. Home already opened the note
+              with the cursor ready — these cards only add structure, never a
+              second draft and never clinical values. */}
+          <FastLane
+            clinicalRole={clinicalRole}
+            canEdit={canEdit}
+            visible={extraModuleCount === 0}
+            onApply={(pick) => {
+              dispatch({ type: "applyModules", moduleIds: pick.moduleIds });
+              if (!title.trim() || title.trim() === "Untitled note") {
+                setTitle(pick.label);
+              }
+            }}
+          />
           {/* Paste sits ABOVE the form and closed. It is the other way into a
               note, and it has to be findable without being in the way of the
               writer who is simply going to type. */}

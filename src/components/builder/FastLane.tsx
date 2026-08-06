@@ -33,37 +33,32 @@ export function FastLane({
   if (!canEdit || !visible || picks.length === 0) return null;
 
   return (
-    <section
-      className="card space-y-3 p-3"
-      aria-label="Fast Lane visit scaffolds"
-    >
-      <div className="flex flex-wrap items-baseline justify-between gap-2">
-        <div>
-          <p className="eyebrow">Fast Lane</p>
-          <h2 className="section-title text-base">Common visit structure</h2>
-        </div>
-        <p className="max-w-md text-xs leading-snug text-slate-500">
-          One tap adds the usual modules for that visit. Nothing clinical is
-          filled in — you still write the findings.
-        </p>
-      </div>
-      <div className="grid grid-cols-1 gap-2 sm:grid-cols-2">
+    // ONE ROW, NOT FOUR CARDS.
+    //
+    // This shipped as a 2x2 grid of cards with a heading, a strapline, a
+    // description per card and a call to action per card — about 290px sitting
+    // between the top of the note and the first box you can type in, on every
+    // new note. The whole point of the home page is that the cursor is already
+    // in a clinical field; a scaffold picker is a convenience for the minority
+    // of notes that want an add-on, and it was charging every note for it.
+    //
+    // Same picks, same one tap, same text in the tooltip. About 60px.
+    <section className="card p-2.5" aria-label="Fast Lane visit scaffolds">
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <span className="eyebrow shrink-0">Fast Lane</span>
         {picks.map((p) => (
           <button
             key={p.id}
             type="button"
-            className="fast-lane-card text-left"
+            className="chip"
+            title={`${p.description} — adds the usual modules for this visit. Nothing clinical is filled in; you still write the findings.`}
             onClick={() => onApply(p)}
           >
-            <span className="block text-sm font-semibold text-brand-navy">{p.label}</span>
-            <span className="mt-0.5 block text-xs leading-snug text-slate-600">{p.description}</span>
-            <span className="mt-2 inline-flex text-xs font-semibold text-brand-blue">
-              Use this structure →
-            </span>
+            {p.label}
           </button>
         ))}
+        <span className="basis-full text-[0.7rem] leading-snug text-slate-500">{cue}</span>
       </div>
-      <p className="text-[0.7rem] leading-snug text-slate-500">{cue}</p>
     </section>
   );
 }

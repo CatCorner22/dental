@@ -67,26 +67,26 @@ export function BenchmarkRails({ readings }: { readings: BenchmarkReading[] }) {
             ? Math.round((20 / 60) * 100)
             : Math.round(r.target * 100);
         return (
-          <li key={r.id} className="rounded-lg bg-white/80 p-2 ring-1 ring-amber-200/60">
-            <div className="flex items-baseline justify-between gap-2 text-xs">
+          <li key={r.id} className="rounded-lg bg-white/80 p-2.5 ring-1 ring-amber-200/60">
+            <div className="flex items-baseline justify-between gap-2 text-sm">
               <span className="font-medium text-slate-800">{r.label}</span>
               <span className={`font-semibold tabular-nums ${dirClass(r.direction)}`}>
                 <Arrow direction={r.direction} /> {dirLabel(r.direction)}
               </span>
             </div>
-            <div className="relative mt-1 h-1.5 overflow-hidden rounded-full bg-slate-100">
+            <div className="relative mt-1.5 h-3 overflow-hidden rounded-full bg-slate-200">
               <div
                 className={`h-full rounded-full transition-[width] ${fillClass(r.direction)}`}
                 style={{ width: `${pct}%` }}
               />
               {/* Target tick. */}
               <span
-                className="absolute top-0 h-full w-0.5 bg-slate-700/50"
+                className="absolute top-0 h-full w-1 rounded-full bg-slate-800"
                 style={{ left: `${targetPct}%` }}
                 title="Target"
               />
             </div>
-            <p className="mt-1 text-[0.65rem] text-slate-500">{r.note}</p>
+            <p className="mt-1 text-xs leading-snug text-slate-600">{r.note}</p>
           </li>
         );
       })}

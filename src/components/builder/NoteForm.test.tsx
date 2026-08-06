@@ -1,7 +1,9 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it } from "vitest";
-import { render } from "@testing-library/react";
+import { readFileSync } from "node:fs";
+import path from "node:path";
+import { fireEvent, render } from "@testing-library/react";
 
 import { NoteForm } from "./NoteForm";
 import type { ModuleDef, NoteState } from "@/lib/schema/types";
@@ -202,5 +204,60 @@ describe("the scope lock, still enforced under a collapsed section", () => {
       'details[data-section="m.assessment"]'
     )!;
     expect(assessment.querySelector("fieldset")!.disabled).toBe(false);
+  });
+});
+
+describe("toggling a section does not take the page down with it", () => {
+  // THE FAST LANE "DEAD PAGE".
+  //
+  // The toggle handler dereferenced `e.currentTarget` INSIDE the functional
+  // setState updater. React does not run that updater synchronously — it runs
+  // during the next render, by which point it has nulled currentTarget on the
+  // pooled event. Applying an add-on module re-rendered the form and remounted
+  // these <details>, firing toggle in the same batch, so every Fast Lane card
+  // threw "Cannot read properties of null (reading 'open')" and the error
+  // boundary replaced the whole note with "Something went wrong".
+  //
+  // This is a SOURCE check, and deliberately so: jsdom flushes the updater
+  // while currentTarget is still set, so a rendered test passes against the
+  // broken code and proves nothing. Reproducing it needs a real browser, which
+  // is where it was found. What can be pinned cheaply is the shape of the
+  // mistake — reading the event from inside the updater — so that is what is
+  // pinned.
+  const source = readFileSync(
+    path.join(process.cwd(), "src/components/builder/NoteForm.tsx"),
+    "utf8"
+  );
+
+  it("reads the element synchronously, not inside the state updater", () => {
+    // Find each setOpenSections(...) updater body and assert none of them
+    // touch the event.
+    const updaters = source.match(/setOpenSections\(\(s\) => \(\{[\s\S]*?\}\)\)/g) ?? [];
+    expect(updaters.length, "no setOpenSections updater found — did it move?").toBeGreaterThan(0);
+    for (const body of updaters) {
+      expect(
+        /\be\.(currentTarget|target|nativeEvent)/.test(body),
+        "the toggle handler reads the event inside the setState updater; React " +
+          "nulls currentTarget before that runs. Read it into a const first."
+      ).toBe(false);
+    }
+  });
+
+  it("still records the open state it was given", () => {
+    const { container } = render(
+      <NoteForm
+        modules={[MODULE]}
+        state={note()}
+        onChange={() => {}}
+        findingsByField={{}}
+        clinicalRole="dentist"
+      />
+    );
+    const visit = container.querySelector<HTMLDetailsElement>('details[data-section="m.visit"]')!;
+    expect(() => {
+      visit.open = true;
+      fireEvent(visit, new Event("toggle", { bubbles: false }));
+    }).not.toThrow();
+    expect(visit.open).toBe(true);
   });
 });

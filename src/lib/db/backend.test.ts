@@ -20,6 +20,19 @@ describe("resolveDbBackend", () => {
     ).toEqual({ kind: "pglite", dir: "memory://" });
   });
 
+  it("rejects memory-like paths that are not memory:// URIs", () => {
+    for (const dir of [
+      "memory-mapped-disk:/tmp/smile-notes-pglite",
+      "memory://tmp/smile-notes-pglite"
+    ]) {
+      const b = resolveDbBackend({
+        NODE_ENV: "production",
+        PGLITE_DIR: dir
+      });
+      expect(b.kind).toBe("reject");
+    }
+  });
+
   it("still rejects Vercel production without POSTGRES_URL even if PGLITE_DIR is set", () => {
     const b = resolveDbBackend({
       NODE_ENV: "production",

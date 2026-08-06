@@ -21,10 +21,7 @@ export function resolveDbBackend(
     const explicitDir = env.PGLITE_DIR?.trim();
     // CI cross-browser smoke runs `next start` with PGLITE_DIR=memory:// on
     // purpose. Allow only that explicit in-memory path — not Vercel /tmp.
-    if (
-      explicitDir &&
-      (explicitDir === "memory://" || explicitDir.startsWith("memory"))
-    ) {
+    if (explicitDir === "memory://") {
       return { kind: "pglite", dir: explicitDir };
     }
     return {

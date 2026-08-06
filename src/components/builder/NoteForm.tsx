@@ -342,22 +342,33 @@ export function NoteForm({
                     )}
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5 font-normal">
-                    {/* A collapsed section has to say whether it is done, or the
-                        loop is invisible the moment you move past it. */}
-                    {reviewed[sectionKey] === signature && (
-                      <span className="rounded-full bg-green-100 px-1.5 text-[0.7rem] font-semibold text-green-900">
-                        ✓ checked
+                    {/* Locked dentist sections must not look like THIS writer's
+                        unfinished work. "2 required" on Assessment for a
+                        hygienist was the false incomplete-note alarm. */}
+                    {outOfScope ? (
+                      <span className="rounded-full bg-slate-100 px-1.5 text-[0.7rem] font-semibold text-slate-700">
+                        Waiting for dentist
                       </span>
-                    )}
-                    {findingCount > 0 && (
-                      <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
-                        {findingCount} to review
-                      </span>
-                    )}
-                    {openRequired > 0 && (
-                      <span className="rounded-full bg-orange-100 px-1.5 text-[0.7rem] font-semibold text-orange-900">
-                        {openRequired} required
-                      </span>
+                    ) : (
+                      <>
+                        {/* A collapsed section has to say whether it is done, or the
+                            loop is invisible the moment you move past it. */}
+                        {reviewed[sectionKey] === signature && (
+                          <span className="rounded-full bg-green-100 px-1.5 text-[0.7rem] font-semibold text-green-900">
+                            ✓ checked
+                          </span>
+                        )}
+                        {findingCount > 0 && (
+                          <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
+                            {findingCount} to review
+                          </span>
+                        )}
+                        {openRequired > 0 && (
+                          <span className="rounded-full bg-orange-100 px-1.5 text-[0.7rem] font-semibold text-orange-900">
+                            {openRequired} required
+                          </span>
+                        )}
+                      </>
                     )}
                     <span aria-hidden className="text-slate-400">
                       {open ? "▾" : "▸"}
@@ -366,7 +377,7 @@ export function NoteForm({
                 </summary>
                 <fieldset disabled={outOfScope} className="px-3 pb-3">
                 {outOfScope && (
-                  <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                  <p className="mb-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
                     {scopeExplanation(clinicalRole)}
                   </p>
                 )}
@@ -411,8 +422,14 @@ export function NoteForm({
                       <div key={field.id} id={`field-${mod.id}-${field.id}`}>
                         <label className="field-label" htmlFor={controlId(mod.id, field)}>
                           {field.label}
-                          {required && <span className="ml-1 text-red-600" aria-hidden>*</span>}
-                          {required && <span className="sr-only"> (required)</span>}
+                          {required && !outOfScope && (
+                            <span className="ml-1 text-red-600" aria-hidden>
+                              *
+                            </span>
+                          )}
+                          {required && !outOfScope && (
+                            <span className="sr-only"> (required)</span>
+                          )}
                         </label>
                         <FieldRenderer
                           moduleId={mod.id}

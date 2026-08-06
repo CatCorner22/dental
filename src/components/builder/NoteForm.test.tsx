@@ -225,6 +225,9 @@ describe("the scope lock, still enforced under a collapsed section", () => {
     )!;
     expect(assessment.querySelector("fieldset")!.disabled).toBe(true);
     expect(getByText(/dentist records this/i)).toBeTruthy();
+    // Locked sections must read as handoff, not as this writer's unfinished work.
+    expect(assessment.querySelector("summary")!.textContent).toMatch(/Waiting for dentist/i);
+    expect(assessment.querySelector("summary")!.textContent).not.toMatch(/required/i);
     // And the section a hygienist DOES own stays writable — locking more than
     // the rule says would make the tool unusable for the people who use it most.
     const visit = container.querySelector<HTMLDetailsElement>(

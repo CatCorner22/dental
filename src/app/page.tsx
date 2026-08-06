@@ -1,5 +1,5 @@
 import { redirect } from "next/navigation";
-import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
+import { canTransferNotes, canWriteNote, seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { autoDraftTitle } from "@/lib/drafts/autoTitle";
@@ -120,6 +120,7 @@ export default async function HomePage() {
         initialSubmitted={draft.status === "submitted"}
         initialSendFailed={draft.lastSendFailed}
         canEdit={canWriteNote(user.role, draft.ownerId, user.id)}
+        canTransfer={canTransferNotes(user.role)}
         edrName={edrProductShort()}
         username={user.username}
         dictationEnrolled={user.dictationEnrolled ?? false}

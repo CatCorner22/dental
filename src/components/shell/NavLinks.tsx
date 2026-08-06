@@ -7,8 +7,12 @@ interface NavItem {
   href: string;
   label: string;
   // Highlight when the path starts with this prefix instead of href — e.g.
-  // "References" links to /reference/templates but owns all of /reference.
+  // "Learn" links to /reference/templates but owns all of /reference.
   activePrefix?: string;
+  // Extra prefixes this item also owns. "Notes" links to "/", whose prefix
+  // cannot be used for a startsWith test because every path starts with it —
+  // so the note routes it also owns are listed here instead.
+  alsoOwns?: string[];
 }
 
 export function NavLinks({ items }: { items: NavItem[] }) {
@@ -17,7 +21,9 @@ export function NavLinks({ items }: { items: NavItem[] }) {
     <>
       {items.map((item) => {
         const prefix = item.activePrefix ?? item.href;
-        const active = prefix === "/" ? pathname === "/" : pathname.startsWith(prefix);
+        const active =
+          (prefix === "/" ? pathname === "/" : pathname.startsWith(prefix)) ||
+          (item.alsoOwns?.some((p) => pathname.startsWith(p)) ?? false);
         return (
           <Link
             key={item.href}

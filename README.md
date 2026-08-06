@@ -16,17 +16,40 @@ electronic dental record (EDR).
 > in clinical substance — changed numbers, negations, drugs, teeth, or attributions. With AI
 > disabled (the default), the app makes no AI calls at all. Every user acknowledges the
 > legal-record notice once before use.
+>
+> **Capability follows the writer's licence.** Each of the five assist capabilities has a
+> deterministic twin that ships here and needs no provider, so "deterministic" never means
+> "nothing" — it means the other half answered. An account with no clinical role recorded gets the
+> deterministic half of everything (a deliberate break with the permissive default used elsewhere:
+> the thing withheld is a model's opinion, and the fallback still answers). An auxiliary gets the
+> model for rewording and re-sectioning their own text, and the deterministic twin for the two
+> capabilities whose output reads as a clinical conclusion they may not record. The check is
+> server-side against the role read fresh from the database, and it runs before the throttle and
+> before the model call.
 
 ## Multi-user platform (V2)
 
-A shared, role-based web app benchmarked on Curve Hero's UX patterns (a dashboard hub, a sticky
-note header, a "Sidekick" side panel, color-coded statuses, quick-pick presets, minimal-click
-charting) — patterns only, no copied material. The dashboard leads with **one-click cards** for
-the four most common visit types, a **"continue where you left off"** card, clickable
-**status-filter chips**, and a per-draft **"New like this"** action (same modules, empty values).
+A shared, role-based web app benchmarked on Curve Hero's UX patterns (a sticky note header, a
+"Sidekick" side panel, color-coded statuses, quick-pick presets, minimal-click charting) —
+patterns only, no copied material.
+
+**The home page is the note.** Signing in resumes your open draft, or opens a new one, with the
+cursor already in it — zero clicks to the first editable field. There is **one note builder**:
+you can type into structured fields, write the whole thing as prose in the Visit narrative, or
+paste an existing note and send its sorted sections into the fields you choose. Nothing pasted is
+ever placed for you.
+
+Universal Core is eleven sections, so sections **collapse**: the narrative opens, anything you
+have already written opens, anything carrying a real finding opens, and the rest are summary lines
+carrying their open-required counts. The module rail is a disclosure. Four nav pills — Notes, My
+notes, Learn, Ask — carry what a clinician touches while working; everything else lives one click
+away in a menu, with every role gate unchanged.
+
 In the builder, short single-choice lists render as **one-click buttons** instead of dropdowns,
-the module rail has a filter box, and clicking an audit finding jumps to **and focuses** the
-field. History has a note-label column, search, and status filters.
+clicking an audit finding jumps to **and focuses** the field (opening its section first), and a
+finding can be fixed, **attested** with a named reason, or **escalated** to a Team Lead as a rule
+disagreement. Copy to the EDR is gated on confirming you matched **two identifiers** in the right
+chart. Drafts and filed notes share one page at `/notes`.
 
 ### Roles
 
@@ -124,10 +147,10 @@ typecheck + tests + build on every push and PR.
 
 ### Encouragement, progression, and the store (privacy stated exactly)
 
-The dashboard is for starting and resuming notes — not a scoreboard. First-pass rates, clean
-streaks, ranks, XP, GPA trends, and badge strips stay off the logged-in hub so hallway comparison
-cannot start from the home screen. Sparkle the tooth mascot still offers deterministic, non-AI
-micro-copy (greeting and post-file only). Every filed note still carries a frozen **GPA**
+The home page is for writing notes — not a scoreboard. First-pass rates, clean streaks, ranks, XP,
+GPA trends, and badge strips stay off it so hallway comparison cannot start from the home screen.
+Sparkle the tooth mascot offers deterministic, non-AI micro-copy — the greeting, the clean-audit
+moment, a save, a licence handoff, a save conflict, an empty list, and after filing. Every filed note still carries a frozen **GPA**
 (Completeness / Specificity / Consistency / billing-narrative Justification) derived from the
 audit report — never a second filing gate — and points may still accrue for the optional
 **clinic store** (`/store`, practice-fulfilled, lead-approved) and **training arena**
@@ -156,7 +179,7 @@ Skip link, focus-trapped dialogs (ESC + focus return), status never conveyed by 
 
 | Path | What it is |
 |---|---|
-| `src/` | Next.js 15 web app: note builder, standardizer with resolution queue, audit engine, AI assist, email export, reference pages |
+| `src/` | Next.js 15 web app: the note builder (structured fields, visit narrative, paste intake, fix/attest/escalate), audit engine, licence-tiered AI assist, email export, reference pages |
 | `skill/` | Source markdown for the reference pages (templates, terminology, law summary, deployment guidance) — the vocab tables in `src/` are the single terminology truth |
 | `skill/assets/dental-note-templates.md` | The original template set (Universal Core + add-on modules; the live registry in `src/lib/modules/` now has 31 add-ons), the guided staff process, and the formal audit pass |
 | `knowledge/` | Research digests: Curve Hero benchmark, TN law, industry standards and medication safety, litigation patterns |
@@ -186,8 +209,8 @@ actually safe to use on clinical text:
 |---|---|
 | Standard work | One Universal Core + modular add-ons compose in one canonical order for every user; verified blocks are the standard wording for the fact patterns audits ask about |
 | Poka-yoke (error-proofing) | Controlled dropdowns, tooth/surface pickers that disable invalid anatomy, recipient-less email API, verified blocks whose placeholders block filing until replaced with this visit's facts |
-| Jidoka (stop the line) | Any S0 STOP blocks export (copy/download) and email; S1 additionally blocks email; the standardizer's fix-or-attest queue locks Copy until every concern is fixed, attested with a named reason, or escalated to a Team Lead; submission files atomically; the server re-audits so a tampered client cannot bypass the gate |
-| Andon (visible signal) | Live audit panel with S0–S4 severity chips; the standardizer's red/amber/green queue strip with progress count |
+| Jidoka (stop the line) | Any S0 STOP blocks export (copy/download) and email; S1 additionally blocks email; a finding is fixed, attested with a named reason, or escalated to a Team Lead, and Copy additionally asks the writer to confirm two identifiers in the right chart; submission files atomically; the server re-audits so a tampered client cannot bypass the gate |
+| Andon (visible signal) | Live audit panel with S0–S4 severity chips; per-section counts of what is still open on every collapsed section header |
 | Kaizen | Terminology lives in one data file (`src/lib/vocab/`); rule disagreements escalate as named, reasoned entries and surface as drift stats to the people who can tune the rule — the tool's own error signal, human-reviewed, never self-adjusting |
 | Respect for people | No override theater: the tool never auto-corrects, attestations put the author's judgment on the record, and a genuine disagreement gets a decision from a human with authority, not a dead end |
 

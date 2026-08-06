@@ -81,6 +81,11 @@ export function FastLane({
         <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
         <span className="sr-only">{cue}</span>
       </div>
+      {/* Visible on touch — title= never appears on a tablet finger (UIX-006). */}
+      <p className="mt-1.5 text-[0.65rem] leading-snug text-slate-500">
+        Adds visit modules only — nothing clinical is filled in. Open Care delivered or Handoff for
+        Section starters.
+      </p>
     </section>
   );
 }

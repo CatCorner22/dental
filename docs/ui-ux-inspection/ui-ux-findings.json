@@ -1,0 +1,87 @@
+{
+  "inspection_id": "smile-notes-2026-08-06-swarm",
+  "commit_base": "aa84361",
+  "method": ["ui-and-ux-inspection", "chicken-little-executive", "chicken-little-technical", "bespoke-llm-architect"],
+  "findings": [
+    {
+      "id": "UIX-001",
+      "title": "StatusChip Ready while filing blocked",
+      "severity": "high",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/", "/note/:id"],
+      "remediation_shipped": "deriveDraftStatus filingAllowed → handoff status"
+    },
+    {
+      "id": "UIX-002",
+      "title": "Handoff banner always demanded transfer",
+      "severity": "high",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/", "/note/:id"],
+      "remediation_shipped": "scope cue vs needsTransfer split; single Andon card"
+    },
+    {
+      "id": "UIX-003",
+      "title": "ProgressRing 100% ignoring filing",
+      "severity": "moderate",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/", "/note/:id"],
+      "remediation_shipped": "ProgressRing filingAllowed cap 80% amber"
+    },
+    {
+      "id": "UIX-004",
+      "title": "Action bar Gestalt — entry tools compete with Submit",
+      "severity": "moderate",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/", "/note/:id"],
+      "remediation_shipped": "finish row first; Ways into this note disclosure"
+    },
+    {
+      "id": "UIX-005",
+      "title": "Workflow modules chip wall open by default",
+      "severity": "high",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/workflow"],
+      "remediation_shipped": "modules details closed by default"
+    },
+    {
+      "id": "UIX-006",
+      "title": "Fast Lane meaning title-only on touch",
+      "severity": "moderate",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/"],
+      "remediation_shipped": "visible helper under Fast Lane chips"
+    },
+    {
+      "id": "UIX-007",
+      "title": "Toast covers Save/Submit",
+      "severity": "moderate",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/", "/note/:id"],
+      "remediation_shipped": "toast bottom offset above action bar + safe-area"
+    },
+    {
+      "id": "UIX-SB-01",
+      "title": "SuperByte overclaim and chairside ops copy",
+      "severity": "moderate",
+      "confidence": "high",
+      "status": "resolved",
+      "routes": ["/", "/note/:id"],
+      "remediation_shipped": "observe tagline; quieter tip; local gauges label; dark copy without AI_GATEWAY in chairside"
+    }
+  ],
+  "open_infra": [
+    {
+      "id": "INFRA-91",
+      "title": "Production POSTGRES_URL hard gate (PR #91)",
+      "severity": "critical",
+      "note": "UI polish is theater if cold starts wipe drafts"
+    }
+  ]
+}

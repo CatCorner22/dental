@@ -12,7 +12,7 @@ export type DbBackend =
   | { kind: "reject"; reason: string };
 
 export function resolveDbBackend(
-  env: NodeJS.ProcessEnv = process.env
+  env: Record<string, string | undefined> = process.env
 ): DbBackend {
   const url = env.POSTGRES_URL?.trim();
   if (url) return { kind: "postgres", url };
@@ -38,7 +38,10 @@ export function resolveDbBackend(
  * Default max=1 avoids connection storms when many isolates each open a pool.
  * Override with PG_POOL_MAX when running a long-lived Node server.
  */
-export function postgresPoolOptions(connectionString: string, env: NodeJS.ProcessEnv = process.env) {
+export function postgresPoolOptions(
+  connectionString: string,
+  env: Record<string, string | undefined> = process.env
+) {
   const parsed = Number(env.PG_POOL_MAX);
   const max = Number.isFinite(parsed) && parsed >= 1 ? Math.min(Math.floor(parsed), 10) : 1;
   return {

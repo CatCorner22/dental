@@ -34,6 +34,64 @@ export const universalCore: ModuleDef = {
   alwaysOn: true,
   description: "Every encounter uses this module. Add-on modules extend it.",
   sections: [
+    // NARRATIVE — the merge of the two note surfaces, expressed as data.
+    //
+    // Smile Notes used to have two places to write: this structured form, and a
+    // separate page that was one big textarea. Prose could be checked there but
+    // never filed, and the form could be filed but had nowhere to put a
+    // paragraph. Anyone who thinks in sentences had to pick, before writing a
+    // word, which half of the product they were using.
+    //
+    // These five fields are that second surface, inside the note. Text written
+    // or pasted here is saved, versioned, audited by every text rule, composed
+    // into the filed note and copied to the EDR like anything else — so a whole
+    // note can still be written as prose.
+    //
+    // NOT REQUIRED, and that is deliberate. `runRequiredRule` only tests whether
+    // a value is empty, so a required narrative field would be satisfied by any
+    // paragraph at all — a gate that opens for prose is not a gate. The
+    // structured fields keep the requirements; this section keeps the sentences.
+    //
+    // The section sits FIRST because it is where the writing starts.
+    //
+    // It holds only Safety, Subjective and Objective. The narrative halves of
+    // Assessment and Plan live as a field inside the EXISTING Assessment and
+    // Plan sections, not here — those two sections are dentist-owned, and a
+    // narrative field outside them would have been a way for an auxiliary to
+    // write a diagnosis that the scope guard never sees. Putting the prose in
+    // the section that already owns the judgement means the lock, the audit
+    // tailoring and the filing check all apply to it without any of them
+    // learning a new rule. Between them the five narrative fields are the same
+    // partition structureIntoSoap() produces, so pasted prose has a home for
+    // every piece.
+    {
+      id: "narrative",
+      title: "Visit narrative",
+      fields: [
+        {
+          id: "narrative-safety",
+          type: "textarea",
+          label: "Safety and history in your own words",
+          helpText:
+            "Allergies, medications, premedication, vitals — anything that changes whether care is safe today. The structured fields below still record the status this note files on.",
+          placeholderHint: "<what changes whether treatment is safe today>"
+        },
+        {
+          id: "narrative-subjective",
+          type: "textarea",
+          label: "What the patient reports",
+          helpText: "The patient's own de-identified words, and why they are here.",
+          placeholderHint: "<what the patient reports>"
+        },
+        {
+          id: "narrative-objective",
+          type: "textarea",
+          label: "What you observed and did",
+          helpText: "Findings, measurements, and the care delivered this visit.",
+          placeholderHint: "<what was observed and performed>"
+        }
+      ]
+    },
     {
       id: "visit",
       title: "Visit",
@@ -369,6 +427,23 @@ export const universalCore: ModuleDef = {
       id: "assessment",
       title: "Assessment",
       fields: [
+        // The narrative half of Assessment. It lives inside this section rather
+        // than with the other narrative fields precisely because this section
+        // is dentist-owned: the scope lock, the audit tailoring and the filing
+        // check already cover everything in here, and prose is exactly the shape
+        // in which a diagnosis could otherwise have slipped past all three.
+        //
+        // Not required — the structured diagnosis field below still is. A
+        // required prose field is satisfied by any paragraph at all, which is
+        // not a gate.
+        {
+          id: "narrative-assessment",
+          type: "textarea",
+          label: "Assessment in your own words",
+          helpText:
+            "The clinician's judgement as a sentence. The structured fields below are what the note files on.",
+          placeholderHint: "<the clinician's assessment>"
+        },
         {
           id: "diagnosis",
           type: "text",
@@ -421,6 +496,16 @@ export const universalCore: ModuleDef = {
       id: "plan",
       title: "Plan and decision",
       fields: [
+        // The narrative half of Plan, inside the dentist-owned section for the
+        // same reason the assessment narrative is inside Assessment.
+        {
+          id: "narrative-plan",
+          type: "textarea",
+          label: "Plan in your own words",
+          helpText:
+            "What was recommended, decided and scheduled, as sentences. The structured fields below are what the note files on.",
+          placeholderHint: "<what was recommended and decided>"
+        },
         {
           id: "recommended-care",
           type: "textarea",

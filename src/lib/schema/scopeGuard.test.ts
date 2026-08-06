@@ -100,3 +100,64 @@ describe("the guard compares CHANGE, not presence", () => {
     expect(checkScope("unset", modules, assessed, note({})).ok).toBe(true);
   });
 });
+
+describe("prose cannot route around the guard", () => {
+  // The narrative fields exist so a note can be written in sentences. That is
+  // also the shape in which a diagnosis could most easily have slipped past
+  // every check: a paragraph in a free-text field, on a note whose structured
+  // Assessment is untouched.
+  //
+  // The reason it cannot is placement, not a new rule. The assessment and plan
+  // narratives are fields INSIDE the dentist-owned sections, so dentistOwnedKeys
+  // picks them up from the module definitions the same way it picks up the
+  // diagnosis — and the scope lock, the audit tailoring and the filing check all
+  // inherit that without knowing anything about narrative fields.
+  const ASSESSMENT_PROSE = "universal-core.narrative-assessment";
+  const PLAN_PROSE = "universal-core.narrative-plan";
+
+  it("owns the assessment and plan narratives", () => {
+    const keys = dentistOwnedKeys(modules);
+    expect(keys.has(ASSESSMENT_PROSE)).toBe(true);
+    expect(keys.has(PLAN_PROSE)).toBe(true);
+  });
+
+  it("leaves the safety, subjective and objective narratives to everyone", () => {
+    // An auxiliary describing what they saw and what the patient said is the
+    // auxiliary doing their job, in prose instead of in boxes.
+    const keys = dentistOwnedKeys(modules);
+    expect(keys.has("universal-core.narrative-safety")).toBe(false);
+    expect(keys.has("universal-core.narrative-subjective")).toBe(false);
+    expect(keys.has("universal-core.narrative-objective")).toBe(false);
+  });
+
+  it("refuses a hygienist writing a diagnosis as a sentence", () => {
+    const prose = note({
+      [ASSESSMENT_PROSE]: {
+        kind: "text",
+        value: "Irreversible pulpitis with symptomatic apical periodontitis."
+      }
+    });
+    expect(checkScope("hygienist", modules, prose, note({})).ok).toBe(false);
+  });
+
+  it("refuses an assistant writing a plan as a sentence", () => {
+    const prose = note({
+      [PLAN_PROSE]: { kind: "text", value: "Extract and place a fixed partial denture." }
+    });
+    expect(checkScope("assistant", modules, prose, note({})).ok).toBe(false);
+  });
+
+  it("lets a hygienist write the narrative that is theirs to write", () => {
+    const prose = note({
+      "universal-core.narrative-objective": {
+        kind: "text",
+        value: "Generalized probing depths of 2 to 3 millimetres with no bleeding on probing."
+      },
+      "universal-core.narrative-subjective": {
+        kind: "text",
+        value: "The patient reports cold sensitivity on the upper left."
+      }
+    });
+    expect(checkScope("hygienist", modules, prose, note({})).ok).toBe(true);
+  });
+});

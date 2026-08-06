@@ -519,7 +519,7 @@ export function BuilderShell({
             key={t}
             onClick={() => setTab(t)}
             aria-pressed={tab === t}
-            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-600"}`}
+            className={`tap rounded px-3 text-sm font-medium ${tab === t ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-600"}`}
           >
             {label}
           </button>
@@ -636,7 +636,7 @@ export function BuilderShell({
       <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
         <div className="flex flex-wrap items-center gap-3">
           <input
-            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-blue-500 focus:outline-none disabled:bg-transparent"
+            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-brand-blue focus:outline-none disabled:bg-transparent"
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
@@ -865,7 +865,7 @@ export function BuilderShell({
                   moduleVisibleInRail(clinicalRole, m.id) &&
                   moduleMatches(m, moduleQuery)
               ).map((m) => (
-                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50">
+                <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-brand-blue/10">
                   <input
                     type="checkbox"
                     disabled={!canEdit}

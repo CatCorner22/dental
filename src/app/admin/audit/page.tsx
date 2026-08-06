@@ -103,7 +103,7 @@ export default async function AuditLogPage({
             href={f.key === "all" ? "/admin/audit" : `/admin/audit?filter=${f.key}`}
             className={`tap rounded-full border px-3 text-sm ${
               filter === f.key
-                ? "border-blue-700 bg-blue-700 text-white"
+                ? "border-brand-blue bg-brand-blue text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
             }`}
           >

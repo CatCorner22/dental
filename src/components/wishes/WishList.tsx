@@ -28,7 +28,7 @@ export interface WishRowView {
 }
 
 const STATUS_CLASS: Record<string, string> = {
-  new: "bg-blue-100 text-blue-900",
+  new: "bg-brand-blue/20 text-brand-navy",
   looking: "bg-amber-100 text-amber-900",
   planned: "bg-violet-100 text-violet-900",
   done: "bg-green-100 text-green-900",
@@ -121,7 +121,7 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
             onClick={() => setFilter(key as typeof filter)}
             className={`tap rounded-full border px-3 text-sm ${
               filter === key
-                ? "border-blue-700 bg-blue-700 text-white"
+                ? "border-brand-blue bg-brand-blue text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"
             }`}
           >
@@ -281,7 +281,7 @@ function WishCard({
             </div>
           ) : (
             <button
-              className="tap rounded px-2 text-xs text-blue-700 hover:underline"
+              className="tap rounded px-2 text-xs text-brand-blue hover:underline"
               onClick={() => setOpen(true)}
             >
               Update status
@@ -341,7 +341,7 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
                 onClick={() => setCategory(c.id)}
                 className={`tap rounded-full border px-3 text-sm ${
                   category === c.id
-                    ? "border-blue-700 bg-blue-700 text-white"
+                    ? "border-brand-blue bg-brand-blue text-white"
                     : c.urgent
                       ? "border-amber-400 bg-amber-50 text-amber-900 hover:bg-amber-100"
                       : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"

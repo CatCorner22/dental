@@ -77,7 +77,7 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
               <SignOutButton />
             </>
           ) : (
-            <Link href="/login" className="font-medium text-blue-700 hover:text-blue-900">Sign in</Link>
+            <Link href="/login" className="font-medium text-brand-blue hover:text-brand-navy">Sign in</Link>
           )}
         </nav>
       </div>

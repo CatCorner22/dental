@@ -778,8 +778,8 @@ export function Standardizer({
               <TextDiff before={input} after={result.text} className="mt-2" />
             </details>
             {allowed && pasteConfirmOpen && !copied && (
-              <div className="mt-2 rounded border border-blue-300 bg-blue-50 p-3">
-                <label className="flex items-start gap-2 text-xs text-blue-900">
+              <div className="mt-2 rounded border border-brand-blue/40 bg-brand-blue/10 p-3">
+                <label className="flex items-start gap-2 text-xs text-brand-navy">
                   <input
                     type="checkbox"
                     className="mt-0.5"

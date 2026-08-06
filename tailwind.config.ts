@@ -32,24 +32,58 @@ export default {
         "title-2": ["1.375rem", { lineHeight: "1.3", letterSpacing: "-0.01em" }],
         "title-3": ["1.125rem", { lineHeight: "1.4", letterSpacing: "-0.005em" }]
       },
-      // The atomic-age brand palette (docs/brand.md). Retro-future is an
-      // ACCENT here, never a costume: severity colors (red/orange/amber/
-      // green) are untouched, clinical surfaces stay calm, and these tokens
-      // carry the warmth — cream ground, space-navy ink, orbit coral,
-      // starburst gold, check teal.
+      // The brand palette: light purple ground, purple ink, purple interactive.
+      // Colour is used for CHROME — headings, rails, the shell — and NEVER for
+      // state: severity (red/orange/amber/green) is untouched and lives in
+      // src/lib/audit/types.ts.
+      //
+      // The token KEYS are historical. They kept their names through the move
+      // off the old atomic-age set so that ~86 existing `brand-navy` /
+      // `brand-blue` / `brand-teal` utilities did not all have to be rewritten
+      // in the same commit that changed the colours. Read them by their role,
+      // which is what the comments below give.
+      //
+      // The values are restated as data in src/lib/theme/palette.ts, where
+      // contrast.test.ts asserts the ratios. Change one, change both.
       colors: {
         brand: {
-          // Deepened from #FBF7EF. A white card on the old value had roughly a 2%
-          // luminance gap from the page and a design review called the result
+          // GROUND. Deliberately not lighter: the previous value was deepened
+          // from #FBF7EF because a white card on it had roughly a 2% luminance
+          // gap from the page and a design review called the result
           // "aggressively flat" — correctly. Darkening the GROUND rather than
-          // tinting the cards keeps every card white, which is what keeps the text
-          // on it maximally readable, and buys the separation from the page.
-          cream: "#F4EEE4",
-          navy: "#1E3A5F",
-          blue: "#2B6CB8",
-          teal: "#5FB3A8",
-          coral: "#F26D6D",
+          // tinting the cards keeps every card white, which is what keeps the
+          // text on it maximally readable, and buys the separation from the
+          // page. A paler lilac here reintroduces exactly that bug.
+          cream: "#EDE9F6",
+          // INK: headings, the active nav pill, the top stop of .btn-primary.
+          navy: "#3B2B66",
+          // INTERACTIVE: links, the bottom stop of .btn-primary, focus.
+          blue: "#6D4AC4",
+          // QUIET CHROME: the .eyebrow, the .card-note rail. Carries no
+          // severity, which is exactly why it is safe on an informational rail.
+          teal: "#5B4A8F",
+          // The one surviving warm accent — the queue-clear starburst.
           gold: "#F2CE4B"
+          // coral: retired. It had zero uses in src/.
+        },
+        // The neutral ramp, tinted purple rather than blue. Overriding Tailwind's
+        // own `slate` repaints roughly 676 utilities across the app without
+        // editing a single component — and keeps the CLASS NAMES intact, which
+        // matters more than it looks: the high-contrast rules in globals.css
+        // select on `.text-slate-500` and `.border-slate-200` literally, so
+        // renaming the utility would silently switch high-contrast mode off for
+        // the people who need it most.
+        slate: {
+          50: "#F8F7FB",
+          100: "#F1EFF6",
+          200: "#E4E1EC",
+          300: "#CFCADB",
+          400: "#9C93B3",
+          500: "#6E6685",
+          600: "#565070",
+          700: "#433E58",
+          800: "#322E44",
+          900: "#23202F"
         }
       }
     }

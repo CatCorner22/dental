@@ -72,8 +72,8 @@ export function DisplaySettings() {
               style={{ fontSize: `${s.value}rem` }}
               className={`tap rounded-full border px-3 font-medium ${
                 ready && prefs.textScale === s.value
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-slate-400 bg-white text-slate-800 hover:bg-blue-50"
+                  ? "border-brand-blue bg-brand-blue text-white"
+                  : "border-slate-400 bg-white text-slate-800 hover:bg-brand-blue/10"
               }`}
             >
               {s.label}
@@ -98,8 +98,8 @@ export function DisplaySettings() {
               onClick={() => update({ ...prefs, contrast: value })}
               className={`tap rounded-full border px-3 text-sm font-medium ${
                 ready && prefs.contrast === value
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : "border-slate-400 bg-white text-slate-800 hover:bg-blue-50"
+                  ? "border-brand-blue bg-brand-blue text-white"
+                  : "border-slate-400 bg-white text-slate-800 hover:bg-brand-blue/10"
               }`}
             >
               {label}

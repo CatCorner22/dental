@@ -156,7 +156,7 @@ export function Dashboard({
                 {scopePicks.map((p) => (
                   <button
                     key={p.id}
-                    className="block w-full rounded p-2 text-left hover:bg-blue-50"
+                    className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                     disabled={busy}
                     onClick={() => createDraft(p.moduleIds, p.label)}
                   >
@@ -177,7 +177,7 @@ export function Dashboard({
           {featuredPicks.map((p) => (
             <button
               key={p.id}
-              className="group relative overflow-hidden rounded-xl bg-white p-4 text-left shadow-[0_1px_3px_rgba(30,58,95,0.08),0_1px_2px_rgba(30,58,95,0.04)] ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-blue/60 disabled:opacity-50 disabled:hover:translate-y-0"
+              className="group relative overflow-hidden rounded-xl bg-white p-4 text-left shadow-[0_1px_3px_rgba(59,43,102,0.08),0_1px_2px_rgba(59,43,102,0.04)] ring-1 ring-slate-200 transition-all hover:-translate-y-0.5 hover:shadow-md hover:ring-brand-blue/60 disabled:opacity-50 disabled:hover:translate-y-0"
               disabled={busy}
               onClick={() => createDraft(p.moduleIds, p.label)}
             >
@@ -212,7 +212,7 @@ export function Dashboard({
       {resumeDraft && (
         <Link
           href={`/note/${resumeDraft.id}`}
-          className="flex items-center justify-between gap-3 rounded-lg border border-blue-200 bg-blue-50 px-4 py-2.5 hover:bg-blue-100"
+          className="flex items-center justify-between gap-3 rounded-lg border border-brand-blue/30 bg-brand-blue/10 px-4 py-2.5 hover:bg-brand-blue/20"
         >
           {/* `truncate` needs a block box — on an inline span the browser
               honours only its `white-space: nowrap`, so a long user-typed
@@ -266,7 +266,7 @@ export function Dashboard({
                 aria-pressed={statusFilter === s}
                 onClick={() => setStatusFilter(statusFilter === s ? null : s)}
                 className={`tap rounded-full border px-3 text-xs font-medium ${
-                  statusFilter === s ? "border-blue-700 bg-blue-700 text-white" : STATUS_META[s].chipClass
+                  statusFilter === s ? "border-brand-blue bg-brand-blue text-white" : STATUS_META[s].chipClass
                 }`}
                 title={`Show only ${STATUS_META[s].label.toLowerCase()} drafts`}
               >
@@ -317,7 +317,7 @@ export function Dashboard({
                 )}
                 {canEdit && (
                   <button
-                    className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-blue-50"
+                    className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-brand-blue/10"
                     disabled={busy}
                     onClick={() => createDraft(d.moduleIds, d.title)}
                     title="Start a new Smile Note with the same modules — no values are copied"

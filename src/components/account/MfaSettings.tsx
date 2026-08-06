@@ -90,7 +90,7 @@ export function MfaSettings({ enabled: initialEnabled }: { enabled: boolean }) {
           </p>
           <p className="rounded bg-slate-50 p-2 font-mono text-xs break-all">{pending.secret}</p>
           <p>
-            <a className="text-blue-700 underline" href={pending.uri}>
+            <a className="text-brand-blue underline" href={pending.uri}>
               Open directly in an authenticator app on this device
             </a>
           </p>

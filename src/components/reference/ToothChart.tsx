@@ -26,10 +26,10 @@ function ChartRow({ ids, selected, onPick }: { ids: string[]; selected: string |
             onClick={() => onPick(id)}
             className={`tap-sq h-9 w-9 rounded border text-sm font-medium ${
               selected === id
-                ? "border-blue-700 bg-blue-700 text-white"
+                ? "border-brand-blue bg-brand-blue text-white"
                 : tooth?.isAnterior
-                  ? "border-slate-300 bg-white hover:bg-blue-50"
-                  : "border-slate-300 bg-slate-100 hover:bg-blue-50"
+                  ? "border-slate-300 bg-white hover:bg-brand-blue/10"
+                  : "border-slate-300 bg-slate-100 hover:bg-brand-blue/10"
             }`}
           >
             {id}
@@ -60,7 +60,7 @@ export function ToothChart() {
               setSelected(null);
             }}
             className={`rounded px-3 py-1 text-sm font-medium ${
-              dentition === d ? "bg-blue-700 text-white" : "bg-slate-100 text-slate-700"
+              dentition === d ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-700"
             }`}
           >
             {d === "permanent" ? "Permanent (1-32)" : "Primary (A-T)"}

@@ -118,7 +118,7 @@ function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
         <p className="text-xs font-semibold text-slate-700">My blocks — your own starting text</p>
         <button
           type="button"
-          className="text-xs text-blue-700 underline"
+          className="text-xs text-brand-blue underline"
           onClick={() => setFormOpen((v) => !v)}
         >
           {formOpen ? "Cancel" : "+ Save a new block"}

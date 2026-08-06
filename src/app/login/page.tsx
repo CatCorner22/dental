@@ -18,7 +18,7 @@ export default async function LoginPage() {
   if ((await countUsers(db)) === 0) redirect("/setup");
   return (
     <div className="mx-auto max-w-md py-14">
-      <div className="relative overflow-hidden rounded-2xl bg-white p-8 shadow-[0_4px_24px_rgba(30,58,95,0.10),0_1px_3px_rgba(30,58,95,0.06)] ring-1 ring-slate-200">
+      <div className="relative overflow-hidden rounded-2xl bg-white p-8 shadow-[0_4px_24px_rgba(59,43,102,0.10),0_1px_3px_rgba(59,43,102,0.06)] ring-1 ring-slate-200">
         <span
           aria-hidden
           className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-brand-navy via-brand-blue to-brand-teal"

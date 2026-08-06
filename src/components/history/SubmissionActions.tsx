@@ -122,13 +122,13 @@ export function SubmissionActions({
         </button>
       </div>
       {requestOpen && (
-        <div className="mt-2 rounded border border-blue-300 bg-blue-50 p-3">
-          <p className="text-xs text-blue-900">
+        <div className="mt-2 rounded border border-brand-blue/40 bg-brand-blue/10 p-3">
+          <p className="text-xs text-brand-navy">
             One document with the note, audit report, filing metadata, and frozen ruleset version —
             the shape a board inquiry or discovery demand asks for. Identity fields stay in the
             EDR; this export carries none.
           </p>
-          <label className="mt-2 flex items-start gap-2 text-xs text-blue-900">
+          <label className="mt-2 flex items-start gap-2 text-xs text-brand-navy">
             <input
               type="checkbox"
               className="mt-0.5"

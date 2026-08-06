@@ -79,9 +79,9 @@ export function SurfacePicker({
                     onClick={() => toggle(toothId, s)}
                     className={`tap-sq h-7 w-7 rounded border text-xs font-semibold ${
                       chosen.includes(s)
-                        ? "border-blue-700 bg-blue-700 text-white"
+                        ? "border-brand-blue bg-brand-blue text-white"
                         : isAllowed
-                          ? "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"
+                          ? "border-slate-300 bg-white text-slate-700 hover:bg-brand-blue/10"
                           : "cursor-not-allowed border-slate-200 bg-slate-100 text-slate-300"
                     }`}
                   >

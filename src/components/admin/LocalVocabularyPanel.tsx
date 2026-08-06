@@ -63,7 +63,7 @@ export function LocalVocabularyPanel({ entries, notesScanned }: {
             ))}
           </ul>
           <p className="mt-3 text-sm">
-            <a className="font-medium text-blue-700 underline" href="/requests">
+            <a className="font-medium text-brand-blue underline" href="/requests">
               Ask for one to be added to the vocabulary
             </a>
           </p>

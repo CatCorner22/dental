@@ -189,7 +189,7 @@ function RowActions({
     <div className="flex flex-wrap items-center gap-x-1 gap-y-1 text-xs">
       {perms.showDeactivate && (
         <button
-          className="tap rounded px-2 text-blue-700 hover:underline"
+          className="tap rounded px-2 text-brand-blue hover:underline"
           onClick={() => handlers.patch(user.id, { active: !user.active })}
         >
           {user.active ? "Deactivate" : "Reactivate"}
@@ -197,7 +197,7 @@ function RowActions({
       )}
       {perms.showLink && (
         <button
-          className="tap rounded px-2 text-blue-700 hover:underline"
+          className="tap rounded px-2 text-brand-blue hover:underline"
           onClick={() => handlers.onLink(user)}
         >
           Send reset link
@@ -205,7 +205,7 @@ function RowActions({
       )}
       {perms.showSetPassword && (
         <button
-          className="tap rounded px-2 text-blue-700 hover:underline"
+          className="tap rounded px-2 text-brand-blue hover:underline"
           onClick={() => handlers.onSetPassword(user)}
         >
           Set password
@@ -213,7 +213,7 @@ function RowActions({
       )}
       {perms.showContact && (
         <button
-          className="tap rounded px-2 text-blue-700 hover:underline"
+          className="tap rounded px-2 text-brand-blue hover:underline"
           onClick={() => handlers.onContact(user)}
         >
           Edit contact
@@ -221,7 +221,7 @@ function RowActions({
       )}
       {perms.showOffices && (
         <button
-          className="tap rounded px-2 text-blue-700 hover:underline"
+          className="tap rounded px-2 text-brand-blue hover:underline"
           onClick={() => handlers.onOffices(user)}
         >
           Offices
@@ -244,7 +244,7 @@ function RowActions({
       )}
       {perms.showMerge && (
         <button
-          className="tap rounded px-2 text-blue-700 hover:underline"
+          className="tap rounded px-2 text-brand-blue hover:underline"
           onClick={() => handlers.onMerge(user)}
         >
           Merge away

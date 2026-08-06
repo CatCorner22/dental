@@ -74,8 +74,8 @@ export function SelectInput({ field, value, onChange, describedBy, invalid, id }
               // here. Sized for a finger below sm, unchanged on desktop.
               className={`tap rounded-full border px-3 text-xs font-medium ${
                 on
-                  ? "border-blue-700 bg-blue-700 text-white"
-                  : `bg-white text-slate-700 hover:bg-blue-50 ${invalid ? "border-rose-400" : "border-slate-300"}`
+                  ? "border-brand-blue bg-brand-blue text-white"
+                  : `bg-white text-slate-700 hover:bg-brand-blue/10 ${invalid ? "border-rose-400" : "border-slate-300"}`
               }`}
             >
               {o.label ?? o.value}
@@ -139,8 +139,8 @@ export function MultiselectInput({ field, value, onChange, describedBy }: InputP
               // here. Sized for a finger below sm, unchanged on desktop.
               className={`tap rounded-full border px-3 text-xs font-medium ${
             selected.includes(o.value)
-              ? "border-blue-700 bg-blue-700 text-white"
-              : "border-slate-300 bg-white text-slate-700 hover:bg-blue-50"
+              ? "border-brand-blue bg-brand-blue text-white"
+              : "border-slate-300 bg-white text-slate-700 hover:bg-brand-blue/10"
           }`}
         >
           {o.label ?? o.value}

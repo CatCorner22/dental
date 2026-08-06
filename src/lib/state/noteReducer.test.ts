@@ -40,6 +40,34 @@ describe("noteReducer", () => {
     s = noteReducer(s, { type: "reset" });
     expect(s).toEqual(initialNoteState);
   });
+
+  it("applyModules adds structure only — never values, never removals", () => {
+    let s = noteReducer(initialNoteState, {
+      type: "applyModules",
+      moduleIds: ["preventive", "imaging"]
+    });
+    expect(s.selectedModuleIds).toEqual(["preventive", "imaging"]);
+    expect(s.values).toEqual({});
+    s = noteReducer(s, {
+      type: "setValue",
+      key: "preventive.service",
+      value: { kind: "text", value: "prophy" }
+    });
+    s = noteReducer(s, {
+      type: "applyModules",
+      moduleIds: ["imaging", "medication"]
+    });
+    expect(s.selectedModuleIds).toEqual(["preventive", "imaging", "medication"]);
+    expect(s.values["preventive.service"]).toEqual({ kind: "text", value: "prophy" });
+  });
+
+  it("applyModules ignores always-on modules and empty ids", () => {
+    const s = noteReducer(initialNoteState, {
+      type: "applyModules",
+      moduleIds: ["universal-core", "", "direct-restorative"]
+    });
+    expect(s.selectedModuleIds).toEqual(["direct-restorative"]);
+  });
 });
 
 describe("orphan surface pruning", () => {

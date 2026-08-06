@@ -519,10 +519,26 @@
      whole surface rather than swapping colour, so the state still snaps. */
   @apply btn border-transparent bg-gradient-to-b from-brand-navy to-brand-blue text-white shadow-[0_2px_6px_rgba(59,43,102,0.35)] hover:brightness-110 disabled:hover:brightness-100;
 }
+/* Handoff action: Copy for Curve / EDR. Solid brand-teal so it is strong but
+   never identical to Submit (filing). White on teal clears 7.4:1 — see
+   tokens.test.ts. Semantic role: action.complete in src/lib/theme/tokens.ts. */
+.btn-complete {
+  @apply btn border-transparent bg-brand-teal text-white shadow-[0_2px_6px_rgba(59,43,102,0.28)] hover:brightness-110 disabled:hover:brightness-100;
+}
 .btn-secondary {
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
 }
+/* Fast Lane scaffold cards — structure-only visit starts inside the open note.
+   Min height meets 44px targets on coarse pointers via the global .tap rules
+   when combined with padding; the card itself is a button. */
+.fast-lane-card {
+  @apply rounded-2xl border border-slate-200 bg-white px-3.5 py-3 shadow-sm ring-1 ring-slate-100 transition-[transform,box-shadow,border-color] duration-100 hover:border-brand-blue/40 hover:shadow-[0_4px_14px_rgba(59,43,102,0.10)] active:translate-y-px;
+  -webkit-tap-highlight-color: transparent;
+  touch-action: manipulation;
+  min-height: 44px;
 }
+}
+
 
 /* THE GROUND WASH — what makes the page bespoke instead of flat lilac.
    Two enormous, almost-invisible radial tints in the brand's own interactive

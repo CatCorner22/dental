@@ -5,6 +5,10 @@ import { MODULES_BY_ID } from "@/lib/modules";
 
 export type NoteAction =
   | { type: "toggleModule"; moduleId: string }
+  // Add modules without removing any already selected and without touching
+  // values. Fast Lane scaffolds use this so structure-only starts never wipe
+  // a half-typed note if the writer re-taps a card.
+  | { type: "applyModules"; moduleIds: string[] }
   | { type: "setValue"; key: string; value: FieldValue }
   | { type: "clearValue"; key: string }
   | { type: "clearModule"; moduleId: string }
@@ -57,6 +61,18 @@ export function noteReducer(state: NoteState, action: NoteAction): NoteState {
         selectedModuleIds: state.selectedModuleIds.filter((id) => id !== action.moduleId),
         values
       };
+    }
+    case "applyModules": {
+      const next = [...state.selectedModuleIds];
+      for (const id of action.moduleIds) {
+        if (!id || next.includes(id)) continue;
+        // Always-on modules are implied by the form; never store them as
+        // selected add-ons (matches how empty notes and POST drafts work).
+        if (MODULES_BY_ID.get(id)?.alwaysOn) continue;
+        next.push(id);
+      }
+      if (next.length === state.selectedModuleIds.length) return state;
+      return { ...state, selectedModuleIds: next };
     }
     case "setValue": {
       const values = { ...state.values };

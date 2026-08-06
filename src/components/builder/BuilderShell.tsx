@@ -36,6 +36,7 @@ import type { FieldValue, NoteState } from "@/lib/schema/types";
 import type { AuditFinding } from "@/lib/audit/types";
 import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
+import { FastLane } from "./FastLane";
 import { PasteIntake } from "./PasteIntake";
 import { DictationUserContext } from "./fields/DictationField";
 import { AuditPanel } from "./AuditPanel";
@@ -743,7 +744,9 @@ export function BuilderShell({
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
         <button
-          className="btn-secondary"
+          className={
+            !hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"
+          }
           disabled={!hasContent || !gates.exportAllowed}
           aria-disabled={!hasContent || !gates.exportAllowed}
           aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
@@ -751,13 +754,16 @@ export function BuilderShell({
             !hasContent
               ? "Add note content before copying"
               : gates.exportAllowed
-                ? "Copy the composed note"
+                // main's wording for the enabled state — it names where the
+                // note is going, which "Copy the composed note" did not — with
+                // this branch's de-shouted lock text.
+                ? `Copy a clean note for pasting into ${edrName}`
                 : "Resolve every stop finding before copy or download"
           }
           onClick={copy}
         >
           {copied
-            ? "Copied ✓"
+            ? "Copied — ready to paste ✓"
             : !gates.exportAllowed && hasContent
               ? "🔒 Copy locked"
               : `Copy for ${edrName}`}
@@ -809,7 +815,7 @@ export function BuilderShell({
                 wrong chart is a records error this tool cannot see — only you can.
               </span>
             </label>
-            <button className="btn-primary mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
+            <button className="btn-complete mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
               Copy to clipboard
             </button>
           </div>
@@ -1026,6 +1032,24 @@ export function BuilderShell({
             in that note. Verified blocks moved into the chip row of each text
             field, which deleted the destination dropdown outright. */}
         <section className="min-w-0 flex-1 space-y-4">
+          {/* Progressive Fast Lane, from main: while this note is still
+              Core-only, offer role-aware visit scaffolds in place. These add
+              structure, never a second draft and never clinical values.
+
+              Outside the fieldset on purpose — it takes canEdit itself, and
+              inside it a read-only viewer would see the cards greyed rather
+              than absent. */}
+          <FastLane
+            clinicalRole={clinicalRole}
+            canEdit={canEdit}
+            visible={extraModuleCount === 0}
+            onApply={(pick) => {
+              dispatch({ type: "applyModules", moduleIds: pick.moduleIds });
+              if (!title.trim() || title.trim() === "Untitled note") {
+                setTitle(pick.label);
+              }
+            }}
+          />
           <fieldset disabled={!canEdit} className="min-w-0">
             <DictationUserContext.Provider value={username}>
             <NoteForm
@@ -1146,6 +1170,13 @@ export function BuilderShell({
         </Dialog>
       )}
 
+      {/* Both sides of this conflict were moving the same thing — what sits
+          above the fields — in opposite directions. main added the Fast Lane
+          there; this branch took paste OUT of there and put it behind a button.
+          Both survive: the Fast Lane renders in the form section (see below,
+          where main put it), and paste stays a dialog. They do not compete,
+          because the Fast Lane only appears on a Core-only note and disappears
+          the moment it is used, while paste is reached for deliberately. */}
       {showPaste && (
         <Dialog title="Paste an existing note" onClose={() => setShowPaste(false)}>
           <PasteIntake onSend={appendToField} canEdit={canEdit} lockedSections={lockedFieldKeys} />

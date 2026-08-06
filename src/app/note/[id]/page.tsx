@@ -1,5 +1,5 @@
 import { notFound, redirect } from "next/navigation";
-import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
+import { canTransferNotes, canWriteNote, seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
 import { getDraft } from "@/lib/db/repo/drafts";
@@ -56,6 +56,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       initialSubmitted={draft.status === "submitted"}
       initialSendFailed={draft.lastSendFailed}
       canEdit={canEdit}
+      canTransfer={canTransferNotes(user.role)}
       edrName={edrProductShort()}
       username={user.username}
       dictationEnrolled={user.dictationEnrolled ?? false}

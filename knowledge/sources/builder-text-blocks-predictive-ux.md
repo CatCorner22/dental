@@ -97,10 +97,13 @@ The Artifact already admits the real failure mode: *we have not watched the nine
 
 **Highest-leverage next build (recommended order):**
 
-1. Section-scoped **Suggested blocks** rail (deterministic ranking from modules + role).  
-2. Fast Lane → **optional pack insert** (modules + suggested verified blocks).  
-3. Pin **MyBlocks** to builder chrome.  
-4. Only then: licence-gated assist that *proposes* which block fits a pasted draft (still human-confirm).
+1. ~~Section-scoped starters~~ — shipped as **Section starters** (Universal Core only; closed chip; hygiene-safe LA gating).  
+2. Fast Lane → **cue only** (no auto-insert packs). Persona swarm rejected silent bulk insert.  
+3. Pin **MyBlocks** to builder chrome (still open).  
+4. Hygiene-shaped starters on Preventive / Periodontics sections (still open).  
+5. Only then: licence-gated assist that *proposes* which block fits a pasted draft (still human-confirm).
+
+**Curve-persona swarm (2026-08-06) consensus:** ship-with-tweaks → rename away from “wording,” suppress LA on prophy, one strip per viewport, focus target field after insert, never auto-fill from Fast Lane.
 
 ---
 

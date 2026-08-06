@@ -11,9 +11,10 @@ import {
 import { BlockRow } from "@/components/standardize/BlockPicker";
 
 /**
- * Section-scoped suggested wording — closed by default, max three, never on
- * narrative. Complements BlockChips (full catalog under the focused field)
- * without stacking MyBlocks or a permanent card above the note.
+ * Section starters — closed by default, max three, Universal Core only,
+ * never on narrative. This is the attested-block door for sections that only
+ * have text fields (Care delivered), where the focused-field "Verified block"
+ * chip never mounts.
  */
 export function SuggestedBlocks({
   moduleId,
@@ -30,7 +31,7 @@ export function SuggestedBlocks({
   selectedModuleIds: readonly string[];
   clinicalRole: ClinicalRole;
   outOfScope: boolean;
-  /** Collapsed sections must not mount an open panel or fetch noise. */
+  /** Collapsed sections must not mount an open panel. */
   sectionOpen: boolean;
   fields: readonly { id: string; type: string }[];
   onInsert: (fieldId: string, text: string) => void;
@@ -59,15 +60,15 @@ export function SuggestedBlocks({
         onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((v) => !v)}
       >
-        Suggested wording {open ? "▾" : "▸"}
+        Section starters {open ? "▾" : "▸"}
         <span className="ml-1 font-normal text-slate-500">({blocks.length})</span>
       </button>
       {open && (
         <div className="mt-1.5 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
           <p className="text-[0.7rem] leading-snug text-slate-600">
-            Optional starters for this section. Confirm each statement, then replace the
-            placeholders — they block filing until you do. Nothing is inserted until you
-            confirm.
+            Optional attested templates for fields in this section. Confirm each statement,
+            then replace the placeholders — filing stays blocked until you do. Nothing is
+            inserted until you confirm.
           </p>
           {blocks.map((block) => (
             <BlockRow

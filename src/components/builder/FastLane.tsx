@@ -51,13 +51,15 @@ export function FastLane({
             key={p.id}
             type="button"
             className="chip"
-            title={`${p.description} — adds the usual modules for this visit. Nothing clinical is filled in; you still write the findings.`}
+            title={`${p.description} — adds the usual modules for this visit. Nothing clinical is filled in. Section starters (attested templates) appear when you open History review, Care delivered, or Handoff — still confirm before insert.`}
             onClick={() => onApply(p)}
           >
             {p.label}
           </button>
         ))}
-        <span className="basis-full text-[0.7rem] leading-snug text-slate-500">{cue}</span>
+        <span className="basis-full text-[0.7rem] leading-snug text-slate-500">
+          {cue} Section starters stay closed until you open those sections.
+        </span>
       </div>
     </section>
   );

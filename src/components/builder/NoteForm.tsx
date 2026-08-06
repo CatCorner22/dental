@@ -346,6 +346,17 @@ export function NoteForm({
                   onInsert={(fieldId, text) => {
                     const key = fieldKey(mod.id, fieldId);
                     onChange(key, appendProse(state.values[key], text));
+                    // Land the writer on the field that received the text —
+                    // otherwise insert into an unfocused box looks like a no-op
+                    // until filing stops on leftover placeholders.
+                    requestAnimationFrame(() => {
+                      const root = document.getElementById(`field-${mod.id}-${fieldId}`);
+                      const control =
+                        (document.getElementById(`ctl-${key}`) as HTMLElement | null) ??
+                        root?.querySelector<HTMLElement>("textarea, input");
+                      root?.scrollIntoView({ block: "nearest" });
+                      control?.focus({ preventScroll: true });
+                    });
                   }}
                 />
                 <div className="space-y-3">

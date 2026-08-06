@@ -19,6 +19,17 @@ describe("suggestedBlocksFor", () => {
     ).toEqual([]);
   });
 
+  it("stays silent on add-on modules — one strip per viewport", () => {
+    expect(
+      suggestedBlocksFor({
+        moduleId: "direct-restorative",
+        sectionId: "main",
+        selectedModuleIds: ["universal-core", "direct-restorative"],
+        clinicalRole: "dentist"
+      })
+    ).toEqual([]);
+  });
+
   it("offers medical history on history-review for every role", () => {
     const ids = suggestedBlocksFor({
       moduleId: "universal-core",
@@ -30,7 +41,18 @@ describe("suggestedBlocksFor", () => {
     expect(ids.length).toBeLessThanOrEqual(3);
   });
 
-  it("ranks anesthetic and complications for care-delivered on a restorative visit", () => {
+  it("does not lead a hygiene-only visit with local anesthetic on care-delivered", () => {
+    const ids = suggestedBlocksFor({
+      moduleId: "universal-core",
+      sectionId: "care-delivered",
+      selectedModuleIds: ["universal-core", "preventive", "imaging"],
+      clinicalRole: "hygienist"
+    }).map((b) => b.id);
+    expect(ids).not.toContain("local-anesthetic");
+    expect(ids).toContain("no-complications");
+  });
+
+  it("ranks anesthetic for care-delivered on a restorative visit", () => {
     const ids = suggestedBlocksFor({
       moduleId: "universal-core",
       sectionId: "care-delivered",
@@ -39,27 +61,45 @@ describe("suggestedBlocksFor", () => {
     }).map((b) => b.id);
     expect(ids[0]).toBe("local-anesthetic");
     expect(ids).toContain("no-complications");
-    expect(ids).not.toContain("postop-instructions");
   });
 
-  it("puts post-op instructions on handoff, not care-delivered", () => {
-    const ids = suggestedBlocksFor({
-      moduleId: "universal-core",
-      sectionId: "handoff",
-      selectedModuleIds: ["universal-core", "extraction"],
-      clinicalRole: "dentist"
-    }).map((b) => b.id);
-    expect(ids).toContain("postop-instructions");
+  it("surfaces radiograph wording on objective only when imaging is selected", () => {
+    expect(
+      suggestedBlocksFor({
+        moduleId: "universal-core",
+        sectionId: "objective",
+        selectedModuleIds: ["universal-core"],
+        clinicalRole: "dentist"
+      }).map((b) => b.id)
+    ).toEqual([]);
+    expect(
+      suggestedBlocksFor({
+        moduleId: "universal-core",
+        sectionId: "objective",
+        selectedModuleIds: ["universal-core", "imaging"],
+        clinicalRole: "dentist"
+      }).map((b) => b.id)
+    ).toEqual(["radiograph-interpretation"]);
   });
 
-  it("surfaces radiograph wording on objective when imaging is selected", () => {
-    const ids = suggestedBlocksFor({
-      moduleId: "universal-core",
-      sectionId: "objective",
-      selectedModuleIds: ["universal-core", "imaging"],
-      clinicalRole: "dentist"
-    }).map((b) => b.id);
-    expect(ids).toEqual(["radiograph-interpretation"]);
+  it("offers postop on handoff for extraction, not for hygiene-only", () => {
+    expect(
+      suggestedBlocksFor({
+        moduleId: "universal-core",
+        sectionId: "handoff",
+        selectedModuleIds: ["universal-core", "preventive", "imaging"],
+        clinicalRole: "hygienist"
+      }).map((b) => b.id)
+    ).not.toContain("postop-instructions");
+
+    expect(
+      suggestedBlocksFor({
+        moduleId: "universal-core",
+        sectionId: "handoff",
+        selectedModuleIds: ["universal-core", "extraction"],
+        clinicalRole: "dentist"
+      }).map((b) => b.id)
+    ).toContain("postop-instructions");
   });
 
   it("hides referral suggestions from hygienists and assistants", () => {
@@ -67,7 +107,7 @@ describe("suggestedBlocksFor", () => {
       const ids = suggestedBlocksFor({
         moduleId: "universal-core",
         sectionId: "handoff",
-        selectedModuleIds: ["universal-core", "examination"],
+        selectedModuleIds: ["universal-core", "examination", "extraction"],
         clinicalRole: role
       }).map((b) => b.id);
       expect(ids, role).not.toContain("referral");
@@ -76,8 +116,8 @@ describe("suggestedBlocksFor", () => {
 
   it("never returns non-suggestable full scaffolds", () => {
     const ids = suggestedBlocksFor({
-      moduleId: "direct-restorative",
-      sectionId: "procedure",
+      moduleId: "universal-core",
+      sectionId: "care-delivered",
       selectedModuleIds: ["universal-core", "direct-restorative"],
       clinicalRole: "dentist",
       limit: 10
@@ -86,7 +126,6 @@ describe("suggestedBlocksFor", () => {
       true
     );
     expect(ids).not.toContain("des12-master");
-    expect(ids).not.toContain("operative-with-assistant");
   });
 
   it("returns at most three blocks", () => {

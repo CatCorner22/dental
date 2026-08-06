@@ -4,6 +4,7 @@ import { useMemo, useState } from "react";
 import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { StatusChip } from "@/components/ui/StatusChip";
+import { Character } from "@/components/mascot/Sparkle";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { authorCapabilities } from "@/lib/scope/authorCapabilities";
 import { quickPicksForRole } from "@/lib/presets/quickPicks";
@@ -127,8 +128,14 @@ export function HomeAside({
       )}
 
       {others.length === 0 ? (
-        <p className="text-sm text-slate-500">
-          Nothing else open. {totalDrafts > 0 ? <Link href="/notes" className="font-semibold text-brand-blue hover:underline">See all {totalDrafts}</Link> : null}
+        <p className="flex items-center gap-2 text-sm text-slate-500">
+          <Character id="sparkle" size="xs" />
+          Nothing else open.{" "}
+          {totalDrafts > 0 ? (
+            <Link href="/notes" className="font-semibold text-brand-blue hover:underline">
+              See all {totalDrafts}
+            </Link>
+          ) : null}
         </p>
       ) : (
         <>

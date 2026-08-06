@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { Character } from "@/components/mascot/Sparkle";
 
 // FIRST-WEEK CHECKLIST — the guided tour, as a dismissible card.
 //
@@ -95,7 +96,8 @@ export function OnboardingChecklist({ username }: { username: string }) {
   return (
     <details className="rounded-lg border-l-4 border-l-brand-teal bg-white px-3 py-2 ring-1 ring-slate-200">
       <summary className="flex cursor-pointer select-none items-center justify-between gap-2 text-sm [&::-webkit-details-marker]:hidden">
-        <span className="font-semibold text-brand-navy">
+        <span className="flex items-center gap-2 font-semibold text-brand-navy">
+          <Character id="sparkle" size="xs" />
           First week? Five short stops{" "}
           <span className="font-normal text-slate-500">
             ({state.done.length} of {STEPS.length} done)

@@ -4,6 +4,8 @@ import { meetsRole } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { BatchTriage } from "@/components/notes/BatchTriage";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { Character } from "@/components/mascot/Sparkle";
+import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Batch check" };
@@ -42,6 +44,10 @@ export default async function BatchPage() {
         <Link href="/notes" className="text-sm font-semibold text-brand-blue hover:underline">
           ← My notes
         </Link>
+      </div>
+      <div className="flex items-center gap-2.5">
+        <Character id="sparkle" size="sm" />
+        <p className="text-sm text-slate-600">{sparkleLine("batch", daySeed(new Date()))}</p>
       </div>
       <p className="max-w-3xl text-sm text-slate-600">
         A triage view for the end of the day. Separate each note with a line containing only{" "}

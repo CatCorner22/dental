@@ -1,5 +1,7 @@
 "use client";
 
+import { Character } from "@/components/mascot/Sparkle";
+
 import { useMemo, useState } from "react";
 import { useRouter } from "next/navigation";
 import {
@@ -131,10 +133,13 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
       </div>
 
       {shown.length === 0 ? (
-        <p className="rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
-          Nothing here yet. If you have noticed something — a supply running low, a step that takes
-          too long, anything below standard — add it above.
-        </p>
+        <div className="flex items-center gap-3 rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
+          <Character id="sparkle" size="sm" />
+          <p>
+            Nothing here yet. If you have noticed something — a supply running low, a step that
+            takes too long, anything below standard — add it above.
+          </p>
+        </div>
       ) : (
         <ul className="space-y-2">
           {shown.map((w) => (

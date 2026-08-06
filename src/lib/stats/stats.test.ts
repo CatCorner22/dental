@@ -67,7 +67,11 @@ describe("sparkleLine", () => {
       "resolving",
       "scoped",
       "saved",
-      "history"
+      "history",
+      "signIn",
+      "lost",
+      "batch",
+      "training"
     ];
     for (const context of contexts) {
       // Two different seeds: a single-line context would pass a one-seed check

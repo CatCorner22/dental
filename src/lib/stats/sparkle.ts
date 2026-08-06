@@ -18,7 +18,11 @@ export type SparkleContext =
   | "resolving"
   | "scoped"
   | "saved"
-  | "history";
+  | "history"
+  | "signIn"
+  | "lost"
+  | "batch"
+  | "training";
 
 const LINES: Record<SparkleContext, string[]> = {
   dashboard: [
@@ -80,6 +84,25 @@ const LINES: Record<SparkleContext, string[]> = {
   history: [
     "Sparkle says: filed notes land here once you submit your first one.",
     "Sparkle says: a quiet record is a fine place to start."
+  ],
+  // The sign-in card. The first thing anyone sees all day.
+  signIn: [
+    "Sparkle says: welcome back. Let's make today's notes easy to read.",
+    "Sparkle says: good to see you. Every note you write covers a teammate."
+  ],
+  // A page that is not there. Softening it is the whole job — a person who
+  // took a wrong turn has already had the unhelpful part of the experience.
+  lost: [
+    "Sparkle says: that page is not here. Your notes are, and they are fine.",
+    "Sparkle says: nothing at this address — the note is one tap away."
+  ],
+  batch: [
+    "Sparkle says: end of the day — let's see which ones are ready.",
+    "Sparkle says: a quick sweep now saves a phone call later."
+  ],
+  training: [
+    "Sparkle says: practice here costs nothing and helps every real note.",
+    "Sparkle says: a few minutes here makes tomorrow's notes quicker."
   ]
 };
 

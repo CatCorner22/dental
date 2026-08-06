@@ -6,7 +6,7 @@ Each source below links to its file in `knowledge/sources/`. Entry format:
 ## Dental PMS benchmarks
 
 - **[Curve Hero (Curve Dental) — clinical documentation & notes system](sources/curve-hero-pms-clinical-documentation.md)** — Deep benchmark of Curve Hero's Sidekick context panel, odontogram charting, note tags/attachment rules, Curve Forms template builder, and Care+ ambient AI, with explicit implications for this notes-standardization app. Tags: dental, pms, clinical-notes, note-templates, benchmarking, ai-documentation, ux. Ingested: 2026-08-02.
-- **[Team Lead practice packs — predictive text, approvals, history](sources/team-lead-practice-packs-workflow.md)** — Research for a Team Lead Workflow: practice packs composed from shipped verified blocks, dual-control approve + append-only history, predictive ranking without inventing clinical facts; Now/Next/Later/Never time-savers. Tags: team-lead, workflow, approvals, text-blocks, predictive, governance, ux. Ingested: 2026-08-06.
+- **[Builder UX — Curve notes, text blocks, and predictive scaffolds](sources/builder-text-blocks-predictive-ux.md)** — What Curve Hero notes feel like (Forms / QuickText / AI SOAP), what Smile Notes already ships under-discovered (verified blocks, MyBlocks, phrase chips, Fast Lane), and the safe path for predictive text packs without Forms or ambient AI. Tags: dental, curve-hero, ux, note-templates, text-blocks, predictive, chairside. Ingested: 2026-08-06.
 
 ## Project Artifact
 

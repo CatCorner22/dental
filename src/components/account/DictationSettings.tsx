@@ -9,7 +9,7 @@ import {
   dictationAvailability,
   type DictationAvailability
 } from "@/lib/dictation/availability";
-import { dictationDisabled } from "@/lib/dictation/engine";
+import { browserSpeechEngine, dictationDisabled } from "@/lib/dictation/engine";
 import type { EnrollmentRecord } from "@/lib/dictation/enrollment";
 
 // DICTATION SETUP, ON THE PERSON RATHER THAN THE BROWSER.
@@ -26,8 +26,10 @@ import type { EnrollmentRecord } from "@/lib/dictation/enrollment";
 // against the account now. Set it up once, on any machine, and the microphone
 // is there on all of them.
 //
-// No audio and no transcript is stored, here or on the server. Only that the
-// session happened, when, and which regional prompt set was used.
+// Smile Notes stores no audio and no transcript — only that the session
+// happened, when, and which regional prompt set was used. That is not the same
+// as "recognition stays on this device": browserSpeechEngine().offDevice is the
+// load-bearing UI truth (same flag DictationButton and VoiceEnrollment use).
 export function DictationSettings({
   username,
   enrolled,
@@ -40,6 +42,8 @@ export function DictationSettings({
   const router = useRouter();
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState("");
+  // Engine truth for copy: do not invent an on-device story when offDevice is set.
+  const engine = browserSpeechEngine();
   // Only the browser knows whether it has an engine and whether this origin is
   // secure, so it is measured after mount. A server render promises nothing.
   const [availability, setAvailability] = useState<DictationAvailability>({ status: "unknown" });
@@ -118,7 +122,10 @@ export function DictationSettings({
           <p className="font-semibold text-brand-navy">Dictation is set up for your account.</p>
           <p className="mt-1 text-xs text-slate-600">
             The microphone appears on the note&rsquo;s text boxes, on every computer you sign in
-            to{region ? ` (prompt set: ${region})` : ""}. No recording of your voice is kept.
+            to{region ? ` (prompt set: ${region})` : ""}. Smile Notes does not keep a recording.
+            {engine.offDevice
+              ? " The browser speech service may process audio off this device — speak de-identified facts only."
+              : ""}
           </p>
           <button
             type="button"
@@ -133,8 +140,11 @@ export function DictationSettings({
         <>
           <p className="mb-2 text-sm text-slate-600">
             Optional, and about ninety seconds. Reading a short script once lets you hear how the
-            software handles dental words, and teaches it the phrases you use. Nothing is recorded
-            — the recognition runs in your browser, and only the fact that you finished is saved.
+            software handles dental words, and teaches it the phrases you use. Smile Notes does not
+            keep audio or a transcript — only that you finished is saved.
+            {engine.offDevice
+              ? " The browser speech service may process audio off this device, so speak de-identified facts only."
+              : " Recognition stays on this device."}
           </p>
           <VoiceEnrollment username={username} onUnlocked={(r) => void save(r)} />
         </>

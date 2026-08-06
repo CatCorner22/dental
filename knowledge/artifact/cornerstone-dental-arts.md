@@ -41,7 +41,7 @@ what a human typed, and nothing more.
 | 2026-08-03 | Hostile review plus a browser accessibility pass. Fixed twelve items; ten remain open and are listed in §9. |
 | 2026-08-03 | Created this Artifact. Seeded from five existing sources. Ingested nothing new. |
 | 2026-08-03 | Built the patient-experience layer from the practice's own standardization document: encounter types for phone and portal contact, an open-items handoff, an anxiety and comfort module, a patient-facing summary with its own plain-word rule, and a page splitting the note header between Curve Hero and Smile Notes. Money stays out of the clinical record entirely, at the practice's direction. |
-| 2026-08-06 | Researched Team Lead practice packs: predictive text as ranked attested scaffolds; proposed `/workflow` with dual-control approve + append-only history. Filed `knowledge/sources/team-lead-practice-packs-workflow.md`. Awaiting owner go/no-go before schema work. |
+| 2026-08-06 | Researched Curve Hero note shape (Forms / QuickText / AI SOAP) vs Smile Notes builder acceleration. Filed `knowledge/sources/builder-text-blocks-predictive-ux.md`: verified blocks and MyBlocks already exist but are under-discovered; recommended section-scoped suggested blocks and Fast Lane text packs — not a Forms clone or ambient AI. |
 
 ---
 

@@ -9,8 +9,12 @@ import { encodeDriftDetail } from "@/lib/assist/drift";
 import { ASSIST_CAPABILITIES, ASSIST_PROMPT_VERSION, type AssistCapability } from "@/lib/assist/prompts";
 import { RULESET_VERSION } from "@/lib/version";
 import { capabilityTier, tierExplanation } from "@/lib/assist/tier";
+import { runPhiRule } from "@/lib/audit/rules/phi";
+import { scanPhiForProvider } from "@/lib/audit/rules/phi-secondary";
 
 export const runtime = "nodejs";
+/** Vercel: hard stop hung provider calls before they pin concurrency. */
+export const maxDuration = 30;
 
 // AI assist. Same privacy contract as the rest of the note pipeline — nothing stored, no
 // row, no log of the content — plus one more hop: the text goes to the
@@ -21,6 +25,8 @@ const MAX_INPUT = 20000;
 // Tighter than the deterministic paths: each run is a paid model call, and the meter is
 // per user so one person's scripting cannot spend the practice's budget.
 const FREE_RUNS = 40;
+/** Provider call budget — shorter than maxDuration so the route can log and return. */
+const PROVIDER_TIMEOUT_MS = 20_000;
 
 export async function POST(req: Request): Promise<Response> {
   const guard = await requireRole("user");
@@ -91,6 +97,25 @@ export async function POST(req: Request): Promise<Response> {
       { status: 429, headers: { "retry-after": String(meter.retryAfterSec) } }
     );
   }
+
+  // PHI before the meter: a blocked identifier must not burn FREE_RUNS. Same
+  // gate runAssist applies; checked here so we can refuse without charging.
+  const input = raw.slice(0, MAX_INPUT);
+  const primaryPhi = runPhiRule(input).filter((f) => f.category === "phi");
+  const phi = scanPhiForProvider(input, primaryPhi);
+  if (phi.length > 0) {
+    return Response.json({
+      ok: false,
+      code: "phi-blocked",
+      codes: [...new Set(phi.map((f) => f.ruleId))].sort(),
+      message:
+        `The AI was not called. ${phi.length} possible identifier${phi.length === 1 ? "" : "s"} ` +
+        `must be removed or masked first — de-identified text is the condition for any AI ` +
+        `assistance, with no exception and no override.`
+    });
+  }
+
+  // Charge once we are about to call a provider (not on PHI refuse above).
   await recordFailure(db, key, now, FREE_RUNS);
 
   // Real token usage, captured here rather than plumbed back through the
@@ -106,12 +131,18 @@ export async function POST(req: Request): Promise<Response> {
   const addUsage = (u: { inputTokens?: number; outputTokens?: number } | undefined) => {
     usedTokens += (u?.inputTokens ?? 0) + (u?.outputTokens ?? 0);
   };
+  const providerSignal = AbortSignal.timeout(PROVIDER_TIMEOUT_MS);
 
   const outcome = await runAssist(
     capability as AssistCapability,
     raw,
     async ({ system, prompt }) => {
-      const res = await generateText({ model: config.model, system, prompt });
+      const res = await generateText({
+        model: config.model,
+        system,
+        prompt,
+        abortSignal: providerSignal
+      });
       addUsage(res.usage);
       return res.text;
     },
@@ -125,7 +156,8 @@ export async function POST(req: Request): Promise<Response> {
         system,
         prompt,
         schemaName,
-        schema: jsonSchema(schema)
+        schema: jsonSchema(schema),
+        abortSignal: providerSignal
       });
       addUsage(res.usage);
       return res.object;

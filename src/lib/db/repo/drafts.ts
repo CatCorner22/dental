@@ -123,27 +123,32 @@ export async function updateDraftChecked(
   >,
   now: Date
 ): Promise<DraftRow | undefined> {
-  const [row] = await db
-    .update(drafts)
-    .set({ ...patch, version: baseVersion + 1, updatedAt: now })
-    .where(and(eq(drafts.id, id), eq(drafts.version, baseVersion)))
-    .returning();
-  if (!row) return undefined;
+  // One transaction: OCC update + revision insert + prune. A crash between
+  // separate statements left the legal working copy without a recovery snapshot
+  // (or pruned against a half-written ring under multi-tab load).
+  return db.transaction(async (tx) => {
+    const [row] = await tx
+      .update(drafts)
+      .set({ ...patch, version: baseVersion + 1, updatedAt: now })
+      .where(and(eq(drafts.id, id), eq(drafts.version, baseVersion)))
+      .returning();
+    if (!row) return undefined;
 
-  const contentChanged =
-    patch.noteState !== undefined || patch.title !== undefined || patch.officeId !== undefined;
-  if (contentChanged) {
-    await db.insert(draftRevisions).values({
-      draftId: row.id,
-      version: row.version,
-      title: row.title,
-      officeId: row.officeId,
-      noteState: row.noteState,
-      savedAt: now
-    });
-    await pruneDraftRevisions(db, row.id, DRAFT_REVISION_KEEP);
-  }
-  return row;
+    const contentChanged =
+      patch.noteState !== undefined || patch.title !== undefined || patch.officeId !== undefined;
+    if (contentChanged) {
+      await tx.insert(draftRevisions).values({
+        draftId: row.id,
+        version: row.version,
+        title: row.title,
+        officeId: row.officeId,
+        noteState: row.noteState,
+        savedAt: now
+      });
+      await pruneDraftRevisions(tx, row.id, DRAFT_REVISION_KEEP);
+    }
+    return row;
+  });
 }
 
 export type DraftRevisionSummary = Pick<
@@ -184,7 +189,11 @@ export async function getDraftRevision(
   return row;
 }
 
-async function pruneDraftRevisions(db: Db, draftId: string, keep: number): Promise<void> {
+async function pruneDraftRevisions(
+  db: Pick<Db, "select" | "delete">,
+  draftId: string,
+  keep: number
+): Promise<void> {
   const kept = await db
     .select({ id: draftRevisions.id })
     .from(draftRevisions)

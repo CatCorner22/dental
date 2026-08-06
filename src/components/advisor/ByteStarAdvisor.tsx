@@ -102,7 +102,8 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         if (!cancelled) setDeploy(d.enabled ? "on" : "off");
       })
       .catch(() => {
-        if (!cancelled) setDeploy("off");
+        // Network/DB failure is not "feature off" — keep gauges honest.
+        if (!cancelled) setDeploy("unreachable");
       });
     return () => {
       cancelled = true;
@@ -307,7 +308,9 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   ? "Keep typing — feedback appears when the draft is long enough to analyze."
                   : deploy === "off"
                     ? "Pioneer model is dark on this deployment. A Team Lead opens it by setting AI_GATEWAY_API_KEY (see SuperByte monitor), then redeploying. Gauges below still run locally."
-                    : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
+                    : deploy === "unreachable"
+                      ? "Could not reach the pioneer just now — try again shortly. Gauges below still run locally."
+                      : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
             </p>
           )}
         </div>

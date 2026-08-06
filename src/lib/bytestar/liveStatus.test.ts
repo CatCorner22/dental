@@ -43,6 +43,11 @@ describe("SuperByte live status (HF MessageUpdate-style present tense)", () => {
   it("states pioneer-dark without claiming gauges are dead", () => {
     expect(superbyteLiveStatus({ ...base, deploy: "off" })).toMatch(/gauges still run/i);
   });
+
+  it("states unreachable without claiming the pioneer is dark", () => {
+    expect(superbyteLiveStatus({ ...base, deploy: "unreachable" })).toMatch(/Could not reach/i);
+    expect(superbyteLiveStatus({ ...base, deploy: "unreachable" })).not.toMatch(/Pioneer dark/i);
+  });
 });
 
 describe("SuperByte layer label (HF RouterMetadata-style)", () => {

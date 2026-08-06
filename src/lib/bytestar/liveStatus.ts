@@ -6,7 +6,7 @@
 // tense account of the layer speaking (pioneer vs local instrument) and whether
 // a read is in flight. Strings are deterministic; no model self-grading.
 
-export type SuperByteDeployStatus = "unknown" | "off" | "on";
+export type SuperByteDeployStatus = "unknown" | "unreachable" | "off" | "on";
 export type SuperByteFeedbackSource = "pioneer" | "instrument" | null;
 
 export function superbyteLiveStatus(args: {
@@ -36,6 +36,9 @@ export function superbyteLiveStatus(args: {
   if (deploy === "off") {
     return "Pioneer dark on this deployment — gauges still run locally.";
   }
+  if (deploy === "unreachable") {
+    return "Could not reach the pioneer — gauges still run locally.";
+  }
   if (deploy === "unknown") return "Checking whether the pioneer is open…";
   return "Drift gauges are live. Pioneer observations appear as the draft settles.";
 }
@@ -50,5 +53,6 @@ export function superbyteLayerLabel(
   if (feedbackSource === "pioneer") return { label: "Pioneer", tone: "pioneer" };
   if (feedbackSource === "instrument") return { label: "Instrument", tone: "instrument" };
   if (deploy === "off") return { label: "Pioneer dark", tone: "dark" };
+  if (deploy === "unreachable") return { label: "Pioneer unreachable", tone: "dark" };
   return { label: "Standing by", tone: "idle" };
 }

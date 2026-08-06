@@ -26,8 +26,8 @@ const STEPS = [
   {
     id: "wordmap",
     label: "Skim the Word map to see what the practice standardizes on",
-    href: "/",
-    hint: "Below your drafts on this page."
+    href: "/reference/word-map",
+    hint: "Built from the same tables the audit enforces."
   },
   {
     id: "law",

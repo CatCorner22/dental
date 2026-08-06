@@ -1,5 +1,9 @@
 import { describe, expect, it } from "vitest";
-import { superbyteLayerLabel, superbyteLiveStatus } from "./liveStatus";
+import {
+  superbyteLayerLabel,
+  superbyteLiveStatus,
+  type SuperByteFeedbackSource
+} from "./liveStatus";
 
 describe("SuperByte live status (HF MessageUpdate-style present tense)", () => {
   const base = {
@@ -7,7 +11,7 @@ describe("SuperByte live status (HF MessageUpdate-style present tense)", () => {
     minChars: 24,
     deploy: "on" as const,
     observing: false,
-    feedbackSource: null as const,
+    feedbackSource: null as SuperByteFeedbackSource,
     observationCount: 0
   };
 

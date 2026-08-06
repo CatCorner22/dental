@@ -25,6 +25,7 @@ import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { submitBlockedReason } from "@/lib/status/submitBlocked";
+import { builderFinishLine } from "@/lib/status/finishLine";
 import { withOffice } from "@/lib/drafts/autoTitle";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
@@ -416,16 +417,13 @@ export function BuilderShell({
   );
   const needsDentistHandoff = !canRecordClinicalJudgement(clinicalRole) || !filing.allowed;
   const topStop = report.findings.find((f) => f.severity === "S0");
-  const finishLine =
-    !hasContent
-      ? "Write something to unlock Submit and Copy."
-      : !filing.allowed
-        ? "Dentist must file this note — transfer ownership first."
-        : !gates.exportAllowed
-          ? blockedReason || "Copy locked until every stop is fixed."
-          : gates.emailAllowed
-            ? "Ready to file."
-            : blockedReason || "Fix open stops before filing.";
+  const finishLine = builderFinishLine({
+    hasContent,
+    filingAllowed: filing.allowed,
+    exportAllowed: gates.exportAllowed,
+    emailAllowed: gates.emailAllowed,
+    blockedReason
+  });
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -1157,8 +1155,8 @@ export function BuilderShell({
         >
           <p className="font-semibold">Clinical role is not recorded on this account</p>
           <p className="mt-1 text-xs leading-relaxed">
-            Scope locks and templates stay open until a Team Lead sets Assistant, Hygienist, or
-            Dentist in User admin. Go-live tests on an unset role do not exercise the license map.
+            Scope locks and role templates stay open until a Team Lead sets Assistant, Hygienist, or
+            Dentist on this account in User admin.
           </p>
         </div>
       )}
@@ -1277,7 +1275,7 @@ export function BuilderShell({
           old banner deliberately skipped, leaving the disabled control with no
           on-screen explanation at all. */}
       {canEdit && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur">
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
             {/* SAY WHAT THEY DO.
                 "Paste a note" and "Earlier saves" were two two-word labels in

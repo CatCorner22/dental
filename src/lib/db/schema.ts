@@ -339,6 +339,50 @@ export const wishes = pgTable("wishes", {
 export type WishRow = typeof wishes.$inferSelect;
 export type NewWish = typeof wishes.$inferInsert;
 
+// Practice packs — Team Lead Workflow. Composition of shipped verified-block
+// ids + Fast Lane module ids only. Freeform clinical prose is refused at the
+// API. Status machine + append-only events carry approval history.
+export const practicePacks = pgTable("practice_packs", {
+  id: serial("id").primaryKey(),
+  title: text("title").notNull(),
+  description: text("description").notNull().default(""),
+  status: text("status").notNull().default("draft"),
+  version: integer("version").notNull().default(1),
+  moduleIds: jsonb("module_ids").$type<string[]>().notNull().default([]),
+  blockIds: jsonb("block_ids").$type<string[]>().notNull().default([]),
+  /** Empty = every clinical role may see the pack when published. */
+  authorRoles: jsonb("author_roles").$type<string[]>().notNull().default([]),
+  createdById: text("created_by_id"),
+  createdByName: text("created_by_name").notNull(),
+  updatedByName: text("updated_by_name"),
+  submittedById: text("submitted_by_id"),
+  submittedByName: text("submitted_by_name"),
+  decidedById: text("decided_by_id"),
+  decidedByName: text("decided_by_name"),
+  decidedNote: text("decided_note"),
+  publishedAt: timestamp("published_at", { withTimezone: true }),
+  createdAt: timestamp("created_at", { withTimezone: true }).notNull().defaultNow(),
+  updatedAt: timestamp("updated_at", { withTimezone: true }).notNull().defaultNow()
+});
+
+export const practicePackEvents = pgTable("practice_pack_events", {
+  id: serial("id").primaryKey(),
+  packId: integer("pack_id")
+    .notNull()
+    .references(() => practicePacks.id, { onDelete: "cascade" }),
+  at: timestamp("at", { withTimezone: true }).notNull().defaultNow(),
+  actorId: text("actor_id"),
+  actorName: text("actor_name").notNull(),
+  action: text("action").notNull(),
+  fromVersion: integer("from_version"),
+  toVersion: integer("to_version"),
+  diffJson: jsonb("diff_json").$type<Record<string, unknown> | null>(),
+  decisionNote: text("decision_note")
+});
+
+export type PracticePackRow = typeof practicePacks.$inferSelect;
+export type PracticePackEventRow = typeof practicePackEvents.$inferSelect;
+
 export const schema = {
   roleEnum,
   users,
@@ -348,5 +392,7 @@ export const schema = {
   auditLog,
   authThrottle,
   passwordResetTokens,
-  wishes
+  wishes,
+  practicePacks,
+  practicePackEvents
 };

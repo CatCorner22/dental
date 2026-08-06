@@ -259,7 +259,7 @@ later reader will ask).
 ```bash
 npm install
 cp .env.example .env.local   # set AUTH_SECRET (openssl rand -base64 33)
-npm test        # unit + PGlite db + full-audit tests (zero infrastructure)
+npm test        # unit + component + PGlite db + full-audit tests (zero infrastructure)
 npm run dev     # http://localhost:3000  → first run opens /setup
 ```
 
@@ -285,6 +285,19 @@ Open `/setup` to create the first admin, or set `ADMIN_USERNAME` / `ADMIN_PASSWO
    `vercel.json` cron calls `/api/law-watch/alert` Mondays at 13:00 UTC; with email configured it
    mails the practice inbox when an official TN source shows dental-relevant signals. Deterministic
    keyword signals only — the scheduled job never spends AI tokens.
+
+### Tests
+
+`npm test` runs everything: pure-function tests, PGlite database tests, the full
+audit corpus, and component tests.
+
+Component tests run in jsdom and opt in per file with `// @vitest-environment jsdom`
+on the first line — the default stays `node`, because standing up a DOM for ~145
+files of pure functions would cost seconds a run for nothing. They cover the UI
+logic where a mistake is expensive rather than ugly: which nav pill is lit, which
+note sections start open, which audit findings may be attested (never a missing
+required field — the server refuses that at submit), and that the paste intake
+moves nothing into a note by itself.
 
 See `.env.example` for the full list. Do **not** run without `POSTGRES_URL` in production —
 PGlite's per-instance storage does not persist across serverless cold starts (the app logs a loud

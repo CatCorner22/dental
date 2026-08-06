@@ -12,13 +12,13 @@ import { capabilityTier, tierExplanation } from "@/lib/assist/tier";
 
 export const runtime = "nodejs";
 
-// AI assist. Same privacy contract as /api/standardize — nothing stored, no
+// AI assist. Same privacy contract as the rest of the note pipeline — nothing stored, no
 // row, no log of the content — plus one more hop: the text goes to the
 // configured model provider, server-side, ONLY after the PHI gate passes.
 // The browser never talks to a provider; CSP connect-src stays 'self'.
 
 const MAX_INPUT = 20000;
-// Tighter than standardize: each run is a paid model call, and the meter is
+// Tighter than the deterministic paths: each run is a paid model call, and the meter is
 // per user so one person's scripting cannot spend the practice's budget.
 const FREE_RUNS = 40;
 

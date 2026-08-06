@@ -79,23 +79,22 @@ export function PasteIntake({
     setSent((s) => ({ ...s, [key]: true }));
   };
 
+  // No outer <details>. This component only mounts inside a Dialog that already
+  // titles the surface ("Paste an existing note"). A second collapsed disclosure
+  // left the dialog looking empty until another click — measured: writers opened
+  // Paste and saw a header with no textarea.
   return (
-    <details className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
-      <summary className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-t-xl bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800 [&::-webkit-details-marker]:hidden">
-        <span className="flex items-center gap-2">
-          Paste an existing note
+    <div className="space-y-3">
+        <p className="flex items-start gap-1.5 text-xs text-slate-600">
           <HelpTip label="About pasting a note">
             The wording pass and the same checks that run on the note itself run here first, and
             the sentences are sorted into sections so you can see where they land. Nothing is put
             into a field until you send it there.
           </HelpTip>
-        </span>
-        <span aria-hidden className="text-slate-400">
-          ▾
-        </span>
-      </summary>
-
-      <div className="space-y-3 px-4 py-4">
+          <span>
+            Wording checks run here first. Nothing lands in a field until you send it.
+          </span>
+        </p>
         <label className="field-label" htmlFor="paste-intake">
           Paste or type the note
         </label>
@@ -203,8 +202,7 @@ export function PasteIntake({
             )}
           </>
         )}
-      </div>
-    </details>
+    </div>
   );
 }
 

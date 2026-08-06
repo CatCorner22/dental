@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   canRecordClinicalJudgement,
   isDentistOwnedSection,
@@ -58,6 +58,31 @@ function isEmptyValue(v: FieldValue): boolean {
     case "measurement":
       return v.value === null;
   }
+}
+
+/** Same open-on-arrival rule for mount and for modules added later (Fast Lane). */
+function sectionStartsOpen(
+  mod: ModuleDef,
+  section: ModuleDef["sections"][number],
+  state: NoteState,
+  findingsByField: FieldFindings
+): boolean {
+  const hasValue = section.fields.some((f) => {
+    const v = state.values[fieldKey(mod.id, f.id)];
+    return v !== undefined && !isEmptyValue(v);
+  });
+  // "required.missing" is excluded on purpose. On a brand-new note every
+  // required field raises one, so counting them would open ten of eleven
+  // sections and the collapse would do nothing at all on the one screen
+  // it exists for. An empty note is not a note with problems; it is an
+  // empty note. Any OTHER finding means something in here has been
+  // written and needs a second look, which is worth opening for.
+  const hasIssue = section.fields.some((f) =>
+    (findingsByField[fieldKey(mod.id, f.id)] ?? []).some(
+      (finding) => finding.ruleId !== "required.missing"
+    )
+  );
+  return section.id === "narrative" || hasValue || hasIssue;
 }
 
 function controlId(moduleId: string, field: Field): string | undefined {
@@ -159,34 +184,45 @@ export function NoteForm({
   // that is the one the writer is being asked to look at. Everything else is a
   // one-line summary with its open-required count, ready when it is wanted.
   //
-  // Computed ONCE, lazily, and then owned by the user. Deriving `open` on every
-  // render would re-open a section the moment its first value was typed —
-  // including one the writer had just deliberately collapsed.
+  // Computed ONCE per section key, then owned by the user. Deriving `open` on
+  // every render would re-open a section the moment its first value was typed
+  // — including one the writer had just deliberately collapsed. Fast Lane /
+  // module toggles add keys later; those get the same arrival rule once, via
+  // the effect below — not `?? true`, which opened every empty add-on section.
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const mod of modules) {
       for (const section of mod.sections) {
-        const key = `${mod.id}.${section.id}`;
-        const hasValue = section.fields.some((f) => {
-          const v = state.values[fieldKey(mod.id, f.id)];
-          return v !== undefined && !isEmptyValue(v);
-        });
-        // "required.missing" is excluded on purpose. On a brand-new note every
-        // required field raises one, so counting them would open ten of eleven
-        // sections and the collapse would do nothing at all on the one screen
-        // it exists for. An empty note is not a note with problems; it is an
-        // empty note. Any OTHER finding means something in here has been
-        // written and needs a second look, which is worth opening for.
-        const hasIssue = section.fields.some((f) =>
-          (findingsByField[fieldKey(mod.id, f.id)] ?? []).some(
-            (finding) => finding.ruleId !== "required.missing"
-          )
+        initial[`${mod.id}.${section.id}`] = sectionStartsOpen(
+          mod,
+          section,
+          state,
+          findingsByField
         );
-        initial[key] = section.id === "narrative" || hasValue || hasIssue;
       }
     }
     return initial;
   });
+
+  useEffect(() => {
+    setOpenSections((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const mod of modules) {
+        for (const section of mod.sections) {
+          const key = `${mod.id}.${section.id}`;
+          if (Object.prototype.hasOwnProperty.call(next, key)) continue;
+          next[key] = sectionStartsOpen(mod, section, state, findingsByField);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // Intentionally only when the module set changes: freeze the arrival rule
+    // at add time (empty Fast Lane modules stay collapsed). values/findings
+    // are read from the render that saw the new modules.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [modules]);
 
   // THE SECTION LOOP.
   //
@@ -234,7 +270,9 @@ export function NoteForm({
                 isDentistOwnedSection(mod.id, section.id);
               const sectionKey = `${mod.id}.${section.id}`;
               const signature = sectionSignature(mod, section, state);
-              const open = openSections[sectionKey] ?? true;
+              // Missing key: treat closed until the seed effect runs (never
+              // default-open — that was the Fast Lane accordion explosion).
+              const open = openSections[sectionKey] ?? false;
               // What the summary line has to earn its collapse: how much of
               // this section is still outstanding. A closed section that says
               // nothing is a section people forget, which is precisely how a
@@ -411,7 +449,7 @@ export function NoteForm({
                         ? "reviewing"
                         : "idle"
                   }
-                  hasNext={nextSectionKey(modules, sectionKey) !== null}
+                  hasNext={nextSectionKey(modules, sectionKey, clinicalRole) !== null}
                   canEdit={!outOfScope}
                   onCheck={() => setReviewing(sectionKey)}
                   onApply={(key, next) => onChange(key, { kind: "text", value: next })}
@@ -420,7 +458,7 @@ export function NoteForm({
                     // Recorded against the CONTENT, so a later edit un-checks it.
                     setReviewed((r) => ({ ...r, [sectionKey]: signature }));
                     setReviewing(null);
-                    const next = nextSectionKey(modules, sectionKey);
+                    const next = nextSectionKey(modules, sectionKey, clinicalRole);
                     if (next) {
                       // Collapse the one just finished. The note gets shorter as
                       // it gets more complete, which is the opposite of what a

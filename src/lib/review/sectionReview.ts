@@ -160,12 +160,32 @@ export function orderedSectionKeys(modules: ModuleDef[]): string[] {
  * instead of scrolling somebody to nowhere. An unknown current key also returns
  * null rather than guessing at position 0, because silently jumping to the top
  * of the note is worse than not moving.
+ *
+ * Skips dentist-owned Assessment/Plan when the writer cannot record clinical
+ * judgement. Landing a hygienist on a locked section made Accept-and-continue
+ * open a panel with no Check button (`SectionReview` returns null when
+ * `!canEdit`), so the loop looked broken.
  */
-export function nextSectionKey(modules: ModuleDef[], current: string): string | null {
+export function nextSectionKey(
+  modules: ModuleDef[],
+  current: string,
+  clinicalRole: ClinicalRole = "unset"
+): string | null {
   const keys = orderedSectionKeys(modules);
   const i = keys.indexOf(current);
   if (i === -1) return null;
-  return keys[i + 1] ?? null;
+  const canJudge = canRecordClinicalJudgement(clinicalRole);
+  for (let j = i + 1; j < keys.length; j++) {
+    const key = keys[j]!;
+    // Keys are `${moduleId}.${sectionId}`; dentist-owned set uses that shape.
+    const dot = key.indexOf(".");
+    if (dot === -1) continue;
+    const modId = key.slice(0, dot);
+    const sectionId = key.slice(dot + 1);
+    if (!canJudge && isDentistOwnedSection(modId, sectionId)) continue;
+    return key;
+  }
+  return null;
 }
 
 /** How far through the note this writer is, for the progress line. */

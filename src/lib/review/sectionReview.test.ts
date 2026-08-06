@@ -214,6 +214,43 @@ describe("where continue goes", () => {
     // would be a guess; not moving is not.
     expect(nextSectionKey([MODULE], "gone.section")).toBeNull();
   });
+
+  it("skips dentist-owned Assessment/Plan for a hygienist", () => {
+    // Real Universal Core keys — the skip set is keyed on those strings.
+    const core: ModuleDef = {
+      id: "universal-core",
+      title: "Core",
+      order: 0,
+      sections: [
+        {
+          id: "narrative-objective",
+          title: "Objective",
+          fields: [{ id: "prose", type: "textarea", label: "Findings" }]
+        },
+        {
+          id: "assessment",
+          title: "Assessment",
+          fields: [{ id: "dx", type: "text", label: "Diagnosis", required: true }]
+        },
+        {
+          id: "plan",
+          title: "Plan",
+          fields: [{ id: "tx", type: "text", label: "Plan", required: true }]
+        },
+        {
+          id: "care-delivered",
+          title: "Care delivered",
+          fields: [{ id: "done", type: "text", label: "Done" }]
+        }
+      ]
+    };
+    expect(nextSectionKey([core], "universal-core.narrative-objective", "hygienist")).toBe(
+      "universal-core.care-delivered"
+    );
+    expect(nextSectionKey([core], "universal-core.narrative-objective", "dentist")).toBe(
+      "universal-core.assessment"
+    );
+  });
 });
 
 describe("how far through the note somebody is", () => {

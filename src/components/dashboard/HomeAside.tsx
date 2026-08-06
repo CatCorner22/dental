@@ -53,14 +53,21 @@ export function HomeAside({
   );
   const structureCue = authorCapabilities(clinicalRole).structureCue;
 
-  const createDraft = async (moduleIds: string[], title: string) => {
+  // Title is optional on purpose. Fast Lane scaffolds must NOT stamp the
+  // visit-type label as the draft title — that fights autoDraftTitle and
+  // leaves every new perio note titled "Periodontal maintenance" forever.
+  // Blank notes still pass an explicit "Untitled note".
+  const createDraft = async (moduleIds: string[], title?: string) => {
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/drafts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, note: { selectedModuleIds: moduleIds, values: {} } })
+        body: JSON.stringify({
+          ...(title !== undefined ? { title } : {}),
+          note: { selectedModuleIds: moduleIds, values: {} }
+        })
       });
       if (!res.ok) {
         // Two real server refusals used to have no path to the screen at all:
@@ -119,7 +126,7 @@ export function HomeAside({
                   key={p.id}
                   className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                   disabled={busy}
-                  onClick={() => createDraft(p.moduleIds, p.label)}
+                  onClick={() => createDraft(p.moduleIds)}
                 >
                   <span className="text-sm font-semibold text-slate-800">{p.label}</span>
                   <span className="block text-xs text-slate-500">{p.description}</span>
@@ -135,7 +142,7 @@ export function HomeAside({
                   key={p.id}
                   className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                   disabled={busy}
-                  onClick={() => createDraft(p.moduleIds, p.label)}
+                  onClick={() => createDraft(p.moduleIds)}
                 >
                   <span className="text-sm font-semibold text-slate-800">{p.label}</span>
                   <span className="block text-xs text-slate-500">{p.description}</span>

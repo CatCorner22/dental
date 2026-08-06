@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fireEvent, render } from "@testing-library/react";
+import { act, fireEvent, render } from "@testing-library/react";
 
 import { NoteForm } from "./NoteForm";
 import type { ModuleDef, NoteState } from "@/lib/schema/types";
@@ -122,6 +122,54 @@ describe("which sections start open", () => {
   it("treats a whitespace-only value as empty", () => {
     const s = sections(note({ "m.purpose": { kind: "text", value: "   " } }));
     expect(s["m.visit"].open).toBe(false);
+  });
+
+  it("keeps empty Fast Lane add-on sections collapsed when modules appear later", () => {
+    // openSections used to fall back to `?? true` for unknown keys. Applying a
+    // Fast Lane card added a module whose every section then exploded open and
+    // undid progressive disclosure on the home builder.
+    const ADDON: ModuleDef = {
+      id: "addon",
+      title: "Add-on",
+      order: 1,
+      sections: [
+        {
+          id: "findings",
+          title: "Findings",
+          fields: [{ id: "note", type: "text", label: "Finding" }]
+        },
+        {
+          id: "materials",
+          title: "Materials",
+          fields: [{ id: "used", type: "text", label: "Materials used" }]
+        }
+      ]
+    };
+    const { container, rerender } = render(
+      <NoteForm
+        modules={[MODULE]}
+        state={note()}
+        onChange={() => {}}
+        findingsByField={{}}
+        clinicalRole="dentist"
+      />
+    );
+    act(() => {
+      rerender(
+        <NoteForm
+          modules={[MODULE, ADDON]}
+          state={{ selectedModuleIds: ["m", "addon"], values: {} }}
+          onChange={() => {}}
+          findingsByField={{}}
+          clinicalRole="dentist"
+        />
+      );
+    });
+    const byKey = (key: string) =>
+      container.querySelector<HTMLDetailsElement>(`details[data-section="${key}"]`)!;
+    expect(byKey("m.narrative").open).toBe(true);
+    expect(byKey("addon.findings").open).toBe(false);
+    expect(byKey("addon.materials").open).toBe(false);
   });
 });
 

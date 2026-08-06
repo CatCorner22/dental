@@ -32,6 +32,7 @@ import {
   writeDraftBackup
 } from "@/lib/client/draftBackup";
 import type { FieldValue, NoteState } from "@/lib/schema/types";
+import type { AuditFinding } from "@/lib/audit/types";
 import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
 import { PasteIntake } from "./PasteIntake";
@@ -115,6 +116,20 @@ export function BuilderShell({
   const hasEdited = useRef(false);
   const [tab, setTab] = useState<"audit" | "chart" | "byte" | "bytestar" | "prior" | "preview">("audit");
   const [override, setOverride] = useState<{ signature: string; reason: string } | null>(null);
+  // ATTESTATIONS AND ESCALATIONS on ordinary findings.
+  //
+  // Held in component state and keyed by a signature of the note's content,
+  // exactly like the PHI override above — not in drafts.noteState, and not in a
+  // new drafts column. A compliance artifact does not belong in the mutable
+  // working copy: the note it describes can change under it, and the revision
+  // ring would carry copies of a judgement about text that no longer exists.
+  // Edit the note and the signature moves, which is the correct behaviour —
+  // "this wording is right" was said about wording, and the wording changed.
+  const [resolutions, setResolutions] = useState<{
+    signature: string;
+    attested: Record<string, string>;
+    escalated: Record<string, boolean>;
+  }>({ signature: "", attested: {}, escalated: {} });
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
@@ -210,6 +225,50 @@ export function BuilderShell({
     [report.phiStops]
   );
   const overrideActive = override !== null && override.signature === phiSignature;
+
+  // The signature attestations are held against: the composed note itself.
+  // Coarser than tracking each finding's own text, and deliberately so —
+  // "this reads correctly" is a statement about the note, and once the note has
+  // moved on it is a statement about something else.
+  const resolutionsForNote =
+    resolutions.signature === markdown
+      ? resolutions
+      : { signature: markdown, attested: {}, escalated: {} };
+
+  const recordAttestation = (key: string, reason: string) =>
+    setResolutions((r) => {
+      const base = r.signature === markdown ? r : { signature: markdown, attested: {}, escalated: {} };
+      return { ...base, signature: markdown, attested: { ...base.attested, [key]: reason } };
+    });
+
+  // A disagreement is about the RULE. The reason and the rule id travel; the
+  // note text never does — a wish is read by a Team Lead in a different screen,
+  // and clinical content has no business being copied there.
+  const escalateFinding = async (finding: AuditFinding) => {
+    const key = `finding:${finding.ruleId}:${finding.fieldRef ? `${finding.fieldRef.moduleId}.${finding.fieldRef.fieldId}` : ""}:${finding.matchedText ?? ""}`;
+    try {
+      const res = await fetch("/api/wishes", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({
+          category: "rule-disagreement",
+          title: `Rule disagreement: ${finding.ruleId}`,
+          detail: `A writer disagreed with this rule while composing a note.\n\n(Rule: ${finding.ruleId} — raised in the note builder.)`
+        })
+      });
+      if (!res.ok) {
+        setToast({ text: "Could not reach the wish list — try again shortly.", tone: "error" });
+        return;
+      }
+      setResolutions((r) => {
+        const base = r.signature === markdown ? r : { signature: markdown, attested: {}, escalated: {} };
+        return { ...base, signature: markdown, escalated: { ...base.escalated, [key]: true } };
+      });
+      setToast({ text: "Sent to a Team Lead as a rule disagreement.", tone: "success" });
+    } catch {
+      setToast({ text: "Could not reach the wish list — check the connection.", tone: "error" });
+    }
+  };
 
   // Everything the privacy screen flagged that has literal text to replace —
   // the S0 stops AND the S2 name heuristics, because if a clinician has
@@ -601,7 +660,14 @@ export function BuilderShell({
       </div>
       <div className="pane-60">
         {tab === "audit" ? (
-          <AuditPanel report={report} onJump={() => setShowMobileAudit(false)} />
+          <AuditPanel
+            report={report}
+            onJump={() => setShowMobileAudit(false)}
+            attestations={resolutionsForNote.attested}
+            escalated={resolutionsForNote.escalated}
+            onAttest={canEdit ? recordAttestation : undefined}
+            onEscalate={canEdit ? escalateFinding : undefined}
+          />
         ) : tab === "byte" ? (
           /* Byte reads the same composed markdown the chart does — one
              memoized composition, one deferred cadence. Advice-only here; the

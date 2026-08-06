@@ -9,12 +9,57 @@ import {
   SEVERITY_ORDER,
   STATUS_CLASS
 } from "@/lib/audit/types";
+import { useState } from "react";
+import { ATTESTATION_RULE, isValidAttestation } from "@/lib/standardize/resolution";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Character } from "@/components/mascot/Sparkle";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 
 
-function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () => void }) {
+/**
+ * The identity of a finding across re-audits. Same shape resolution.ts uses,
+ * and for the same reason: "required.missing" carries no matched text, so
+ * without the field every one of a note's thirteen would be the same row.
+ */
+export function findingKey(f: AuditFinding): string {
+  const field = f.fieldRef ? `${f.fieldRef.moduleId}.${f.fieldRef.fieldId}` : "";
+  return `finding:${f.ruleId}:${field}:${f.matchedText ?? ""}`;
+}
+
+function FindingRow({
+  finding,
+  onJump,
+  attestation,
+  onAttest,
+  onEscalate,
+  escalated
+}: {
+  finding: AuditFinding;
+  onJump?: () => void;
+  /** The reason already recorded for this finding, if any. */
+  attestation?: string;
+  onAttest?: (key: string, reason: string) => void;
+  onEscalate?: (finding: AuditFinding) => void;
+  escalated?: boolean;
+}) {
+  const [writing, setWriting] = useState(false);
+  const [reason, setReason] = useState("");
+  const key = findingKey(finding);
+  // Fix-only, and both halves matter.
+  //
+  // S0 is fix-only everywhere: a wrong site or an identifier is not made right
+  // by explaining it, and the PHI stop has its own attested path with a signed
+  // record behind it.
+  //
+  // "required.missing" is fix-only for a harder reason: the SERVER re-runs
+  // runAudit and computeGates at submit and refuses with 422 on any open S1. An
+  // attestation here would turn the row green, and then the submit would be
+  // refused anyway — a dead end built on purpose. The field is empty; the only
+  // thing that resolves it is filling it in.
+  const attestable =
+    Boolean(onAttest) && finding.severity !== "S0" && finding.ruleId !== "required.missing";
+  const escalatable = Boolean(onEscalate) && finding.category !== "phi";
+
   const jump = () => {
     if (!finding.fieldRef) return;
     // When the panel is open inside the mobile audit sheet, the field being
@@ -88,18 +133,102 @@ function FindingRow({ finding, onJump }: { finding: AuditFinding; onJump?: () =>
           <span className="font-semibold">Standard wording:</span> {finding.suggestion}
         </p>
       )}
+
+      {/* FIX, ATTEST, OR DISAGREE — the three endings the standardize screen
+          offered and the builder never did. They are here because the writer
+          who reads a finding and knows the text is right had nowhere to say so:
+          the only options were edit it anyway or leave a row open forever.
+          Neither is a record of a clinician's judgement.
+
+          None of this opens a gate. computeGates still decides what may be
+          exported and filed, the server re-runs it at submit, and an attestation
+          is a note on a row — not permission. */}
+      {attestation ? (
+        <p className="mt-1.5 rounded bg-white/70 px-2 py-1 text-[0.7rem] text-slate-700">
+          <span className="font-semibold">You recorded:</span> {attestation}
+        </p>
+      ) : escalated ? (
+        <p className="mt-1.5 rounded bg-white/70 px-2 py-1 text-[0.7rem] text-slate-700">
+          Sent to a Team Lead as a rule disagreement.
+        </p>
+      ) : (attestable || escalatable) && (
+        <div className="mt-1.5">
+          {writing ? (
+            <div className="space-y-1">
+              <input
+                type="text"
+                className="field-input py-1 text-xs"
+                placeholder="Why the text is right as written"
+                aria-label="Why the text is right as written"
+                value={reason}
+                onChange={(e) => setReason(e.target.value)}
+              />
+              <div className="flex gap-1.5">
+                <button
+                  type="button"
+                  className="btn-primary text-xs"
+                  disabled={!isValidAttestation(reason)}
+                  onClick={() => {
+                    onAttest?.(key, reason.trim());
+                    setWriting(false);
+                  }}
+                >
+                  Record it
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  onClick={() => setWriting(false)}
+                >
+                  Cancel
+                </button>
+              </div>
+              {/* The same substance bar the PHI override uses. Friction plus a
+                  named record is the enforceable part; "ok" is not a reason. */}
+              <p className="text-[0.7rem] opacity-70">{ATTESTATION_RULE}</p>
+            </div>
+          ) : (
+            <div className="flex flex-wrap gap-2 text-[0.7rem]">
+              {attestable && (
+                <button type="button" className="underline" onClick={() => setWriting(true)}>
+                  This is right as written
+                </button>
+              )}
+              {escalatable && (
+                <button
+                  type="button"
+                  className="underline"
+                  onClick={() => onEscalate?.(finding)}
+                >
+                  Disagree with this rule
+                </button>
+              )}
+            </div>
+          )}
+        </div>
+      )}
     </li>
   );
 }
 
 export function AuditPanel({
   report,
-  onJump
+  onJump,
+  attestations,
+  escalated,
+  onAttest,
+  onEscalate
 }: {
   report: AuditReport;
   /** Called just before a "Go to field" jump scrolls — used to dismiss the
       mobile audit sheet so the target field is not left behind a backdrop. */
   onJump?: () => void;
+  /** findingKey -> the reason the writer recorded. */
+  attestations?: Record<string, string>;
+  /** findingKey -> already sent to a Team Lead. */
+  escalated?: Record<string, boolean>;
+  onAttest?: (key: string, reason: string) => void;
+  onEscalate?: (finding: AuditFinding) => void;
 }) {
   return (
     <div>
@@ -128,9 +257,13 @@ export function AuditPanel({
               // a module, so two modules' identical required/spelling findings
               // must not collide.
               <FindingRow
-                key={`${f.ruleId}-${f.matchedText ?? ""}-${f.fieldRef ? `${f.fieldRef.moduleId}.${f.fieldRef.fieldId}` : i}`}
+                key={`${findingKey(f)}-${i}`}
                 finding={f}
                 onJump={onJump}
+                attestation={attestations?.[findingKey(f)]}
+                escalated={escalated?.[findingKey(f)]}
+                onAttest={onAttest}
+                onEscalate={onEscalate}
               />
             ))
         )}

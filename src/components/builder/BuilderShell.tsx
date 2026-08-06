@@ -22,6 +22,7 @@ import { OMISSION_NOTICE_THRESHOLD, omissionReport } from "@/lib/audit/omissions
 import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
+import { submitBlockedReason } from "@/lib/status/submitBlocked";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { useAutosave } from "@/lib/client/useAutosave";
@@ -344,6 +345,10 @@ export function BuilderShell({
     // A successful resend clears the failure — it wins over the stored flag.
     lastSendFailed: !resentNow && ((initialSendFailed && !editedSinceLoad) || sendFailedNow)
   });
+
+  // Why Submit is off. Pure and in lib/status so it can be tested — it named a
+  // count of zero as a second task when a stop was the only blocker.
+  const blockedReason = useMemo(() => submitBlockedReason(report.counts), [report.counts]);
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -1081,7 +1086,7 @@ export function BuilderShell({
                   ? "Write something and Submit turns on."
                   : gates.emailAllowed
                     ? "Ready to file."
-                    : `${report.counts.S0 > 0 ? `${report.counts.S0} to fix; ` : ""}${report.counts.S1} required field${report.counts.S1 === 1 ? "" : "s"} still open — each is listed in the audit panel.`}
+                    : blockedReason}
             </p>
             <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>
               Save

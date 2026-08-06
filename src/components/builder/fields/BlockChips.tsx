@@ -2,7 +2,7 @@
 
 import { useState } from "react";
 import { VERIFIED_BLOCKS } from "@/lib/phrases/blocks";
-import { BlockRow } from "@/components/standardize/BlockPicker";
+import { BlockRow, MyBlocks } from "@/components/standardize/BlockPicker";
 
 // VERIFIED BLOCKS, AT THE POINT OF WRITING.
 //
@@ -50,6 +50,18 @@ export function BlockChips({
         type="button"
         className="chip"
         aria-expanded={open}
+        // Do not let the press move focus.
+        //
+        // Safari and Firefox on macOS do not focus a <button> when it is
+        // clicked. The field's focusout therefore fired with a null
+        // relatedTarget — indistinguishable from leaving the field — and the
+        // chip unmounted between mousedown and click. The click landed on
+        // nothing, so on those two browsers verified blocks could not be opened
+        // on an empty field at all. Preventing the default on mousedown keeps
+        // the caret in the textarea, which is also where it should be when the
+        // panel opens. Keyboard users are unaffected: Tab still focuses the
+        // button, and the wrapper in inputs.tsx sees that as staying put.
+        onMouseDown={(e) => e.preventDefault()}
         onClick={() => setOpen((v) => !v)}
       >
         Verified block {open ? "▾" : "▸"}
@@ -74,6 +86,18 @@ export function BlockChips({
               }}
             />
           ))}
+          {/* The writer's OWN saved blocks, and the only way to create or delete
+              one. This used to hang off BlockPicker, which this component
+              replaced — dropping it would have made every block a person had
+              already saved unreachable, and the whole feature write-only.
+
+              Mounted inside `open`, so the fetch happens the first time the
+              panel is opened rather than on mount. That timing is load-bearing:
+              every API refuses with 403 until the legal-record notice is
+              acknowledged, and the note builder mounts the instant someone signs
+              in — a fetch on mount raced the notice dialog and lost, logging a
+              console error on the first load of the app. */}
+          <MyBlocks onInsert={onInsert} />
         </div>
       )}
     </div>

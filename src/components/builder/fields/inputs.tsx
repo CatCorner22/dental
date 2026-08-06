@@ -461,7 +461,24 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
     el?.focus();
   };
   return (
-    <div>
+    // Focus is tracked on the WRAPPER, not the textarea.
+    //
+    // React's onFocus/onBlur are focusin/focusout, so they bubble, and this
+    // element is the only one that sees focus move through the whole field —
+    // textarea, chip, and everything the chip opens. Watching the textarea
+    // alone was wrong in both directions. Tab from the textarea to the chip and
+    // the textarea's blur was the LAST one it would ever fire: focus left the
+    // button afterwards, the textarea never heard about it, and the chip stayed
+    // mounted under an empty field for the rest of the session, one per field
+    // visited. And a click that landed anywhere other than the textarea could
+    // not be told apart from leaving the field without asking the wrapper.
+    <div
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        // Leaving for somewhere still inside this field is not leaving.
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocused(false);
+      }}
+    >
       <textarea
         ref={ref}
         id={id}
@@ -470,13 +487,6 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
         placeholder={field.placeholderHint}
         value={value?.value ?? ""}
         {...aria(describedBy, invalid)}
-        onFocus={() => setFocused(true)}
-        // A blur that lands INSIDE this field's own controls is not leaving the
-        // field — without the relatedTarget check, clicking the very chip the
-        // focus revealed would unmount it mid-click.
-        onBlur={(e) => {
-          if (!e.currentTarget.parentElement?.contains(e.relatedTarget as Node)) setFocused(false);
-        }}
         onChange={(e) => onChange({ kind: "text", value: e.target.value })}
       />
       {/* The microphone, for anyone who set dictation up in My account. It

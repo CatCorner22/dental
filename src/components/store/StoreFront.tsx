@@ -102,7 +102,7 @@ export function StoreFront() {
         {items.map((item) => (
           <li key={item.id} className="flex flex-col justify-between rounded-xl bg-white ring-1 ring-slate-200 p-3">
             <div>
-              <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">
+              <p className="text-xs font-semibold text-brand-teal">
                 Tier {item.tier} · {TIER_LABEL[item.tier] ?? ""}
               </p>
               <p className="font-medium">{item.title}</p>
@@ -138,10 +138,10 @@ export function StoreFront() {
                 <span
                   className={
                     r.status === "approved"
-                      ? "text-xs font-semibold text-green-700"
+                      ? "text-xs font-semibold capitalize text-green-700"
                       : r.status === "declined"
-                        ? "text-xs font-semibold text-slate-500"
-                        : "text-xs font-semibold text-amber-700"
+                        ? "text-xs font-semibold capitalize text-slate-500"
+                        : "text-xs font-semibold capitalize text-amber-700"
                   }
                 >
                   {r.status}

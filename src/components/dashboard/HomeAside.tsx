@@ -108,7 +108,7 @@ export function HomeAside({
                 <span className="text-sm font-semibold text-slate-800">Blank note</span>
                 <span className="block text-xs text-slate-500">Universal Core only.</span>
               </button>
-              <p className="mb-1 mt-2 border-t border-slate-100 px-2 pt-2 text-[0.7rem] font-semibold uppercase tracking-wide text-brand-teal">
+              <p className="eyebrow mb-1 mt-2 border-t border-slate-100 px-2 pt-2">
                 Fast Lane
               </p>
               <p className="mb-1 px-2 text-[0.7rem] leading-snug text-slate-500">
@@ -126,7 +126,7 @@ export function HomeAside({
                 </button>
               ))}
               {morePicks.length > 0 && (
-                <p className="mb-1 mt-2 border-t border-slate-100 px-2 pt-2 text-[0.7rem] font-semibold uppercase tracking-wide text-slate-500">
+                <p className="label-micro mb-1 mt-2 border-t border-slate-100 px-2 pt-2">
                   More scaffolds
                 </p>
               )}

@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { VERIFIED_BLOCKS, type VerifiedBlock } from "@/lib/phrases/blocks";
+import { type VerifiedBlock } from "@/lib/phrases/blocks";
 
 // The verified-block picker: pre-loaded text that cannot be lazily clicked in.
 //
@@ -12,52 +12,11 @@ import { VERIFIED_BLOCKS, type VerifiedBlock } from "@/lib/phrases/blocks";
 //  3. The inserted text carries <placeholders> that the template-residue
 //     audit rule blocks at S1 until each is replaced with this visit's facts.
 
-export function BlockPicker({ onInsert }: { onInsert: (text: string) => void }) {
-  const [openId, setOpenId] = useState<string | null>(null);
-  // Whether the picker has ever been opened. A <details> renders its children
-  // whether or not it is open, so MyBlocks used to fetch on mount — which was
-  // harmless on a page you navigated to and is not on the home page, where the
-  // note builder mounts the instant someone signs in. Every API refuses with
-  // 403 until the legal-record notice is acknowledged, so that fetch raced the
-  // notice dialog and lost, logging a console error on the first load of the
-  // app. Fetching when the picker is actually opened fixes the race and stops
-  // a request nobody asked for on every note.
-  const [everOpened, setEverOpened] = useState(false);
-
-  return (
-    <details
-      className="mt-3 rounded border border-slate-200 bg-white p-3"
-      onToggle={(e) => {
-        if ((e.currentTarget as HTMLDetailsElement).open) setEverOpened(true);
-      }}
-    >
-      <summary className="cursor-pointer text-sm font-semibold text-slate-700">
-        Insert a verified block — faster than typing, impossible to file untouched
-      </summary>
-      <p className="mt-1 text-xs text-slate-500">
-        Each block is the practice&rsquo;s standard wording for a fact pattern that fails in
-        audits when it is missing. You confirm each statement it makes, then fill in this
-        visit&rsquo;s specifics — the placeholders block the note until you do.
-      </p>
-      <ul className="mt-2 space-y-2">
-        {VERIFIED_BLOCKS.map((block) => (
-          <li key={block.id}>
-            <BlockRow
-              block={block}
-              open={openId === block.id}
-              onToggle={() => setOpenId(openId === block.id ? null : block.id)}
-              onInsert={(text) => {
-                onInsert(text);
-                setOpenId(null);
-              }}
-            />
-          </li>
-        ))}
-      </ul>
-      {everOpened && <MyBlocks onInsert={onInsert} />}
-    </details>
-  );
-}
+// The `BlockPicker` component that used to head this file is gone. It was the
+// card that sat ABOVE the note behind an "insert verified blocks into
+// [destination]" dropdown, and BlockChips replaced it: the blocks now appear
+// under the field the cursor is in, so there is no destination to choose. What
+// it owned — BlockRow and MyBlocks — is exported from here and rendered there.
 
 interface MyBlock {
   id: number;
@@ -71,7 +30,7 @@ interface MyBlock {
 // writer's OWN words, so there is no assertion checklist — but the server
 // refuses to save one containing an identifier, and whatever is inserted
 // still faces the full audit and resolution queue like hand-typed text.
-function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
+export function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
   const [blocks, setBlocks] = useState<MyBlock[] | null>(null);
   const [title, setTitle] = useState("");
   const [body, setBody] = useState("");
@@ -209,7 +168,7 @@ function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
   );
 }
 
-function BlockRow({
+export function BlockRow({
   block,
   open,
   onToggle,

@@ -81,7 +81,7 @@ export const VERIFIED_BLOCKS: VerifiedBlock[] = [
       "verified with the patient>. Current medications: <medications as reported>. Changes " +
       "since last visit: <changes, or state that the patient reported none>.",
     verify: [
-      "I asked at THIS visit — this is not carried forward from the chart unchecked.",
+      "I asked at this visit — this is not carried forward from the chart unchecked.",
       "The allergy status I will record is what the patient verified, in their words."
     ]
   },
@@ -286,7 +286,7 @@ export const VERIFIED_BLOCKS: VerifiedBlock[] = [
     verify: [
       "The original note stays locked and untouched — this adds to the record, it does not rewrite it.",
       "This entry is being made now, under today's entry timestamp, with no backdating of any kind.",
-      "I will attach this under the SAME visit as the original note in Curve."
+      "I will attach this under the same visit as the original note in Curve."
     ]
   },
   {

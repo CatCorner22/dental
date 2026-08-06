@@ -22,6 +22,7 @@ import { OMISSION_NOTICE_THRESHOLD, omissionReport } from "@/lib/audit/omissions
 import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
+import { submitBlockedReason } from "@/lib/status/submitBlocked";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { useAutosave } from "@/lib/client/useAutosave";
@@ -38,7 +39,6 @@ import { NoteForm } from "./NoteForm";
 import { FastLane } from "./FastLane";
 import { PasteIntake } from "./PasteIntake";
 import { DictationUserContext } from "./fields/DictationField";
-import { BlockInsert } from "./BlockInsert";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
 import { PriorNotes } from "./PriorNotes";
@@ -157,6 +157,17 @@ export function BuilderShell({
   // the Sidekick into a reachable sheet on those screens instead; the desktop
   // sticky aside is untouched.
   const [showMobileAudit, setShowMobileAudit] = useState(false);
+  // Paste is an ENTRY mode — reached for once, at the start of a note, and
+  // never again in it. As a permanent card above the fields it spent the top of
+  // the busiest screen on something used at most once per note; behind a button
+  // it costs one control and appears exactly when it is wanted.
+  const [showPaste, setShowPaste] = useState(false);
+  // The module picker was a 240px COLUMN of its own, holding one closed
+  // disclosure, permanently, next to the note. Most notes are Universal Core
+  // plus at most one add-on, chosen once at the start. A dialog off the note bar
+  // gives the writing the width back and costs a click on the rare visit that
+  // needs it.
+  const [showModules, setShowModules] = useState(false);
 
   const autosave = useAutosave(draftId, initialVersion);
   const { markEdited, flush, adoptVersion } = autosave;
@@ -335,6 +346,10 @@ export function BuilderShell({
     // A successful resend clears the failure — it wins over the stored flag.
     lastSendFailed: !resentNow && ((initialSendFailed && !editedSinceLoad) || sendFailedNow)
   });
+
+  // Why Submit is off. Pure and in lib/status so it can be tested — it named a
+  // count of zero as a second task when a stop was the only blocker.
+  const blockedReason = useMemo(() => submitBlockedReason(report.counts), [report.counts]);
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -657,14 +672,18 @@ export function BuilderShell({
   // remount cost to doing it this way.
   const sidekickBody = (
     <>
+      {/* One status signal here, not three. The ring, a StatusChip and the
+          report status as text all sat in this row, with the SAME chip already
+          in the note bar above and the AuditPanel repeating the same status
+          string as a banner ~180px below. Seven expressions of one note's state
+          on one screen. The chip lives in the note bar; the panel says the rest. */}
       <div className="mb-3 flex items-center gap-3">
         <ProgressRing counts={report.counts} />
-        <div className="min-w-0">
-          <StatusChip status={liveStatus} />
-          <p className="mt-1 text-xs text-slate-500">
-            {auditing ? "Checking the latest edit…" : report.status}
-          </p>
-        </div>
+        <p className="min-w-0 flex-1 text-xs text-slate-500">
+          {auditing
+            ? "Checking the latest edit…"
+            : "Live check, deterministic only. It never scores the note, and nothing here is applied for you."}
+        </p>
       </div>
       {/* The writer's own TN scope, one click away — advisory here; the
           Assessment/Plan scope-lock does the enforcing. */}
@@ -694,6 +713,7 @@ export function BuilderShell({
           <AuditPanel
             report={report}
             onJump={() => setShowMobileAudit(false)}
+            started={hasContent}
             attestations={resolutionsForNote.attested}
             escalated={resolutionsForNote.escalated}
             onAttest={canEdit ? recordAttestation : undefined}
@@ -734,8 +754,11 @@ export function BuilderShell({
             !hasContent
               ? "Add note content before copying"
               : gates.exportAllowed
+                // main's wording for the enabled state — it names where the
+                // note is going, which "Copy the composed note" did not — with
+                // this branch's de-shouted lock text.
                 ? `Copy a clean note for pasting into ${edrName}`
-                : "Resolve every STOP finding before copy or download"
+                : "Resolve every stop finding before copy or download"
           }
           onClick={copy}
         >
@@ -755,7 +778,7 @@ export function BuilderShell({
               ? "Add note content before downloading"
               : gates.exportAllowed
                 ? "Download as Markdown"
-                : "Resolve every STOP finding before copy or download"
+                : "Resolve every stop finding before copy or download"
           }
           onClick={() => download(`${filename}.md`, markdown)}
         >
@@ -771,7 +794,7 @@ export function BuilderShell({
               ? "Add note content before downloading"
               : gates.exportAllowed
                 ? "Download as plain text"
-                : "Resolve every STOP finding before copy or download"
+                : "Resolve every stop finding before copy or download"
           }
           onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}
         >
@@ -798,8 +821,8 @@ export function BuilderShell({
           </div>
         )}
         <HelpTip label="About copy and download">
-          Copy and download stay locked while any STOP finding is open. A privacy STOP can be
-          attested; other STOPs must be fixed in the note. Required fields block Submit but not
+          Copy and download stay locked while any stop finding is open. A privacy stop can be
+          attested; other stops must be fixed in the note. Required fields block Submit but not
           copy.
         </HelpTip>
         {report.phiStops.length > 0 && !overrideActive && (
@@ -817,7 +840,7 @@ export function BuilderShell({
       </div>
       {hasContent && !gates.exportAllowed && (
         <p id="builder-export-locked" className="mt-2 text-xs text-rose-800" role="status">
-          Copy and download are locked until every STOP is fixed
+          Copy and download are locked until every stop is fixed
           {report.phiStops.length > 0 && !overrideActive
             ? " (or a privacy stop is attested)"
             : ""}
@@ -829,8 +852,20 @@ export function BuilderShell({
 
   return (
     <div className="pb-24">
-      {/* Sticky patient-header-style bar */}
-      <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
+      {/* Sticky patient-header-style bar — IDENTITY AND STATE ONLY.
+          It used to also carry Earlier saves, Save, Submit and a HelpTip, which
+          put the controls you reach for at the END of a note in the most
+          valuable strip on the screen at the START of one — and on a phone
+          wrapped it to four or five rows, pinning a third of the viewport for
+          the whole session. Those moved to a sticky action bar at the bottom,
+          which is where a primary action belongs and what the mockup asked for.
+
+          md:top-20, not top-0: the app header is sticky at top-0 with z-40, so
+          this bar — pinned to the same coordinate with a lower z — slid
+          UNDERNEATH it and vanished on the first scroll. The one bar meant to
+          stay with you was the one that did not. 80px matches the offset the
+          module rail and the Sidekick already use. */}
+      <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur md:top-20">
         <div className="flex flex-wrap items-center gap-3">
           <input
             className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-brand-blue focus:outline-none disabled:bg-transparent"
@@ -863,18 +898,18 @@ export function BuilderShell({
               ))}
             </select>
           )}
-          <StatusChip status={liveStatus} size="md" />
-          {canEdit && <SaveIndicator state={autosave.state} />}
           {canEdit && (
             <button
               type="button"
-              className="btn-secondary text-xs"
-              title="Restore a recent server autosave of this working copy"
-              onClick={() => void openRevisions()}
+              className="chip"
+              onClick={() => setShowModules(true)}
+              title="Which modules this note covers"
             >
-              Earlier saves
+              {extraModuleCount === 0 ? "Core only" : `Core + ${extraModuleCount}`}
             </button>
           )}
+          <StatusChip status={liveStatus} size="md" />
+          {canEdit && <SaveIndicator state={autosave.state} />}
           {canEdit && liveStatus === "error" && (
             <button
               className="btn-primary border-rose-600 bg-rose-600 hover:bg-rose-700"
@@ -885,68 +920,13 @@ export function BuilderShell({
               {resending ? "Resending…" : "Resend email"}
             </button>
           )}
-          {canEdit && (
-            <>
-              <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>Save</button>
-              <button
-                className="btn-primary"
-                disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
-                aria-disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
-                aria-describedby={
-                  canEdit && hasContent && !gates.emailAllowed && liveStatus !== "submitted"
-                    ? "builder-submit-blocked"
-                    : undefined
-                }
-                title={
-                  liveStatus === "submitted"
-                    ? "Already submitted — edit the note to submit again"
-                    : gates.emailAllowed
-                      ? "Submit to the office (Ctrl+Enter)"
-                      : "Resolve every STOP and REQUIRED finding first"
-                }
-                onClick={() => void trySubmit()}
-              >
-                Submit
-              </button>
-              <HelpTip label="About Submit">
-                Submit files the note to the office. It stays off until every STOP and every
-                REQUIRED field is clear. Already submitted notes need an edit before a new submit.
-              </HelpTip>
-            </>
-          )}
         </div>
       </div>
 
-      {/* WHY SUBMIT IS OFF, in words, on the screen.
-          The reason lived only in a `title` tooltip — which does not exist on a
-          tablet, never appears for a keyboard user, and needs a deliberate hover a
-          hurried person will not perform. A usability review's single most common
-          complaint was the app saying no without saying why: someone filled a note,
-          pressed Submit, nothing happened, and they had to infer the cause from
-          coloured chips in a panel. Counted and named, with the count matching the
-          panel so the two cannot disagree. */}
-      {canEdit && hasContent && !gates.emailAllowed && liveStatus !== "submitted" && (
-        <p
-          id="builder-submit-blocked"
-          className="mb-4 rounded border border-orange-300 bg-orange-50 px-3 py-2 text-sm text-orange-900"
-          role="status"
-        >
-          <strong>Not ready to file yet.</strong>{" "}
-          {report.counts.S0 > 0 && (
-            <>
-              {report.counts.S0} item{report.counts.S0 === 1 ? "" : "s"} must be fixed
-              {report.counts.S1 > 0 ? ", and " : ". "}
-            </>
-          )}
-          {report.counts.S1 > 0 && (
-            <>
-              {report.counts.S1} required field{report.counts.S1 === 1 ? "" : "s"}{" "}
-              {report.counts.S1 === 1 ? "is" : "are"} still open.{" "}
-            </>
-          )}
-          Each one is listed in the audit panel with a link straight to the field.
-        </p>
-      )}
+      {/* The "Not ready to file yet" banner used to live here. Its job — saying
+          WHY Submit is off, on the screen rather than in a tooltip — is now done
+          by the action bar at the bottom, beside the button it is about, and
+          without a full-width orange banner competing with the note. */}
 
       {/* WHAT THIS NOTE ACTUALLY SAYS, when most of it says "not applicable".
           Shown, never blocked. Clicking a licence is one action and finding out the
@@ -1043,22 +1023,116 @@ export function BuilderShell({
       </button>
 
       <div className="flex flex-col gap-4 lg:flex-row">
-        {/* Module rail.
-            A DISCLOSURE, closed by default. Thirty-one checkboxes down the
-            left-hand side of the busiest screen in the app is a permanent
-            column of things not to click: most notes use Universal Core and one
-            add-on, chosen once at the start and never revisited. The summary
-            carries the count, so what the note covers is still readable at a
-            glance without the list being open. */}
-        <aside className="shrink-0 lg:w-60">
-          <details className="card p-0 lg:sticky lg:top-20" open={extraModuleCount > 0}>
-            <summary className="flex cursor-pointer select-none items-center justify-between gap-2 rounded-xl px-3 py-2.5 text-sm font-bold text-slate-800 [&::-webkit-details-marker]:hidden">
-              <span>Modules</span>
-              <span className="font-normal text-slate-500">
-                {extraModuleCount === 0 ? "Core only" : `Core + ${extraModuleCount}`}
-              </span>
-            </summary>
-            <div className="px-3 pb-3">
+        {/* Form. THE NOTE IS FIRST.
+            Two cards used to sit above it — a paste box and a verified-block
+            picker with a destination dropdown — so the first two things on the
+            busiest screen were tools used occasionally, in front of the fields
+            used every time. Paste is now a button in the note bar, because it is
+            an ENTRY mode: you reach for it once, at the start, and never again
+            in that note. Verified blocks moved into the chip row of each text
+            field, which deleted the destination dropdown outright. */}
+        <section className="min-w-0 flex-1 space-y-4">
+          {/* Progressive Fast Lane, from main: while this note is still
+              Core-only, offer role-aware visit scaffolds in place. These add
+              structure, never a second draft and never clinical values.
+
+              Outside the fieldset on purpose — it takes canEdit itself, and
+              inside it a read-only viewer would see the cards greyed rather
+              than absent. */}
+          <FastLane
+            clinicalRole={clinicalRole}
+            canEdit={canEdit}
+            visible={extraModuleCount === 0}
+            onApply={(pick) => {
+              dispatch({ type: "applyModules", moduleIds: pick.moduleIds });
+              if (!title.trim() || title.trim() === "Untitled note") {
+                setTitle(pick.label);
+              }
+            }}
+          />
+          <fieldset disabled={!canEdit} className="min-w-0">
+            <DictationUserContext.Provider value={username}>
+            <NoteForm
+              modules={modules}
+              state={state}
+              onChange={setValue}
+              findingsByField={fieldFindings}
+              clinicalRole={clinicalRole}
+            />
+            </DictationUserContext.Provider>
+          </fieldset>
+        </section>
+
+        {/* Sidekick — desktop only below `lg`; the mobile bar + sheet above
+            covers the same ground where this would otherwise sit below the
+            entire form. */}
+        <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
+          <div className="card p-3 lg:sticky lg:top-20">
+            {sidekickBody}
+          </div>
+        </aside>
+      </div>
+
+      {/* THE ACTION BAR — what you do when the note is finished, at the end.
+          Save, Submit and the two ways in and back (paste, earlier saves) were
+          all in the sticky header. Putting the end of the task at the start of
+          the screen is the order-of-operations complaint in one line, and it
+          cost a phone four or five wrapped rows of pinned chrome.
+
+          The reason Submit is off is stated HERE, next to the disabled button,
+          rather than only in a title tooltip that no tablet and no keyboard
+          user ever sees — and it is stated even on an untouched note, which the
+          old banner deliberately skipped, leaving the disabled control with no
+          on-screen explanation at all. */}
+      {canEdit && (
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
+          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              onClick={() => setShowPaste(true)}
+              title="Paste a note you already wrote and choose where its sections go"
+            >
+              Paste a note
+            </button>
+            <button
+              type="button"
+              className="btn-secondary text-xs"
+              title="Restore a recent server autosave of this working copy"
+              onClick={() => void openRevisions()}
+            >
+              Earlier saves
+            </button>
+            <p className="min-w-0 flex-1 text-xs text-slate-600" id="builder-submit-blocked">
+              {liveStatus === "submitted"
+                ? "Filed. Edit the note to submit again."
+                : !hasContent
+                  ? "Write something and Submit turns on."
+                  : gates.emailAllowed
+                    ? "Ready to file."
+                    : blockedReason}
+            </p>
+            <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>
+              Save
+            </button>
+            <button
+              className="btn-primary"
+              disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+              aria-disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+              aria-describedby="builder-submit-blocked"
+              onClick={() => void trySubmit()}
+            >
+              Submit
+            </button>
+          </div>
+        </div>
+      )}
+
+      {showModules && (
+        <Dialog title="Modules in this note" onClose={() => setShowModules(false)}>
+          <p className="mb-2 text-xs text-slate-600">
+            Universal Core is always on. Add the modules for what actually happened this visit.
+          </p>
             <input
               type="search"
               className="field-input mb-1.5 py-1 text-xs"
@@ -1093,56 +1167,21 @@ export function BuilderShell({
                 </label>
               ))}
             </div>
-            </div>
-          </details>
-        </aside>
+        </Dialog>
+      )}
 
-        {/* Form */}
-        <section className="min-w-0 flex-1 space-y-4">
-          {/* Progressive Fast Lane: when this note is still Core-only, offer
-              role-aware visit scaffolds IN PLACE. Home already opened the note
-              with the cursor ready — these cards only add structure, never a
-              second draft and never clinical values. */}
-          <FastLane
-            clinicalRole={clinicalRole}
-            canEdit={canEdit}
-            visible={extraModuleCount === 0}
-            onApply={(pick) => {
-              dispatch({ type: "applyModules", moduleIds: pick.moduleIds });
-              if (!title.trim() || title.trim() === "Untitled note") {
-                setTitle(pick.label);
-              }
-            }}
-          />
-          {/* Paste sits ABOVE the form and closed. It is the other way into a
-              note, and it has to be findable without being in the way of the
-              writer who is simply going to type. */}
+      {/* Both sides of this conflict were moving the same thing — what sits
+          above the fields — in opposite directions. main added the Fast Lane
+          there; this branch took paste OUT of there and put it behind a button.
+          Both survive: the Fast Lane renders in the form section (see below,
+          where main put it), and paste stays a dialog. They do not compete,
+          because the Fast Lane only appears on a Core-only note and disappears
+          the moment it is used, while paste is reached for deliberately. */}
+      {showPaste && (
+        <Dialog title="Paste an existing note" onClose={() => setShowPaste(false)}>
           <PasteIntake onSend={appendToField} canEdit={canEdit} lockedSections={lockedFieldKeys} />
-          {canEdit && (
-            <BlockInsert onInsert={appendToField} lockedSections={lockedFieldKeys} />
-          )}
-          <fieldset disabled={!canEdit} className="min-w-0">
-            <DictationUserContext.Provider value={username}>
-            <NoteForm
-              modules={modules}
-              state={state}
-              onChange={setValue}
-              findingsByField={fieldFindings}
-              clinicalRole={clinicalRole}
-            />
-            </DictationUserContext.Provider>
-          </fieldset>
-        </section>
-
-        {/* Sidekick — desktop only below `lg`; the mobile bar + sheet above
-            covers the same ground where this would otherwise sit below the
-            entire form. */}
-        <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
-          <div className="card p-3 lg:sticky lg:top-20">
-            {sidekickBody}
-          </div>
-        </aside>
-      </div>
+        </Dialog>
+      )}
 
       {toast && (
         <div

@@ -141,7 +141,7 @@ export function PasteIntake({
                       .map((f, i) => (
                         <li key={`${sev}-${i}`} className="text-xs text-slate-800">
                           <span
-                            className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold uppercase ${SEVERITY_CHIP[f.severity]}`}
+                            className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold ${SEVERITY_CHIP[f.severity]}`}
                           >
                             {SEVERITY_LABELS[f.severity]}
                           </span>

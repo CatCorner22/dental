@@ -155,7 +155,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
       <div className="flex items-start gap-3">
         <div className="relative">
           <ByteStarFace mood={mood} />
-          <div className="absolute -bottom-1 -right-1 rounded bg-amber-900/90 px-1 py-px text-[0.55rem] font-bold uppercase tracking-wider text-amber-100">
+          <div className="absolute -bottom-1 -right-1 rounded bg-amber-900/90 px-1 py-px text-[0.55rem] font-bold text-amber-100">
             observe
           </div>
         </div>
@@ -170,14 +170,14 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   same rules Byte uses.
                 </HelpTip>
               </div>
-              <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/60">
+              <p className="text-[0.65rem] text-amber-900/60">
                 gives you feedback · you do not give it feedback
               </p>
               {profile && profile !== "documentation" && (
                 /* Which cage configuration read this draft. Strict reads run
                    more passes, demand unanimity, and refuse rewrites — worth a
                    visible chip so staff know why observations went quieter. */
-                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[0.6rem] font-bold uppercase tracking-wide text-rose-900 ring-1 ring-rose-300">
+                <span className="mt-1 inline-flex items-center gap-1 rounded-full bg-rose-100 px-2 py-0.5 text-[0.6rem] font-bold text-rose-900 ring-1 ring-rose-300">
                   {readModes.filter((m) => m !== "documentation").join(" + ")} — strict read
                   <HelpTip label="About strict reads">
                     This draft touches a higher-risk domain, so SuperByte read it under a stricter
@@ -207,7 +207,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               aria-atomic
             >
               <div className="absolute inset-x-0 top-0 h-0.5 bg-gradient-to-r from-transparent via-amber-400/80 to-transparent" />
-              <p className="text-[0.65rem] uppercase tracking-wide text-amber-900/70">
+              <p className="text-[0.65rem] text-amber-900/70">
                 {tip.kind}
                 {feedbackSource === "instrument" && (
                   <span className="ml-1 normal-case text-slate-400">· instrument reading</span>
@@ -257,7 +257,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
       {benchmarks.gauges.words > 0 && (
         <div className="mt-3 border-t border-amber-200/50 pt-3">
           <div className="flex items-center justify-between gap-2">
-            <h4 className="inline-flex items-center gap-1 text-xs font-semibold uppercase tracking-wide text-slate-500">
+            <h4 className="label-micro inline-flex items-center gap-1">
               Drift to NorthStar
               <HelpTip label="About drift gauges" side="top">
                 Each rail shows how this draft sits against practice targets (read coverage, active

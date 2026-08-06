@@ -2,6 +2,7 @@
 
 import { useState } from "react";
 import type { TrainingScenario } from "@/lib/training/scenarios";
+import { severityLabel } from "@/lib/audit/types";
 
 // The practice surface. Same feel as real work — edit the text, clear the
 // findings — with the pressure removed: no patient, no ticket, no filing,
@@ -26,7 +27,7 @@ export function TrainingArena({ scenarios }: { scenarios: TrainingScenario[] }) 
           {scenarios.map((s) => (
             <li key={s.id} className="flex flex-col justify-between rounded-xl bg-white ring-1 ring-slate-200 p-3">
               <div>
-                <p className="text-xs font-semibold uppercase tracking-wide text-brand-teal">
+                <p className="text-xs font-semibold text-brand-teal">
                   trains {s.axis}
                 </p>
                 <p className="font-medium">{s.title}</p>
@@ -131,7 +132,7 @@ function Attempt({ scenario, onExit }: { scenario: TrainingScenario; onExit: () 
           <ul className="space-y-2">
             {findings.map((f, i) => (
               <li key={i} className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-950">
-                <p className="text-xs font-semibold uppercase">{f.severity}</p>
+                <p className="text-xs font-semibold">{severityLabel(f.severity)}</p>
                 <p>{f.message}</p>
                 {f.suggestion && (
                   <p className="mt-1 text-xs">

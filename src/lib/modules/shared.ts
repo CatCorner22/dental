@@ -113,7 +113,7 @@ export const PREMED_NOT_REQUIRED = "Not required.";
 
 export const ALLERGY_STATUS: FieldOption[] = [
   { value: NKA, label: "No known allergies of any kind (NKA)" },
-  { value: NKDA, label: "No known DRUG allergies (NKDA) — other types not excluded" },
+  { value: NKDA, label: "No known drug allergies (NKDA) — other types not excluded" },
   {
     value: "Allergies on file; see the allergy list in the clinical system.",
     label: "Allergies on file (details stay in the EDR)"
@@ -148,7 +148,7 @@ export const PREMEDICATION_STATUS: FieldOption[] = [
   {
     // Deliberately blunt. This is a stop-and-ask, not a note written afterwards.
     value: "Required; NOT taken. Dentist notified before treatment.",
-    label: "Required — NOT taken (tell the dentist now)"
+    label: "Required — not taken (tell the dentist now)"
   },
   {
     value: "Premedication requirement not reviewed at this visit.",
@@ -282,7 +282,7 @@ export const PATIENT_SUMMARY_DELIVERY: FieldOption[] = [
 export const CONFIRM_ASKED: FieldOption[] = [
   {
     value: "Confirmed with the patient at this visit and checked against the chart.",
-    label: "Asked the patient at this visit AND checked the chart"
+    label: "Asked the patient at this visit and checked the chart"
   },
   {
     value: "Confirmed with the patient at this visit.",

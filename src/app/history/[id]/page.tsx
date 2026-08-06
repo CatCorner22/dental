@@ -1,4 +1,5 @@
 import { notFound, redirect } from "next/navigation";
+import { statusLabel } from "@/lib/audit/types";
 import { seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
@@ -31,7 +32,7 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         <dt className="font-semibold text-slate-600">Eastern time</dt>
         <dd>{s.submittedAtEt}</dd>
         <dt className="font-semibold text-slate-600">Audit status</dt>
-        <dd>{s.auditStatus}</dd>
+        <dd>{statusLabel(s.auditStatus)}</dd>
         <dt className="font-semibold text-slate-600">Ruleset version</dt>
         <dd>{s.ruleVersion}</dd>
       </dl>

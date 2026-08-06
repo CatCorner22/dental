@@ -113,7 +113,7 @@ describe("end-to-end IV sedation extraction draft", () => {
   it("renders the standard audit report format", () => {
     const audit = composeAuditReport(report, modules, markdown);
     expect(audit).toContain("# Dental-note audit");
-    expect(audit).toContain("- Status: BLOCKED");
+    expect(audit).toContain("- Status: Blocked");
     expect(audit).toContain("| ID | Severity | Module | Location | Finding | Required action | Owner |");
     expect(audit).toContain("## Draft note");
     expect(audit).toContain("## EDR-only finalization");

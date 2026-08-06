@@ -1,4 +1,5 @@
 import Link from "next/link";
+import { statusLabel } from "@/lib/audit/types";
 import { redirect } from "next/navigation";
 import { seesAllNotes } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
@@ -169,7 +170,7 @@ async function FiledTab({ db, mine, userId }: { db: Db; mine: boolean; userId: s
           by: s.submittedByName,
           office: s.officeName ?? "",
           at: s.submittedAtEt,
-          status: s.auditStatus,
+          status: statusLabel(s.auditStatus),
           rules: s.ruleVersion
         }))}
       />

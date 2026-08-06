@@ -14,6 +14,7 @@ import { standardize } from "@/lib/standardize/standardize";
 import { OMISSION_LICENCES, exactLicence, licenceText } from "@/lib/audit/omissions";
 import { TextDiff } from "@/components/diff/TextDiff";
 import { DictationField } from "./DictationField";
+import { BlockChips } from "./BlockChips";
 
 interface InputProps<F extends Field, V extends FieldValue> {
   field: F;
@@ -451,6 +452,7 @@ export function TextInputField({ field, value, onChange, describedBy, invalid, i
 
 export function TextareaField_({ field, value, onChange, describedBy, invalid, id, required }: InputProps<TextareaField, Extract<FieldValue, { kind: "text" }>>) {
   const ref = useRef<HTMLTextAreaElement>(null);
+  const [focused, setFocused] = useState(false);
   const insert = (phrase: string) => {
     const el = ref.current;
     const text = value?.value ?? "";
@@ -459,7 +461,24 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
     el?.focus();
   };
   return (
-    <div>
+    // Focus is tracked on the WRAPPER, not the textarea.
+    //
+    // React's onFocus/onBlur are focusin/focusout, so they bubble, and this
+    // element is the only one that sees focus move through the whole field —
+    // textarea, chip, and everything the chip opens. Watching the textarea
+    // alone was wrong in both directions. Tab from the textarea to the chip and
+    // the textarea's blur was the LAST one it would ever fire: focus left the
+    // button afterwards, the textarea never heard about it, and the chip stayed
+    // mounted under an empty field for the rest of the session, one per field
+    // visited. And a click that landed anywhere other than the textarea could
+    // not be told apart from leaving the field without asking the wrapper.
+    <div
+      onFocus={() => setFocused(true)}
+      onBlur={(e) => {
+        // Leaving for somewhere still inside this field is not leaving.
+        if (!e.currentTarget.contains(e.relatedTarget as Node)) setFocused(false);
+      }}
+    >
       <textarea
         ref={ref}
         id={id}
@@ -476,6 +495,15 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
           nothing — which is the arrangement the standardize screen got wrong by
           putting a five-minute enrollment wall in front of the textarea. */}
       <DictationField onText={(t) => insert(t)} />
+      {/* Verified blocks, in the field they go into.
+          They used to sit in a card ABOVE the note behind a "insert verified
+          blocks into [destination]" dropdown — which asked the writer to choose
+          where before they had chosen what, and put an occasional tool in front
+          of the thing they do every time. Here there is no destination to pick:
+          the block lands in the box the cursor is already in. All three locks
+          are unchanged — every assertion ticked, insert disabled until they are,
+          and placeholders the residue rule blocks at S1 until they are replaced. */}
+      <BlockChips onInsert={insert} active={focused || (value?.value ?? "") !== ""} />
       <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
       {/* The fact is offered first, the absence second. See LicenceChips. */}
       {required && (

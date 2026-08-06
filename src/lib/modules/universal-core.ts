@@ -137,7 +137,7 @@ export const universalCore: ModuleDef = {
           // answer changes anything.
           options: opts("Established patient", "New patient — first visit to this practice"),
           helpText:
-            "One click, and it matters more from January 1, 2027: Public Chapter 1107 requires DIRECT supervision by a dentist who has seen a NEW patient before a hygienist takes diagnostic radiographs, collects hard- or soft-tissue data, performs prophylaxis, or applies fluoride."
+            "One click, and it matters more from January 1, 2027: Public Chapter 1107 requires direct supervision by a dentist who has seen a new patient before a hygienist takes diagnostic radiographs, collects hard- or soft-tissue data, performs prophylaxis, or applies fluoride."
         },
         {
           id: "supervision",
@@ -231,7 +231,7 @@ export const universalCore: ModuleDef = {
           required: true,
           options: ALLERGY_STATUS,
           helpText:
-            "NKA and NKDA are DIFFERENT statements. NKDA covers drugs only — a latex or food allergy can still exist. Pick the one you actually verified."
+            "NKA and NKDA are different statements. NKDA covers drugs only — a latex or food allergy can still exist. Pick the one you actually verified."
         },
         {
           id: "allergies-confirm",

@@ -12,8 +12,8 @@ export default function Page() {
     <article className="doc">
       <h1>Abbreviation and phrase rules</h1>
       <p>
-        These tables are generated from the exact lists the audit pass enforces. STYLE items have
-        one deterministic replacement a staff member may apply. REVIEW items hide a clinical fact,
+        These tables are generated from the exact lists the audit pass enforces. Style items have
+        one deterministic replacement a staff member may apply. Review items hide a clinical fact,
         so a clinician supplies the specific wording.
       </p>
       <h2>Replace ambiguous shorthand</h2>

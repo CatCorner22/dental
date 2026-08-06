@@ -36,7 +36,7 @@ export function OfficeAnalyticsPanel({
         <div className="overflow-x-auto">
           <table className="w-full text-sm">
             <thead>
-              <tr className="border-b border-slate-200 text-left text-xs uppercase text-slate-500">
+              <tr className="border-b border-slate-200 text-left text-xs font-semibold text-slate-500">
                 <th scope="col" className="px-2 py-1.5">Office</th>
                 <th scope="col" className="px-2 py-1.5 text-right">Filings</th>
                 <th scope="col" className="px-2 py-1.5">Audit-status mix</th>

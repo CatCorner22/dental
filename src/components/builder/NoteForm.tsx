@@ -175,18 +175,12 @@ export function NoteForm({
     return initial;
   });
 
-  return (
-    <div className="space-y-4">
-      {modules.map((mod) => (
-        <details key={mod.id} open className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
-          <summary className="cursor-pointer select-none rounded-t-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800">
-            {mod.title}
-          </summary>
-          {mod.description && (
-            <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">{mod.description}</p>
-          )}
-          <div className="space-y-5 px-4 py-4">
-            {mod.sections.map((section) => {
+  // The sections of one module. Extracted so the two module wrappers below —
+  // a real disclosure when there is more than one module, a plain box when
+  // Universal Core is on its own — render identical content.
+  const sectionsFor = (mod: ModuleDef) => (
+    <>
+      {mod.sections.map((section) => {
               // Diagnosis and treatment planning are the dentist's, by law, not
               // by seniority. Locked rather than hidden: a hygienist needs to
               // SEE what the dentist assessed to do their own work, and a
@@ -209,8 +203,16 @@ export function NoteForm({
                     return v === undefined || isEmptyValue(v);
                   })()
               ).length;
+              // Excludes required.missing, which openRequired above already
+              // counts. Counting both made an untouched section read
+              // "2 to review · 2 required" about the SAME two empty fields —
+              // one state, two badges, twice the alarm.
               const findingCount = section.fields.reduce(
-                (n, f) => n + (findingsByField[fieldKey(mod.id, f.id)]?.length ?? 0),
+                (n, f) =>
+                  n +
+                  (findingsByField[fieldKey(mod.id, f.id)] ?? []).filter(
+                    (finding) => finding.ruleId !== "required.missing"
+                  ).length,
                 0
               );
               return (
@@ -228,16 +230,23 @@ export function NoteForm({
                 data-section={sectionKey}
                 className="rounded-lg border border-slate-200"
               >
-                <summary className="flex cursor-pointer select-none list-none items-center justify-between gap-2 rounded-lg px-3 py-2 text-xs font-bold uppercase tracking-wide text-slate-500 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
+                {/* label-section, not the old `text-xs font-bold uppercase
+                    tracking-wide text-slate-500`. This is the most-read label in
+                    the app — every section of every note passes through it — and
+                    it was shouted, shrunk and greyed all at once, so it was both
+                    the loudest thing on the row and the hardest part of it to
+                    read. Sentence case at text-sm also gives the disclosure a
+                    bigger tap target, which it needed on a phone anyway. */}
+                <summary className="label-section flex cursor-pointer select-none list-none items-center justify-between gap-2 rounded-lg px-3 py-2 hover:bg-slate-50 [&::-webkit-details-marker]:hidden">
                   <span>
                     {section.title}
                     {outOfScope && (
-                      <span className="ml-2 font-normal normal-case tracking-normal text-amber-800">
+                      <span className="ml-2 font-normal text-amber-800">
                         — dentist records this
                       </span>
                     )}
                   </span>
-                  <span className="flex shrink-0 items-center gap-1.5 font-normal normal-case tracking-normal">
+                  <span className="flex shrink-0 items-center gap-1.5 font-normal">
                     {findingCount > 0 && (
                       <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
                         {findingCount} to review
@@ -304,9 +313,39 @@ export function NoteForm({
                 </fieldset>
               </details>
               );
-            })}
-          </div>
+      })}
+    </>
+  );
+
+  return (
+    <div className="space-y-4">
+      {modules.map((mod) => (
+        // On a Core-only note the module header was 74px saying "the always-on
+        // module is on" — a disclosure with a hard-coded `open` and one child is
+        // not a disclosure, it is a label. It earns its place only once there is
+        // more than one module to tell apart.
+        //
+        // A plain <div> in that case, NOT a headless <details>: a <details> with
+        // no <summary> makes the browser supply its own, and every engine
+        // renders the word "Details" with a disclosure triangle. Hiding the
+        // summary swapped a redundant module title for a meaningless one.
+        modules.length > 1 ? (
+        <details key={mod.id} open className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+              <summary className="cursor-pointer select-none rounded-t-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800">
+                {mod.title}
+              </summary>
+              {mod.description && (
+                <p className="border-b border-slate-100 px-4 py-2 text-xs text-slate-500">
+                  {mod.description}
+                </p>
+              )}
+          <div className="space-y-5 px-4 py-4">{sectionsFor(mod)}</div>
         </details>
+        ) : (
+          <div key={mod.id} className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+            <div className="space-y-5 px-4 py-4">{sectionsFor(mod)}</div>
+          </div>
+        )
       ))}
     </div>
   );

@@ -99,7 +99,7 @@ export function TeamDashboard({ view }: { view: TeamView }) {
                       </button>
                     </span>
                   ) : (
-                    <span className="text-xs font-semibold uppercase text-slate-500">{r.status}</span>
+                    <span className="text-xs font-semibold capitalize text-slate-500">{r.status}</span>
                   )}
                 </div>
                 {noteFor === r.id && (

@@ -145,7 +145,7 @@ export function GauntletForm({ initialSummary = "" }: { initialSummary?: string 
 
       {cycle && (
         <div className="card">
-          <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+          <p className="text-xs font-semibold text-slate-500">
             Cycle {cycle.n} of 5
           </p>
           <h2 className="mb-1 text-lg font-bold">{cycle.title}</h2>

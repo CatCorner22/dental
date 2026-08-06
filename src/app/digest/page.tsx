@@ -166,7 +166,7 @@ export default async function DigestPage() {
             {grammarGrowth.map((g) => (
               <li key={g.category} className="card-inset">
                 <p className="font-semibold text-slate-900">
-                  <span className="rounded bg-white px-1.5 py-0.5 text-xs font-bold uppercase tracking-wide">
+                  <span className="rounded bg-white px-1.5 py-0.5 text-xs font-bold">
                     {UNPARSED_CATEGORY_LABEL[g.category]}
                   </span>{" "}
                   <span className="font-normal text-slate-700">

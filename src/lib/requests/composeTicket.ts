@@ -8,7 +8,7 @@ export function composeTicket(
   meta: { requestedBy: string; requestedAtEt: string }
 ): string {
   const lines: string[] = [];
-  lines.push("SMILE NOTES — DATA CHANGE REQUEST");
+  lines.push("Smile Notes — data change request");
   lines.push("Cleared all five sterilization cycles of the Data Hygiene Gauntlet.");
   lines.push("");
   lines.push(`Ask:          ${input.summary.trim()}`);
@@ -19,7 +19,7 @@ export function composeTicket(
   lines.push(`Downstream:   ${input.downstream.join(", ")}`);
   lines.push("");
   lines.push("─".repeat(64));
-  lines.push("THE FIVE CYCLES");
+  lines.push("The five cycles");
   lines.push("─".repeat(64));
   for (const cycle of CYCLES) {
     lines.push("");
@@ -30,7 +30,7 @@ export function composeTicket(
   }
   lines.push("");
   lines.push("─".repeat(64));
-  lines.push("PRE-FLIGHT CHECKLIST");
+  lines.push("Pre-flight checklist");
   lines.push("─".repeat(64));
   for (const item of CHECKLIST) {
     lines.push(`  [${input.checklist[item.id] ? "x" : " "}] ${item.label}`);

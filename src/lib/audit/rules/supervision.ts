@@ -95,12 +95,12 @@ export function runSupervisionRule(
       severity: effective ? "S1" : "S4",
       message: effective
         ? "A new patient's diagnostic radiographs, tissue-data collection, prophylaxis, or fluoride " +
-          "require DIRECT supervision by a dentist who has seen the patient (Public Chapter 1107, " +
+          "require direct supervision by a dentist who has seen the patient (Public Chapter 1107, " +
           "effective January 1, 2027). This visit records general supervision. If the dentist was on " +
           "the premises and saw the patient, change Supervision to direct; if not, this note cannot " +
           "be filed as written."
         : "Heads-up, not a block: from January 1, 2027, this combination — new patient, general " +
-          "supervision, and hygiene services — will require DIRECT supervision by a dentist who has " +
+          "supervision, and hygiene services — will require direct supervision by a dentist who has " +
           "seen the patient (Public Chapter 1107). Nothing is wrong today; the scheduling habit is " +
           "the thing to adjust before the date arrives.",
       fieldRef: { moduleId: "universal-core", fieldId: "supervision" }

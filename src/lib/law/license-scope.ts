@@ -227,36 +227,36 @@ export const LICENSE_SCOPE_MERMAID = {
   DDS -->|"direct supervision<br/>+ full responsibility"| RDA
   DDS -->|"direct supervision<br/>+ full responsibility"| PDA
 
-  RDH -.->|"may NOT practice<br/>independent of dentist<br/>TCA § 63-5-108(c)(3)"| STOP["No independent<br/>hygiene office"]`,
+  RDH -.->|"may not practice<br/>independent of dentist<br/>TCA § 63-5-108(c)(3)"| STOP["No independent<br/>hygiene office"]`,
 
   supervision: `flowchart LR
-  subgraph DIRECT["DIRECT supervision — dentist present / responsible"]
+  subgraph DIRECT["Direct supervision — dentist present / responsible"]
     D1["RDH: root planing, subgingival curettage,<br/>N2O, local anesthesia<br/>TCA § 63-5-108(c)(4)"]
     D2["RDH local anesthesia: dentist<br/>physically at same office<br/>0460-03-.09(5) / .12"]
     D3["RDA / practical DA: all intraoral<br/>assisting under direct supervision<br/>0460-01-.01(23),(26); 0460-04-.08"]
   end
 
-  subgraph GENERAL["GENERAL supervision — RDH only, statutory conditions"]
+  subgraph GENERAL["General supervision — RDH only, statutory conditions"]
     G1["Other hygiene services ≤15 consecutive<br/>business days if TCA § 63-5-108(c)(5)<br/>conditions all met"]
     G2["Dentist examined patient ≤11 months prior;<br/>written Tx plan; emergency protocols;<br/>patient notice; ≥1 yr FTE experience"]
   end
 
-  subgraph PC1107["NEW — Pub. Ch. 1107, eff. 1/1/2027"]
-    P1["New patient: RDH needs DIRECT supervision<br/>by a dentist who has seen the patient<br/>before Dx radiographs, hard/soft-tissue<br/>data, prophylaxis, or fluoride"]
+  subgraph PC1107["New — Pub. Ch. 1107, eff. 1/1/2027"]
+    P1["New patient: RDH needs direct supervision<br/>by a dentist who has seen the patient<br/>before Dx radiographs, hard/soft-tissue<br/>data, prophylaxis, or fluoride"]
   end`,
 
   reserved: `flowchart TD
-  ONLYDDS["DENTIST ONLY — professional judgment<br/>TCA § 63-5-108(d)"]
+  ONLYDDS["Dentist only — professional judgment<br/>TCA § 63-5-108(d)"]
   ONLYDDS --> A["Diagnosis and treatment planning"]
   ONLYDDS --> B["Oral surgery / cutting hard or soft tissue<br/>except RDH curettage / root planing"]
   ONLYDDS --> C["Interpret dental radiographs<br/>TCA § 63-5-108(b)(11)"]
   ONLYDDS --> D["Permanent restorations unless Board-certified<br/>auxiliary pathway applies"]
   ONLYDDS --> E["General / conscious sedation — permit rules"]
 
-  ONLYRDH["HYGIENIST ONLY among auxiliaries"]
+  ONLYRDH["Hygienist only among auxiliaries"]
   ONLYRDH --> F["Scaling / curettage of deposits<br/>TCA § 63-5-108(d)"]
 
-  CERT["CERTIFICATION GATES"]
+  CERT["Certification gates"]
   CERT --> G["RDH: local anesthesia .12 · N2O .06 · restorative/prosthetic .10"]
   CERT --> H["RDA: polish .04 · N2O monitor .05 · sealants .09 · radiographs .11 · expanded .10"]`
 } as const;

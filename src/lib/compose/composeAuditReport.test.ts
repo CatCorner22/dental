@@ -23,7 +23,7 @@ describe("the frozen record shows the waiver", () => {
     expect(out).toContain("the office callback line");
     // The findings table above the attestation still lists the stop — the
     // attestation never erases what the checker found.
-    expect(out).toContain("S0 STOP");
+    expect(out).toContain("S0 Stop");
   });
 
   it("renders no such section when nothing was overridden", () => {

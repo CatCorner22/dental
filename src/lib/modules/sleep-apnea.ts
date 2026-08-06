@@ -178,7 +178,7 @@ export const sleepApnea: ModuleDef = {
             "Referred back to the physician for efficacy testing."
           ],
           helpText:
-            "Whether the appliance is WORKING is a medical determination. The dental record states that testing was arranged, never that the condition is controlled."
+            "Whether the appliance is working is a medical determination. The dental record states that testing was arranged, never that the condition is controlled."
         },
         {
           id: "next-review",

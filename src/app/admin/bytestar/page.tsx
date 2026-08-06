@@ -135,7 +135,7 @@ export default async function ByteStarMonitorPage() {
 function Stat({ label, value, note }: { label: string; value: string; note: string }) {
   return (
     <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-      <p className="text-[0.65rem] uppercase tracking-wide text-slate-500">{label}</p>
+      <p className="text-[0.65rem] text-slate-500">{label}</p>
       <p className="mt-1 text-lg font-bold text-brand-navy">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{note}</p>
     </div>

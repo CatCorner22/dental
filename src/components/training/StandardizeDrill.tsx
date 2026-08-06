@@ -36,7 +36,7 @@ export function StandardizeDrill({ notes }: { notes: SyntheticTrainingNote[] }) 
         what the engine flags — the same deterministic pass that checks real notes. No points, no
         timer; the drill is for calibration, not competition.
       </p>
-      <p className="text-xs font-semibold uppercase tracking-wide text-slate-500">
+      <p className="text-xs font-semibold text-slate-500">
         {note.title} · {note.noteType}
       </p>
       <pre className="mt-1 whitespace-pre-wrap rounded bg-slate-50 p-3 font-mono text-xs text-slate-800">

@@ -125,6 +125,7 @@ const CONFIG = {
   model: "test",
   silentlyKilled: false,
   assistOn: true,
+  providerKeyPresent: true,
   pioneerOptedOut: false
 };
 

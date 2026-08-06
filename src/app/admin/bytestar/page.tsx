@@ -71,11 +71,13 @@ export default async function ByteStarMonitorPage() {
               ? "Ladder perma-kill is engaged (model escape ladder). Clear it below after review."
               : config.silentlyKilled
                 ? "Silent kill BYTESTAR_KILL is engaged (operator)."
-                : !config.assistOn
-                  ? "Set ASSIST_ENABLED=1 and AI_GATEWAY_API_KEY in the deployment environment, then redeploy — SuperByte rides the assist provider."
+                : !config.providerKeyPresent
+                  ? "Set AI_GATEWAY_API_KEY in the deployment environment, then redeploy — that alone opens SuperByte. ASSIST_ENABLED=1 is only for the separate AI assist buttons."
                   : config.pioneerOptedOut
                     ? "BYTESTAR_ENABLED=0 is set. Remove it (or set 1) to reopen the pioneer."
-                    : "Open — no per-user activation. SuperByte observes drafts automatically; staff observe only."
+                    : config.assistOn
+                      ? "Open — no per-user activation. SuperByte observes drafts automatically; staff observe only."
+                      : "Open — SuperByte is live. AI assist buttons stay dark until ASSIST_ENABLED=1 is also set."
           }
         />
         <Stat label="Prompt version" value={BYTESTAR_PROMPT_VERSION} note={`Model: ${config.model}`} />

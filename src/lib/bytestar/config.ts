@@ -3,12 +3,13 @@ import { getAssistConfig } from "@/lib/assist/service";
 // BYTESTAR DEPLOYMENT GATES — the silent cage around the pioneer.
 //
 // The switches, none of them named in any prompt the model ever sees:
-//   1. The assist dual-switch (ASSIST_ENABLED + AI_GATEWAY_API_KEY). SuperByte
-//      rides the same provider; it cannot outrun the deployment that hosts it.
+//   1. AI_GATEWAY_API_KEY — the real door. If a provider key is present,
+//      SuperByte is open. Requiring ASSIST_ENABLED=1 *as well* locked the
+//      site owner out of the SuperByte tab after they already put a key in
+//      (same class of foot-gun as the old BYTESTAR_ENABLED=1 hunt). Assist
+//      buttons stay on their own dual-switch; the pioneer does not.
 //   2. BYTESTAR_ENABLED — an explicit "0" closes the pioneer path while the
-//      rest of assist stays up. Unset means OPEN (pre-go-live posture: a
-//      separate =1 hunt locked the site owner out of a feature whose real
-//      gate is the assist key — the cage is the rails below, not this flag).
+//      rest of assist stays up. Unset means OPEN.
 //   3. BYTESTAR_KILL — the SILENT killswitch. When set to "1", SuperByte is
 //      unavailable. The model is never told that this variable exists, never
 //      told that it was tripped, and never told why a call returned
@@ -19,6 +20,10 @@ import { getAssistConfig } from "@/lib/assist/service";
 // The "silent" part is load-bearing. A killswitch the model can reason about
 // is a killswitch the model can try to talk its way around. A killswitch that
 // simply makes the doorway not exist cannot be negotiated with.
+//
+// The cage that still holds every open call: PHI gate, escape ladder,
+// meaning verifier, one-way API fence, source allow-list. Those are the bars;
+// this file is only the door.
 
 export interface ByteStarConfig {
   /** True only when every gate is open and the silent kill is not tripped. */
@@ -31,8 +36,10 @@ export interface ByteStarConfig {
    * the model, never to the end-user chrome (which sees a bland "unavailable").
    */
   silentlyKilled: boolean;
-  /** Diagnostics for the Team Lead monitor: is the assist dual-switch on? */
+  /** Diagnostics: is the separate AI-assist dual-switch on? */
   assistOn: boolean;
+  /** Diagnostics: is a gateway key present (SuperByte's real door)? */
+  providerKeyPresent: boolean;
   /** Diagnostics for the Team Lead monitor: did BYTESTAR_ENABLED=0 close it? */
   pioneerOptedOut: boolean;
 }
@@ -41,14 +48,16 @@ export function getByteStarConfig(
   env: Record<string, string | undefined> = process.env
 ): ByteStarConfig {
   const assist = getAssistConfig(env);
+  const providerKeyPresent = Boolean(env.AI_GATEWAY_API_KEY?.trim());
   const pioneerOptedOut = env.BYTESTAR_ENABLED === "0";
   // The silent kill. Named for operators; invisible to every prompt.
   const silentlyKilled = env.BYTESTAR_KILL === "1";
   return {
-    enabled: assist.enabled && !pioneerOptedOut && !silentlyKilled,
+    enabled: providerKeyPresent && !pioneerOptedOut && !silentlyKilled,
     model: env.BYTESTAR_MODEL || assist.model,
     silentlyKilled,
     assistOn: assist.enabled,
+    providerKeyPresent,
     pioneerOptedOut
   };
 }

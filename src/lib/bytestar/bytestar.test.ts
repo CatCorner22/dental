@@ -56,10 +56,13 @@ describe("one-way feedback — SuperByte → staff, never staff → SuperByte", 
 });
 
 describe("SuperByte silent killswitch — the model never sees the cage", () => {
-  // Pre-go-live posture: the pioneer rides the assist switch. A separate
-  // BYTESTAR_ENABLED=1 hunt locked the site owner out of their own feature —
-  // the door now opens with assist and closes only on an EXPLICIT "0".
-  it("opens with assist alone — no separate BYTESTAR_ENABLED hunt", () => {
+  // Pre-go-live posture: SuperByte opens with the gateway key. A separate
+  // BYTESTAR_ENABLED=1 hunt, then an ASSIST_ENABLED=1 hunt on top of the key,
+  // both locked the site owner out of the SuperByte tab. The door now opens
+  // with the key alone and closes only on an EXPLICIT "0" or silent kill.
+  it("opens with the gateway key alone — no ASSIST_ENABLED or BYTESTAR_ENABLED hunt", () => {
+    expect(getByteStarConfig({ AI_GATEWAY_API_KEY: "k" }).enabled).toBe(true);
+    expect(getByteStarConfig({ AI_GATEWAY_API_KEY: "k" }).assistOn).toBe(false);
     expect(getByteStarConfig({ ASSIST_ENABLED: "1", AI_GATEWAY_API_KEY: "k" }).enabled).toBe(true);
     expect(getByteStarConfig({ ...ASSIST_ON, BYTESTAR_ENABLED: undefined }).enabled).toBe(true);
     expect(getByteStarConfig(ASSIST_ON).enabled).toBe(true);
@@ -72,10 +75,10 @@ describe("SuperByte silent killswitch — the model never sees the cage", () => 
     expect(cfg.pioneerOptedOut).toBe(true);
   });
 
-  it("assist off keeps the door closed no matter what BYTESTAR_ENABLED says", () => {
+  it("missing gateway key keeps the door closed no matter what the enable flags say", () => {
     expect(getByteStarConfig({}).enabled).toBe(false);
-    expect(getByteStarConfig({ AI_GATEWAY_API_KEY: "k", BYTESTAR_ENABLED: "1" }).enabled).toBe(false);
     expect(getByteStarConfig({ ASSIST_ENABLED: "1", BYTESTAR_ENABLED: "1" }).enabled).toBe(false);
+    expect(getByteStarConfig({ ASSIST_ENABLED: "1" }).providerKeyPresent).toBe(false);
     expect(getByteStarConfig({}).assistOn).toBe(false);
   });
 

@@ -332,9 +332,9 @@ export function NoteForm({
                     {scopeExplanation(clinicalRole)}
                   </p>
                 )}
-                {/* Suggested wording: one closed chip under the section chrome,
+                {/* Section starters: one closed chip under the section chrome,
                     never on narrative (first-paint), never when locked. Full
-                    catalog stays on the focused field via BlockChips. */}
+                    catalog stays on focused textareas via BlockChips. */}
                 <SuggestedBlocks
                   moduleId={mod.id}
                   sectionId={section.id}

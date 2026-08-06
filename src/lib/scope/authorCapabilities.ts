@@ -53,11 +53,26 @@ export interface AuthorCapabilityProfile {
   featuredPickIds: readonly string[];
   /** One-line structure cue shown near Quick picks. */
   structureCue: string;
+  /**
+   * Whether this licence reaches the model half of assist, or only the
+   * deterministic twin of each capability. See lib/assist/tier.ts.
+   *
+   * "unset" is deterministic, and that is a DELIBERATE break with the
+   * permissive default the rest of this file uses. Everywhere else, not knowing
+   * someone's licence means not restricting them — the accurate statement about
+   * an unrecorded account is "we have not been told", which is no grounds to
+   * refuse a clinician their own work. Here the calculus inverts: the thing
+   * being withheld is a model's opinion, the fallback still answers the
+   * question, and handing generated clinical prose to an account whose scope
+   * nobody has stated is the one direction that cannot be undone.
+   */
+  assistTier: "predictive" | "deterministic";
 }
 
 const PROFILES: Record<ClinicalRole, AuthorCapabilityProfile> = {
   unset: {
     role: "unset",
+    assistTier: "deterministic",
     label: CLINICAL_ROLE_LABEL.unset,
     licenseLevel: null,
     mayRecordJudgement: true,
@@ -70,6 +85,7 @@ const PROFILES: Record<ClinicalRole, AuthorCapabilityProfile> = {
   },
   hygienist: {
     role: "hygienist",
+    assistTier: "predictive",
     label: CLINICAL_ROLE_LABEL.hygienist,
     licenseLevel: "dental-hygienist",
     mayRecordJudgement: false,
@@ -82,6 +98,7 @@ const PROFILES: Record<ClinicalRole, AuthorCapabilityProfile> = {
   },
   assistant: {
     role: "assistant",
+    assistTier: "predictive",
     label: CLINICAL_ROLE_LABEL.assistant,
     licenseLevel: "registered-dental-assistant",
     mayRecordJudgement: false,
@@ -94,6 +111,7 @@ const PROFILES: Record<ClinicalRole, AuthorCapabilityProfile> = {
   },
   dentist: {
     role: "dentist",
+    assistTier: "predictive",
     label: CLINICAL_ROLE_LABEL.dentist,
     licenseLevel: "dentist",
     mayRecordJudgement: true,
@@ -113,6 +131,7 @@ const PROFILES: Record<ClinicalRole, AuthorCapabilityProfile> = {
   // does not read the absence of a stated licence as a dentist's.
   smilenotes: {
     role: "smilenotes",
+    assistTier: "predictive",
     label: CLINICAL_ROLE_LABEL.smilenotes,
     licenseLevel: null,
     mayRecordJudgement: true,

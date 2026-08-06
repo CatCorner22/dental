@@ -44,7 +44,7 @@ export function AppHeader({ user }: { user: SessionUser | null }) {
                   ...(meetsRole(user.role, "user")
                     ? [{ href: "/standardize", label: "Standardize" }]
                     : []),
-                  { href: "/history", label: "History" },
+                  { href: "/notes", label: "My notes" },
                   // Team Lead and above. Named "Digest" rather than "Quality"
                   // or "Review": those words describe judging people, and this
                   // page reports patterns and explicitly re-scopes anything

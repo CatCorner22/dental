@@ -100,7 +100,7 @@ for (const [engineName, engine] of ENGINES) {
       }
 
       // No horizontal overflow on the main pages.
-      for (const path of ["/", "/history", "/reference", "/standardize", "/wishes", "/store", "/training"]) {
+      for (const path of ["/", "/notes", "/notes?tab=filed", "/reference", "/standardize", "/wishes", "/store", "/training"]) {
         await page.goto(`${BASE}${path}`, { waitUntil: "networkidle", timeout: 30000 });
         await page.waitForTimeout(200);
         const over = await page.evaluate(

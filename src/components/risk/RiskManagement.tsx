@@ -73,7 +73,7 @@ const TOPICS: RiskTopic[] = [
       "The audit report and ruleset version are frozen with every filed note — never edit history, file an addendum."
     ],
     appLinks: [
-      { href: "/history", label: "Submission history (frozen records)" },
+      { href: "/notes?tab=filed", label: "Submission history (frozen records)" },
       { href: "/training", label: "Training arena" }
     ]
   },
@@ -124,7 +124,7 @@ const TOPICS: RiskTopic[] = [
       "Every audit-log row exists so that \"who did what, when\" is a lookup, not an argument."
     ],
     appLinks: [
-      { href: "/history", label: "Submission history" },
+      { href: "/notes?tab=filed", label: "Submission history" },
       { href: "/admin/audit", label: "Audit log (Team Lead+)" }
     ]
   },

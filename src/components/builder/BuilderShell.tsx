@@ -1,6 +1,7 @@
 "use client";
 
 import { canRecordClinicalJudgement, type ClinicalRole } from "@/lib/auth/clinicalRoles";
+import { checkFilingAuthority } from "@/lib/auth/approval";
 
 import {
   useCallback,
@@ -12,6 +13,7 @@ import {
   useState
 } from "react";
 import dynamic from "next/dynamic";
+import Link from "next/link";
 import { useRouter } from "next/navigation";
 import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { moduleVisibleInRail } from "@/lib/scope/authorCapabilities";
@@ -23,6 +25,7 @@ import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { submitBlockedReason } from "@/lib/status/submitBlocked";
+import { builderFinishLine } from "@/lib/status/finishLine";
 import { withOffice } from "@/lib/drafts/autoTitle";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
@@ -39,6 +42,11 @@ import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
 import { FastLane } from "./FastLane";
 import { PasteIntake } from "./PasteIntake";
+import {
+  packBlockIdsForVisit,
+  type PublishedPackLite
+} from "@/lib/packs/publishedForVisit";
+import { fieldKey } from "@/lib/schema/types";
 import { DictationUserContext } from "./fields/DictationField";
 import { AuditPanel } from "./AuditPanel";
 import { NoteReadback } from "./NoteReadback";
@@ -51,6 +59,7 @@ import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
+import { TransferDraftDialog } from "@/components/notes/TransferDraftDialog";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import type { UsaRegionId } from "@/lib/dictation/regional";
 
@@ -112,6 +121,7 @@ export function BuilderShell({
   initialSubmitted,
   initialSendFailed,
   canEdit,
+  canTransfer = false,
   autoFocusKey,
   edrName,
   username,
@@ -128,6 +138,11 @@ export function BuilderShell({
   initialSubmitted: boolean;
   initialSendFailed: boolean;
   canEdit: boolean;
+  /**
+   * System-role transfer power (Team Lead+). Distinct from clinical handoff
+   * copy: a hygienist is told to transfer, but only a lead can run the API.
+   */
+  canTransfer?: boolean;
   /**
    * `moduleId.fieldId` to land the cursor in on mount. The home page sets it;
    * /note/[id] does not, because arriving at a specific note from a link is a
@@ -198,6 +213,7 @@ export function BuilderShell({
   // the Sidekick into a reachable sheet on those screens instead; the desktop
   // sticky aside is untouched.
   const [showMobileAudit, setShowMobileAudit] = useState(false);
+  const [showTransfer, setShowTransfer] = useState(false);
   // Paste is an ENTRY mode — reached for once, at the start of a note, and
   // never again in it. As a permanent card above the fields it spent the top of
   // the busiest screen on something used at most once per note; behind a button
@@ -224,11 +240,42 @@ export function BuilderShell({
   const [resentNow, setResentNow] = useState(false);
   const [resending, setResending] = useState(false);
   const [moduleQuery, setModuleQuery] = useState("");
+  // Published practice packs (Team Lead Workflow) — boost Section starters and
+  // reorder Fast Lane featured picks (no pack-browser chip wall).
+  const [practicePacks, setPracticePacks] = useState<PublishedPackLite[]>([]);
+  useEffect(() => {
+    let cancelled = false;
+    void fetch("/api/workflow/packs?status=published")
+      .then((r) => (r.ok ? r.json() : { packs: [] }))
+      .then((d: { packs?: Array<Record<string, unknown>> }) => {
+        if (cancelled || !Array.isArray(d.packs)) return;
+        setPracticePacks(
+          d.packs.map((p) => ({
+            id: Number(p.id),
+            title: String(p.title ?? ""),
+            description: String(p.description ?? ""),
+            moduleIds: Array.isArray(p.moduleIds) ? (p.moduleIds as string[]) : [],
+            blockIds: Array.isArray(p.blockIds) ? (p.blockIds as string[]) : [],
+            authorRoles: Array.isArray(p.authorRoles) ? (p.authorRoles as string[]) : []
+          }))
+        );
+      })
+      .catch(() => {
+        if (!cancelled) setPracticePacks([]);
+      });
+    return () => {
+      cancelled = true;
+    };
+  }, []);
   // Add-ons beyond the always-on Universal Core. Drives the module rail's
   // summary line so a closed rail still says what the note covers.
   const extraModuleCount = state.selectedModuleIds.filter(
     (id) => !ALL_MODULES.find((m) => m.id === id)?.alwaysOn
   ).length;
+  const packBlockIds = useMemo(
+    () => packBlockIdsForVisit(practicePacks, clinicalRole, state.selectedModuleIds),
+    [practicePacks, clinicalRole, state.selectedModuleIds]
+  );
 
   // TYPING FIRST, GRADING A BEAT LATER.
   //
@@ -379,19 +426,50 @@ export function BuilderShell({
     () => Object.values(deferredState.values).some((v) => !isValueEmpty(v)),
     [deferredState.values]
   );
+  // Same rule the submit API enforces — surface it before the dialog fails.
+  // Computed before liveStatus so the Andon chip cannot say Ready while Submit
+  // is blocked for dentist filing (UIX-001).
+  const filing = useMemo(
+    () => checkFilingAuthority(clinicalRole, auditModules, deferredState),
+    [clinicalRole, auditModules, deferredState]
+  );
+
   const liveStatus = deriveDraftStatus({
     hasContent,
     counts: report.counts,
     phiStops: report.phiStops.length,
     submitted: resentNow || (initialSubmitted && !editedSinceLoad) || submittedNow,
     // A successful resend clears the failure — it wins over the stored flag.
-    lastSendFailed: !resentNow && ((initialSendFailed && !editedSinceLoad) || sendFailedNow)
+    lastSendFailed: !resentNow && ((initialSendFailed && !editedSinceLoad) || sendFailedNow),
+    filingAllowed: filing.allowed
   });
 
   // Why Submit is off. Pure and in lib/status so it can be tested — it named a
   // count of zero as a second task when a stop was the only blocker.
   const blockedReason = useMemo(() => submitBlockedReason(report.counts), [report.counts]);
-  const submitBlocked = !hasContent || !gates.emailAllowed || liveStatus === "submitted";
+  // Every reason Submit is off, in one place — including main's filing
+  // authority check, which is the one whose reason a person can least guess at
+  // ("a dentist must file this note"). The aria-disabled Submit reads this and
+  // so does the sentence beside it, so the two can never disagree about
+  // whether the button works.
+  const submitBlocked =
+    !hasContent || !gates.emailAllowed || !filing.allowed || liveStatus === "submitted";
+
+  // Scope cue (Assessment/Plan are dentist) vs transfer-required (filing blocked).
+  // Hygienists who may still file must not see "ownership must move" (UIX-002).
+  const showScopeCue =
+    canEdit &&
+    liveStatus !== "submitted" &&
+    !canRecordClinicalJudgement(clinicalRole);
+  const needsTransfer = canEdit && liveStatus !== "submitted" && !filing.allowed;
+  const topStop = report.findings.find((f) => f.severity === "S0");
+  const finishLine = builderFinishLine({
+    hasContent,
+    filingAllowed: filing.allowed,
+    exportAllowed: gates.exportAllowed,
+    emailAllowed: gates.emailAllowed,
+    blockedReason
+  });
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -610,7 +688,12 @@ export function BuilderShell({
   // Keyboard shortcuts, Curve-style: Ctrl/Cmd+S saves, Ctrl/Cmd+Enter submits.
   const submitEnabledRef = useRef(false);
   submitEnabledRef.current =
-    canEdit && hasContent && gates.emailAllowed && liveStatus !== "submitted" && !showSubmit;
+    canEdit &&
+    hasContent &&
+    gates.emailAllowed &&
+    filing.allowed &&
+    liveStatus !== "submitted" &&
+    !showSubmit;
   useEffect(() => {
     if (!canEdit) return;
     const onKey = (e: KeyboardEvent) => {
@@ -752,6 +835,49 @@ export function BuilderShell({
   // own fragment now, rendered in the aside on a wide screen and inline above
   // the form on a narrow one, and NOT inside the mobile sheet, which would put
   // two live copies on screen at once.
+  // THE CHART CHECK, RENDERED WHEREVER AN EXPORT CAN BE STARTED.
+  //
+  // Two surfaces offer Copy — the desktop sidekick and the phone's audit sheet
+  // — and both go through the same intent. A fragment rather than a duplicated
+  // block, because a confirmation that exists in two hand-maintained copies is
+  // a confirmation that will eventually say two different things, and the one
+  // it guards is "is this the right patient's chart".
+  const exportCheck = exportIntent && !copied && (
+    <div
+      id="builder-export-check"
+      className="mt-2 w-full rounded border border-brand-blue/40 bg-brand-blue/10 p-3"
+    >
+      <p className="mb-1 text-xs font-semibold text-brand-navy">
+        One check before this leaves Smile Notes
+      </p>
+      <label className="flex items-start gap-2 text-xs text-brand-navy">
+        <input
+          type="checkbox"
+          className="mt-0.5"
+          checked={pasteConfirmed}
+          onChange={(e) => setPasteConfirmed(e.target.checked)}
+        />
+        <span>
+          The correct chart is open in {edrName} and I matched <strong>two</strong> identifiers
+          there (for example name and date of birth). A perfect note in the wrong chart is a
+          records error this tool cannot see — only you can.
+        </span>
+      </label>
+      <div className="mt-2 flex flex-wrap gap-2">
+        <button
+          className="btn-complete text-xs"
+          onClick={() => void confirmExport()}
+          aria-disabled={!pasteConfirmed}
+        >
+          {EXPORT_ROUTES.find((r) => r.intent === exportIntent)?.verb ?? "Continue"}
+        </button>
+        <button className="btn-secondary text-xs" onClick={() => setExportIntent(null)}>
+          Not yet
+        </button>
+      </div>
+    </div>
+  );
+
   const advisors = (
     <div className="space-y-2">
       {/* Byte first: it is the deterministic advisor reading the note that was
@@ -770,7 +896,7 @@ export function BuilderShell({
           string as a banner ~180px below. Seven expressions of one note's state
           on one screen. The chip lives in the note bar; the panel says the rest. */}
       <div className="mb-3 flex items-center gap-3">
-        <ProgressRing counts={report.counts} />
+        <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
         <p className="min-w-0 flex-1 text-xs text-slate-500">
           {auditing
             ? "Checking the latest edit…"
@@ -782,10 +908,40 @@ export function BuilderShell({
       <div className="mb-3">
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
-      {/* Byte and SuperByte sit above the tabs on a wide screen — see the
-          `advisors` fragment. They are rendered by the aside, not here, so the
-          mobile sheet does not show a second live copy of the pair the writer
-          already has in front of them. */}
+      {/* Byte and SuperByte are rendered ONCE, by the aside — see the
+          `advisors` fragment and the layout note there. They are not in this
+          fragment, so the mobile sheet does not show a second live copy of the
+          pair the writer already has in front of them.
+
+          The jump links arriving from main stay, scoped to `lg`: on a wide
+          screen they scroll the aside to an advisor that is right above them,
+          and below `lg` this whole fragment only exists inside the audit sheet,
+          where a link pointing at something outside the sheet would scroll the
+          page behind it. slate-500 rather than the slate-400 this arrived with
+          — see the guard in src/lib/theme/contrast.test.ts. */}
+      <nav
+        aria-label="Advisor jump links"
+        className="mb-1.5 hidden flex-wrap items-center gap-1.5 text-[0.7rem] lg:flex"
+      >
+        <span className="text-slate-500">Jump to</span>
+        {(
+          [
+            ["advisor-byte", "Byte"],
+            ["advisor-superbyte", "SuperByte"]
+          ] as const
+        ).map(([id, label]) => (
+          <button
+            key={id}
+            type="button"
+            className="rounded-md bg-slate-100 px-2 py-0.5 font-medium text-slate-700 ring-1 ring-slate-200 hover:bg-slate-200/80"
+            onClick={() =>
+              document.getElementById(id)?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+            }
+          >
+            {label}
+          </button>
+        ))}
+      </nav>
       {/* flex-wrap, not a single row. Even at four, tabs do not reliably fit
           the aside at every desktop width, and without wrapping the last one
           pushed the whole PAGE two pixels wider than the viewport — which the
@@ -871,41 +1027,7 @@ export function BuilderShell({
             </button>
           );
         })}
-        {exportIntent && !copied && (
-          <div
-            id="builder-export-check"
-            className="mt-2 w-full rounded border border-brand-blue/40 bg-brand-blue/10 p-3"
-          >
-            <p className="mb-1 text-xs font-semibold text-brand-navy">
-              One check before this leaves Smile Notes
-            </p>
-            <label className="flex items-start gap-2 text-xs text-brand-navy">
-              <input
-                type="checkbox"
-                className="mt-0.5"
-                checked={pasteConfirmed}
-                onChange={(e) => setPasteConfirmed(e.target.checked)}
-              />
-              <span>
-                The correct chart is open in {edrName} and I matched <strong>two</strong>{" "}
-                identifiers there (for example name and date of birth). A perfect note in the
-                wrong chart is a records error this tool cannot see — only you can.
-              </span>
-            </label>
-            <div className="mt-2 flex flex-wrap gap-2">
-              <button
-                className="btn-complete text-xs"
-                onClick={() => void confirmExport()}
-                aria-disabled={!pasteConfirmed}
-              >
-                {EXPORT_ROUTES.find((r) => r.intent === exportIntent)?.verb ?? "Continue"}
-              </button>
-              <button className="btn-secondary text-xs" onClick={() => setExportIntent(null)}>
-                Not yet
-              </button>
-            </div>
-          </div>
-        )}
+        {exportCheck}
         <HelpTip label="About copy and download">
           Copy and download stay locked while any stop finding is open. A privacy stop can be
           attested; other stops must be fixed in the note. Required fields block Submit but not
@@ -944,8 +1066,122 @@ export function BuilderShell({
     </>
   );
 
+  // Tablet/phone sheet — audit + Copy first. Dumping the full desktop Sidekick
+  // (advisors always open + four tabs) into a max-w-lg dialog buried the finish
+  // reason under scroll (showtime residual #1).
+  const mobileSheetBody = (
+    <>
+      <div className="mb-3 flex items-center gap-3">
+        <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
+        <div className="min-w-0 flex-1">
+          <StatusChip status={liveStatus} />
+          <p className="mt-1 text-xs font-medium text-slate-800">{finishLine}</p>
+        </div>
+      </div>
+      <div className="mb-3 flex flex-wrap gap-2">
+        {/* The same two-identifier check the desktop panel asks for. This
+            button used to call the old one-press `copy`, which went straight to
+            the clipboard — so the phone, which is the screen most likely to be
+            in someone's hand beside the wrong chart, was the one surface with
+            no check on it at all. */}
+        <button
+          className={!hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"}
+          aria-disabled={!hasContent || !gates.exportAllowed}
+          aria-expanded={exportIntent === "copy"}
+          onClick={() => {
+            if (!hasContent || !gates.exportAllowed) return;
+            setPasteConfirmed(false);
+            setExportIntent((cur) => (cur === "copy" ? null : "copy"));
+          }}
+        >
+          {copied
+            ? "Copied — ready to paste ✓"
+            : !gates.exportAllowed && hasContent
+              ? "🔒 Copy locked"
+              : `Copy for ${edrName}…`}
+        </button>
+        {report.phiStops.length > 0 && !overrideActive && (
+          <button
+            type="button"
+            className="btn-secondary border-rose-300 text-rose-800"
+            onClick={() => {
+              setShowMobileAudit(false);
+              setShowOverride(true);
+            }}
+          >
+            Review privacy stop
+          </button>
+        )}
+      </div>
+      {exportCheck}
+      {hasContent && !gates.exportAllowed && (
+        <p className="mb-3 text-xs text-rose-800" role="status">
+          Copy locked until every stop is fixed
+          {report.phiStops.length > 0 && !overrideActive
+            ? " (or a privacy stop is attested)"
+            : ""}
+          . Findings are listed below.
+        </p>
+      )}
+      <AuditPanel
+        report={report}
+        onJump={() => setShowMobileAudit(false)}
+        started={hasContent}
+        attestations={resolutionsForNote.attested}
+        escalated={resolutionsForNote.escalated}
+        onAttest={canEdit ? recordAttestation : undefined}
+        onEscalate={canEdit ? escalateFinding : undefined}
+      />
+      <details className="mt-3 rounded-lg border border-slate-200 p-2">
+        <summary className="tap cursor-pointer text-xs font-semibold text-slate-700">
+          Byte & SuperByte
+        </summary>
+        <div className="mt-2 space-y-2">
+          <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
+          <ByteStarAdvisor text={markdown} />
+        </div>
+      </details>
+      <details className="mt-2 rounded-lg border border-slate-200 p-2">
+        <summary className="tap cursor-pointer text-xs font-semibold text-slate-700">
+          Chart · Prior · Preview
+        </summary>
+        <div className="mt-2 flex flex-wrap gap-1">
+          {([["chart", "Chart"], ["prior", "Prior"], ["preview", "Preview"]] as const).map(
+            ([t, label]) => {
+              // Desktop Sidekick defaults to "audit"; on mobile audit lives
+              // above this disclosure, so treat unset as Chart.
+              const pressed = t === "chart" ? tab === "chart" || tab === "audit" : tab === t;
+              return (
+                <button
+                  key={t}
+                  type="button"
+                  onClick={() => setTab(t)}
+                  aria-pressed={pressed}
+                  className={`tap rounded px-3 text-sm font-medium ${pressed ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-600"}`}
+                >
+                  {label}
+                </button>
+              );
+            }
+          )}
+        </div>
+        <div className="pane-40 mt-2">
+          {tab === "prior" ? (
+            <PriorNotes />
+          ) : tab === "preview" ? (
+            <pre className="whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs leading-relaxed text-slate-800">
+              {markdown}
+            </pre>
+          ) : (
+            <NoteReadback text={markdown} />
+          )}
+        </div>
+      </details>
+    </>
+  );
+
   return (
-    <div className="pb-24">
+    <div className={canEdit ? "pb-36 sm:pb-28" : undefined}>
       {/* Sticky patient-header-style bar — IDENTITY AND STATE ONLY.
           It used to also carry Earlier saves, Save, Submit and a HelpTip, which
           put the controls you reach for at the END of a note in the most
@@ -1112,37 +1348,98 @@ export function BuilderShell({
         </div>
       )}
 
-      {/* Mobile/tablet audit bar. Below `lg` the module rail, form, and
-          Sidekick stack vertically (see the flex-col wrapper just below),
-          which buried live audit feedback under the entire form — reaching
-          it meant scrolling past every field first. Placed here, above that
-          stack, it is visible without scrolling and opens the same Sidekick
-          content in a dismissible sheet. */}
-      <button
-        type="button"
-        onClick={() => setShowMobileAudit(true)}
-        className="tap mb-4 flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm lg:hidden"
-      >
-        <ProgressRing counts={report.counts} />
-        {/* NO SECOND STATUS CHIP.
-            The same "Review suggested" pill sat in the note bar sixty pixels
-            above this one, so a phone showed one note's state twice on one
-            screen — the duplication the sidekick's own comment calls out and
-            then reintroduced here. The ring carries the severity; this line
-            says what pressing it does. */}
-        <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">
-          {report.findings.length === 0
-            ? "Audit and preview"
-            : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — audit and preview`}
-        </span>
-        <span aria-hidden className="shrink-0 text-slate-400">▸</span>
-      </button>
+      {/* Mobile/tablet finish strip — one line for the blocker that matters,
+          then the audit sheet. Hygienists on a tablet should not archaeology
+          the Sidekick to learn why Copy/Submit is off.
 
-      {/* The advisors, on a narrow screen, in the flow of the page rather than
-          behind a tap. Above the form on purpose: both read the note as it is
-          typed, and help that arrives below eleven sections of fields arrives
-          after the writer has stopped looking for it. */}
-      <div className="mb-4 lg:hidden">{advisors}</div>
+          NO SECOND STATUS CHIP. The same "Review suggested" pill sits in the
+          note bar sixty pixels above this one, so a phone showed one note's
+          state twice on one screen — the duplication the sidekick's own comment
+          calls out and then reintroduced here. The ring carries the severity
+          and the stop line says what to do about it, which is more than a
+          repeated pill was saying. */}
+      <div className="mb-4 space-y-2 lg:hidden">
+        <button
+          type="button"
+          onClick={() => setShowMobileAudit(true)}
+          className="tap flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm"
+          aria-label="Open audit, copy, and preview"
+        >
+          <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
+          <span className="min-w-0 flex-1">
+            <span className="block truncate text-sm font-medium text-slate-800">
+              {topStop ? `Stop: ${topStop.message}` : finishLine}
+            </span>
+            <span className="mt-0.5 block truncate text-[0.65rem] text-slate-500">
+              {report.findings.length === 0
+                ? "Tap for audit and copy"
+                : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — tap for audit and copy`}
+            </span>
+          </span>
+          <span aria-hidden className="shrink-0 text-slate-400">
+            ▸
+          </span>
+        </button>
+      </div>
+
+      {/* One Andon card — coalesce unset-role + scope/transfer so the first
+          viewport is not a stack of amber slabs (swarm / Chicken Little). */}
+      {(clinicalRole === "unset" || showScopeCue || needsTransfer) && canEdit && liveStatus !== "submitted" && (
+        <div
+          className={`mb-4 rounded-xl px-3 py-2.5 text-sm ${
+            needsTransfer || clinicalRole === "unset"
+              ? "border border-amber-300 bg-amber-50 text-amber-950"
+              : "border border-slate-300 bg-slate-50 text-slate-800"
+          }`}
+          role="status"
+        >
+          {clinicalRole === "unset" ? (
+            <>
+              <p className="font-semibold">Clinical role is not recorded on this account</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                Scope locks and role templates stay open until a Team Lead sets Assistant,
+                Hygienist, or Dentist on this account in User admin.
+              </p>
+            </>
+          ) : needsTransfer ? (
+            <>
+              <p className="font-semibold">Dentist must file this note</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                {filing.message ??
+                  "This draft includes dentist-owned content or a dentist-level module. Transfer ownership so a dentist reviews and files under their license. Nothing you wrote is lost."}
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {canTransfer ? (
+                  <button
+                    type="button"
+                    className="btn-secondary text-xs"
+                    onClick={() => setShowTransfer(true)}
+                  >
+                    Transfer to dentist
+                  </button>
+                ) : (
+                  <p className="text-xs text-slate-700">
+                    Ask a Team Lead to transfer this note, or open{" "}
+                    <Link href="/notes" className="font-medium text-brand-blue underline">
+                      My notes
+                    </Link>{" "}
+                    if you have transfer rights on another account.
+                  </p>
+                )}
+              </div>
+            </>
+          ) : (
+            <>
+              <p className="font-semibold">Assessment and Plan stay with the dentist</p>
+              <p className="mt-1 text-xs leading-relaxed">
+                Record findings in Objective and Care delivered. Locked sections read as waiting
+                for the dentist — not as fields you left unfinished. You can file when this note
+                stays in your license scope.
+              </p>
+            </>
+          )}
+        </div>
+      )}
 
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Form. THE NOTE IS FIRST.
@@ -1165,11 +1462,24 @@ export function BuilderShell({
             clinicalRole={clinicalRole}
             canEdit={canEdit}
             visible={extraModuleCount === 0}
-            // Structure only — it does NOT rename the note. Drafts now name
-            // themselves date_Who_Where_time, and overwriting that with
-            // "Restoration" would trade four facts a person can search on for
-            // one they can already see in the modules the card just added.
+            practicePacks={practicePacks}
+            // Structure only — packs re-rank Section starters and featured
+            // pick order; they are not a second Fast Lane chip browser.
             onApply={(pick) => dispatch({ type: "applyModules", moduleIds: pick.moduleIds })}
+            onInsertMyBlock={(text) => {
+              // Prefer the focused prose control; fall back to Visit narrative.
+              const active = document.activeElement as HTMLElement | null;
+              const fieldRoot = active?.closest?.("[id^='field-']") as HTMLElement | null;
+              const id = fieldRoot?.id?.replace(/^field-/, "");
+              const key =
+                id && id.includes(".")
+                  ? id
+                  : fieldKey("universal-core", "narrative-subjective");
+              const cur = state.values[key];
+              const prior =
+                cur?.kind === "text" && cur.value.trim() !== "" ? `${cur.value.trim()}\n\n` : "";
+              setValue(key, { kind: "text", value: prior + text });
+            }}
           />
           <fieldset disabled={!canEdit} className="min-w-0">
             <DictationUserContext.Provider
@@ -1185,18 +1495,30 @@ export function BuilderShell({
               onChange={setValue}
               findingsByField={fieldFindings}
               clinicalRole={clinicalRole}
+              packBlockIds={packBlockIds}
             />
             </DictationUserContext.Provider>
           </fieldset>
         </section>
 
-        {/* Sidekick — desktop only below `lg`; the mobile bar + sheet above
-            covers the same ground where this would otherwise sit below the
-            entire form. */}
-        <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
+        {/* Sidekick — and, above `lg`, the advisors that lead it.
+            The rest of the sidekick is desktop-only: the mobile bar and sheet
+            above cover the same ground where this would otherwise sit below the
+            entire form.
+
+            THE ASIDE ITSELF IS NOT HIDDEN ANY MORE. It was `hidden lg:block`,
+            which is what made Byte and SuperByte `display: none` on a phone —
+            present in the markup, invisible on screen, skipped by a screen
+            reader. The obvious fix, a second inline copy for narrow screens,
+            stopped being available the moment main gave the advisors ids
+            (`advisor-byte`, `advisor-superbyte`) for its jump links: two copies
+            means two elements answering to one id, and getElementById picks
+            whichever comes first. So there is exactly ONE copy, and `order`
+            moves it — above the form on a phone, beside it on a desktop. */}
+        <aside className="order-first shrink-0 lg:order-none lg:w-[26rem]">
           <div className="card p-3 lg:sticky lg:top-20">
-            <div className="mb-3">{advisors}</div>
-            {sidekickBody}
+            <div className="lg:mb-3">{advisors}</div>
+            <div className="hidden lg:block">{sidekickBody}</div>
           </div>
         </aside>
       </div>
@@ -1213,100 +1535,83 @@ export function BuilderShell({
           old banner deliberately skipped, leaving the disabled control with no
           on-screen explanation at all. */}
       {canEdit && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2 backdrop-blur">
-          {/* TWO ROWS ON A PHONE, AND THE SAME TWO EVERY TIME.
-              This wrapped to three unpredictable rows at 390px — four controls
-              and a sentence sharing one flex-wrap — which pinned about a third
-              of the viewport to the bottom of a screen already holding a
-              keyboard. The sentence gets its own full-width row below `sm` and
-              rejoins the controls above it, so the height of the bar is a
-              number rather than a function of the message currently in it. */}
-          <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
-            {/* ONE WAY IN, NOT TWO.
-                "Paste a note" and "Earlier saves" were two two-word labels in
-                the corner of the screen, and neither said what pressing it did:
-                the first sounded like it pasted something INTO the note from
-                somewhere, and the second could as easily have meant other
-                people's notes as older copies of this one. Both are named for
-                their outcome now — and only ever one of them is offered,
-                because they belong to opposite ends of a note's life. There is
-                no earlier version of a note nobody has written yet, and nobody
-                starts from pasted text when the note is already written. */}
-            {/* Two labels, one control. The long one is the one worth reading
-                and it is what a desktop gets; at 390px the same three words
-                too many pushed Save and Submit onto rows of their own and the
-                bar grew to 117px of a 844px screen. The short form still names
-                the outcome rather than the mechanism, which was the point of
-                renaming these in the first place. */}
-            {hasContent ? (
-              <button
-                type="button"
-                className="btn-secondary shrink-0 text-xs"
-                title="Go back to an automatically saved earlier version of THIS note. Nothing is lost — the current version is kept too."
-                onClick={() => void openRevisions()}
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur">
+          {/* Finish cluster first — Gestalt: reason + Save + Submit is the job.
+              Entry tools (paste / earlier version) sit in a disclosure so they
+              never compete with the finish control on a tablet (UIX-004). That
+              also fixes what this branch fixed a different way: four controls
+              and a sentence sharing one flex-wrap reflowed into four rows and
+              117px of an 844px screen. Two rows now, and the same two every
+              time — the height of the bar is a number rather than a function of
+              the message currently in it. */}
+          <div className="mx-auto flex max-w-7xl flex-col gap-1.5">
+            <div className="flex flex-wrap items-center gap-2">
+              <p
+                className="min-w-0 flex-1 text-xs text-slate-600"
+                id="builder-submit-blocked"
+                // Focusable only by script, so pressing a blocked Submit lands
+                // the cursor on the sentence that says why. Never in the tab
+                // order — a paragraph is not a stop on the way to anywhere.
+                tabIndex={-1}
               >
-                <span className="sm:hidden">Earlier versions</span>
-                <span className="hidden sm:inline">Undo back to an earlier version</span>
+                {liveStatus === "submitted"
+                  ? "Filed. Edit the note to submit again."
+                  : !filing.allowed
+                    ? "A dentist must file this note — transfer ownership first."
+                    : finishLine}
+              </p>
+              <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>
+                Save
               </button>
-            ) : (
+              {/* NOT `disabled`, ON PURPOSE.
+                  A natively disabled button is removed from the tab order and
+                  skipped by screen readers, so the one control that ends the
+                  task simply did not exist for anybody driving this from a
+                  keyboard — and neither did the sentence saying why, because
+                  aria-describedby is only read out when the element it
+                  describes can be reached. `aria-disabled` keeps it focusable
+                  and announced as unavailable, which is the whole point of
+                  having written the reason down. Pressing it while blocked
+                  moves the cursor to that reason rather than doing nothing.
+                  globals.css carries the matching look. */}
               <button
-                type="button"
-                className="btn-secondary shrink-0 text-xs"
-                onClick={() => setShowPaste(true)}
-                title="Already written this note somewhere else? Paste the text here and Smile Notes will sort it into sections for you to place."
+                className="btn-primary"
+                aria-disabled={submitBlocked}
+                aria-describedby="builder-submit-blocked"
+                onClick={() => {
+                  if (submitBlocked) {
+                    document.getElementById("builder-submit-blocked")?.focus();
+                    return;
+                  }
+                  void trySubmit();
+                }}
               >
-                <span className="sm:hidden">Paste my text</span>
-                <span className="hidden sm:inline">Start from text I wrote</span>
+                Submit
               </button>
-            )}
-            <span aria-hidden className="hidden h-5 w-px bg-slate-200 sm:block" />
-            <p
-              className="order-first w-full min-w-0 text-xs text-slate-600 sm:order-none sm:w-auto sm:flex-1"
-              id="builder-submit-blocked"
-              // Focusable only by script, so pressing a blocked Submit lands
-              // the cursor on the sentence that says why. Never in the tab
-              // order — a paragraph is not a stop on the way to anywhere.
-              tabIndex={-1}
-            >
-              {liveStatus === "submitted"
-                ? "Filed. Edit the note to submit again."
-                : !hasContent
-                  ? "Write something and Submit turns on."
-                  : gates.emailAllowed
-                    ? "Ready to file."
-                    : blockedReason}
-            </p>
-            <button
-              className="btn-secondary ml-auto shrink-0 sm:ml-0"
-              title="Save now (Ctrl+S)"
-              onClick={() => void flush()}
-            >
-              Save
-            </button>
-            {/* NOT `disabled`, ON PURPOSE.
-                A natively disabled button is removed from the tab order and
-                skipped by screen readers, so the one control that ends the task
-                simply did not exist for anybody driving this from a keyboard —
-                and neither did the sentence saying why, because
-                aria-describedby is only read out when the element it describes
-                can be reached. `aria-disabled` keeps it focusable and announced
-                as unavailable, which is the whole point of having written the
-                reason down. Pressing it while blocked moves the cursor to that
-                reason rather than doing nothing. */}
-            <button
-              className="btn-primary shrink-0"
-              aria-disabled={submitBlocked}
-              aria-describedby="builder-submit-blocked"
-              onClick={() => {
-                if (submitBlocked) {
-                  document.getElementById("builder-submit-blocked")?.focus();
-                  return;
-                }
-                void trySubmit();
-              }}
-            >
-              Submit
-            </button>
+            </div>
+            <details className="group">
+              <summary className="tap cursor-pointer list-none py-1 text-xs font-medium text-slate-500 underline decoration-dotted underline-offset-2 marker:content-none [&::-webkit-details-marker]:hidden">
+                Ways into this note
+              </summary>
+              <div className="mt-1.5 flex flex-wrap gap-2">
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  onClick={() => setShowPaste(true)}
+                  title="Already written this note somewhere else? Paste the text here and Smile Notes will sort it into sections for you to place."
+                >
+                  Start from text I wrote
+                </button>
+                <button
+                  type="button"
+                  className="btn-secondary text-xs"
+                  title="Go back to an automatically saved earlier version of THIS note. Nothing is lost — the current version is kept too."
+                  onClick={() => void openRevisions()}
+                >
+                  Undo back to an earlier version
+                </button>
+              </div>
+            </details>
           </div>
         </div>
       )}
@@ -1368,7 +1673,12 @@ export function BuilderShell({
 
       {toast && (
         <div
-          className={`fixed inset-x-4 bottom-4 z-40 mx-auto w-fit max-w-md rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
+          className={`fixed inset-x-4 z-40 mx-auto w-fit max-w-md rounded-lg border px-4 py-2 text-sm font-medium shadow-lg ${
+            canEdit
+              ? // Clear the finish bar even when "Ways into this note" is open.
+                "bottom-[calc(8.5rem+env(safe-area-inset-bottom))] sm:bottom-[calc(7.5rem+env(safe-area-inset-bottom))]"
+              : "bottom-4"
+          } ${
             toast.tone === "error"
               ? "border-rose-300 bg-rose-50 text-rose-900"
               : "border-green-300 bg-green-50 text-green-900"
@@ -1380,8 +1690,8 @@ export function BuilderShell({
       )}
 
       {showMobileAudit && (
-        <Dialog title="Audit & preview" onClose={() => setShowMobileAudit(false)}>
-          {sidekickBody}
+        <Dialog title="Audit & copy" onClose={() => setShowMobileAudit(false)}>
+          {mobileSheetBody}
         </Dialog>
       )}
       {showOverride && (
@@ -1468,6 +1778,18 @@ export function BuilderShell({
           }}
           onStartAnother={() => void startAnother()}
           onGoToDashboard={() => router.push("/")}
+        />
+      )}
+      {showTransfer && (
+        <TransferDraftDialog
+          draftId={draftId}
+          draftTitle={title}
+          onClose={() => setShowTransfer(false)}
+          onDone={() => {
+            setShowTransfer(false);
+            router.push("/notes");
+            router.refresh();
+          }}
         />
       )}
     </div>

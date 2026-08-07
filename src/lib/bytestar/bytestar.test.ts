@@ -23,7 +23,7 @@ const ASSIST_ON = {
 
 describe("one-way feedback — SuperByte → staff, never staff → SuperByte", () => {
   it("states the direction plainly in the UI notice", () => {
-    expect(BYTESTAR_ONE_WAY_NOTICE.toLowerCase()).toContain("gives you");
+    expect(BYTESTAR_ONE_WAY_NOTICE.toLowerCase()).toMatch(/observe/);
     expect(BYTESTAR_ONE_WAY_NOTICE.toLowerCase()).toContain("cannot");
     expect(BYTESTAR_ONE_WAY_NOTICE.toLowerCase()).toMatch(/cannot.*feedback/);
   });

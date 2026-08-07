@@ -31,6 +31,8 @@ export const metadata = { title: "Documentation digest" };
 // clears the gates — which is the exact outcome this product exists to prevent.
 
 const PERIOD_DAYS = 30;
+/** Hard cap: each row carries full note + audit JSON; unbounded loads OOM isolates. */
+const DIGEST_ROW_CAP = 500;
 
 export default async function DigestPage() {
   const user = await freshSessionUser();
@@ -39,7 +41,8 @@ export default async function DigestPage() {
 
   const since = new Date(Date.now() - PERIOD_DAYS * 24 * 60 * 60 * 1000);
   const db = await getDb();
-  const rows = await listSubmissionsForDigest(db, since);
+  const rows = await listSubmissionsForDigest(db, since, DIGEST_ROW_CAP);
+  const digestTruncated = rows.length >= DIGEST_ROW_CAP;
 
   const notes: FiledNote[] = rows.map((row) => ({
     submissionId: row.id,
@@ -96,6 +99,12 @@ export default async function DigestPage() {
         {digest.authorsReviewed === 1 ? "person" : "people"}. Built from notes already on file — nothing
         extra is recorded to produce this.
       </p>
+      {digestTruncated ? (
+        <p className="mt-2 max-w-3xl text-xs text-amber-900/80">
+          Showing the {DIGEST_ROW_CAP} most recent filings in this window. Older notes in the period are
+          omitted so the digest stays within a safe memory budget.
+        </p>
+      ) : null}
       <p className="mt-2 max-w-3xl text-xs text-slate-600">
         Patterns over a period, never a verdict on one note, and never a score. Anything most of the
         practice would be flagged for is reported as a finding about the tool or the template instead,

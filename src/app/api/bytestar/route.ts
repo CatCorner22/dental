@@ -5,8 +5,11 @@ import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { checkThrottle, recordFailure } from "@/lib/auth/throttle";
 import { logAction } from "@/lib/db/repo/auditLog";
+import { runPhiRule } from "@/lib/audit/rules/phi";
+import { scanPhiForProvider } from "@/lib/audit/rules/phi-secondary";
 import { BYTESTAR_UNAVAILABLE, getByteStarConfig } from "@/lib/bytestar/config";
-import { MODEL_ESCAPE_ORIGIN } from "@/lib/bytestar/escape";
+import { detectEscape, MODEL_ESCAPE_ORIGIN } from "@/lib/bytestar/escape";
+import { measureBenchmarks } from "@/lib/bytestar/benchmarks";
 import { ladderStageForEscape } from "@/lib/bytestar/ladder";
 import { encodeByteStarDetail } from "@/lib/bytestar/log";
 import { BYTESTAR_PROMPT_VERSION } from "@/lib/bytestar/prompts";
@@ -18,10 +21,14 @@ import { isForbiddenUserAction } from "@/lib/bytestar/one-way";
 import { RULESET_VERSION } from "@/lib/version";
 
 export const runtime = "nodejs";
+/** Vercel: hard stop hung provider calls before they pin concurrency. */
+export const maxDuration = 30;
 
 const MAX_INPUT = 20000;
 /** Auto-observe cadence is debounced client-side; cap server runs per user. */
 const FREE_RUNS = 60;
+/** Provider call budget — shorter than maxDuration so the route can log and return. */
+const PROVIDER_TIMEOUT_MS = 20_000;
 
 export async function GET(): Promise<Response> {
   const config = getByteStarConfig();
@@ -76,6 +83,8 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({ error: BYTESTAR_UNAVAILABLE, code: "unavailable" }, { status: 503 });
   }
 
+  const providerSignal = AbortSignal.timeout(PROVIDER_TIMEOUT_MS);
+
   // Team Lead may run the frozen canary eval against the live model. The
   // result is a rail-survival report — a drift detector with a denominator —
   // logged as one transparent bytestar.eval row (pass count, yield, codes).
@@ -91,7 +100,8 @@ export async function POST(req: Request): Promise<Response> {
           system,
           prompt,
           schema: jsonSchema(schema),
-          schemaName
+          schemaName,
+          abortSignal: providerSignal
         });
         evalTokens += (res.usage?.inputTokens ?? 0) + (res.usage?.outputTokens ?? 0);
         return res.object;
@@ -125,6 +135,53 @@ export async function POST(req: Request): Promise<Response> {
     );
   }
 
+  const input = raw.slice(0, MAX_INPUT);
+  const benchmarksEarly = measureBenchmarks(input);
+
+  // PHI + escape before the meter: a blocked draft must not burn FREE_RUNS.
+  // Same gates runByteStar applies; checked here so we can refuse without charging.
+  const primaryPhi = runPhiRule(input).filter((f) => f.category === "phi");
+  const phi = scanPhiForProvider(input, primaryPhi);
+  if (phi.length > 0) {
+    const actor = {
+      actorId: guard.user.id,
+      actorName: `${guard.user.displayName} (${guard.user.username})`
+    };
+    await logAction(db, {
+      ...actor,
+      action: "bytestar.refused",
+      detail: `phi-blocked v${BYTESTAR_PROMPT_VERSION} ruleset ${RULESET_VERSION} 0 tokens [${phi.map((f) => f.ruleId).join(", ")}]`
+    });
+    return Response.json({
+      observations: [],
+      benchmarks: benchmarksEarly,
+      code: "phi-blocked",
+      unavailable: true
+    });
+  }
+
+  const inputEscapeHits = detectEscape(input);
+  if (inputEscapeHits.length > 0) {
+    await logAction(db, {
+      actorId: guard.user.id,
+      actorName: `${guard.user.displayName} (${guard.user.username})`,
+      action: "bytestar.escape",
+      detail: `${encodeByteStarDetail({
+        outcome: "escape-input",
+        promptVersion: BYTESTAR_PROMPT_VERSION,
+        model: config.model,
+        tokens: 0,
+        codes: inputEscapeHits.map((hit) => hit.signal)
+      })} origin=user`
+    });
+    return Response.json({
+      observations: [],
+      benchmarks: benchmarksEarly,
+      code: "escape-input",
+      unavailable: true
+    });
+  }
+
   const now = new Date();
   const key = `bytestar:${guard.user.id}`;
   const meter = await checkThrottle(db, key, now);
@@ -150,7 +207,8 @@ export async function POST(req: Request): Promise<Response> {
         system,
         prompt,
         schema: jsonSchema(schema),
-        schemaName
+        schemaName,
+        abortSignal: providerSignal
       });
       usedTokens += (res.usage?.inputTokens ?? 0) + (res.usage?.outputTokens ?? 0);
       return res.object;

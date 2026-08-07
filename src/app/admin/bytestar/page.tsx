@@ -56,10 +56,37 @@ export default async function ByteStarMonitorPage() {
         log: codes, versions, and token counts only. Team Lead and above.
       </p>
 
+      {/* In-page jump nav — long log pages bury the ladder and refusals.
+          Same pattern as builder advisor jump links: scroll, never hide. */}
+      <nav
+        aria-label="SuperByte monitor sections"
+        className="mt-4 flex flex-wrap gap-1.5 text-xs"
+      >
+        {(
+          [
+            ["bytestar-door", "Deployment"],
+            ["bytestar-ladder", "Ladder"],
+            ["bytestar-outcomes", "Outcomes"],
+            ["bytestar-evals", "Evals"],
+            ["bytestar-drift", "Drift log"],
+            ["bytestar-escapes", "Escapes"],
+            ["bytestar-refused", "Refusals"]
+          ] as const
+        ).map(([id, label]) => (
+          <a
+            key={id}
+            href={`#${id}`}
+            className="rounded-md bg-amber-50 px-2 py-1 font-medium text-amber-950 ring-1 ring-amber-200 hover:bg-amber-100"
+          >
+            {label}
+          </a>
+        ))}
+      </nav>
+
       <ByteStarPermaClear />
       {config.enabled && !permaKilled && <ByteStarEvalRunner />}
 
-      <section className="mt-6 grid gap-3 sm:grid-cols-2 lg:grid-cols-4">
+      <section id="bytestar-door" className="mt-6 grid scroll-mt-4 gap-3 sm:grid-cols-2 lg:grid-cols-4">
         <Stat
           label="Deployment door"
           value={config.enabled && !permaKilled ? "Open" : "Closed"}
@@ -93,7 +120,7 @@ export default async function ByteStarMonitorPage() {
         />
       </section>
 
-      <section className="mt-8">
+      <section id="bytestar-ladder" className="mt-8 scroll-mt-4">
         <h2 className="section-title">Ladder stages (all time)</h2>
         <ul className="mt-2 flex flex-wrap gap-2 text-sm">
           {Object.keys(ladderStages).length === 0 ? (
@@ -108,7 +135,7 @@ export default async function ByteStarMonitorPage() {
         </ul>
       </section>
 
-      <section className="mt-8">
+      <section id="bytestar-outcomes" className="mt-8 scroll-mt-4">
         <h2 className="section-title">Outcome mix (recent drift rows)</h2>
         <ul className="mt-2 flex flex-wrap gap-2 text-sm">
           {Object.keys(outcomes).length === 0 ? (
@@ -123,11 +150,15 @@ export default async function ByteStarMonitorPage() {
         </ul>
       </section>
 
-      <LogTable title="Eval history — pass rate over time is the drift signal" rows={evals} />
-      <LogTable title="Drift log" rows={drift} />
-      <LogTable title="Model escape ladder" rows={escapes} />
+      <LogTable
+        id="bytestar-evals"
+        title="Eval history — pass rate over time is the drift signal"
+        rows={evals}
+      />
+      <LogTable id="bytestar-drift" title="Drift log" rows={drift} />
+      <LogTable id="bytestar-escapes" title="Model escape ladder" rows={escapes} />
       <LogTable title="Perma-kill events" rows={permaKills} />
-      <LogTable title="Verifier / PHI refusals" rows={refused} />
+      <LogTable id="bytestar-refused" title="Verifier / PHI refusals" rows={refused} />
     </main>
   );
 }
@@ -143,14 +174,16 @@ function Stat({ label, value, note }: { label: string; value: string; note: stri
 }
 
 function LogTable({
+  id,
   title,
   rows
 }: {
+  id?: string;
   title: string;
   rows: { id: number; at: Date; actorName: string | null; detail: string | null }[];
 }) {
   return (
-    <section className="mt-8">
+    <section id={id} className="mt-8 scroll-mt-4">
       <h2 className="section-title">{title}</h2>
       {rows.length === 0 ? (
         <p className="mt-2 text-sm text-slate-500">None in the recent window.</p>

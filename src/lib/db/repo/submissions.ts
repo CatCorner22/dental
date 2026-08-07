@@ -169,7 +169,8 @@ const submissionSummaryColumns = {
 export async function listSubmissionsForDigest(
   db: Db,
   sinceUtc: Date,
-  limit = 2000
+  /** Cap payload size — full noteMarkdown + auditReport per row. */
+  limit = 500
 ): Promise<
   Array<{
     id: number;

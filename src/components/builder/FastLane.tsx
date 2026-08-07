@@ -4,45 +4,66 @@ import { useMemo } from "react";
 import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { authorCapabilities } from "@/lib/scope/authorCapabilities";
 import { featuredPicksForRole, type QuickPick } from "@/lib/presets/quickPicks";
+import {
+  orderPicksByPackModules,
+  packPreferredModuleIds,
+  type PublishedPackLite
+} from "@/lib/packs/publishedForVisit";
+import { PinnedMyBlocks } from "./PinnedMyBlocks";
 
 /**
  * Progressive Fast Lane — structure scaffolds on the open note.
  *
- * Home is already the note (cursor in the first clinical field). Featured
- * visit cards therefore do NOT create a second draft or reintroduce the old
- * dashboard. They only add the right add-on modules (and a title if still
- * "Untitled note") so the writer skips hunting the module rail.
- *
- * Structure only. Never field values. Never clinical assertions.
+ * Published packs re-order featured picks and boost Section starters elsewhere.
+ * They do NOT add a pack-browser chip wall here. My blocks is one closed chip
+ * in this strip — not a second card.
  */
 export function FastLane({
   clinicalRole,
   canEdit,
   visible,
-  onApply
+  practicePacks = [],
+  onApply,
+  onInsertMyBlock
 }: {
   clinicalRole: ClinicalRole;
   canEdit: boolean;
   /** Show only when the note is still Core-only (no add-ons yet). */
   visible: boolean;
+  practicePacks?: readonly PublishedPackLite[];
   onApply: (pick: QuickPick) => void;
+  onInsertMyBlock: (text: string) => void;
 }) {
-  const picks = useMemo(() => featuredPicksForRole(clinicalRole), [clinicalRole]);
+  const preferredModules = useMemo(
+    () => packPreferredModuleIds(practicePacks, clinicalRole),
+    [practicePacks, clinicalRole]
+  );
+  const picks = useMemo(
+    () => orderPicksByPackModules(featuredPicksForRole(clinicalRole), preferredModules),
+    [clinicalRole, preferredModules]
+  );
   const cue = authorCapabilities(clinicalRole).structureCue;
 
-  if (!canEdit || !visible || picks.length === 0) return null;
+  if (!canEdit) return null;
+
+  // After Fast Lane applies, keep My blocks as a lone chip (no empty Fast Lane card).
+  if (!visible) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
+      </div>
+    );
+  }
+
+  if (picks.length === 0) {
+    return (
+      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
+        <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
+      </div>
+    );
+  }
 
   return (
-    // ONE ROW, NOT FOUR CARDS.
-    //
-    // This shipped as a 2x2 grid of cards with a heading, a strapline, a
-    // description per card and a call to action per card — about 290px sitting
-    // between the top of the note and the first box you can type in, on every
-    // new note. The whole point of the home page is that the cursor is already
-    // in a clinical field; a scaffold picker is a convenience for the minority
-    // of notes that want an add-on, and it was charging every note for it.
-    //
-    // Same picks, same one tap, same text in the tooltip. About 60px.
     <section className="card p-2.5" aria-label="Fast Lane visit scaffolds">
       <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
         <span className="eyebrow shrink-0">Fast Lane</span>
@@ -51,14 +72,20 @@ export function FastLane({
             key={p.id}
             type="button"
             className="chip"
-            title={`${p.description} — adds the usual modules for this visit. Nothing clinical is filled in; you still write the findings.`}
+            title={`${p.description} — adds modules only. Nothing clinical is filled in. Open Care delivered or Handoff for Section starters.`}
             onClick={() => onApply(p)}
           >
             {p.label}
           </button>
         ))}
-        <span className="basis-full text-[0.7rem] leading-snug text-slate-500">{cue}</span>
+        <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
+        <span className="sr-only">{cue}</span>
       </div>
+      {/* Visible on touch — title= never appears on a tablet finger (UIX-006). */}
+      <p className="mt-1.5 text-[0.65rem] leading-snug text-slate-500">
+        Adds visit modules only — nothing clinical is filled in. Open Care delivered or Handoff for
+        Section starters.
+      </p>
     </section>
   );
 }

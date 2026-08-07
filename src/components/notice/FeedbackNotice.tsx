@@ -4,22 +4,19 @@ import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
 
-// Shown once per sign-in. The login form clears this key as it submits, so a
-// genuine sign-in always brings the reminder back; within one session, moving
-// between pages does not nag.
-const SEEN_KEY = "dnb.feedback.seen";
+// Shown once per browser until dismissed. Login used to clear a sessionStorage
+// key on every sign-in, which re-armed a modal gauntlet before the note —
+// hostile for shared-clinic go-live testing. localStorage keeps the reminder
+// available without forcing it every shift change.
+const SEEN_KEY = "dnb.feedback.seen.v1";
 
+/** No-op retained so LoginForm's call site stays stable across deploys. */
 export function markFeedbackNoticeUnseen(): void {
-  try {
-    sessionStorage.removeItem(SEEN_KEY);
-  } catch {
-    // Private-mode Safari and locked-down enterprise profiles can throw on
-    // storage access. A reminder is not worth breaking sign-in over.
-  }
+  // Intentionally empty: re-arming every login fought chairside first paint.
 }
 
 export function FeedbackNotice({ enabled }: { enabled: boolean }) {
-  // Starts closed and opens from an effect: sessionStorage does not exist
+  // Starts closed and opens from an effect: localStorage does not exist
   // during SSR, so deciding this at render time would produce markup the
   // client disagrees with and React would throw a hydration mismatch.
   const [open, setOpen] = useState(false);
@@ -28,7 +25,7 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
     if (!enabled) return;
     let seen = false;
     try {
-      seen = sessionStorage.getItem(SEEN_KEY) === "1";
+      seen = localStorage.getItem(SEEN_KEY) === "1";
     } catch {
       // Storage unavailable — show it. Reminding twice is a smaller failure
       // than never reminding at all.
@@ -38,7 +35,7 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
 
   const dismiss = () => {
     try {
-      sessionStorage.setItem(SEEN_KEY, "1");
+      localStorage.setItem(SEEN_KEY, "1");
     } catch {
       /* see above — dismissal still works for this view */
     }
@@ -92,8 +89,10 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
       </div>
 
       <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        {/* Optional path — dismiss without mailing. Same once-per-browser mark
+            as Got it so go-live testers are not trapped in a support gauntlet. */}
         <button type="button" className="btn-secondary" onClick={dismiss}>
-          Got it
+          Not now
         </button>
         <a href={feedbackMailto()} className="btn-primary text-center" onClick={dismiss}>
           Send feedback

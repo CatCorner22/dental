@@ -8,12 +8,21 @@ import { measureBenchmarks } from "@/lib/bytestar/benchmarks";
 import { instrumentObservations, type InstrumentObservation } from "@/lib/bytestar/instrument";
 import { BYTESTAR_DISCLAIMER } from "@/lib/bytestar/prefs";
 import { BYTESTAR_ONE_WAY_NOTICE } from "@/lib/bytestar/one-way";
+import {
+  superbyteLayerLabel,
+  superbyteLiveStatus,
+  type SuperByteDeployStatus
+} from "@/lib/bytestar/liveStatus";
 import { TrendSpark, type TrendSample } from "./TrendSpark";
 import { HelpTip } from "@/components/ui/HelpTip";
 
 // BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: SuperByte gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
 // back. Pioneer model when enabled; deterministic instrument readings always.
+//
+// Nav UX (2026 HF Chat UI / MessageUpdate / RouterMetadata patterns, adapted):
+// staff pace readings (no hostile auto-rotate), see present-tense status, see
+// which layer spoke, and open drift rails on demand. Never a chat box.
 
 interface Observation {
   kind: string;
@@ -26,15 +35,27 @@ interface Observation {
   tentative?: boolean;
 }
 
-type DeployStatus = "unknown" | "off" | "on";
-
 const OBSERVE_DEBOUNCE_MS = 1800;
-const ROTATE_MS = 8000;
 const MIN_CHARS = 24;
+
+function layerToneClass(tone: ReturnType<typeof superbyteLayerLabel>["tone"]): string {
+  switch (tone) {
+    case "pioneer":
+      return "bg-amber-100 text-amber-950 ring-amber-300";
+    case "instrument":
+      return "bg-teal-50 text-teal-900 ring-teal-300";
+    case "reading":
+      return "bg-slate-100 text-slate-700 ring-slate-300";
+    case "dark":
+      return "bg-slate-200 text-slate-700 ring-slate-400";
+    default:
+      return "bg-white text-slate-600 ring-slate-200";
+  }
+}
 
 export function ByteStarAdvisor({ text }: { text: string }) {
   const deferred = useDeferredValue(text);
-  const [deploy, setDeploy] = useState<DeployStatus>("unknown");
+  const [deploy, setDeploy] = useState<SuperByteDeployStatus>("unknown");
   const [pioneerObs, setPioneerObs] = useState<Observation[]>([]);
   const [tipIndex, setTipIndex] = useState(0);
   const [observing, setObserving] = useState(false);
@@ -81,7 +102,8 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         if (!cancelled) setDeploy(d.enabled ? "on" : "off");
       })
       .catch(() => {
-        if (!cancelled) setDeploy("off");
+        // Network/DB failure is not "feature off" — keep gauges honest.
+        if (!cancelled) setDeploy("unreachable");
       });
     return () => {
       cancelled = true;
@@ -133,21 +155,24 @@ export function ByteStarAdvisor({ text }: { text: string }) {
     return () => window.clearTimeout(t);
   }, [deferred, deploy]);
 
-  useEffect(() => {
-    if (observations.length <= 1) return;
-    const id = window.setInterval(() => {
-      setTipIndex((i) => (i + 1) % observations.length);
-    }, ROTATE_MS);
-    return () => window.clearInterval(id);
-  }, [observations.length]);
-
   const tip = observations[Math.min(tipIndex, Math.max(0, observations.length - 1))];
   const feedbackSource = pioneerObs.length > 0 ? "pioneer" : instrument.length > 0 ? "instrument" : null;
+  const liveStatus = superbyteLiveStatus({
+    draftLen: deferred.trim().length,
+    minChars: MIN_CHARS,
+    deploy,
+    observing,
+    feedbackSource,
+    observationCount: observations.length
+  });
+  const layer = superbyteLayerLabel(feedbackSource, observing, deploy);
+  const onCoursePct = Math.round(benchmarks.onCourse * 100);
 
   return (
     <section
+      id="advisor-superbyte"
       aria-label="SuperByte observational pioneer"
-      className="bytestar-panel select-none rounded-xl bg-gradient-to-br from-amber-50/90 via-white to-teal-50/40 p-3 ring-1 ring-amber-300/60"
+      className="bytestar-panel select-none scroll-mt-2 rounded-xl bg-gradient-to-br from-amber-50/90 via-white to-teal-50/40 p-3 ring-1 ring-amber-300/60"
       onCopy={(e) => e.preventDefault()}
       onCut={(e) => e.preventDefault()}
       onContextMenu={(e) => e.preventDefault()}
@@ -162,8 +187,14 @@ export function ByteStarAdvisor({ text }: { text: string }) {
         <div className="min-w-0 flex-1">
           <div className="flex items-start justify-between gap-2">
             <div>
-              <div className="flex items-center gap-1.5">
+              <div className="flex flex-wrap items-center gap-1.5">
                 <h3 className="text-base font-bold text-brand-navy">SuperByte</h3>
+                <span
+                  className={`inline-flex items-center rounded-full px-2 py-px text-[0.6rem] font-bold ring-1 ${layerToneClass(layer.tone)}`}
+                  title="Which layer is speaking — pioneer model or local instrument gauges"
+                >
+                  {layer.label}
+                </span>
                 <HelpTip label="What SuperByte does">
                   One-way observations only. You cannot prompt it, rate it, or copy its text into
                   the note. When the pioneer model is off, the gauges still run locally from the
@@ -173,7 +204,12 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 </HelpTip>
               </div>
               <p className="text-xs text-amber-900/70">
-                gives you feedback · you do not give it feedback
+                observes · you do not reply
+              </p>
+              {/* Present-tense status — HF MessageUpdate pattern. The tagline
+                  above says what SuperByte IS; this line says what it is doing. */}
+              <p className="mt-0.5 text-xs font-medium text-amber-950/80" aria-live="polite">
+                {liveStatus}
               </p>
               {profile && profile !== "documentation" && (
                 /* Which cage configuration read this draft. Strict reads run
@@ -227,7 +263,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   </span>
                 )}
               </p>
-              <p className="text-base font-semibold leading-snug text-slate-900">{tip.say}</p>
+              <p className="text-sm font-medium leading-snug text-slate-900">{tip.say}</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-700">{tip.why}</p>
               {tip.question && (
                 <p className="mt-1.5 text-sm font-semibold text-brand-navy">{tip.question}</p>
@@ -241,10 +277,27 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 )}
               </p>
               {observations.length > 1 && (
-                <p className="mt-1 text-[0.6rem] tabular-nums text-slate-500">
-                  Reading {(tipIndex % observations.length) + 1} of {observations.length} · rotates
-                  automatically
-                </p>
+                /* Staff pace — same control Byte uses. Auto-rotate fought the
+                   reader (HF Chat UI lets people browse messages; we do not
+                   yank the only observation off screen every 8s). */
+                <div className="mt-1.5 flex flex-wrap items-center gap-2">
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-amber-900 underline decoration-dotted underline-offset-2"
+                    onClick={() =>
+                      setTipIndex((i) => (i - 1 + observations.length) % observations.length)
+                    }
+                  >
+                    Previous
+                  </button>
+                  <button
+                    type="button"
+                    className="text-xs font-medium text-amber-900 underline decoration-dotted underline-offset-2"
+                    onClick={() => setTipIndex((i) => (i + 1) % observations.length)}
+                  >
+                    Next reading ({(tipIndex % observations.length) + 1} of {observations.length})
+                  </button>
+                </div>
               )}
             </div>
           ) : (
@@ -254,16 +307,21 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 : deferred.trim().length < MIN_CHARS
                   ? "Keep typing — feedback appears when the draft is long enough to analyze."
                   : deploy === "off"
-                    ? "Pioneer model is dark on this deployment. A Team Lead opens it by setting AI_GATEWAY_API_KEY (see SuperByte monitor), then redeploying. Gauges below still run locally."
-                    : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
+                    ? "Pioneer dark on this deployment — gauges below still run locally. A Team Lead opens the pioneer from the SuperByte monitor."
+                    : deploy === "unreachable"
+                      ? "Could not reach the pioneer just now — try again shortly. Gauges below still run locally."
+                      : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
             </p>
           )}
         </div>
       </div>
 
       {benchmarks.gauges.words > 0 && (
-        <div className="mt-3 border-t border-amber-200/50 pt-3">
-          <div className="flex items-center justify-between gap-2">
+        /* Progressive disclosure — compass stays the glanceable primary;
+           rail detail opens on demand (eye-tracking: progressive disclosure
+           over deletion; HF Chat UI keeps tools secondary to the message). */
+        <details className="mt-3 border-t border-amber-200/50 pt-3">
+          <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
             <h4 className="label-micro inline-flex items-center gap-1">
               Drift to NorthStar
               <HelpTip label="About drift gauges" side="top">
@@ -279,12 +337,12 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   benchmarks.onCourse >= 0.75 ? "text-teal-700" : "text-amber-800"
                 }`}
               >
-                {Math.round(benchmarks.onCourse * 100)}% on course
+                local gauges · {onCoursePct}% on course · open
               </span>
             </div>
-          </div>
+          </summary>
           <BenchmarkRails readings={benchmarks.readings} />
-        </div>
+        </details>
       )}
     </section>
   );

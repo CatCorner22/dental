@@ -1,4 +1,4 @@
-import { and, desc, eq, ne } from "drizzle-orm";
+import { and, desc, eq, ne, sql } from "drizzle-orm";
 import type { Db } from "../client";
 import { wishes, type NewWish, type WishRow } from "../schema";
 
@@ -57,5 +57,6 @@ export async function updateWishStatus(
 }
 
 export async function countWishes(db: Db): Promise<number> {
-  return (await db.select().from(wishes)).length;
+  const rows = await db.select({ n: sql<number>`count(*)::int` }).from(wishes);
+  return rows[0]?.n ?? 0;
 }

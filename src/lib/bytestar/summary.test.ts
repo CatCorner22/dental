@@ -64,12 +64,23 @@ describe("SuperByte period summary (digest rollup)", () => {
       tokens: 10
     });
     const rows = [
+      {
+        action: "bytestar.escape",
+        detail: `${encodeByteStarDetail({
+          outcome: "escape-input",
+          promptVersion: "1.5.0",
+          model: "m",
+          tokens: 0,
+          codes: ["engine-probe"]
+        })} origin=user`,
+        atMs: NOW - DAY
+      },
       { action: "bytestar.escape", detail: `${base} origin=model stage=warn`, atMs: NOW - DAY },
       { action: "bytestar.escape", detail: `${base} origin=model stage=reset`, atMs: NOW - DAY },
       { action: "bytestar.perma-kill", detail: base, atMs: NOW - DAY }
     ];
     const s = buildByteStarSummary(rows, NOW - 7 * DAY);
-    expect(s.escapes.total).toBe(2);
+    expect(s.escapes.total).toBe(3);
     expect(s.escapes.modelOriginated).toBe(2);
     expect(s.escapes.stages.warn).toBe(1);
     expect(s.escapes.stages.reset).toBe(1);

@@ -9,6 +9,7 @@ export type DraftStatus =
   | "blocked"
   | "action-needed"
   | "review"
+  | "handoff"
   | "ready"
   | "submitted"
   | "error";
@@ -27,6 +28,12 @@ export interface StatusInput {
   phiStops: number;
   submitted: boolean;
   lastSendFailed: boolean;
+  /**
+   * When false, a clean audit must NOT become "Ready to submit". Hygienist
+   * notes that still need dentist filing otherwise showed a green chip while
+   * Submit stayed disabled — Andon lied about the finish line.
+   */
+  filingAllowed?: boolean;
 }
 
 export function deriveDraftStatus(input: StatusInput): DraftStatus {
@@ -41,6 +48,9 @@ export function deriveDraftStatus(input: StatusInput): DraftStatus {
   if (c.S0 > 0) return "blocked";
   if (c.S1 > 0) return "action-needed";
   if (c.S2 > 0) return "review";
+  // Filing authority is a finish gate, not an audit severity. Without this,
+  // StatusChip said Ready while the action bar said transfer ownership.
+  if (input.filingAllowed === false) return "handoff";
   return "ready";
 }
 
@@ -93,6 +103,13 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     icon: "◆",
     chipClass: "border-amber-300 bg-amber-100 text-amber-900",
     ring: "text-amber-500"
+  },
+  handoff: {
+    label: "Dentist must file",
+    short: "Handoff",
+    icon: "→",
+    chipClass: "border-slate-400 bg-slate-100 text-slate-800",
+    ring: "text-slate-500"
   },
   ready: {
     label: "Ready to submit",

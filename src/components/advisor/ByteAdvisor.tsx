@@ -40,8 +40,9 @@ export function ByteAdvisor({
 
   return (
     <section
+      id="advisor-byte"
       aria-label="Byte, the drafting advisor"
-      className="rounded-xl bg-gradient-to-b from-slate-50 to-white p-3 ring-1 ring-slate-200"
+      className="scroll-mt-2 rounded-xl bg-gradient-to-b from-slate-50 to-white p-3 ring-1 ring-slate-200"
     >
       <div className="flex items-start gap-3">
         <Byte mood={report.mood} />

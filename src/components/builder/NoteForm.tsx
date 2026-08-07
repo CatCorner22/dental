@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   canRecordClinicalJudgement,
   isDentistOwnedSection,
@@ -25,11 +25,18 @@ import {
 import { ToothPicker } from "./fields/ToothPicker";
 import { SurfacePicker } from "./fields/SurfacePicker";
 import { SectionReview } from "./SectionReview";
+import { SuggestedBlocks } from "./SuggestedBlocks";
 import {
   nextSectionKey,
   reviewSection,
   sectionSignature
 } from "@/lib/review/sectionReview";
+/** Append verified-block text to an existing prose field without clobbering. */
+function appendProse(existing: FieldValue | undefined, text: string): FieldValue {
+  const prior =
+    existing?.kind === "text" && existing.value.trim() !== "" ? `${existing.value.trim()}\n\n` : "";
+  return { kind: "text", value: prior + text };
+}
 
 // A single labelable control gets an id so the visible label can name it via
 // htmlFor. Group-style fields (chips, pickers, segmented selects) are named
@@ -51,6 +58,31 @@ function isEmptyValue(v: FieldValue): boolean {
     case "measurement":
       return v.value === null;
   }
+}
+
+/** Same open-on-arrival rule for mount and for modules added later (Fast Lane). */
+function sectionStartsOpen(
+  mod: ModuleDef,
+  section: ModuleDef["sections"][number],
+  state: NoteState,
+  findingsByField: FieldFindings
+): boolean {
+  const hasValue = section.fields.some((f) => {
+    const v = state.values[fieldKey(mod.id, f.id)];
+    return v !== undefined && !isEmptyValue(v);
+  });
+  // "required.missing" is excluded on purpose. On a brand-new note every
+  // required field raises one, so counting them would open ten of eleven
+  // sections and the collapse would do nothing at all on the one screen
+  // it exists for. An empty note is not a note with problems; it is an
+  // empty note. Any OTHER finding means something in here has been
+  // written and needs a second look, which is worth opening for.
+  const hasIssue = section.fields.some((f) =>
+    (findingsByField[fieldKey(mod.id, f.id)] ?? []).some(
+      (finding) => finding.ruleId !== "required.missing"
+    )
+  );
+  return section.id === "narrative" || hasValue || hasIssue;
 }
 
 function controlId(moduleId: string, field: Field): string | undefined {
@@ -119,12 +151,15 @@ export function NoteForm({
   state,
   onChange,
   findingsByField = {},
-  clinicalRole
+  clinicalRole,
+  packBlockIds = []
 }: {
   modules: ModuleDef[];
   state: NoteState;
   onChange: (key: string, value: FieldValue) => void;
   findingsByField?: FieldFindings;
+  /** Published practice-pack block ids matching this visit (optional boost). */
+  packBlockIds?: readonly string[];
   /**
    * REQUIRED, with no default, and that is the point.
    *
@@ -152,34 +187,45 @@ export function NoteForm({
   // that is the one the writer is being asked to look at. Everything else is a
   // one-line summary with its open-required count, ready when it is wanted.
   //
-  // Computed ONCE, lazily, and then owned by the user. Deriving `open` on every
-  // render would re-open a section the moment its first value was typed —
-  // including one the writer had just deliberately collapsed.
+  // Computed ONCE per section key, then owned by the user. Deriving `open` on
+  // every render would re-open a section the moment its first value was typed
+  // — including one the writer had just deliberately collapsed. Fast Lane /
+  // module toggles add keys later; those get the same arrival rule once, via
+  // the effect below — not `?? true`, which opened every empty add-on section.
   const [openSections, setOpenSections] = useState<Record<string, boolean>>(() => {
     const initial: Record<string, boolean> = {};
     for (const mod of modules) {
       for (const section of mod.sections) {
-        const key = `${mod.id}.${section.id}`;
-        const hasValue = section.fields.some((f) => {
-          const v = state.values[fieldKey(mod.id, f.id)];
-          return v !== undefined && !isEmptyValue(v);
-        });
-        // "required.missing" is excluded on purpose. On a brand-new note every
-        // required field raises one, so counting them would open ten of eleven
-        // sections and the collapse would do nothing at all on the one screen
-        // it exists for. An empty note is not a note with problems; it is an
-        // empty note. Any OTHER finding means something in here has been
-        // written and needs a second look, which is worth opening for.
-        const hasIssue = section.fields.some((f) =>
-          (findingsByField[fieldKey(mod.id, f.id)] ?? []).some(
-            (finding) => finding.ruleId !== "required.missing"
-          )
+        initial[`${mod.id}.${section.id}`] = sectionStartsOpen(
+          mod,
+          section,
+          state,
+          findingsByField
         );
-        initial[key] = section.id === "narrative" || hasValue || hasIssue;
       }
     }
     return initial;
   });
+
+  useEffect(() => {
+    setOpenSections((prev) => {
+      let changed = false;
+      const next = { ...prev };
+      for (const mod of modules) {
+        for (const section of mod.sections) {
+          const key = `${mod.id}.${section.id}`;
+          if (Object.prototype.hasOwnProperty.call(next, key)) continue;
+          next[key] = sectionStartsOpen(mod, section, state, findingsByField);
+          changed = true;
+        }
+      }
+      return changed ? next : prev;
+    });
+    // Intentionally only when the module set changes: freeze the arrival rule
+    // at add time (empty Fast Lane modules stay collapsed). values/findings
+    // are read from the render that saw the new modules.
+    // eslint-disable-next-line react-hooks/exhaustive-deps -- see above
+  }, [modules]);
 
   // THE SECTION LOOP.
   //
@@ -244,7 +290,9 @@ export function NoteForm({
                 isDentistOwnedSection(mod.id, section.id);
               const sectionKey = `${mod.id}.${section.id}`;
               const signature = sectionSignature(mod, section, state);
-              const open = openSections[sectionKey] ?? true;
+              // Missing key: treat closed until the seed effect runs (never
+              // default-open — that was the Fast Lane accordion explosion).
+              const open = openSections[sectionKey] ?? false;
               // What the summary line has to earn its collapse: how much of
               // this section is still outstanding. A closed section that says
               // nothing is a section people forget, which is precisely how a
@@ -314,22 +362,33 @@ export function NoteForm({
                     )}
                   </span>
                   <span className="flex shrink-0 items-center gap-1.5 font-normal">
-                    {/* A collapsed section has to say whether it is done, or the
-                        loop is invisible the moment you move past it. */}
-                    {reviewed[sectionKey] === signature && (
-                      <span className="rounded-full bg-green-100 px-1.5 text-[0.7rem] font-semibold text-green-900">
-                        ✓ checked
+                    {/* Locked dentist sections must not look like THIS writer's
+                        unfinished work. "2 required" on Assessment for a
+                        hygienist was the false incomplete-note alarm. */}
+                    {outOfScope ? (
+                      <span className="rounded-full bg-slate-100 px-1.5 text-[0.7rem] font-semibold text-slate-700">
+                        Waiting for dentist
                       </span>
-                    )}
-                    {findingCount > 0 && (
-                      <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
-                        {findingCount} to review
-                      </span>
-                    )}
-                    {openRequired > 0 && (
-                      <span className="rounded-full bg-orange-100 px-1.5 text-[0.7rem] font-semibold text-orange-900">
-                        {openRequired} required
-                      </span>
+                    ) : (
+                      <>
+                        {/* A collapsed section has to say whether it is done, or the
+                            loop is invisible the moment you move past it. */}
+                        {reviewed[sectionKey] === signature && (
+                          <span className="rounded-full bg-green-100 px-1.5 text-[0.7rem] font-semibold text-green-900">
+                            ✓ checked
+                          </span>
+                        )}
+                        {findingCount > 0 && (
+                          <span className="rounded-full bg-amber-100 px-1.5 text-[0.7rem] font-semibold text-amber-900">
+                            {findingCount} to review
+                          </span>
+                        )}
+                        {openRequired > 0 && (
+                          <span className="rounded-full bg-orange-100 px-1.5 text-[0.7rem] font-semibold text-orange-900">
+                            {openRequired} required
+                          </span>
+                        )}
+                      </>
                     )}
                     <span aria-hidden className="text-slate-400">
                       {open ? "▾" : "▸"}
@@ -338,10 +397,38 @@ export function NoteForm({
                 </summary>
                 <fieldset disabled={outOfScope} className="px-3 pb-3">
                 {outOfScope && (
-                  <p className="mb-2 rounded border border-amber-200 bg-amber-50 px-2 py-1.5 text-xs text-amber-900">
+                  <p className="mb-2 rounded border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs text-slate-700">
                     {scopeExplanation(clinicalRole)}
                   </p>
                 )}
+                {/* Section starters: one closed chip under the section chrome,
+                    never on narrative (first-paint), never when locked. Full
+                    catalog stays on focused textareas via BlockChips. */}
+                <SuggestedBlocks
+                  moduleId={mod.id}
+                  sectionId={section.id}
+                  selectedModuleIds={state.selectedModuleIds}
+                  clinicalRole={clinicalRole}
+                  packBlockIds={packBlockIds}
+                  outOfScope={outOfScope}
+                  sectionOpen={open}
+                  fields={section.fields}
+                  onInsert={(fieldId, text) => {
+                    const key = fieldKey(mod.id, fieldId);
+                    onChange(key, appendProse(state.values[key], text));
+                    // Land the writer on the field that received the text —
+                    // otherwise insert into an unfocused box looks like a no-op
+                    // until filing stops on leftover placeholders.
+                    requestAnimationFrame(() => {
+                      const root = document.getElementById(`field-${mod.id}-${fieldId}`);
+                      const control =
+                        (document.getElementById(`ctl-${key}`) as HTMLElement | null) ??
+                        root?.querySelector<HTMLElement>("textarea, input");
+                      root?.scrollIntoView({ block: "nearest" });
+                      control?.focus({ preventScroll: true });
+                    });
+                  }}
+                />
                 <div className="space-y-3">
                   {section.fields.map((field) => {
                     if (!isFieldVisible(field, mod.id, state)) return null;
@@ -361,8 +448,14 @@ export function NoteForm({
                       <div key={field.id} id={`field-${mod.id}-${field.id}`}>
                         <label className="field-label" htmlFor={controlId(mod.id, field)}>
                           {field.label}
-                          {required && <span className="ml-1 text-red-600" aria-hidden>*</span>}
-                          {required && <span className="sr-only"> (required)</span>}
+                          {required && !outOfScope && (
+                            <span className="ml-1 text-red-600" aria-hidden>
+                              *
+                            </span>
+                          )}
+                          {required && !outOfScope && (
+                            <span className="sr-only"> (required)</span>
+                          )}
                         </label>
                         <FieldRenderer
                           moduleId={mod.id}
@@ -412,7 +505,7 @@ export function NoteForm({
                         ? "reviewing"
                         : "idle"
                   }
-                  hasNext={nextSectionKey(modules, sectionKey) !== null}
+                  hasNext={nextSectionKey(modules, sectionKey, clinicalRole) !== null}
                   canEdit={!outOfScope}
                   onCheck={() => setReviewing(sectionKey)}
                   onApply={(key, next) => onChange(key, { kind: "text", value: next })}
@@ -421,7 +514,7 @@ export function NoteForm({
                     // Recorded against the CONTENT, so a later edit un-checks it.
                     setReviewed((r) => ({ ...r, [sectionKey]: signature }));
                     setReviewing(null);
-                    const next = nextSectionKey(modules, sectionKey);
+                    const next = nextSectionKey(modules, sectionKey, clinicalRole);
                     if (next) {
                       // Collapse the one just finished. The note gets shorter as
                       // it gets more complete, which is the opposite of what a

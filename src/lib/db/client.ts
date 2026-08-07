@@ -2,8 +2,9 @@ import { sql } from "drizzle-orm";
 import { drizzle as drizzlePg, type NodePgDatabase } from "drizzle-orm/node-postgres";
 import { drizzle as drizzlePglite, type PgliteDatabase } from "drizzle-orm/pglite";
 import { schema } from "./schema";
-import { SCHEMA_STATEMENTS } from "./ddl";
+import { SCHEMA_BOOT_VERSION, SCHEMA_STATEMENTS } from "./ddl";
 import { pinPostgresSslMode } from "./postgresUrl";
+import { postgresPoolOptions, resolveDbBackend } from "./backend";
 
 export type Db = NodePgDatabase<typeof schema> | PgliteDatabase<typeof schema>;
 
@@ -38,49 +39,96 @@ export async function applySchema(db: Db): Promise<void> {
   }
 }
 
-// One memoized bootstrap per process: pick the driver, run migrations, seed the
-// first admin from env if the users table is empty. Safe for serverless cold
-// starts (the migrator keeps its own __drizzle_migrations table).
+/** Normalize drizzle/node-pg/PGlite execute shapes to a version integer. */
+export function parseSchemaBootVersion(result: unknown): number | null {
+  const rows = Array.isArray(result)
+    ? result
+    : result &&
+        typeof result === "object" &&
+        Array.isArray((result as { rows?: unknown }).rows)
+      ? (result as { rows: unknown[] }).rows
+      : [];
+  const first = rows[0] as { version?: unknown } | undefined;
+  const v = first?.version;
+  if (typeof v === "number" && Number.isFinite(v)) return v;
+  if (typeof v === "string" && /^\d+$/.test(v)) return Number(v);
+  return null;
+}
+
+async function readSchemaBootVersion(db: Db): Promise<number | null> {
+  try {
+    const result = await db.execute(sql`SELECT version FROM schema_boot WHERE id = 1 LIMIT 1`);
+    return parseSchemaBootVersion(result);
+  } catch {
+    // Table missing on first boot, or a half-applied schema — fall through to
+    // the full DDL loop rather than treating "unknown" as "current".
+    return null;
+  }
+}
+
+async function writeSchemaBootVersion(db: Db): Promise<void> {
+  await db.execute(sql`
+    INSERT INTO schema_boot (id, version, applied_at)
+    VALUES (1, ${SCHEMA_BOOT_VERSION}, NOW())
+    ON CONFLICT (id) DO UPDATE
+      SET version = EXCLUDED.version,
+          applied_at = EXCLUDED.applied_at
+  `);
+}
+
+/**
+ * Apply DDL only when this database has not yet recorded SCHEMA_BOOT_VERSION.
+ * Warm isolates already memoize getDb(); this cuts ~55 round-trips on every
+ * *new* serverless isolate after the first successful apply.
+ */
+export async function ensureSchema(db: Db): Promise<"skipped" | "applied"> {
+  const current = await readSchemaBootVersion(db);
+  if (current === SCHEMA_BOOT_VERSION) return "skipped";
+  await applySchema(db);
+  await writeSchemaBootVersion(db);
+  return "applied";
+}
+
+// One memoized bootstrap per process: pick the driver, ensure schema matches
+// SCHEMA_BOOT_VERSION, seed the first admin from env if the users table is empty.
 let bootstrap: Promise<Db> | null = null;
 
 async function build(): Promise<Db> {
-  const url = process.env.POSTGRES_URL?.trim();
-  if (url) {
+  const backend = resolveDbBackend();
+  if (backend.kind === "reject") {
+    // Loud failure beats silent data loss on the next cold start.
+    throw new Error(`[db] ${backend.reason}`);
+  }
+
+  if (backend.kind === "postgres") {
     const { Pool } = await import("pg");
     // Neon ships sslmode=require; pin verify-full so node-pg stops warning
     // and we keep today's certificate checks when pg v9 changes the alias.
-    const db = drizzlePg(new Pool({ connectionString: pinPostgresSslMode(url) }), {
-      schema
-    });
-    await applySchema(db);
+    // Pool max defaults to 1 per isolate — see postgresPoolOptions.
+    const db = drizzlePg(
+      new Pool(postgresPoolOptions(pinPostgresSslMode(backend.url))),
+      { schema }
+    );
+    await ensureSchema(db);
     await seedAdmin(db);
     await sweepMfaWhileDisabled(db);
     await seedOffices(db);
     return db;
   }
 
-  if (process.env.NODE_ENV === "production") {
-    // PGlite on a filesystem dir does not persist across Vercel cold starts.
-    console.warn(
-      "[db] POSTGRES_URL is not set in production. Falling back to PGlite; data will NOT persist. Configure Vercel Postgres/Neon."
-    );
-  }
   const { PGlite } = await import("@electric-sql/pglite");
   // Vercel's serverless FS is read-only except /tmp. A relative `.data/pglite`
   // mkdir fails with ENOENT and takes login down with it. Prefer an explicit
-  // PGLITE_DIR, then /tmp on Vercel, then the local default.
-  const dir =
-    process.env.NODE_ENV === "test"
-      ? "memory://"
-      : (process.env.PGLITE_DIR ??
-        (process.env.VERCEL ? "/tmp/smile-notes-pglite" : ".data/pglite"));
+  // PGLITE_DIR, then /tmp on Vercel, then the local default — but never in
+  // production (resolveDbBackend rejects that path).
+  const dir = backend.dir;
   if (dir !== "memory://" && !dir.startsWith("memory")) {
     // PGlite's own mkdir is not recursive; ensure the parent path exists.
     const { mkdirSync } = await import("node:fs");
     mkdirSync(dir, { recursive: true });
   }
   const db = drizzlePglite(new PGlite(dir), { schema });
-  await applySchema(db);
+  await ensureSchema(db);
   await seedAdmin(db);
   await sweepMfaWhileDisabled(db);
   await seedOffices(db);

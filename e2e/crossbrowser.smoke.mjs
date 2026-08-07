@@ -95,8 +95,25 @@ for (const [engineName, engine] of ENGINES) {
         const here = fb.getByRole("link", { name: "here" });
         const href = (await here.count()) ? await here.getAttribute("href") : "";
         check(!!href && href.includes(`mailto:${FEEDBACK_EMAIL}`), `${tag}: "here" emails ${FEEDBACK_EMAIL}`);
-        await fb.getByRole("button", { name: "Got it" }).click();
-        await page.waitForTimeout(300);
+        // DISMISS BY ROLE, NOT BY ONE EXACT WORD.
+        //
+        // This clicked "Got it" and the button had been renamed "Not now", so
+        // every browser and both viewports timed out here — six identical
+        // failures, thirty seconds each, and the run never reached the
+        // assertions this file exists for: no horizontal overflow, no console
+        // errors, every route reachable. A smoke test that dies on the copy of
+        // a dismiss button is a smoke test that stops smoke-testing.
+        //
+        // The alternation keeps it working across a rename in either
+        // direction. What is actually being asserted is that the dialog HAS a
+        // way out and that pressing it closes the thing.
+        const dismiss = fb.getByRole("button", { name: /Not now|Got it|Dismiss/i });
+        check((await dismiss.count()) > 0, `${tag}: feedback dialog can be dismissed`);
+        if (await dismiss.count()) {
+          await dismiss.first().click();
+          await page.waitForTimeout(300);
+        }
+        check((await fb.count()) === 0, `${tag}: feedback dialog closes and stays closed`);
       }
 
       // No horizontal overflow on the main pages.

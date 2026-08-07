@@ -56,6 +56,12 @@ jobs:
     # is still the merge gate.
     runs-on: ubuntu-latest
     continue-on-error: true
+    # A normal run of this job is about three and a half minutes. Without a
+    # ceiling it once sat in_progress for twenty-five and had to be noticed by
+    # hand — continue-on-error means a hung job never fails the PR, it just
+    # burns runner minutes and leaves the check permanently yellow, which reads
+    # exactly like "still working on it".
+    timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

@@ -135,7 +135,7 @@ export function TeamDashboard({ view }: { view: TeamView }) {
 
 function Macro({ label, value }: { label: string; value: string }) {
   return (
-    <div className="rounded-xl bg-white ring-1 ring-slate-200 p-3 text-center">
+    <div className="card p-3 text-center">
       <div className="text-xl font-bold text-slate-800">{value}</div>
       <div className="text-xs font-medium text-slate-500">{label}</div>
     </div>

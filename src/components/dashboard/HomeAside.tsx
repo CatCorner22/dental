@@ -214,7 +214,7 @@ export function HomeAside({
         </p>
       ) : (
         <>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+          <ul className="card divide-y divide-slate-100 overflow-hidden p-0">
             {others.map((d) => (
               <li key={d.id}>
                 <Link

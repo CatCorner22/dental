@@ -53,7 +53,7 @@ export function WordMap({ groups, total, auto }: { groups: WordMapGroup[]; total
           // the user just searched for makes them click twice to see it.
           const open = needle ? true : openId === g.id;
           return (
-            <section key={g.id} className="rounded-xl bg-white ring-1 ring-slate-200">
+            <section key={g.id} className="card p-0">
               <h3>
                 <button
                   type="button"

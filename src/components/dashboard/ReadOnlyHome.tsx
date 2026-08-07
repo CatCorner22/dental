@@ -34,7 +34,7 @@ export function ReadOnlyHome({
           <p className="text-sm text-slate-500">{sparkleLine("empty", daySeed(new Date()))}</p>
         </div>
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+        <ul className="card divide-y divide-slate-100 overflow-hidden p-0">
           {recent.map((d) => (
             <li key={d.id}>
               <Link

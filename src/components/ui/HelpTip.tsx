@@ -41,7 +41,7 @@ export function HelpTip({
     <span ref={wrapRef} className="relative inline-flex align-middle">
       <button
         type="button"
-        className="tap-sq inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-700 ring-1 ring-amber-300/80 hover:bg-amber-50 focus-visible:outline-none"
+        className="tap-sq inline-flex h-8 w-8 items-center justify-center rounded-full text-amber-700 ring-1 ring-amber-300/80 hover:bg-amber-50 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-brand-blue"
         aria-label={label}
         aria-expanded={open}
         aria-controls={tipId}

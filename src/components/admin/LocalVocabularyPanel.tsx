@@ -18,7 +18,7 @@ export function LocalVocabularyPanel({ entries, notesScanned }: {
 }) {
   if (notesScanned === 0) {
     return (
-      <section className="mt-8 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+      <section className="card mt-8">
         <h2 className="section-title">Shorthand the tool does not know</h2>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
           Nothing filed yet. Once notes are on file, this lists the abbreviations the practice
@@ -30,7 +30,7 @@ export function LocalVocabularyPanel({ entries, notesScanned }: {
   }
 
   return (
-    <section className="mt-8 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+    <section className="card mt-8">
       <h2 className="section-title">Shorthand the tool does not know</h2>
       <p className="mt-1 max-w-3xl text-sm text-slate-700">
         Read from the {notesScanned.toLocaleString()} most recent filed notes. These are

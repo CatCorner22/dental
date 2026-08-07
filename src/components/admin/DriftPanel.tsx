@@ -69,7 +69,7 @@ export function DriftPanel({
 
   if (events.length === 0) {
     return (
-      <section className="mb-6 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+      <section className="card mb-6">
         <h2 className="section-title">AI assist — drift monitor</h2>
         <p className="mt-1 max-w-3xl text-sm text-slate-600">
           No AI calls recorded. Either assist is switched off for this deployment, which is the
@@ -80,7 +80,7 @@ export function DriftPanel({
   }
 
   return (
-    <section className="mb-6 rounded-xl bg-white ring-1 ring-slate-200 p-4">
+    <section className="card mb-6">
       <div className="mb-2 flex flex-wrap items-center gap-3">
         <h2 className="section-title">AI assist — drift monitor</h2>
         <span

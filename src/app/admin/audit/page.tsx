@@ -119,7 +119,7 @@ export default async function AuditLogPage({
         </span>
       </div>
       <div
-        className="overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200"
+        className="card overflow-x-auto p-0"
         tabIndex={0}
         role="region"
         aria-label="Audit log — scrolls sideways for more columns"

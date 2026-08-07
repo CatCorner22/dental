@@ -460,6 +460,11 @@
    slightly tall) value, and any engine that understands `dvh` overrides it on
    the next line. Two classes in a `class` attribute cannot express this:
    their order in the stylesheet is decided by Tailwind, not by the markup. */
+.pane-40 {
+  max-height: 40vh;
+  max-height: 40dvh;
+  overflow-y: auto;
+}
 .pane-55 {
   max-height: 55vh;
   max-height: 55dvh;

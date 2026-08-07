@@ -107,6 +107,14 @@ export function HomeAside({
         // doing nothing on either is how someone concludes the button is broken.
         const body = (await res.json().catch(() => ({}))) as { error?: string };
         setBusy(false);
+        // Close the menu, or the error is painted BEHIND it: the panel is
+        // absolute/z-10 with an opaque ground and starts 4px below the header
+        // row, while the message renders in normal flow 12px below that same
+        // row. The user re-taps an item that still looks pressable and it fails
+        // the same way. Focus goes back to the trigger so the alert does not
+        // land on <body> — the Escape handler already does this.
+        setShowPicks(false);
+        picksRef.current?.querySelector("button")?.focus();
         setError(body.error ?? "Could not start a new note — try again in a moment.");
         return;
       }
@@ -114,6 +122,8 @@ export function HomeAside({
       router.push(`/note/${id}`);
     } catch {
       setBusy(false);
+      setShowPicks(false);
+      picksRef.current?.querySelector("button")?.focus();
       setError("Could not start a new note — check the connection and try again.");
     }
   };
@@ -124,7 +134,13 @@ export function HomeAside({
     <section className="space-y-3 border-t border-slate-200 pt-5">
       <div className="flex flex-wrap items-center justify-between gap-2">
         <h2 className="section-title">Other notes</h2>
-        <div className="relative" ref={picksRef}>
+        {/* ml-auto so the wrapper is always at the right edge of the content
+            column. The row is flex-wrap: at ~320px, or at a large text-scale
+            setting, the h2 + button exceed the column, the button wraps to its
+            own line, and justify-between then puts it flush LEFT — at which
+            point a right-anchored panel computes a negative left edge, which is
+            the exact bug the comment below describes. */}
+        <div className="relative ml-auto" ref={picksRef}>
           <button
             className="btn-secondary"
             disabled={busy}
@@ -141,7 +157,14 @@ export function HomeAside({
             // overflow to the left creates no scrollbar).
             <div
               role="menu"
-              className="absolute left-0 right-0 z-10 mt-1 max-w-[calc(100vw-2rem)] rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200 sm:left-auto sm:w-80"
+              /* left-0 right-0 resolved against this wrapper — a shrink-to-fit
+                 flex item the width of the "Start another note" button — so on
+                 a phone the whole Fast Lane menu was a ~175px ribbon, not the
+                 screen-wide panel the (never-binding) max-w guard was written
+                 for. Scaffold names wrapped to two lines and their descriptions
+                 to six or seven at text-xs. One clamped width, right-anchored,
+                 works at every size. */
+              className="absolute right-0 z-10 mt-1 w-[min(20rem,calc(100vw-2rem))] rounded-xl bg-white p-2 shadow-lg ring-1 ring-slate-200"
             >
               <button
                 role="menuitem"

@@ -28,17 +28,27 @@ export default async function AccountPage() {
         <dt className="font-semibold text-slate-600">Role</dt>
         <dd>{ROLE_LABEL[user.role]}</dd>
       </dl>
-      <h2 className="mb-2 text-lg font-semibold">Change password</h2>
+      {/* .section-title, the app's one section-heading treatment. This column
+          stacked three slate-900 semibold headings, then DisplaySettings' navy
+          bold one, then Dictation's slate-900 again — so the headings that are
+          supposed to be the scan rail read as two unrelated kinds of thing. */}
+      <h2 className="section-title mb-2">Change password</h2>
       <AccountForm />
       {mfaFeatureEnabled() && (
         <>
-          <h2 className="mb-2 mt-8 text-lg font-semibold">Two-factor authentication</h2>
+          <h2 className="section-title mb-2 mt-8">Two-factor authentication</h2>
           <MfaSettings enabled={row?.mfaEnabled ?? false} />
         </>
       )}
-      <h2 className="mb-2 mt-8 text-lg font-semibold">Session security</h2>
+      <h2 className="section-title mb-2 mt-8">Session security</h2>
       <RevokeSessions />
-      <DisplaySettings />
+      {/* The card had zero gap above it, so its top edge touched the bottom of
+          the "Sign out on all devices" button — two adjacent tap targets, one of
+          which signs you out everywhere. mt-8 is the rhythm the rest of this
+          page already hand-writes on its headings. */}
+      <div className="mt-8">
+        <DisplaySettings />
+      </div>
       <DictationSettings
         username={user.username}
         enrolled={user.dictationEnrolled ?? false}

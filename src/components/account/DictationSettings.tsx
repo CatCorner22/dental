@@ -105,7 +105,7 @@ export function DictationSettings({
 
   return (
     <section className="mt-8">
-      <h2 className="mb-2 text-lg font-semibold">Dictation</h2>
+      <h2 className="section-title mb-2">Dictation</h2>
 
       {/* Stated even to somebody already enrolled: a person who set this up on
           their own laptop and then opened Firefox at the front desk needs to

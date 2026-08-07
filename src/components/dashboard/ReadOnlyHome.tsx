@@ -29,8 +29,22 @@ export function ReadOnlyHome({
         )}
       </div>
       {recent.length === 0 ? (
-        <div className="flex flex-col items-center gap-2 rounded border border-dashed border-slate-300 bg-white p-6 text-center">
+        // rounded-xl and p-8 to match the other four empty states in the app.
+        // The dashed treatment stays on purpose — that is the vocabulary that
+        // separates "nothing here yet" from a populated list — but the radius
+        // and padding were a hand-rolled near-miss of it.
+        <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
           <Character id="sparkle" size="md" />
+          {/* For a view-only account this component IS the whole home page, and
+              the only copy was a sparkle line — "fresh page, fresh start" — which
+              says neither what belongs here nor why the reader cannot add to it.
+              A biller or locum on day one got a dashed rectangle and a cartoon
+              tooth. Say the thing first; keep the sparkle as the quiet second
+              line, the way DraftList already does. */}
+          <p className="text-sm text-slate-600">
+            Notes written anywhere in the practice appear here. Your account has view-only access,
+            so there is nothing to start.
+          </p>
           <p className="text-sm text-slate-500">{sparkleLine("empty", daySeed(new Date()))}</p>
         </div>
       ) : (

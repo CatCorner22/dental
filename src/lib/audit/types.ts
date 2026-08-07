@@ -158,6 +158,28 @@ export const SEVERITY_RAIL: Record<Severity, string> = {
   S4: "border-l-slate-400 bg-slate-50/60"
 };
 
+/**
+ * The severity as INK ALONE, for a finding printed under the field it is about.
+ *
+ * There is no room for a rail or a chip in the two lines beneath a text box, and
+ * the previous answer to that was `text-rose-700` hardcoded for all five — so a
+ * note whose only remark was an S4 "consider naming the shade" was rendered in
+ * precisely the same red as a note that could not legally be filed. Colour is
+ * the fastest thing on the screen to read and it was saying the wrong word.
+ *
+ * The hues match the ramp above; only the weight changes, because ink on white
+ * needs to be darker than ink on its own tint to clear 4.5:1. Verified on white:
+ * red-700 6.5:1, orange-700 5.0:1, amber-700 4.8:1, blue-700 6.9:1,
+ * slate-600 5.9:1.
+ */
+export const SEVERITY_TEXT: Record<Severity, string> = {
+  S0: "text-red-700",
+  S1: "text-orange-700",
+  S2: "text-amber-700",
+  S3: "text-blue-700",
+  S4: "text-slate-600"
+};
+
 /** The severity word as a small chip. Glanceable, not a headline. */
 export const SEVERITY_CHIP: Record<Severity, string> = {
   S0: "bg-red-600 text-white",

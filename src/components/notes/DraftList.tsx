@@ -166,7 +166,7 @@ export function DraftList({
       )}
       {filtered.length === 0 ? (
         drafts.length === 0 ? (
-          <div className="flex flex-col items-center gap-2 rounded border border-dashed border-slate-300 bg-white p-6 text-center">
+          <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
             <Character id="sparkle" size="md" />
             <p className="text-sm text-slate-500">
               {canEdit
@@ -175,26 +175,33 @@ export function DraftList({
             </p>
           </div>
         ) : (
-          <p className="rounded border border-dashed border-slate-300 bg-white p-6 text-center text-sm text-slate-500">
+          <p className="rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center text-sm text-slate-500">
             No drafts match your search.
           </p>
         )
       ) : (
-        <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+        <ul className="card divide-y divide-slate-100 overflow-hidden p-0">
           {/* flex-wrap: the title link plus three shrink-0 action buttons
               cannot fit a phone on one line, and without wrapping they
               forced the page wider than the screen. */}
           {filtered.map((d) => (
             <li
               key={d.id}
-              className="flex flex-wrap items-center gap-x-3 gap-y-2 px-4 py-3 hover:bg-slate-50"
+              className="relative flex flex-wrap items-center gap-x-3 gap-y-2 py-3 pl-5 pr-4 transition-colors duration-100 hover:bg-brand-cream/40"
             >
+              {/* The rail repeats what the chip already says in a word and an
+                  icon — it exists so a column of rows can be scanned without
+                  reading, never as the only encoding. */}
+              <span
+                aria-hidden
+                className={`absolute inset-y-0 left-0 w-1 ${STATUS_META[d.status].rail}`}
+              />
               <Link
                 href={`/note/${d.id}`}
                 className="flex min-w-0 flex-1 basis-full items-center justify-between gap-3 sm:basis-auto"
               >
                 <span className="min-w-0">
-                  <span className="block truncate font-medium text-slate-800">{d.title}</span>
+                  <span className="block truncate font-semibold text-slate-800">{d.title}</span>
                   <span className="block text-xs text-slate-500">
                     Updated {d.updatedAtLabel}
                     {d.ownerName ? ` · ${d.ownerName}` : ""}
@@ -204,7 +211,7 @@ export function DraftList({
               </Link>
               {canTransferNotes(role as Role) && (
                 <button
-                  className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-slate-100"
+                  className="tap shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-blue/50 hover:text-brand-navy"
                   onClick={() => setTransferFor(d)}
                   title="Transfer ownership"
                 >
@@ -213,7 +220,7 @@ export function DraftList({
               )}
               {canEdit && (
                 <button
-                  className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-slate-700 hover:bg-brand-blue/10"
+                  className="tap shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-slate-600 hover:border-brand-blue/50 hover:text-brand-navy"
                   disabled={busy}
                   onClick={() => createLike(d.moduleIds, d.title)}
                   title="Start a new Smile Note with the same modules — no values are copied"
@@ -224,7 +231,7 @@ export function DraftList({
               )}
               {canEdit && (
                 <button
-                  className="tap shrink-0 rounded border border-slate-300 px-2 py-1 text-xs font-medium text-rose-700 hover:bg-rose-50"
+                  className="tap shrink-0 rounded-full border border-slate-200 bg-white px-2.5 py-1 text-xs font-medium text-rose-700 hover:border-rose-300 hover:bg-rose-50"
                   onClick={() => deleteDraft(d)}
                   title="Delete draft"
                   aria-label={`Delete ${d.title}`}

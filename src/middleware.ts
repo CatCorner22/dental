@@ -39,6 +39,12 @@ export const config = {
     // and accepted by every sanitizer once it actually arrived. A font file
     // carries no PHI; gating it behind auth broke only the login page's own
     // typography.
-    "/((?!login(?:/|$)|setup(?:/|$)|reset(?:/|$)|api/auth(?:/|$)|api/setup(?:/|$)|api/reset(?:/|$)|_next/static|_next/image|fonts/|favicon\\.ico$|icon\\.svg$).*)"
+    //
+    // /characters and /brand are the same lesson, learned from a screenshot
+    // instead of a sanitizer: the login card shows Sparkle, the person looking
+    // at it is not signed in, and the gated SVG came back as the login page's
+    // HTML — a broken-image icon on the most-seen screen in the app. Mascot
+    // and logo art carry no PHI.
+    "/((?!login(?:/|$)|setup(?:/|$)|reset(?:/|$)|api/auth(?:/|$)|api/setup(?:/|$)|api/reset(?:/|$)|_next/static|_next/image|fonts/|characters/|brand/|favicon\\.ico$|icon\\.svg$).*)"
   ]
 };

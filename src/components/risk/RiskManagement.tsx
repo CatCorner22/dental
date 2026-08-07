@@ -242,7 +242,7 @@ export function RiskManagement() {
                             checked={!!checked[item.id]}
                             onChange={() => toggle(item.id)}
                           />
-                          <span className={checked[item.id] ? "text-slate-400 line-through" : ""}>
+                          <span className={checked[item.id] ? "text-slate-500 line-through" : ""}>
                             {item.text}
                           </span>
                         </label>

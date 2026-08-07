@@ -329,7 +329,13 @@ function StandardizeField({
   };
 
   return (
-    <div className="mt-1 flex flex-wrap items-center gap-2">
+    // Shares a line with the other chips when it is only a chip; takes the
+    // whole width the moment it has a diff, a caution or an outcome to show.
+    <div
+      className={`mt-1 flex flex-wrap items-center gap-2${
+        pending || note || prior || caution ? " w-full" : ""
+      }`}
+    >
       <button
         type="button"
         className="chip"
@@ -547,7 +553,11 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
           writer who wanted to talk to the app could not discover that the
           feature existed. `active` keeps the explanation in the box the cursor
           is in, so somebody who is simply typing still pays nothing for it. */}
-      <DictationField onText={(t) => insert(t)} active={focused || (value?.value ?? "") !== ""} />
+      <DictationField
+        onText={(t) => insert(t)}
+        active={focused || (value?.value ?? "") !== ""}
+        focused={focused}
+      />
       {/* Verified blocks, in the field they go into.
           They used to sit in a card ABOVE the note behind a "insert verified
           blocks into [destination]" dropdown — which asked the writer to choose
@@ -556,29 +566,41 @@ export function TextareaField_({ field, value, onChange, describedBy, invalid, i
           the block lands in the box the cursor is already in. All three locks
           are unchanged — every assertion ticked, insert disabled until they are,
           and placeholders the residue rule blocks at S1 until they are replaced. */}
-      <BlockChips onInsert={insert} active={focused || (value?.value ?? "") !== ""} />
-      <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
-      {/* The fact is offered first, the absence second. See LicenceChips. */}
-      {required && (
-        <LicenceChips value={value?.value ?? ""} onPick={(text) => onChange({ kind: "text", value: text })} />
-      )}
-      {/*
-        The standardizer's whole job is to move prose TOWARD the clinical
-        register — "x-ray" becomes "radiograph", "tx" becomes "treatment" — so
-        on a paragraph written for the person in the chair it usually runs the
-        wrong way. That earns a warning, not a locked door: the writer may have
-        pasted clinical shorthand in and want it expanded before rewriting, and
-        Undo puts their words back either way.
-      */}
-      <StandardizeField
-        text={value?.value ?? ""}
-        onApply={(next) => onChange({ kind: "text", value: next })}
-        caution={
-          field.audience === "patient"
-            ? "Heads up: this rewrites toward clinical wording — the opposite of what this box is for. Undo puts your words back."
-            : undefined
-        }
-      />
+      {/* ONE ROW OF CHIPS, NOT FOUR.
+          Each of these renders its own block-level wrapper, so a text box was
+          followed by "Verified block" on one line, "Standardize" on the next,
+          the standard phrases on a third and the licence chips on a fourth —
+          about a hundred and fifty pixels of controls under every field, times
+          eleven sections. They are all chips and they all belong to the box
+          above them, so they share a line and wrap only when they run out of
+          it. Each keeps its own expanded state: `w-full` on a child that has
+          opened something gives the diff or the block list the whole width
+          back. */}
+      <div className="flex flex-wrap items-center gap-x-2 [&>*]:min-w-0">
+        <BlockChips onInsert={insert} active={focused || (value?.value ?? "") !== ""} />
+        <PhraseChips phrases={field.standardPhrases ?? []} onInsert={insert} />
+        {/* The fact is offered first, the absence second. See LicenceChips. */}
+        {required && (
+          <LicenceChips value={value?.value ?? ""} onPick={(text) => onChange({ kind: "text", value: text })} />
+        )}
+        {/*
+          The standardizer's whole job is to move prose TOWARD the clinical
+          register — "x-ray" becomes "radiograph", "tx" becomes "treatment" — so
+          on a paragraph written for the person in the chair it usually runs the
+          wrong way. That earns a warning, not a locked door: the writer may have
+          pasted clinical shorthand in and want it expanded before rewriting, and
+          Undo puts their words back either way.
+        */}
+        <StandardizeField
+          text={value?.value ?? ""}
+          onApply={(next) => onChange({ kind: "text", value: next })}
+          caution={
+            field.audience === "patient"
+              ? "Heads up: this rewrites toward clinical wording — the opposite of what this box is for. Undo puts your words back."
+              : undefined
+          }
+        />
+      </div>
     </div>
   );
 }

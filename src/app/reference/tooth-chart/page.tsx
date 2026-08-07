@@ -6,7 +6,7 @@ export const metadata = { title: "Tooth chart" };
 
 export default function Page() {
   return (
-    <div>
+    <div className="space-y-4">
       <ToothChart />
       <MarkdownDoc markdown={readReferenceDoc("toothNotation")} />
     </div>

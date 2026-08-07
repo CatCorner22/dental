@@ -45,7 +45,10 @@ export function BlockChips({
   if (!active && !open) return null;
 
   return (
-    <div className="mt-1">
+    // The chip shares a line with its neighbours (see the chip row in
+    // inputs.tsx); the panel it opens takes the whole width back, because a
+    // list of verified blocks squeezed into a third of a column is unreadable.
+    <div className={open ? "mt-1 w-full" : "mt-1"}>
       <button
         type="button"
         className="chip"

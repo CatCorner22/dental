@@ -77,21 +77,29 @@ export function HomeAside({
     };
   }, [showPicks]);
 
-  // Title is optional on purpose. Fast Lane scaffolds must NOT stamp the
-  // visit-type label as the draft title — that fights autoDraftTitle and
-  // leaves every new perio note titled "Periodontal maintenance" forever.
-  // Blank notes still pass an explicit "Untitled note".
-  const createDraft = async (moduleIds: string[], title?: string) => {
+  // NO TITLE ON THE WIRE, ON PURPOSE — NOT EVEN AN OPTIONAL ONE.
+  //
+  // Drafts name themselves date_Who_Where_time, and the server does it, but
+  // only when the client sends no title: an explicit one is read as a person
+  // naming their own note. This screen sent one every time — the literal
+  // "Untitled note" from the blank button, and the scaffold's own label
+  // ("Restoration", "Hygiene recall") from the Fast Lane picks — so the one
+  // place in the app that starts most notes was also the one place that
+  // defeated the naming, and a draft list came back reading "Untitled note",
+  // "Untitled note", "Restoration", "Restoration".
+  //
+  // main reached the same conclusion for the scaffolds and left the parameter
+  // in place for the blank button. It is gone entirely here, because
+  // "Untitled note" is the string the auto-title exists to replace, and a
+  // parameter that only one caller may pass is a parameter somebody will pass.
+  const createDraft = async (moduleIds: string[]) => {
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/drafts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({
-          ...(title !== undefined ? { title } : {}),
-          note: { selectedModuleIds: moduleIds, values: {} }
-        })
+        body: JSON.stringify({ note: { selectedModuleIds: moduleIds, values: {} } })
       });
       if (!res.ok) {
         // Two real server refusals used to have no path to the screen at all:
@@ -139,7 +147,7 @@ export function HomeAside({
                 role="menuitem"
                 className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                 disabled={busy}
-                onClick={() => createDraft([], "Untitled note")}
+                onClick={() => createDraft([])}
               >
                 <span className="text-sm font-semibold text-slate-800">Blank note</span>
                 <span className="block text-xs text-slate-500">Universal Core only.</span>
@@ -206,7 +214,7 @@ export function HomeAside({
         </p>
       ) : (
         <>
-          <ul className="divide-y divide-slate-100 overflow-hidden rounded-xl bg-white ring-1 ring-slate-200">
+          <ul className="card divide-y divide-slate-100 overflow-hidden p-0">
             {others.map((d) => (
               <li key={d.id}>
                 <Link

@@ -15,6 +15,7 @@ import {
 } from "@/lib/bytestar/liveStatus";
 import { TrendSpark, type TrendSample } from "./TrendSpark";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { whenApiReady } from "@/lib/client/apiReady";
 
 // BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: SuperByte gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
@@ -96,17 +97,25 @@ export function ByteStarAdvisor({ text }: { text: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/bytestar")
-      .then((r) => r.json())
-      .then((d: { enabled?: boolean }) => {
-        if (!cancelled) setDeploy(d.enabled ? "on" : "off");
-      })
-      .catch(() => {
-        // Network/DB failure is not "feature off" — keep gauges honest.
-        if (!cancelled) setDeploy("unreachable");
-      });
+    // Held until the legal-record notice is acknowledged. Until then the server
+    // answers 403 to everything, and this probe treats any failure as
+    // "unreachable" — so on a fresh session it painted the gauges as broken and
+    // logged a console error, both for a rule rather than a fault. See
+    // src/lib/client/apiReady.ts.
+    const stop = whenApiReady(() => {
+      fetch("/api/bytestar")
+        .then((r) => r.json())
+        .then((d: { enabled?: boolean }) => {
+          if (!cancelled) setDeploy(d.enabled ? "on" : "off");
+        })
+        .catch(() => {
+          // Network/DB failure is not "feature off" — keep gauges honest.
+          if (!cancelled) setDeploy("unreachable");
+        });
+    });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
 
@@ -253,7 +262,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               <p className="text-xs font-semibold text-amber-900">
                 {tip.kind}
                 {feedbackSource === "instrument" && (
-                  <span className="ml-1 normal-case text-slate-400">· instrument reading</span>
+                  <span className="ml-1 normal-case text-slate-500">· instrument reading</span>
                 )}
                 {"tentative" in tip && tip.tentative && (
                   /* Assigned by deterministic code (strong claim, no named
@@ -268,7 +277,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               {tip.question && (
                 <p className="mt-1.5 text-sm font-semibold text-brand-navy">{tip.question}</p>
               )}
-              <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-400">
+              <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-500">
                 Source: {tip.source}
                 {"corroboration" in tip && tip.corroboration && tip.corroboration.reads > 1 && (
                   <span className="ml-2 text-teal-700">

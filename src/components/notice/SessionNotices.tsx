@@ -1,8 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { NoticeGate } from "./NoticeGate";
 import { FeedbackNotice } from "./FeedbackNotice";
+import { markApiReady } from "@/lib/client/apiReady";
 
 // Owns the ordering of the two things shown at the start of a session.
 //
@@ -14,6 +15,14 @@ import { FeedbackNotice } from "./FeedbackNotice";
 // Holding the flag here lets the gate hand off directly.
 export function SessionNotices({ acknowledged }: { acknowledged: boolean }) {
   const [acked, setAcked] = useState(acknowledged);
+  // The same flag the feedback reminder waits on is what the rest of the app
+  // needs: until the legal gate is acknowledged the server 403s every route,
+  // so anything that fetches on mount is racing this dialog. This component is
+  // in the root layout on every signed-in page, which makes it the one place
+  // that reliably knows. See src/lib/client/apiReady.ts.
+  useEffect(() => {
+    if (acked) markApiReady();
+  }, [acked]);
   return (
     <>
       <NoticeGate acknowledged={acknowledged} onAcknowledged={() => setAcked(true)} />

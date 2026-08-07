@@ -59,7 +59,7 @@ export function PinnedMyBlocks({
               {error}
             </p>
           )}
-          {blocks === null && <p className="text-xs text-slate-400">Loading…</p>}
+          {blocks === null && <p className="text-xs text-slate-500">Loading…</p>}
           {blocks && blocks.length === 0 && (
             <p className="text-xs text-slate-500">
               None yet. Save one under a field&rsquo;s Verified block → My blocks.

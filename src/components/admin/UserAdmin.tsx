@@ -277,7 +277,7 @@ function RowActions({
           Delete
         </button>
       )}
-      {perms.isSelf && <span className="px-2 text-slate-400">(you)</span>}
+      {perms.isSelf && <span className="px-2 text-slate-500">(you)</span>}
     </div>
   );
 }
@@ -395,7 +395,7 @@ export function UserAdmin({
         {users.map((u) => {
           const perms = permsFor(u, selfId, selfRole);
           return (
-            <li key={u.id} className="rounded-xl bg-white ring-1 ring-slate-200 p-3">
+            <li key={u.id} className="card p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
                 <span className="font-mono text-sm">{u.username}</span>
                 <StatusPill active={u.active} />
@@ -418,7 +418,7 @@ export function UserAdmin({
         })}
       </ul>
 
-      <div className="hidden overflow-x-auto rounded-xl bg-white ring-1 ring-slate-200 sm:block">
+      <div className="card hidden overflow-x-auto p-0 sm:block">
         <table className="w-full text-sm">
           <thead>
             <tr className="border-b border-slate-200 bg-slate-50 text-left text-xs font-semibold text-slate-500">
@@ -731,7 +731,7 @@ function AddUserDialog({
         </div>
         <div>
           <label className="field-label" htmlFor="au-email">
-            Email {emailRequired ? "" : <span className="text-slate-400">(optional)</span>}
+            Email {emailRequired ? "" : <span className="text-slate-500">(optional)</span>}
           </label>
           <input
             id="au-email"

@@ -80,10 +80,23 @@ function useAvailability(): DictationAvailability {
  */
 export function DictationField({
   onText,
-  active
+  active,
+  focused
 }: {
   onText: (text: string) => void;
+  /** The cursor is here, or this box already holds words. Governs the control. */
   active: boolean;
+  /**
+   * The cursor is here RIGHT NOW. Governs the prose.
+   *
+   * These were one flag, and the flag was "focused or has content" — which is
+   * never false again once somebody has written a sentence. So the twenty-word
+   * setup offer, or the paragraph explaining why this browser cannot dictate,
+   * was repeated under every filled box on the note: five copies in the
+   * narrative alone, all saying the same thing, none of them news. A control
+   * can reasonably stay where the work is. An explanation cannot.
+   */
+  focused: boolean;
 }) {
   const user = useContext(DictationUserContext);
   const availability = useAvailability();
@@ -94,7 +107,12 @@ export function DictationField({
   // a note field is the wrong place to explain a deployment decision.
   if (availability.status === "unknown" || availability.status === "disabled") return null;
 
+  // The control, in the boxes being worked in. `active` rather than `focused`
+  // so it does not vanish the instant you reach for it — but not everywhere
+  // either: a microphone under all eleven sections of an untouched note is the
+  // clutter this redesign exists to remove.
   if (availability.status === "ready" && user.enrolled) {
+    if (!active) return null;
     return (
       <div className="mt-1">
         <DictationButton onText={onText} region={user.region ?? "general"} />
@@ -103,9 +121,10 @@ export function DictationField({
   }
 
   // Everything below is an explanation rather than a control, so it shows only
-  // in the field the cursor is in. The same sentence under all eleven sections
-  // is noise.
-  if (!active) return null;
+  // in the field the cursor is in RIGHT NOW. The same sentence under all eleven
+  // sections is noise, and the same sentence under every box you have already
+  // written in is the same noise arriving one field at a time.
+  if (!focused) return null;
 
   if (availability.status === "ready") {
     return (

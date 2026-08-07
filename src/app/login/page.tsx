@@ -38,12 +38,16 @@ export default async function LoginPage() {
         </div>
         <LoginForm mfaAvailable={mfaFeatureEnabled()} />
         {/* Break-glass recovery is for Developers — not part of the staff first
-            viewport. Collapsed so shared-clinic sign-in stays calm. */}
+            viewport. Collapsed so shared-clinic sign-in stays calm.
+
+            slate-500, not the slate-400 this arrived with: that ramp step is
+            2.4:1 on white and is reserved for glyphs nobody has to read. See
+            the guard in src/lib/theme/contrast.test.ts. */}
         <details className="mt-4">
-          <summary className="cursor-pointer text-[0.7rem] text-slate-400 hover:text-slate-600">
+          <summary className="cursor-pointer text-[0.7rem] text-slate-500 hover:text-slate-700">
             Developer account recovery
           </summary>
-          <p className="mt-2 text-[0.7rem] leading-relaxed text-slate-400">
+          <p className="mt-2 text-[0.7rem] leading-relaxed text-slate-500">
             If the only Developer account is locked, set{" "}
             <code className="rounded bg-slate-100 px-1">ADMIN_USERNAME</code>,{" "}
             <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD</code>, and{" "}

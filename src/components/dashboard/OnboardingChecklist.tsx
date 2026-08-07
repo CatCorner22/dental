@@ -132,7 +132,7 @@ export function OnboardingChecklist({ username }: { username: string }) {
                 onChange={() => toggle(s.id)}
                 aria-label={`Mark "${s.label}" ${done ? "not done" : "done"}`}
               />
-              <span className={done ? "text-slate-400 line-through" : "text-slate-800"}>
+              <span className={done ? "text-slate-500 line-through" : "text-slate-800"}>
                 <Link href={s.href} className="underline decoration-dotted underline-offset-2">
                   {s.label}
                 </Link>{" "}

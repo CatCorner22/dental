@@ -6,7 +6,10 @@ import { APP_NAME } from "@/lib/brand";
 // renders differently on every platform and is nobody's property) with the
 // practice's own registrable mark. Source of truth for the full-size assets:
 // public/brand/ and docs/brand.md.
-function MarkGlyph({ px }: { px: number }) {
+// Exported for the error boundary: that screen renders when something has
+// already failed, so its art must be the kind that cannot fail — inline,
+// zero requests. The mascot images are <img> tags and earn no such trust.
+export function MarkGlyph({ px }: { px: number }) {
   return (
     <svg
       viewBox="0 0 512 512"

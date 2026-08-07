@@ -50,7 +50,7 @@ export function DisplaySettings() {
   };
 
   return (
-    <section className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
+    <section className="card">
       <h2 className="section-title">Text size and contrast</h2>
       <p className="mt-1 max-w-2xl text-sm text-slate-600">
         Saved on <strong>this device</strong>, not to your account — the tablet in an operatory and

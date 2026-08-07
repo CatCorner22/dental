@@ -328,7 +328,7 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
   };
 
   return (
-    <section className="rounded-xl bg-white ring-1 ring-slate-200 p-4">
+    <section className="card">
       <h2 className="mb-1 text-lg font-semibold">Add to the list</h2>
       <p className="mb-3 text-sm text-slate-600">
         Suggestions, supply requests, and anything you have seen that is below standard. You do not
@@ -375,7 +375,7 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
 
         <div>
           <label className="field-label" htmlFor="wish-detail">
-            Anything else <span className="text-slate-400">(optional)</span>
+            Anything else <span className="text-slate-500">(optional)</span>
           </label>
           <textarea
             id="wish-detail"

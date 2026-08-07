@@ -58,10 +58,12 @@ describe("every allowlisted reference document is reachable", () => {
 
 describe("the reference navigation reaches every reference page", () => {
   it("links each page directory that exists", () => {
-    const layout = readFileSync(path.join(APP_REFERENCE, "layout.tsx"), "utf8");
-    const linked = new Set(
-      [...layout.matchAll(/href:\s*"\/reference\/([^"]+)"/g)].map((m) => m[1])
+    // The links live in the sidebar component, which layout.tsx renders.
+    const nav = readFileSync(
+      path.join(process.cwd(), "src/components/reference/ReferenceNav.tsx"),
+      "utf8"
     );
+    const linked = new Set([...nav.matchAll(/href:\s*"\/reference\/([^"]+)"/g)].map((m) => m[1]));
     const dirs = readdirSync(APP_REFERENCE, { withFileTypes: true })
       .filter((e) => e.isDirectory() && existsSync(path.join(APP_REFERENCE, e.name, "page.tsx")))
       .map((e) => e.name);

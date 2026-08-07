@@ -148,7 +148,7 @@ async function FiledTab({ db, mine, userId }: { db: Db; mine: boolean; userId: s
 
   if (rows.length === 0) {
     return (
-      <div className="flex flex-col items-center gap-2 rounded border border-dashed border-slate-300 bg-white p-6 text-center">
+      <div className="flex flex-col items-center gap-2 rounded-xl border border-dashed border-slate-300 bg-white p-8 text-center">
         <Character id="sparkle" size="md" />
         <p className="text-sm text-slate-500">{sparkleLine("history", daySeed(new Date()))}</p>
       </div>

@@ -80,59 +80,73 @@ export function StoreFront() {
 
   return (
     <div className="space-y-4">
-      <p className="text-sm">
-        Balance:{" "}
-        <span className="text-lg font-bold text-brand-blue">
+      {/* The balance is the one number this page exists to spend; it was a
+          sentence of body text. A stat strip gives it the weight of a fact
+          and keeps the how-to-earn next to the how-much. */}
+      <div className="card flex flex-wrap items-baseline gap-x-3 gap-y-1">
+        <span className="text-title-2 font-bold tabular-nums text-brand-navy">
           {balance === null ? "…" : balance.toLocaleString()}
-        </span>{" "}
-        points
-      </p>
+        </span>
+        <span className="text-sm font-semibold text-slate-700">points to spend</span>
+        <span className="text-xs text-slate-500">Earned by filing clean, complete notes.</span>
+      </div>
       {error && (
-        <p className="rounded border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
+        <p className="rounded-lg border border-red-300 bg-red-50 px-3 py-2 text-sm text-red-900" role="alert">
           {error}
         </p>
       )}
       {notice && (
-        <p className="rounded border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-900" role="status">
+        <p className="rounded-lg border border-green-300 bg-green-50 px-3 py-2 text-sm text-green-900" role="status">
           {notice}
         </p>
       )}
 
       <ul className="grid gap-3 sm:grid-cols-2">
-        {items.map((item) => (
-          <li key={item.id} className="flex flex-col justify-between rounded-xl bg-white ring-1 ring-slate-200 p-3">
-            <div>
-              <p className="text-xs font-semibold text-brand-teal">
-                Tier {item.tier} · {TIER_LABEL[item.tier] ?? ""}
-              </p>
-              <p className="font-medium">{item.title}</p>
-              {item.detail && <p className="text-xs text-slate-500">{item.detail}</p>}
-            </div>
-            <div className="mt-2 flex items-center justify-between">
-              <span className="font-mono text-sm font-bold">{item.cost.toLocaleString()} pts</span>
-              <button
-                className="btn-primary text-xs"
-                disabled={busy !== null || balance === null || balance < item.cost}
-                title={
-                  balance !== null && balance < item.cost
-                    ? `Needs ${(item.cost - balance).toLocaleString()} more points`
-                    : "Request this reward"
-                }
-                onClick={() => redeem(item)}
-              >
-                {busy === item.id ? "Requesting…" : "Redeem"}
-              </button>
-            </div>
-          </li>
-        ))}
+        {items.map((item) => {
+          const short = balance !== null && balance < item.cost;
+          return (
+            <li key={item.id} className="card flex flex-col justify-between">
+              <div>
+                <p className="eyebrow">
+                  Tier {item.tier} · {TIER_LABEL[item.tier] ?? ""}
+                </p>
+                <p className="mt-1 font-semibold text-slate-800">{item.title}</p>
+                {item.detail && <p className="text-xs text-slate-500">{item.detail}</p>}
+              </div>
+              <div className="mt-3 flex items-center justify-between gap-2">
+                <span className="min-w-0">
+                  <span className="font-mono text-sm font-bold tabular-nums text-brand-navy">
+                    {item.cost.toLocaleString()} pts
+                  </span>
+                  {/* Said in the layout, not in a title tooltip: a finger
+                      never sees a tooltip, and the distance to the reward is
+                      the one fact that decides whether to keep writing. */}
+                  {short && (
+                    <span className="block text-xs text-slate-500">
+                      {(item.cost - (balance ?? 0)).toLocaleString()} more to go
+                    </span>
+                  )}
+                </span>
+                <button
+                  className="btn-primary text-xs"
+                  disabled={busy !== null || balance === null || short}
+                  title={short ? undefined : "Request this reward"}
+                  onClick={() => redeem(item)}
+                >
+                  {busy === item.id ? "Requesting…" : "Redeem"}
+                </button>
+              </div>
+            </li>
+          );
+        })}
       </ul>
 
       {redemptions.length > 0 && (
         <section>
-          <h2 className="mb-1 text-sm font-semibold text-slate-700">My requests</h2>
+          <h2 className="label-section mb-1.5">My requests</h2>
           <ul className="space-y-1 text-sm">
             {redemptions.map((r) => (
-              <li key={r.id} className="rounded border border-slate-200 bg-white px-3 py-1.5">
+              <li key={r.id} className="rounded-lg border border-slate-200 bg-white px-3 py-1.5">
                 <span className="font-medium">{r.itemTitle}</span>{" "}
                 <span className="text-xs text-slate-500">({r.cost.toLocaleString()} pts)</span>{" "}
                 <span

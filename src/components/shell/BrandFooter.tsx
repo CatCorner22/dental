@@ -1,5 +1,6 @@
 import { APP_NAME, COPYRIGHT, PRIVACY_POLICY } from "@/lib/brand";
 import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
+import { MarkGlyph } from "@/components/shell/BrandMark";
 
 // The footer carries three things, in descending order of how often someone
 // needs them: what the tool is and is not, how to reach the developer, and the
@@ -7,7 +8,14 @@ import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
 // present, never shouting.
 export function BrandFooter() {
   return (
-    <footer className="mx-auto max-w-7xl px-4 pb-8 pt-6 text-xs leading-relaxed text-slate-500">
+    <footer className="mx-auto mt-8 max-w-7xl border-t border-slate-200 px-4 pb-8 pt-6 text-xs leading-relaxed text-slate-500">
+      {/* The mark, small and first: the page above ends in content, and the
+          rule plus glyph is what says "the app is done talking" without a
+          heading shouting it. */}
+      <p className="mb-2 flex items-center gap-1.5 font-semibold text-slate-600">
+        <MarkGlyph px={16} />
+        {APP_NAME}
+      </p>
       <p>
         {APP_NAME} standardizes documentation wording and order. It is deterministic — it makes no
         AI calls and stores no patient data. It does not diagnose, select treatment, calculate
@@ -25,9 +33,9 @@ export function BrandFooter() {
         >
           Send feedback
         </a>{" "}
-        <span className="text-slate-400">({FEEDBACK_EMAIL})</span>
+        <span className="text-slate-500">({FEEDBACK_EMAIL})</span>
       </p>
-      <p className="mt-4 border-t border-slate-200 pt-3 text-slate-400">
+      <p className="mt-4 border-t border-slate-200 pt-3 text-slate-500">
         {COPYRIGHT} {PRIVACY_POLICY}
       </p>
     </footer>

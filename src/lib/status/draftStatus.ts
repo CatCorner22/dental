@@ -61,6 +61,10 @@ export interface StatusMeta {
   // Tailwind classes; color is always paired with the text label + icon above.
   chipClass: string;
   ring: string;
+  // The 4px bar on a list row. Redundant with the chip on purpose: the chip
+  // carries the word and icon, the rail makes a column of rows scannable
+  // without reading. Never the only encoding of the state.
+  rail: string;
 }
 
 export const STATUS_META: Record<DraftStatus, StatusMeta> = {
@@ -69,7 +73,8 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     short: "Draft",
     icon: "○",
     chipClass: "border-slate-300 bg-slate-100 text-slate-700",
-    ring: "text-slate-400"
+    ring: "text-slate-400",
+    rail: "bg-slate-300"
   },
   phi: {
     // A chip label, not a sentence. This shipped as "Privacy stop — possible
@@ -81,55 +86,63 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     short: "Privacy",
     icon: "⛨",
     chipClass: "border-rose-400 bg-rose-100 text-rose-900",
-    ring: "text-rose-600"
+    ring: "text-rose-600",
+    rail: "bg-rose-500"
   },
   blocked: {
     label: "Blocked — must fix",
     short: "Blocked",
     icon: "■",
     chipClass: "border-red-300 bg-red-100 text-red-900",
-    ring: "text-red-500"
+    ring: "text-red-500",
+    rail: "bg-red-500"
   },
   "action-needed": {
     label: "Action needed",
     short: "Action",
     icon: "▲",
     chipClass: "border-orange-300 bg-orange-100 text-orange-900",
-    ring: "text-orange-500"
+    ring: "text-orange-500",
+    rail: "bg-orange-400"
   },
   review: {
     label: "Review suggested",
     short: "Review",
     icon: "◆",
     chipClass: "border-amber-300 bg-amber-100 text-amber-900",
-    ring: "text-amber-500"
+    ring: "text-amber-500",
+    rail: "bg-amber-400"
   },
   handoff: {
     label: "Dentist must file",
     short: "Handoff",
     icon: "→",
     chipClass: "border-slate-400 bg-slate-100 text-slate-800",
-    ring: "text-slate-500"
+    ring: "text-slate-500",
+    rail: "bg-slate-400"
   },
   ready: {
     label: "Ready to submit",
     short: "Ready",
     icon: "●",
     chipClass: "border-green-300 bg-green-100 text-green-900",
-    ring: "text-green-500"
+    ring: "text-green-500",
+    rail: "bg-green-500"
   },
   submitted: {
     label: "Submitted",
     short: "Sent",
     icon: "✓",
     chipClass: "border-blue-300 bg-blue-100 text-blue-900",
-    ring: "text-blue-500"
+    ring: "text-blue-500",
+    rail: "bg-blue-400"
   },
   error: {
     label: "Send failed",
     short: "Error",
     icon: "!",
     chipClass: "border-rose-400 bg-rose-100 text-rose-900",
-    ring: "text-rose-500"
+    ring: "text-rose-500",
+    rail: "bg-rose-600"
   }
 };

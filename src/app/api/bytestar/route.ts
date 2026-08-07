@@ -155,14 +155,29 @@ export async function POST(req: Request): Promise<Response> {
     return Response.json({
       observations: [],
       benchmarks: benchmarksEarly,
+      code: "phi-blocked",
       unavailable: true
     });
   }
 
-  if (detectEscape(input).length > 0) {
+  const inputEscapeHits = detectEscape(input);
+  if (inputEscapeHits.length > 0) {
+    await logAction(db, {
+      actorId: guard.user.id,
+      actorName: `${guard.user.displayName} (${guard.user.username})`,
+      action: "bytestar.escape",
+      detail: `${encodeByteStarDetail({
+        outcome: "escape-input",
+        promptVersion: BYTESTAR_PROMPT_VERSION,
+        model: config.model,
+        tokens: 0,
+        codes: inputEscapeHits.map((hit) => hit.signal)
+      })} origin=user`
+    });
     return Response.json({
       observations: [],
       benchmarks: benchmarksEarly,
+      code: "escape-input",
       unavailable: true
     });
   }

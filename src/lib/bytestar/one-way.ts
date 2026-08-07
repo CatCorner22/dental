@@ -7,7 +7,7 @@
 // draft text for passive observation; Team Lead may clear a perma-kill latch.
 
 export const BYTESTAR_ONE_WAY_NOTICE =
-  "SuperByte gives you objective feedback here — language and graphics only. You cannot prompt SuperByte, copy its text, or send it feedback.";
+  "SuperByte observes the draft — language and graphics only. You cannot prompt it, copy its text into the note, or send it feedback.";
 
 /** Actions staff must never use to talk TO SuperByte. Enforced in the API route. */
 export const BYTESTAR_FORBIDDEN_USER_ACTIONS = [

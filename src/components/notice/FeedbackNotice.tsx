@@ -89,8 +89,10 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
       </div>
 
       <div className="mt-5 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+        {/* Optional path — dismiss without mailing. Same once-per-browser mark
+            as Got it so go-live testers are not trapped in a support gauntlet. */}
         <button type="button" className="btn-secondary" onClick={dismiss}>
-          Got it
+          Not now
         </button>
         <a href={feedbackMailto()} className="btn-primary text-center" onClick={dismiss}>
           Send feedback

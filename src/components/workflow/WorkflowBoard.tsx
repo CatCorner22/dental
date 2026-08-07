@@ -253,9 +253,11 @@ export function WorkflowBoard({
                   onChange={(e) => setForm((f) => ({ ...f, description: e.target.value }))}
                 />
               </label>
-              <details className="rounded border border-slate-200 p-2" open>
+              {/* Closed by default — a 32-chip wall was the first paint of New pack
+                  and taught density habits we refuse in the builder (UIX-005). */}
+              <details className="rounded border border-slate-200 p-2">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-700">
-                  Modules (structure) — {form.moduleIds.length} selected
+                  Modules (structure) — {form.moduleIds.length} selected · tap to choose
                 </summary>
                 <div className="mt-1.5 flex flex-wrap gap-1.5">
                   {ADDON_MODULES.map((m) => (

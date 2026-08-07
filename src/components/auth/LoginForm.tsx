@@ -2,7 +2,6 @@
 
 import { useState } from "react";
 import { signIn } from "next-auth/react";
-import { markFeedbackNoticeUnseen } from "@/components/notice/FeedbackNotice";
 import { HelpTip } from "@/components/ui/HelpTip";
 
 // mfaAvailable comes from the server (deployment-level switch). When false,
@@ -55,9 +54,8 @@ export function LoginForm({ mfaAvailable = true }: { mfaAvailable?: boolean }) {
       setBusy(false);
       return;
     }
-    // A real sign-in re-arms the feedback reminder, so every login shows it
-    // once — moving around the app afterwards does not.
-    markFeedbackNoticeUnseen();
+    // FeedbackNotice is once per browser via localStorage — login does not
+    // re-arm it (that gauntlet fought chairside first paint).
     // Full navigation reliably picks up the new session cookie. Honor the
     // page the middleware bounced the user from — same-origin paths only,
     // so a crafted link can never redirect the login off-site.

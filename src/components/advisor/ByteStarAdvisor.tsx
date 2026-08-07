@@ -204,7 +204,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 </HelpTip>
               </div>
               <p className="text-xs text-amber-900/70">
-                gives you feedback · you do not give it feedback
+                observes · you do not reply
               </p>
               {/* Present-tense status — HF MessageUpdate pattern. The tagline
                   above says what SuperByte IS; this line says what it is doing. */}
@@ -263,7 +263,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   </span>
                 )}
               </p>
-              <p className="text-base font-semibold leading-snug text-slate-900">{tip.say}</p>
+              <p className="text-sm font-medium leading-snug text-slate-900">{tip.say}</p>
               <p className="mt-1 text-sm leading-relaxed text-slate-700">{tip.why}</p>
               {tip.question && (
                 <p className="mt-1.5 text-sm font-semibold text-brand-navy">{tip.question}</p>
@@ -307,7 +307,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 : deferred.trim().length < MIN_CHARS
                   ? "Keep typing — feedback appears when the draft is long enough to analyze."
                   : deploy === "off"
-                    ? "Pioneer model is dark on this deployment. A Team Lead opens it by setting AI_GATEWAY_API_KEY (see SuperByte monitor), then redeploying. Gauges below still run locally."
+                    ? "Pioneer dark on this deployment — gauges below still run locally. A Team Lead opens the pioneer from the SuperByte monitor."
                     : deploy === "unreachable"
                       ? "Could not reach the pioneer just now — try again shortly. Gauges below still run locally."
                       : "Drift gauges below are live. Pioneer observations appear as the draft settles."}
@@ -337,7 +337,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   benchmarks.onCourse >= 0.75 ? "text-teal-700" : "text-amber-800"
                 }`}
               >
-                {onCoursePct}% on course · open
+                local gauges · {onCoursePct}% on course · open
               </span>
             </div>
           </summary>

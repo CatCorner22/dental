@@ -33,6 +33,19 @@ describe("deriveDraftStatus", () => {
     expect(deriveDraftStatus({ ...base, counts: counts({ S3: 5, S4: 5 }) })).toBe("ready");
     expect(deriveDraftStatus({ ...base, counts: counts() })).toBe("ready");
   });
+  it("does not say Ready when filing authority is missing (UIX-001)", () => {
+    const base = {
+      hasContent: true,
+      phiStops: 0,
+      submitted: false,
+      lastSendFailed: false,
+      counts: counts()
+    };
+    expect(deriveDraftStatus({ ...base, filingAllowed: false })).toBe("handoff");
+    expect(deriveDraftStatus({ ...base, filingAllowed: true })).toBe("ready");
+    // Omitted means unknown/legacy callers — keep prior Ready behavior.
+    expect(deriveDraftStatus(base)).toBe("ready");
+  });
   it("a privacy stop outranks the generic block", () => {
     // The counts alone cannot tell a wrong-site stop from a privacy stop, and
     // those demand different action: fix the field, versus get the identifier
@@ -53,6 +66,7 @@ describe("deriveDraftStatus", () => {
       "blocked",
       "action-needed",
       "review",
+      "handoff",
       "ready",
       "submitted",
       "error"

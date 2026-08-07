@@ -101,7 +101,12 @@ export default async function AuditLogPage({
           <a
             key={f.key}
             href={f.key === "all" ? "/admin/audit" : `/admin/audit?filter=${f.key}`}
-            className={`tap rounded-full border px-3 text-sm ${
+            /* The literal "page" — globals.css selects on [aria-current="page"]
+               to restore a Highlight border under forced-colors, where the fill
+               these pills rely on is overridden and all three render
+               identically. Every other nav-style control in the app sets it. */
+            aria-current={filter === f.key ? "page" : undefined}
+            className={`tap rounded-full border px-3 py-0.5 text-sm ${
               filter === f.key
                 ? "border-brand-blue bg-brand-blue text-white"
                 : "border-slate-300 bg-white text-slate-700 hover:bg-slate-100"

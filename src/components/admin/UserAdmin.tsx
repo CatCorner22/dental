@@ -248,7 +248,15 @@ function RowActions({
       )}
       {perms.showClinicalRole && (
         <select
-          className="tap rounded border border-slate-300 bg-white px-1 py-0.5 text-xs"
+          /* field-input w-auto, identical to RoleControl above — whose comment
+             spells out why: below sm that class is 16px, which is what stops
+             iOS Safari zooming the page in on focus and never zooming back
+             out. This second select in the same file broke that rule, and
+             border-slate-300 is 1.5:1 on white, under the 3:1 floor
+             .field-input's border-slate-500 exists to meet. `tap` is dropped
+             because .field-input already takes min-height 44px on coarse
+             pointers. */
+          className="field-input w-auto"
           value={effective}
           aria-label={`Clinical role for ${user.username}`}
           title={CLINICAL_ROLE_HINT[effective]}

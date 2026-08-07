@@ -49,7 +49,12 @@ export default async function ByteStarMonitorPage() {
   }, {});
 
   return (
-    <main className="mx-auto max-w-5xl px-4 py-8">
+    // A plain <div>, like every sibling admin page. This was a second <main>
+    // nested inside the root layout's <main id="main">, so the skip link landed
+    // a screen-reader user in a document with two "main" landmarks to choose
+    // between — and the doubled px-4 cost this page 32px of content width on a
+    // phone against every other admin screen.
+    <div>
       <h1 className="page-title">SuperByte monitor</h1>
       <p className="mt-1 max-w-2xl text-sm text-slate-600">
         Observational pioneer — staff cannot prompt or copy its output. This page is the transparent
@@ -159,14 +164,22 @@ export default async function ByteStarMonitorPage() {
       <LogTable id="bytestar-escapes" title="Model escape ladder" rows={escapes} />
       <LogTable title="Perma-kill events" rows={permaKills} />
       <LogTable id="bytestar-refused" title="Verifier / PHI refusals" rows={refused} />
-    </main>
+    </div>
   );
 }
 
 function Stat({ label, value, note }: { label: string; value: string; note: string }) {
   return (
-    <div className="rounded-xl bg-white p-4 ring-1 ring-slate-200">
-      <p className="text-[0.65rem] text-slate-500">{label}</p>
+    // .card already carries rounded-xl, bg-white, p-4 and ring-1 ring-slate-200
+    // — the only thing this hand-rolled copy added was the absence of the
+    // elevation shadow and, more importantly, of the #565070 ring that
+    // [data-contrast="high"] applies to .card. Under high contrast these four
+    // tiles were the only surfaces on the page that stayed at ~1.3:1 and merged
+    // into one field.
+    <div className="card">
+      {/* label-micro is the defined rung; text-[0.65rem] was 10.4px regular, the
+          smallest text in the app, naming the tile it sits on. */}
+      <p className="label-micro">{label}</p>
       <p className="mt-1 text-lg font-bold text-brand-navy">{value}</p>
       <p className="mt-1 text-xs text-slate-500">{note}</p>
     </div>
@@ -188,13 +201,23 @@ function LogTable({
       {rows.length === 0 ? (
         <p className="mt-2 text-sm text-slate-500">None in the recent window.</p>
       ) : (
-        <div className="mt-2 overflow-x-auto rounded-xl ring-1 ring-slate-200">
+        // tabIndex/role/aria-label so the scroller is reachable at all: these
+        // rows contain nothing focusable, so a keyboard or switch user had no
+        // tab stop anywhere in the region and no way to scroll it — and the
+        // mono Detail column, which is the point of the page, sits past the
+        // right edge. The audit table next door already does exactly this.
+        <div
+          className="mt-2 overflow-x-auto rounded-xl ring-1 ring-slate-200"
+          tabIndex={0}
+          role="region"
+          aria-label={`${title} — scrolls sideways for more columns`}
+        >
           <table className="min-w-full text-left text-xs">
             <thead className="bg-slate-50 text-slate-500">
               <tr>
-                <th className="px-3 py-2 font-medium">When</th>
-                <th className="px-3 py-2 font-medium">Who</th>
-                <th className="px-3 py-2 font-medium">Detail</th>
+                <th scope="col" className="px-3 py-2 font-medium">When</th>
+                <th scope="col" className="px-3 py-2 font-medium">Who</th>
+                <th scope="col" className="px-3 py-2 font-medium">Detail</th>
               </tr>
             </thead>
             <tbody>

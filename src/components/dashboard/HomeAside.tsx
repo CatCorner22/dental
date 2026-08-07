@@ -53,14 +53,25 @@ export function HomeAside({
   );
   const structureCue = authorCapabilities(clinicalRole).structureCue;
 
-  const createDraft = async (moduleIds: string[], title: string) => {
+  // NO TITLE ON THE WIRE, ON PURPOSE.
+  //
+  // Drafts name themselves date_Who_Where_time, and the server does it — but
+  // only when the client sends no title, because an explicit one is read as a
+  // person naming their own note. This screen was sending one every time: the
+  // literal "Untitled note" from the blank button, and the scaffold's own
+  // label ("Restoration", "Hygiene recall") from the Fast Lane picks. So the
+  // one place in the app that starts most notes was also the one place that
+  // defeated the naming, and a list of drafts came back reading "Untitled
+  // note", "Untitled note", "Restoration", "Restoration" — four facts you can
+  // search on traded for one you can already see in the note's own modules.
+  const createDraft = async (moduleIds: string[]) => {
     setBusy(true);
     setError("");
     try {
       const res = await fetch("/api/drafts", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ title, note: { selectedModuleIds: moduleIds, values: {} } })
+        body: JSON.stringify({ note: { selectedModuleIds: moduleIds, values: {} } })
       });
       if (!res.ok) {
         // Two real server refusals used to have no path to the screen at all:
@@ -103,7 +114,7 @@ export function HomeAside({
               <button
                 className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                 disabled={busy}
-                onClick={() => createDraft([], "Untitled note")}
+                onClick={() => createDraft([])}
               >
                 <span className="text-sm font-semibold text-slate-800">Blank note</span>
                 <span className="block text-xs text-slate-500">Universal Core only.</span>
@@ -119,7 +130,7 @@ export function HomeAside({
                   key={p.id}
                   className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                   disabled={busy}
-                  onClick={() => createDraft(p.moduleIds, p.label)}
+                  onClick={() => createDraft(p.moduleIds)}
                 >
                   <span className="text-sm font-semibold text-slate-800">{p.label}</span>
                   <span className="block text-xs text-slate-500">{p.description}</span>
@@ -135,7 +146,7 @@ export function HomeAside({
                   key={p.id}
                   className="block w-full rounded p-2 text-left hover:bg-brand-blue/10"
                   disabled={busy}
-                  onClick={() => createDraft(p.moduleIds, p.label)}
+                  onClick={() => createDraft(p.moduleIds)}
                 >
                   <span className="text-sm font-semibold text-slate-800">{p.label}</span>
                   <span className="block text-xs text-slate-500">{p.description}</span>

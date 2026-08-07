@@ -81,6 +81,26 @@ function download(filename: string, content: string) {
   URL.revokeObjectURL(url);
 }
 
+/**
+ * The three ways a finished note leaves this app, and the words for each.
+ *
+ * One table so the button and the confirmation that follows it cannot end up
+ * describing different actions — which is exactly what happened when the
+ * clipboard route grew a chart check and the two download routes did not.
+ * `label` is what the trigger says, `noun` is what it is called when it is
+ * locked, and `verb` is the button that actually does it.
+ */
+const EXPORT_ROUTES: {
+  intent: "copy" | "md" | "txt";
+  label: (edr: string) => string;
+  noun: string;
+  verb: string;
+}[] = [
+  { intent: "copy", label: (edr) => `Copy for ${edr}`, noun: "Copy", verb: "Copy to clipboard" },
+  { intent: "md", label: () => "Download .md", noun: "Download", verb: "Download the .md file" },
+  { intent: "txt", label: () => "Download .txt", noun: "Download", verb: "Download the .txt file" }
+];
+
 export function BuilderShell({
   draftId,
   initialTitle,
@@ -159,7 +179,16 @@ export function BuilderShell({
   const [showOverride, setShowOverride] = useState(false);
   const [showSubmit, setShowSubmit] = useState(false);
   const [copied, setCopied] = useState(false);
-  const [pasteConfirmOpen, setPasteConfirmOpen] = useState(false);
+  // WHICH WAY THE NOTE IS LEAVING, AND WHETHER THE CHART CHECK IS DONE.
+  //
+  // This used to be a boolean that only the clipboard consulted, and the two
+  // download buttons sat eight pixels away from it writing the same composed
+  // note to a file with no check at all. The check is about the chart the note
+  // is going into, not about the clipboard API, so a file on the desktop that
+  // gets pasted five minutes later needs it every bit as much — arguably more,
+  // because by then the writer is not looking at this screen. One intent, one
+  // confirmation, three destinations.
+  const [exportIntent, setExportIntent] = useState<null | "copy" | "md" | "txt">(null);
   const [pasteConfirmed, setPasteConfirmed] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   // Below `lg` the module rail, form, and Sidekick stack vertically (see the
@@ -362,6 +391,7 @@ export function BuilderShell({
   // Why Submit is off. Pure and in lib/status so it can be tested — it named a
   // count of zero as a second task when a stop was the only blocker.
   const blockedReason = useMemo(() => submitBlockedReason(report.counts), [report.counts]);
+  const submitBlocked = !hasContent || !gates.emailAllowed || liveStatus === "submitted";
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -515,7 +545,21 @@ export function BuilderShell({
     [draftId, autosave.version, adoptVersion]
   );
 
-  const filename = suggestedFilename(state, ALL_MODULES);
+  // THE FILE IS NAMED AFTER THE NOTE, NOT AFTER ITS MODULES.
+  //
+  // Every download landed as `dental-note-draft-universal-core`, so a
+  // downloads folder held five files with the same name and a counter after
+  // it. The note already carries a name built to be searched on —
+  // date_Who_Where_time — and using it costs nothing. `suggestedFilename`
+  // stays as the fallback for a note whose title has been emptied.
+  const filename = useMemo(() => {
+    const fromTitle = title
+      .trim()
+      .replace(/[^\w.-]+/g, "_")
+      .replace(/^_+|_+$/g, "")
+      .slice(0, 120);
+    return fromTitle || suggestedFilename(state, ALL_MODULES);
+  }, [title, state]);
 
   // Submit is only offered when every local edit is on the server — the
   // server audits and files what IT stores, so a stale or conflicted flush
@@ -627,7 +671,7 @@ export function BuilderShell({
     }
   };
 
-  // TWO IDENTIFIERS BEFORE THE CLIPBOARD.
+  // TWO IDENTIFIERS BEFORE THE NOTE LEAVES.
   //
   // Carried over from the standardize screen, which asked for this and which
   // the builder never did — so the copy that went into a chart was the one with
@@ -635,21 +679,32 @@ export function BuilderShell({
   // tool cannot see, and the only person who can is the one about to paste.
   //
   // Two presses, not a dialog: the first opens the confirmation, the second
-  // writes the clipboard. A modal here would be dismissed by reflex.
-  const copy = async () => {
-    if (!pasteConfirmed) {
-      setPasteConfirmOpen(true);
-      return;
+  // sends the note. A modal here would be dismissed by reflex.
+  const runExport = async (intent: "copy" | "md" | "txt") => {
+    if (intent === "md") return download(`${filename}.md`, markdown);
+    if (intent === "txt") {
+      return download(
+        `${filename}.txt`,
+        composeNoteText(deferredState, auditModules, { officeName })
+      );
     }
     try {
       await navigator.clipboard.writeText(markdown);
       setCopied(true);
-      setPasteConfirmOpen(false);
-      setPasteConfirmed(false);
       setTimeout(() => setCopied(false), 1500);
     } catch {
+      // No clipboard permission (an insecure origin, a locked-down kiosk). The
+      // note still has to reach the chart, and the check has already been made.
       download(`${filename}.md`, markdown);
     }
+  };
+
+  const confirmExport = async () => {
+    const intent = exportIntent;
+    if (!intent || !pasteConfirmed) return;
+    setExportIntent(null);
+    setPasteConfirmed(false);
+    await runExport(intent);
   };
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
@@ -682,6 +737,31 @@ export function BuilderShell({
   // panel. Closes over local state directly rather than taking props — it is
   // rendered, not reused as a component, so there is no extra fiber or
   // remount cost to doing it this way.
+  // BYTE AND SUPERBYTE ARE NOT TABS, AND NOT DESKTOP-ONLY EITHER.
+  //
+  // They were two of six tabs, so seeing either one meant losing sight of the
+  // audit, and a writer who never pressed a tab never met them at all — a
+  // real-time helper you have to go and find is not a real-time helper. That
+  // was fixed by lifting them above the tabs.
+  //
+  // It was only half a fix. They still lived inside the sidekick, and the
+  // sidekick is `hidden lg:block`, so on a phone or a portrait tablet the pair
+  // was `display: none` — present in the markup, invisible to the writer and
+  // skipped by a screen reader — until somebody tapped the audit bar. "Always
+  // visible, for every role" cannot mean "on a wide screen". So they are their
+  // own fragment now, rendered in the aside on a wide screen and inline above
+  // the form on a narrow one, and NOT inside the mobile sheet, which would put
+  // two live copies on screen at once.
+  const advisors = (
+    <div className="space-y-2">
+      {/* Byte first: it is the deterministic advisor reading the note that was
+          just typed, and it is the one whose advice cites a rule. SuperByte is
+          the experimental one and sits under it. */}
+      <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
+      <ByteStarAdvisor text={markdown} />
+    </div>
+  );
+
   const sidekickBody = (
     <>
       {/* One status signal here, not three. The ring, a StatusChip and the
@@ -702,20 +782,10 @@ export function BuilderShell({
       <div className="mb-3">
         <LicenseScopeCard clinicalRole={clinicalRole} />
       </div>
-      {/* BYTE AND SUPERBYTE ARE NOT TABS.
-          They were two of six, so seeing either one meant losing sight of the
-          audit, and a writer who never pressed a tab never met them at all —
-          a real-time helper you have to go and find is not a real-time helper.
-          They live here now, above the tabs, on screen the whole time the note
-          is open, for every role. Nothing gates them: both read the composed
-          note locally and neither can write to it. */}
-      <div className="mb-3 space-y-2">
-        {/* Byte first: it is the deterministic advisor reading the note that was
-            just typed, and it is the one whose advice cites a rule. SuperByte
-            is the experimental one and sits under it. */}
-        <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
-        <ByteStarAdvisor text={markdown} />
-      </div>
+      {/* Byte and SuperByte sit above the tabs on a wide screen — see the
+          `advisors` fragment. They are rendered by the aside, not here, so the
+          mobile sheet does not show a second live copy of the pair the writer
+          already has in front of them. */}
       {/* flex-wrap, not a single row. Even at four, tabs do not reliably fit
           the aside at every desktop width, and without wrapping the last one
           pushed the whole PAGE two pixels wider than the viewport — which the
@@ -759,65 +829,56 @@ export function BuilderShell({
         )}
       </div>
       <div className="mt-3 flex flex-wrap items-center gap-2 border-t border-slate-100 pt-3">
-        <button
-          className={
-            !hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"
-          }
-          disabled={!hasContent || !gates.exportAllowed}
-          aria-disabled={!hasContent || !gates.exportAllowed}
-          aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
-          title={
-            !hasContent
-              ? "Add note content before copying"
-              : gates.exportAllowed
-                // main's wording for the enabled state — it names where the
-                // note is going, which "Copy the composed note" did not — with
-                // this branch's de-shouted lock text.
-                ? `Copy a clean note for pasting into ${edrName}`
-                : "Resolve every stop finding before copy or download"
-          }
-          onClick={copy}
-        >
-          {copied
-            ? "Copied — ready to paste ✓"
-            : !gates.exportAllowed && hasContent
-              ? "🔒 Copy locked"
-              : `Copy for ${edrName}`}
-        </button>
-        <button
-          className="btn-secondary"
-          disabled={!hasContent || !gates.exportAllowed}
-          aria-disabled={!hasContent || !gates.exportAllowed}
-          aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
-          title={
-            !hasContent
-              ? "Add note content before downloading"
-              : gates.exportAllowed
-                ? "Download as Markdown"
-                : "Resolve every stop finding before copy or download"
-          }
-          onClick={() => download(`${filename}.md`, markdown)}
-        >
-          Download .md
-        </button>
-        <button
-          className="btn-secondary"
-          disabled={!hasContent || !gates.exportAllowed}
-          aria-disabled={!hasContent || !gates.exportAllowed}
-          aria-describedby={!gates.exportAllowed && hasContent ? "builder-export-locked" : undefined}
-          title={
-            !hasContent
-              ? "Add note content before downloading"
-              : gates.exportAllowed
-                ? "Download as plain text"
-                : "Resolve every stop finding before copy or download"
-          }
-          onClick={() => download(`${filename}.txt`, composeNoteText(deferredState, auditModules, { officeName }))}
-        >
-          Download .txt
-        </button>
-        {pasteConfirmOpen && !copied && (
-          <div className="mt-2 w-full rounded border border-brand-blue/40 bg-brand-blue/10 p-3">
+        {/* EVERY WAY OUT ASKS THE SAME QUESTION.
+            Three buttons that all put the composed note somewhere a patient
+            record can receive it, so all three open the same one check. The
+            ellipsis is not decoration — it is the standard signal that a
+            control opens a step rather than doing the thing, and its absence
+            is why pressing "Copy for Curve Hero" and getting no clipboard read
+            as a broken button. */}
+        {EXPORT_ROUTES.map(({ intent, label, noun, verb }) => {
+          const locked = !hasContent || !gates.exportAllowed;
+          const primary = intent === "copy";
+          return (
+            <button
+              key={intent}
+              className={locked || !primary ? "btn-secondary" : "btn-complete"}
+              aria-disabled={locked}
+              aria-expanded={exportIntent === intent}
+              aria-controls={exportIntent === intent ? "builder-export-check" : undefined}
+              aria-describedby={locked && hasContent ? "builder-export-locked" : undefined}
+              title={
+                !hasContent
+                  ? "Add note content first"
+                  : gates.exportAllowed
+                    ? `${verb} — after one check that the right chart is open`
+                    : "Resolve every stop finding before copy or download"
+              }
+              onClick={() => {
+                if (locked) {
+                  document.getElementById("builder-export-locked")?.focus();
+                  return;
+                }
+                setPasteConfirmed(false);
+                setExportIntent((cur) => (cur === intent ? null : intent));
+              }}
+            >
+              {primary && copied
+                ? "Copied — ready to paste ✓"
+                : locked && hasContent
+                  ? `🔒 ${noun} locked`
+                  : `${label(edrName)}…`}
+            </button>
+          );
+        })}
+        {exportIntent && !copied && (
+          <div
+            id="builder-export-check"
+            className="mt-2 w-full rounded border border-brand-blue/40 bg-brand-blue/10 p-3"
+          >
+            <p className="mb-1 text-xs font-semibold text-brand-navy">
+              One check before this leaves Smile Notes
+            </p>
             <label className="flex items-start gap-2 text-xs text-brand-navy">
               <input
                 type="checkbox"
@@ -831,15 +892,25 @@ export function BuilderShell({
                 wrong chart is a records error this tool cannot see — only you can.
               </span>
             </label>
-            <button className="btn-complete mt-2 text-xs" onClick={copy} disabled={!pasteConfirmed}>
-              Copy to clipboard
-            </button>
+            <div className="mt-2 flex flex-wrap gap-2">
+              <button
+                className="btn-complete text-xs"
+                onClick={() => void confirmExport()}
+                aria-disabled={!pasteConfirmed}
+              >
+                {EXPORT_ROUTES.find((r) => r.intent === exportIntent)?.verb ?? "Continue"}
+              </button>
+              <button className="btn-secondary text-xs" onClick={() => setExportIntent(null)}>
+                Not yet
+              </button>
+            </div>
           </div>
         )}
         <HelpTip label="About copy and download">
           Copy and download stay locked while any stop finding is open. A privacy stop can be
           attested; other stops must be fixed in the note. Required fields block Submit but not
-          copy.
+          copy. A downloaded file leaves this app, so it asks the same chart check the clipboard
+          does.
         </HelpTip>
         {report.phiStops.length > 0 && !overrideActive && (
           <button
@@ -855,7 +926,14 @@ export function BuilderShell({
         )}
       </div>
       {hasContent && !gates.exportAllowed && (
-        <p id="builder-export-locked" className="mt-2 text-xs text-rose-800" role="status">
+        <p
+          id="builder-export-locked"
+          className="mt-2 text-xs text-rose-800"
+          role="status"
+          // Reachable by script only, so pressing a locked export lands the
+          // cursor on the reason it is locked.
+          tabIndex={-1}
+        >
           Copy and download are locked until every stop is fixed
           {report.phiStops.length > 0 && !overrideActive
             ? " (or a privacy stop is attested)"
@@ -938,7 +1016,7 @@ export function BuilderShell({
             </button>
           )}
           <StatusChip status={liveStatus} size="md" />
-          {canEdit && <SaveIndicator state={autosave.state} />}
+          {canEdit && <SaveIndicator state={autosave.state} onRetry={() => void flush()} />}
           {canEdit && liveStatus === "error" && (
             <button
               className="btn-primary border-rose-600 bg-rose-600 hover:bg-rose-700"
@@ -1051,6 +1129,12 @@ export function BuilderShell({
         <span aria-hidden className="shrink-0 text-slate-400">▸</span>
       </button>
 
+      {/* The advisors, on a narrow screen, in the flow of the page rather than
+          behind a tap. Above the form on purpose: both read the note as it is
+          typed, and help that arrives below eleven sections of fields arrives
+          after the writer has stopped looking for it. */}
+      <div className="mb-4 lg:hidden">{advisors}</div>
+
       <div className="flex flex-col gap-4 lg:flex-row">
         {/* Form. THE NOTE IS FIRST.
             Two cards used to sit above it — a paste box and a verified-block
@@ -1102,6 +1186,7 @@ export function BuilderShell({
             entire form. */}
         <aside className="hidden shrink-0 lg:block lg:w-[26rem]">
           <div className="card p-3 lg:sticky lg:top-20">
+            <div className="mb-3">{advisors}</div>
             {sidekickBody}
           </div>
         </aside>
@@ -1119,35 +1204,61 @@ export function BuilderShell({
           old banner deliberately skipped, leaving the disabled control with no
           on-screen explanation at all. */}
       {canEdit && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur">
+        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2 backdrop-blur">
+          {/* TWO ROWS ON A PHONE, AND THE SAME TWO EVERY TIME.
+              This wrapped to three unpredictable rows at 390px — four controls
+              and a sentence sharing one flex-wrap — which pinned about a third
+              of the viewport to the bottom of a screen already holding a
+              keyboard. The sentence gets its own full-width row below `sm` and
+              rejoins the controls above it, so the height of the bar is a
+              number rather than a function of the message currently in it. */}
           <div className="mx-auto flex max-w-7xl flex-wrap items-center gap-2">
-            {/* SAY WHAT THEY DO.
+            {/* ONE WAY IN, NOT TWO.
                 "Paste a note" and "Earlier saves" were two two-word labels in
-                the corner of the screen, and neither says what pressing it
-                does: the first sounds like it pastes something INTO the note
-                from somewhere, and the second could as easily mean other
+                the corner of the screen, and neither said what pressing it did:
+                the first sounded like it pasted something INTO the note from
+                somewhere, and the second could as easily have meant other
                 people's notes as older copies of this one. Both are named for
-                their outcome now, and the pair is separated from Save and
-                Submit by a rule — these two are ways INTO this note, not ways
-                to finish it. */}
-            <button
-              type="button"
-              className="btn-secondary text-xs"
-              onClick={() => setShowPaste(true)}
-              title="Already written this note somewhere else? Paste the text here and Smile Notes will sort it into sections for you to place."
-            >
-              Start from text I wrote
-            </button>
-            <button
-              type="button"
-              className="btn-secondary text-xs"
-              title="Go back to an automatically saved earlier version of THIS note. Nothing is lost — the current version is kept too."
-              onClick={() => void openRevisions()}
-            >
-              Undo back to an earlier version
-            </button>
+                their outcome now — and only ever one of them is offered,
+                because they belong to opposite ends of a note's life. There is
+                no earlier version of a note nobody has written yet, and nobody
+                starts from pasted text when the note is already written. */}
+            {/* Two labels, one control. The long one is the one worth reading
+                and it is what a desktop gets; at 390px the same three words
+                too many pushed Save and Submit onto rows of their own and the
+                bar grew to 117px of a 844px screen. The short form still names
+                the outcome rather than the mechanism, which was the point of
+                renaming these in the first place. */}
+            {hasContent ? (
+              <button
+                type="button"
+                className="btn-secondary shrink-0 text-xs"
+                title="Go back to an automatically saved earlier version of THIS note. Nothing is lost — the current version is kept too."
+                onClick={() => void openRevisions()}
+              >
+                <span className="sm:hidden">Earlier versions</span>
+                <span className="hidden sm:inline">Undo back to an earlier version</span>
+              </button>
+            ) : (
+              <button
+                type="button"
+                className="btn-secondary shrink-0 text-xs"
+                onClick={() => setShowPaste(true)}
+                title="Already written this note somewhere else? Paste the text here and Smile Notes will sort it into sections for you to place."
+              >
+                <span className="sm:hidden">Paste my text</span>
+                <span className="hidden sm:inline">Start from text I wrote</span>
+              </button>
+            )}
             <span aria-hidden className="hidden h-5 w-px bg-slate-200 sm:block" />
-            <p className="min-w-0 flex-1 text-xs text-slate-600" id="builder-submit-blocked">
+            <p
+              className="order-first w-full min-w-0 text-xs text-slate-600 sm:order-none sm:w-auto sm:flex-1"
+              id="builder-submit-blocked"
+              // Focusable only by script, so pressing a blocked Submit lands
+              // the cursor on the sentence that says why. Never in the tab
+              // order — a paragraph is not a stop on the way to anywhere.
+              tabIndex={-1}
+            >
               {liveStatus === "submitted"
                 ? "Filed. Edit the note to submit again."
                 : !hasContent
@@ -1156,15 +1267,34 @@ export function BuilderShell({
                     ? "Ready to file."
                     : blockedReason}
             </p>
-            <button className="btn-secondary" title="Save now (Ctrl+S)" onClick={() => void flush()}>
+            <button
+              className="btn-secondary ml-auto shrink-0 sm:ml-0"
+              title="Save now (Ctrl+S)"
+              onClick={() => void flush()}
+            >
               Save
             </button>
+            {/* NOT `disabled`, ON PURPOSE.
+                A natively disabled button is removed from the tab order and
+                skipped by screen readers, so the one control that ends the task
+                simply did not exist for anybody driving this from a keyboard —
+                and neither did the sentence saying why, because
+                aria-describedby is only read out when the element it describes
+                can be reached. `aria-disabled` keeps it focusable and announced
+                as unavailable, which is the whole point of having written the
+                reason down. Pressing it while blocked moves the cursor to that
+                reason rather than doing nothing. */}
             <button
-              className="btn-primary"
-              disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
-              aria-disabled={!hasContent || !gates.emailAllowed || liveStatus === "submitted"}
+              className="btn-primary shrink-0"
+              aria-disabled={submitBlocked}
               aria-describedby="builder-submit-blocked"
-              onClick={() => void trySubmit()}
+              onClick={() => {
+                if (submitBlocked) {
+                  document.getElementById("builder-submit-blocked")?.focus();
+                  return;
+                }
+                void trySubmit();
+              }}
             >
               Submit
             </button>

@@ -35,8 +35,9 @@ export function needsSave(s: AutosaveState): boolean {
  * What to show the writer when a save is refused.
  *
  * Pure, and here rather than in the hook, so it can be tested: the save chain
- * STOPS on an error and does not retry, which makes this string the entire
- * explanation a writer gets for why their work is not on the server. It used to
+ * stops on an error, and although a soft retry re-runs it every few seconds,
+ * that retry is silent — so this string is the entire explanation a writer
+ * gets for why their work is not on the server. It used to
  * be `Save failed (403).` unconditionally, and the worst case of that was the
  * scope-of-practice refusal — a hygienist who typed a diagnosis got a status
  * code, no route forward, and unsaved work in a field they were never permitted
@@ -45,7 +46,31 @@ export function needsSave(s: AutosaveState): boolean {
  */
 export function saveErrorMessage(status: number, body: { error?: unknown }): string {
   const sentence = typeof body.error === "string" ? body.error.trim() : "";
-  return sentence.length > 0 ? sentence : `Save failed (${status}).`;
+  // Not every sentence the route sends is addressed to a writer. Most are —
+  // "You cannot edit this draft." tells somebody exactly where they stand —
+  // but the validation branches answer a programmer: `baseVersion must be an
+  // integer.` names a field of the wire format, not anything on the screen,
+  // and a person reading it in the corner of a note has no move to make. A
+  // bare status code is the same failure with fewer words. Both become the
+  // one thing that IS true and actionable in that case: the note is intact,
+  // reloading is the fix.
+  if (sentence.length > 0 && !looksInternal(sentence)) return sentence;
+  if (status >= 500) return "The server could not save this note.";
+  return "Smile Notes could not save this note — reload the page to pick it up again.";
+}
+
+/**
+ * A message written for whoever is reading a stack trace rather than a note.
+ *
+ * Deliberately a small, literal list of the wire-format words this app's own
+ * routes use, not a cleverness that tries to judge English: a false positive
+ * here throws away a refusal the writer needed to read, which is the worse
+ * error of the two.
+ */
+const INTERNAL_WORDS = ["baseVersion", "JSON", "noteState", "selectedModuleIds", "payload"];
+
+function looksInternal(sentence: string): boolean {
+  return INTERNAL_WORDS.some((w) => sentence.includes(w));
 }
 
 export function autosaveReducer(state: AutosaveState, event: AutosaveEvent): AutosaveState {

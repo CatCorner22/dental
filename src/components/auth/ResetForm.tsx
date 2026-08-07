@@ -9,6 +9,21 @@ export function ResetForm({ token }: { token: string }) {
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
   const [done, setDone] = useState(false);
+  // A LINK THAT IS NEVER GOING TO WORK IS NOT A FORM ERROR.
+  //
+  // The token is deliberately not checked when this page renders — checking it
+  // would make the page an oracle that confirms which links are real before
+  // anyone commits to one, and the POST handler is the single place that
+  // judges it. That is the right call, and it has a cost that was not being
+  // paid: somebody following an expired or already-used link invented a
+  // password, typed it twice, pressed the button, and only then got one red
+  // line under a form they could now do nothing with. Retrying is pointless —
+  // this token will never be valid again — and there is no self-serve way to
+  // ask for another, so the same person retyped the same password until they
+  // gave up.
+  //
+  // So a dead link ends the form and says who can send a new one.
+  const [dead, setDead] = useState(false);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -29,12 +44,40 @@ export function ResetForm({ token }: { token: string }) {
         return;
       }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
+      // The route sends one sentence — "This link is no longer valid." — for
+      // every way a token can fail: absent, unknown, expired, already spent,
+      // or belonging to a deactivated account. Deliberately one sentence, so
+      // the reply distinguishes none of those for whoever is guessing. It is
+      // still the one reply that means "stop typing".
+      if (/no longer valid/i.test(data.error ?? "")) {
+        setDead(true);
+        return;
+      }
       setError(data.error ?? "Could not set the password.");
     } catch {
       setError("Could not reach the server — check the connection and try again.");
     }
     setBusy(false);
   };
+
+  if (dead) {
+    return (
+      <div className="space-y-3">
+        <p className="rounded border border-amber-300 bg-amber-50 p-3 text-sm text-amber-900" role="alert">
+          This link has already been used, or it is more than an hour old. Your password has not
+          been changed.
+        </p>
+        <p className="text-sm text-slate-600">
+          Reset links are sent from User admin, so ask a Team Lead or the Developer for a fresh
+          one. There is no self-service reset — that is on purpose, because a link that anyone can
+          request is a link anyone can request for your account.
+        </p>
+        <a className="btn-primary inline-flex" href="/login">
+          Back to sign in
+        </a>
+      </div>
+    );
+  }
 
   if (done) {
     return (

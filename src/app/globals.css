@@ -528,6 +528,32 @@
 .btn-secondary {
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
 }
+/* UNAVAILABLE, BUT STILL REACHABLE.
+   A natively `disabled` button is dropped from the tab order and skipped by
+   assistive technology, which is why Submit uses `aria-disabled` instead — see
+   the action bar in BuilderShell. That keeps it focusable and keeps the reason
+   it is off readable, but it also means none of the `disabled:` variants above
+   fire, so without this the control looks fully live while refusing to do
+   anything. Listed per class rather than on `.btn`, because `.btn` is applied
+   into the others rather than being present in the markup. */
+.btn[aria-disabled="true"],
+.btn-primary[aria-disabled="true"],
+.btn-secondary[aria-disabled="true"],
+.btn-complete[aria-disabled="true"] {
+  @apply cursor-not-allowed opacity-40;
+}
+.btn[aria-disabled="true"]:hover,
+.btn-primary[aria-disabled="true"]:hover,
+.btn-secondary[aria-disabled="true"]:hover,
+.btn-complete[aria-disabled="true"]:hover {
+  filter: none;
+}
+.btn[aria-disabled="true"]:active,
+.btn-primary[aria-disabled="true"]:active,
+.btn-secondary[aria-disabled="true"]:active,
+.btn-complete[aria-disabled="true"]:active {
+  transform: none;
+}
 /* Fast Lane scaffold cards — structure-only visit starts inside the open note.
    Min height meets 44px targets on coarse pointers via the global .tap rules
    when combined with padding; the card itself is a button. */

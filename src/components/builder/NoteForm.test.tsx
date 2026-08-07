@@ -3,7 +3,7 @@
 import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import path from "node:path";
-import { fireEvent, render } from "@testing-library/react";
+import { cleanup, fireEvent, render } from "@testing-library/react";
 
 import { NoteForm } from "./NoteForm";
 import type { ModuleDef, NoteState } from "@/lib/schema/types";
@@ -259,5 +259,115 @@ describe("toggling a section does not take the page down with it", () => {
       fireEvent(visit, new Event("toggle", { bubbles: false }));
     }).not.toThrow();
     expect(visit.open).toBe(true);
+  });
+});
+
+// WHAT A BRAND-NEW NOTE SAYS BEFORE ANYBODY HAS TYPED.
+//
+// Opening a blank note ran the audit against an empty state, every required
+// field raised required.missing at S1, and each of those was rendered on the
+// field as `aria-invalid="true"` inside an assertive `role="alert"` list. So a
+// note nobody had touched arrived already carrying a dozen invalid controls
+// and nineteen live regions: a screen reader read out a list of errors before
+// the first keypress, and a sighted writer met red under fields they had not
+// yet been given the chance to fill in.
+//
+// The section-collapse rule above already states the principle in as many
+// words — an empty note is not a note with problems — and these are the same
+// principle applied to the field itself.
+describe("a note nobody has typed in yet", () => {
+  function form(state: NoteState, findingsByField: FieldFindings) {
+    return render(
+      <NoteForm
+        modules={[MODULE]}
+        state={state}
+        onChange={() => {}}
+        findingsByField={findingsByField}
+        clinicalRole="dentist"
+      />
+    );
+  }
+
+  it("marks nothing invalid", () => {
+    const { container } = form(note(), {
+      ...requiredMissing("purpose"),
+      ...requiredMissing("diagnosis")
+    });
+    expect(container.querySelectorAll('[aria-invalid="true"]').length).toBe(0);
+  });
+
+  it("announces nothing", () => {
+    const { container } = form(note(), {
+      ...requiredMissing("purpose"),
+      ...requiredMissing("diagnosis")
+    });
+    expect(container.querySelectorAll('[role="alert"]').length).toBe(0);
+  });
+
+  it("still says the field is needed, because it is", () => {
+    // Quieter is not the same as silent. The work is still outstanding and the
+    // form has to say so — as outstanding work, not as a fault.
+    const { container } = form(note(), requiredMissing("purpose"));
+    expect(container.textContent).toContain("Needed before this note can be filed");
+  });
+
+  it("does mark the field invalid once somebody has been in it", () => {
+    // The line between the two cases. Before anybody types, a missing required
+    // value is outstanding work; after they have been in the box and left it
+    // empty, it is an error, and it is announced as one.
+    const { container } = form(note(), requiredMissing("purpose"));
+    expect(container.querySelectorAll('[aria-invalid="true"]').length).toBe(0);
+    const input = container.querySelector<HTMLInputElement>("#ctl-m\\.purpose")!;
+    fireEvent.change(input, { target: { value: "recall" } });
+    expect(container.querySelectorAll('[aria-invalid="true"]').length).toBe(1);
+    expect(container.querySelectorAll('[role="alert"]').length).toBe(1);
+  });
+
+  it("treats a field that already holds a value as one the author has seen", () => {
+    // Reopening yesterday's note must not pretend its author has never met it.
+    const { container } = form(
+      note({ "m.purpose": { kind: "text", value: "recall" } }),
+      requiredMissing("purpose")
+    );
+    expect(container.querySelectorAll('[aria-invalid="true"]').length).toBe(1);
+  });
+});
+
+// COLOUR IS THE FASTEST THING ON A SCREEN TO READ, AND IT WAS SAYING THE WRONG
+// WORD. Every inline finding was printed `text-rose-700` regardless of
+// severity, so a note whose only remark was an S4 "consider naming the shade"
+// was rendered in exactly the red of a note that could not legally be filed.
+describe("inline findings are painted by severity", () => {
+  const at = (severity: "S0" | "S3"): FieldFindings => ({
+    "m.notes": [
+      { ruleId: "style.x", category: "vague-phrase", severity, message: "something to look at." }
+    ]
+  });
+
+  function classesFor(findings: FieldFindings): string {
+    // Rendered one at a time. Two live renders put two `id="field-m-notes"`
+    // in the same document, and a scoped `#id` query then resolves against the
+    // wrong copy — a testing artefact that looks exactly like a missing
+    // element.
+    cleanup();
+    const { container } = render(
+      <NoteForm
+        modules={[MODULE]}
+        state={note({ "m.notes": { kind: "text", value: "written" } })}
+        onChange={() => {}}
+        findingsByField={findings}
+        clinicalRole="dentist"
+      />
+    );
+    return container.querySelector("#field-m-notes ul li")!.className;
+  }
+
+  it("gives a stop and an advisory different ink", () => {
+    expect(classesFor(at("S0"))).not.toBe(classesFor(at("S3")));
+  });
+
+  it("does not paint an advisory in the stop colour", () => {
+    expect(classesFor(at("S3"))).not.toContain("red");
+    expect(classesFor(at("S0"))).toContain("red");
   });
 });

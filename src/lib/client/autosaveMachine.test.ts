@@ -97,11 +97,36 @@ describe("what a refused save tells the writer", () => {
     expect(message).not.toContain("403");
   });
 
-  it("falls back to the status code when there is no body to read", () => {
-    // A proxy or a gateway failure has no JSON. Something must still be said.
-    expect(saveErrorMessage(502, {})).toBe("Save failed (502).");
-    expect(saveErrorMessage(500, { error: "   " })).toBe("Save failed (500).");
-    expect(saveErrorMessage(500, { error: 42 })).toBe("Save failed (500).");
+  it("says something a person can act on when there is no body to read", () => {
+    // A proxy or a gateway failure has no JSON. This used to print the number
+    // — `Save failed (502).` — which names the layer that broke and nothing a
+    // writer can do about it. The status code is for a log, not for the corner
+    // of somebody's half-written note.
+    for (const message of [
+      saveErrorMessage(502, {}),
+      saveErrorMessage(500, { error: "   " }),
+      saveErrorMessage(500, { error: 42 })
+    ]) {
+      expect(message).not.toMatch(/\d\d\d/);
+      expect(message.length).toBeGreaterThan(20);
+    }
+  });
+
+  it("refuses a sentence written for a programmer", () => {
+    // The validation branches of the route answer whoever is reading a stack
+    // trace: `baseVersion must be an integer.` names a field of the wire
+    // format, not anything on the screen, and leaves the reader with no move.
+    const message = saveErrorMessage(400, { error: "baseVersion must be an integer." });
+    expect(message).not.toContain("baseVersion");
+    expect(message).toContain("reload");
+  });
+
+  it("still passes through a refusal addressed to the writer", () => {
+    // The filter above must not eat the ones that matter — that would trade a
+    // confusing message for a missing one, which is the worse of the two.
+    expect(saveErrorMessage(403, { error: "You cannot edit this draft." })).toBe(
+      "You cannot edit this draft."
+    );
   });
 });
 

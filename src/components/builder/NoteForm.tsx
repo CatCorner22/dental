@@ -12,8 +12,8 @@ import type { Field, FieldValue, ModuleDef, NoteState } from "@/lib/schema/types
 import { fieldKey } from "@/lib/schema/types";
 import { isFieldRequired, isFieldVisible } from "@/lib/schema/conditions";
 import type { FieldFindings } from "@/lib/audit/byField";
-import { fieldIsInvalid } from "@/lib/audit/byField";
-import { SEVERITY_LABELS } from "@/lib/audit/types";
+import { fieldIsInvalid, splitFieldFindings } from "@/lib/audit/byField";
+import { SEVERITY_LABELS, SEVERITY_TEXT } from "@/lib/audit/types";
 import {
   MeasurementInput,
   MultiselectInput,
@@ -195,6 +195,23 @@ export function NoteForm({
   const [reviewed, setReviewed] = useState<Record<string, string>>({});
   const [reviewing, setReviewing] = useState<string | null>(null);
 
+  // WHICH FIELDS THIS PERSON HAS ACTUALLY BEEN TO.
+  //
+  // Only used to decide whether a missing required value is an error or a
+  // to-do — see splitFieldFindings. A field starts untouched, and anything
+  // already carrying a value counts as touched from the first render, because
+  // a note reopened tomorrow should not pretend its author has never seen it.
+  const [touched, setTouched] = useState<Record<string, true>>({});
+  const wasTouched = (key: string) => {
+    if (touched[key]) return true;
+    const v = state.values[key];
+    return v !== undefined && !isEmptyValue(v);
+  };
+  const change = (key: string, value: FieldValue) => {
+    setTouched((t) => (t[key] ? t : { ...t, [key]: true }));
+    onChange(key, value);
+  };
+
   // Open a section, scroll to it, and put the cursor in its first control.
   // Landing somebody at the top of the next section without focus means they
   // have to find their place again, which is most of what "and continue" was
@@ -330,11 +347,16 @@ export function NoteForm({
                     if (!isFieldVisible(field, mod.id, state)) return null;
                     const required = isFieldRequired(field, mod.id, state);
                     const key = fieldKey(mod.id, field.id);
-                    const findings = findingsByField[key];
-                    const invalid = fieldIsInvalid(findings);
+                    const { errors, pending } = splitFieldFindings(
+                      findingsByField[key],
+                      wasTouched(key)
+                    );
+                    const invalid = fieldIsInvalid(errors);
                     const helpId = field.helpText ? `${key}-help` : undefined;
-                    const errId = findings?.length ? `${key}-err` : undefined;
-                    const describedBy = [helpId, errId].filter(Boolean).join(" ") || undefined;
+                    const errId = errors.length ? `${key}-err` : undefined;
+                    const pendId = pending.length ? `${key}-pend` : undefined;
+                    const describedBy =
+                      [helpId, errId, pendId].filter(Boolean).join(" ") || undefined;
                     return (
                       <div key={field.id} id={`field-${mod.id}-${field.id}`}>
                         <label className="field-label" htmlFor={controlId(mod.id, field)}>
@@ -346,7 +368,7 @@ export function NoteForm({
                           moduleId={mod.id}
                           field={field}
                           state={state}
-                          onChange={onChange}
+                          onChange={change}
                           describedBy={describedBy}
                           invalid={invalid}
                           required={required}
@@ -354,14 +376,27 @@ export function NoteForm({
                         {field.helpText && (
                           <p id={helpId} className="mt-1 text-xs text-slate-500">{field.helpText}</p>
                         )}
-                        {findings?.length ? (
+                        {/* Painted by severity, not all in one red. See
+                            SEVERITY_TEXT — the hue is the app's safety
+                            vocabulary and a hardcoded rose said "stop" under a
+                            field whose only remark was a suggestion. */}
+                        {errors.length ? (
                           <ul id={errId} className="mt-1 space-y-0.5" role={invalid ? "alert" : undefined}>
-                            {findings.map((f, i) => (
-                              <li key={i} className="text-xs text-rose-700">
+                            {errors.map((f, i) => (
+                              <li key={i} className={`text-xs ${SEVERITY_TEXT[f.severity]}`}>
                                 {SEVERITY_LABELS[f.severity]}: {f.message}
                               </li>
                             ))}
                           </ul>
+                        ) : null}
+                        {/* A required field nobody has typed in yet. Stated,
+                            because it still has to be filled in — but as the
+                            outstanding work it is, not as a fault, and with no
+                            live region, because there is no news here. */}
+                        {pending.length ? (
+                          <p id={pendId} className="mt-1 text-xs text-slate-500">
+                            Needed before this note can be filed.
+                          </p>
                         ) : null}
                       </div>
                     );

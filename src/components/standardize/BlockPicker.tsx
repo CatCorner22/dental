@@ -131,7 +131,7 @@ export function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
         </div>
       )}
       {blocks === null ? (
-        <p className="mt-1.5 text-xs text-slate-400">Loading…</p>
+        <p className="mt-1.5 text-xs text-slate-500">Loading…</p>
       ) : blocks.length === 0 ? (
         !formOpen && (
           <p className="mt-1.5 text-xs text-slate-500">
@@ -154,7 +154,7 @@ export function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
               </button>
               <button
                 type="button"
-                className="shrink-0 text-xs text-slate-400 underline hover:text-rose-700"
+                className="shrink-0 text-xs text-slate-500 underline hover:text-rose-700"
                 onClick={() => void remove(b.id)}
                 aria-label={`Delete block "${b.title}"`}
               >

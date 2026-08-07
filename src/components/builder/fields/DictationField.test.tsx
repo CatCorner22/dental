@@ -31,10 +31,10 @@ function setEnvironment({
   else delete w.SpeechRecognition;
 }
 
-function renderField(user: DictationUser, active = true) {
+function renderField(user: DictationUser, active = true, focused = active) {
   return render(
     <DictationUserContext.Provider value={user}>
-      <DictationField onText={vi.fn()} active={active} />
+      <DictationField onText={vi.fn()} active={active} focused={focused} />
     </DictationUserContext.Provider>
   );
 }
@@ -115,6 +115,40 @@ describe("when there is nobody to dictate for", () => {
   it("renders nothing at all without a signed-in user", () => {
     setEnvironment();
     const { container } = renderField(USER({ username: "" }));
+    expect(container.textContent).toBe("");
+  });
+});
+
+// A CONTROL CAN STAY WHERE THE WORK IS. AN EXPLANATION CANNOT.
+//
+// `active` used to be one flag meaning "focused or already has content", and it
+// governed both the microphone and the prose beside it. That flag never goes
+// false again once somebody has written a sentence, so the twenty-word setup
+// offer was repeated under every filled box — five copies in the narrative
+// alone, all identical, none of them news. Seen on a running build, which is
+// what prompted splitting the two.
+describe("the sentence goes away, the button does not", () => {
+  it("keeps the microphone in a box that has words but no cursor", () => {
+    setEnvironment();
+    renderField(USER({ enrolled: true, region: "general" }), true, false);
+    expect(screen.getByRole("button", { name: /dictate/i })).toBeTruthy();
+  });
+
+  it("drops the setup offer from a box that has words but no cursor", () => {
+    setEnvironment();
+    renderField(USER(), true, false);
+    expect(screen.queryByRole("link", { name: /set up dictation/i })).toBeNull();
+  });
+
+  it("drops the cannot-do-this explanation there too", () => {
+    setEnvironment({ engine: false });
+    renderField(USER({ enrolled: true }), true, false);
+    expect(screen.queryByText(/cannot do speech recognition/i)).toBeNull();
+  });
+
+  it("shows nothing at all in a box nobody has been in", () => {
+    setEnvironment();
+    const { container } = renderField(USER({ enrolled: true, region: "general" }), false, false);
     expect(container.textContent).toBe("");
   });
 });

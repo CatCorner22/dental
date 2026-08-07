@@ -25,9 +25,9 @@ export function BrandFooter() {
         >
           Send feedback
         </a>{" "}
-        <span className="text-slate-400">({FEEDBACK_EMAIL})</span>
+        <span className="text-slate-500">({FEEDBACK_EMAIL})</span>
       </p>
-      <p className="mt-4 border-t border-slate-200 pt-3 text-slate-400">
+      <p className="mt-4 border-t border-slate-200 pt-3 text-slate-500">
         {COPYRIGHT} {PRIVACY_POLICY}
       </p>
     </footer>

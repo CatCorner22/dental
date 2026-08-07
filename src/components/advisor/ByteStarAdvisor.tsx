@@ -217,7 +217,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               <p className="text-xs font-semibold text-amber-900">
                 {tip.kind}
                 {feedbackSource === "instrument" && (
-                  <span className="ml-1 normal-case text-slate-400">· instrument reading</span>
+                  <span className="ml-1 normal-case text-slate-500">· instrument reading</span>
                 )}
                 {"tentative" in tip && tip.tentative && (
                   /* Assigned by deterministic code (strong claim, no named
@@ -232,7 +232,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
               {tip.question && (
                 <p className="mt-1.5 text-sm font-semibold text-brand-navy">{tip.question}</p>
               )}
-              <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-400">
+              <p className="mt-1.5 border-t border-amber-100/80 pt-1 text-[0.65rem] text-slate-500">
                 Source: {tip.source}
                 {"corroboration" in tip && tip.corroboration && tip.corroboration.reads > 1 && (
                   <span className="ml-2 text-teal-700">
@@ -241,7 +241,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 )}
               </p>
               {observations.length > 1 && (
-                <p className="mt-1 text-[0.6rem] tabular-nums text-slate-400">
+                <p className="mt-1 text-[0.6rem] tabular-nums text-slate-500">
                   Reading {(tipIndex % observations.length) + 1} of {observations.length} · rotates
                   automatically
                 </p>

@@ -375,7 +375,7 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
 
         <div>
           <label className="field-label" htmlFor="wish-detail">
-            Anything else <span className="text-slate-400">(optional)</span>
+            Anything else <span className="text-slate-500">(optional)</span>
           </label>
           <textarea
             id="wish-detail"

@@ -29,7 +29,7 @@ function dirClass(d: DriftDirection): string {
     case "away":
       return "text-slate-700";
     default:
-      return "text-slate-400";
+      return "text-slate-500";
   }
 }
 

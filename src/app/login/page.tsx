@@ -37,7 +37,7 @@ export default async function LoginPage() {
           <p className="text-xs text-slate-600">{sparkleLine("signIn", daySeed(new Date()))}</p>
         </div>
         <LoginForm mfaAvailable={mfaFeatureEnabled()} />
-        <p className="mt-4 text-[0.7rem] leading-relaxed text-slate-400">
+        <p className="mt-4 text-[0.7rem] leading-relaxed text-slate-500">
           Developers: if the only Developer account is locked, set{" "}
           <code className="rounded bg-slate-100 px-1">ADMIN_USERNAME</code>,{" "}
           <code className="rounded bg-slate-100 px-1">ADMIN_PASSWORD</code>, and{" "}

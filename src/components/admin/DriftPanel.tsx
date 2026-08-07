@@ -145,7 +145,7 @@ export function DriftPanel({
                     too and have no plain-English label, so printing both showed
                     the same string twice. */}
                 {CODE_LABEL[c.code] && (
-                  <span className="font-mono text-xs text-slate-400">{c.code}</span>
+                  <span className="font-mono text-xs text-slate-500">{c.code}</span>
                 )}
               </li>
             ))}

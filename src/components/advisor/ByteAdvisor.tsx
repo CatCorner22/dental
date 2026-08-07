@@ -54,7 +54,7 @@ export function ByteAdvisor({
                 writes the note and never blocks filing — the audit panel owns stops.
               </HelpTip>
             </div>
-            <span className="text-[0.65rem] text-slate-400">
+            <span className="text-[0.65rem] text-slate-500">
               advisor · reads only · never blocks
             </span>
           </div>
@@ -82,7 +82,7 @@ export function ByteAdvisor({
                   Next: {tip.nextAction}
                 </p>
               )}
-              <p className="mt-1.5 border-t border-slate-100 pt-1 text-[0.65rem] text-slate-400">
+              <p className="mt-1.5 border-t border-slate-100 pt-1 text-[0.65rem] text-slate-500">
                 Source: {tip.source}
               </p>
               {report.advice.length > 1 && (
@@ -135,7 +135,7 @@ export function ByteAdvisor({
               </span>
               <span className="font-bold tabular-nums text-brand-navy">{gauges.facts}</span>
             </div>
-            <p className="mt-1 text-[0.65rem] text-slate-400">
+            <p className="mt-1 text-[0.65rem] text-slate-500">
               {gauges.density} per 100 words
             </p>
             <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{gauges.notes.density.why}</p>
@@ -155,13 +155,13 @@ export function ByteAdvisor({
                     ["Follow-up", gauges.pillars.followUp]
                   ] as const
                 ).map(([label, present]) => (
-                  <li key={label} className={present ? "text-teal-700" : "text-slate-400"}>
+                  <li key={label} className={present ? "text-teal-700" : "text-slate-500"}>
                     {present ? "✓" : "·"} {label}
                   </li>
                 ))}
               </ul>
             ) : (
-              <p className="mt-1 text-[0.65rem] text-slate-400">Applies once treatment is documented.</p>
+              <p className="mt-1 text-[0.65rem] text-slate-500">Applies once treatment is documented.</p>
             )}
             <p className="mt-1 text-[0.65rem] leading-snug text-slate-500">{gauges.notes.pillars.why}</p>
           </div>
@@ -184,7 +184,7 @@ export function ByteAdvisor({
                 </div>
               </>
             ) : (
-              <p className="mt-1 text-[0.65rem] text-slate-400">
+              <p className="mt-1 text-[0.65rem] text-slate-500">
                 Shows when a dose with a concentration appears.
               </p>
             )}

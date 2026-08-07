@@ -148,7 +148,7 @@ export default async function AuditLogPage({
                     <>
                       <span>{e.actorName ?? nameById.get(e.actorId) ?? "unknown"}</span>
                       {e.actorName && nameById.get(e.actorId) !== e.actorName && (
-                        <span className="block text-xs text-slate-400">
+                        <span className="block text-xs text-slate-500">
                           {nameById.has(e.actorId)
                             ? `now ${nameById.get(e.actorId)}`
                             : "account deleted"}

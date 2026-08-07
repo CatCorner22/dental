@@ -277,7 +277,7 @@ function RowActions({
           Delete
         </button>
       )}
-      {perms.isSelf && <span className="px-2 text-slate-400">(you)</span>}
+      {perms.isSelf && <span className="px-2 text-slate-500">(you)</span>}
     </div>
   );
 }
@@ -731,7 +731,7 @@ function AddUserDialog({
         </div>
         <div>
           <label className="field-label" htmlFor="au-email">
-            Email {emailRequired ? "" : <span className="text-slate-400">(optional)</span>}
+            Email {emailRequired ? "" : <span className="text-slate-500">(optional)</span>}
           </label>
           <input
             id="au-email"

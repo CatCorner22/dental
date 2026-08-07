@@ -961,8 +961,14 @@ export function BuilderShell({
           module rail and the Sidekick already use. */}
       <div className="sticky top-0 z-30 -mx-4 mb-4 border-b border-slate-200 bg-white/95 px-4 py-2.5 backdrop-blur md:top-20">
         <div className="flex flex-wrap items-center gap-3">
+          {/* THE NOTE'S NAME GETS A WHOLE ROW ON A PHONE.
+              `flex-1` next to an office dropdown and a modules button left it
+              about fifty pixels wide at 390px, showing "Untitl" — a name built
+              out of four searchable facts, clipped after six letters, in a
+              field too narrow to edit. It is the note's identity and the first
+              thing on the screen; below `sm` it takes the row. */}
           <input
-            className="tap-input min-w-0 flex-1 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-brand-blue focus:outline-none disabled:bg-transparent"
+            className="tap-input w-full min-w-0 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-brand-blue focus:outline-none disabled:bg-transparent sm:w-auto sm:flex-1"
             value={title}
             disabled={!canEdit}
             onChange={(e) => setTitle(e.target.value)}
@@ -1118,13 +1124,16 @@ export function BuilderShell({
         className="tap mb-4 flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm lg:hidden"
       >
         <ProgressRing counts={report.counts} />
-        <span className="min-w-0 flex-1">
-          <StatusChip status={liveStatus} />
-          <span className="mt-0.5 block truncate text-xs text-slate-500">
-            {report.findings.length === 0
-              ? "No findings — view audit & preview"
-              : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — view audit & preview`}
-          </span>
+        {/* NO SECOND STATUS CHIP.
+            The same "Review suggested" pill sat in the note bar sixty pixels
+            above this one, so a phone showed one note's state twice on one
+            screen — the duplication the sidekick's own comment calls out and
+            then reintroduced here. The ring carries the severity; this line
+            says what pressing it does. */}
+        <span className="min-w-0 flex-1 text-sm font-medium text-slate-700">
+          {report.findings.length === 0
+            ? "Audit and preview"
+            : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — audit and preview`}
         </span>
         <span aria-hidden className="shrink-0 text-slate-400">▸</span>
       </button>

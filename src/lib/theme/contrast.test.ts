@@ -1,4 +1,6 @@
 import { describe, expect, it } from "vitest";
+import { readFileSync } from "node:fs";
+import { globSync } from "node:fs";
 
 import { BRAND, contrastRatio, HIGH_CONTRAST, SLATE, WHITE } from "./palette";
 
@@ -73,5 +75,50 @@ describe("palette contrast", () => {
       const next = contrastRatio(SLATE[steps[i]], WHITE);
       expect(next, `slate-${steps[i]} vs slate-${steps[i - 1]}`).toBeGreaterThan(prev);
     }
+  });
+});
+
+// SLATE-400 IS NOT A TEXT COLOUR, AND THE APP ALREADY KNEW IT.
+//
+// globals.css carries a note, inside the `[data-contrast="high"]` block, saying
+// slate-400 on white is below the 4.5:1 normal text needs and that this "is what
+// help text and timestamps were rendered in". The overriding rule was then
+// scoped to high-contrast mode only — so the app diagnosed its own caption
+// colour correctly and fixed it exclusively for people who go and find a
+// setting. Everybody else got it at 2.4:1, measured across forty places on a
+// running build: Byte's citations, the enrollment prompts, the footer, the
+// per-100-words rails, the "(optional)" markers.
+//
+// slate-400 is fine for a chevron or a rule. The moment it carries a word it is
+// unreadable, so the guard is on the class in the markup rather than on the hex.
+describe("slate-400 stays out of running text", () => {
+  it("fails the normal-text threshold, which is why the rule below exists", () => {
+    expect(contrastRatio(SLATE[400], WHITE)).toBeLessThan(TEXT);
+    expect(contrastRatio(SLATE[500], WHITE)).toBeGreaterThanOrEqual(TEXT);
+  });
+
+  it("holds up as caption text on the ground too, where it is closest to the line", () => {
+    // slate-500 is now every caption in the app, and on the purple ground it
+    // clears 4.5 by seven thousandths — measured, not estimated. That is a pass
+    // and it is also no margin at all: darken the ground or lighten the ramp by
+    // one step and forty captions go under at once, silently. This is the
+    // assertion that makes that loud.
+    expect(contrastRatio(SLATE[500], GROUND)).toBeGreaterThanOrEqual(TEXT);
+  });
+
+  it("appears only on elements hidden from the accessibility tree", () => {
+    const files = globSync("src/**/*.tsx", { cwd: process.cwd() });
+    const offenders: string[] = [];
+    for (const rel of files) {
+      const source = readFileSync(rel, "utf8");
+      source.split("\n").forEach((line, i) => {
+        if (!line.includes("text-slate-400")) return;
+        // Decorative by declaration. A screen reader never reaches it, and a
+        // sighted reader is not being asked to read words.
+        if (/aria-hidden/.test(line)) return;
+        offenders.push(`${rel}:${i + 1} ${line.trim().slice(0, 80)}`);
+      });
+    }
+    expect(offenders, offenders.join("\n")).toEqual([]);
   });
 });

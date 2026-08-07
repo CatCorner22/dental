@@ -93,7 +93,7 @@ export function PriorNotes() {
         </p>
       )}
       {rows === null ? (
-        <p className="text-xs text-slate-400">Loading…</p>
+        <p className="text-xs text-slate-500">Loading…</p>
       ) : rows.length === 0 ? (
         <p className="text-xs text-slate-500">No filed notes yet.</p>
       ) : (

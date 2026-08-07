@@ -77,6 +77,12 @@ export function WorkflowBoard({
   const [editingId, setEditingId] = useState<number | null>(null);
   const [form, setForm] = useState(emptyForm);
   const [rejectNotes, setRejectNotes] = useState<Record<number, string>>({});
+  // Per-pack, because the page-level `error` <p> sits above the tab bar and the
+  // whole pack list — reviewing the fourth pack down, that message is hundreds
+  // of pixels off the top of the screen and the row you pressed does not change
+  // at all. The server already refuses an empty reject note with a 422; this
+  // catches it next to the control that caused it.
+  const [rejectErrors, setRejectErrors] = useState<Record<number, string>>({});
 
   const suggestable = useMemo(
     () => SUGGESTABLE_BLOCK_IDS.map((id) => BLOCK_BY_ID.get(id)!).filter(Boolean),
@@ -193,6 +199,7 @@ export function WorkflowBoard({
         <button
           type="button"
           className={tab === "packs" ? "btn-primary text-sm" : "btn-secondary text-sm"}
+          aria-pressed={tab === "packs"}
           onClick={() => setTab("packs")}
         >
           Practice packs
@@ -200,6 +207,7 @@ export function WorkflowBoard({
         <button
           type="button"
           className={tab === "history" ? "btn-primary text-sm" : "btn-secondary text-sm"}
+          aria-pressed={tab === "history"}
           onClick={() => setTab("history")}
         >
           History
@@ -255,7 +263,7 @@ export function WorkflowBoard({
               </label>
               {/* Closed by default — a 32-chip wall was the first paint of New pack
                   and taught density habits we refuse in the builder (UIX-005). */}
-              <details className="rounded border border-slate-200 p-2">
+              <details className="card-inset">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-700">
                   Modules (structure) — {form.moduleIds.length} selected · tap to choose
                 </summary>
@@ -265,6 +273,7 @@ export function WorkflowBoard({
                       key={m.id}
                       type="button"
                       className={`chip ${form.moduleIds.includes(m.id) ? "ring-2 ring-brand-teal" : ""}`}
+                      aria-pressed={form.moduleIds.includes(m.id)}
                       onClick={() => toggle("moduleIds", m.id)}
                     >
                       {m.title}
@@ -272,7 +281,7 @@ export function WorkflowBoard({
                   ))}
                 </div>
               </details>
-              <details className="rounded border border-slate-200 p-2">
+              <details className="card-inset">
                 <summary className="cursor-pointer text-xs font-semibold text-slate-700">
                   Section starters (blocks) — {form.blockIds.length} selected
                 </summary>
@@ -282,6 +291,7 @@ export function WorkflowBoard({
                       key={b.id}
                       type="button"
                       className={`chip ${form.blockIds.includes(b.id) ? "ring-2 ring-brand-teal" : ""}`}
+                      aria-pressed={form.blockIds.includes(b.id)}
                       title={b.purpose}
                       onClick={() => toggle("blockIds", b.id)}
                     >
@@ -300,6 +310,7 @@ export function WorkflowBoard({
                       key={r}
                       type="button"
                       className={`chip ${form.authorRoles.includes(r) ? "ring-2 ring-brand-teal" : ""}`}
+                      aria-pressed={form.authorRoles.includes(r)}
                       onClick={() => toggle("authorRoles", r)}
                     >
                       {r}
@@ -401,26 +412,57 @@ export function WorkflowBoard({
                                tying any of them to the pack it rejects. A
                                placeholder is also not an accessible name once
                                there is text in the box. */
+                            id={`reject-note-${p.id}`}
                             aria-label={`Reason for rejecting ${p.title}`}
+                            aria-invalid={rejectErrors[p.id] ? true : undefined}
+                            aria-describedby={
+                              rejectErrors[p.id] ? `reject-err-${p.id}` : undefined
+                            }
                             placeholder="Reject note (required)"
                             value={rejectNotes[p.id] ?? ""}
-                            onChange={(e) =>
-                              setRejectNotes((n) => ({ ...n, [p.id]: e.target.value }))
-                            }
+                            onChange={(e) => {
+                              setRejectNotes((n) => ({ ...n, [p.id]: e.target.value }));
+                              // Clear as soon as they start answering it.
+                              if (rejectErrors[p.id]) {
+                                setRejectErrors((n) => ({ ...n, [p.id]: "" }));
+                              }
+                            }}
                           />
                           <button
                             type="button"
                             className="btn-secondary text-xs"
                             disabled={busy}
-                            onClick={() =>
-                              void act(p.id, "decide", {
-                                approve: false,
-                                note: rejectNotes[p.id] ?? ""
-                              })
-                            }
+                            /* aria-disabled, not disabled: a `disabled` button
+                               leaves the tab order, so the keyboard user who
+                               most needs to find out WHY cannot reach it. Same
+                               pattern Submit uses — globals.css styles
+                               .btn-secondary[aria-disabled="true"] to read as
+                               off while staying focusable. */
+                            aria-disabled={!(rejectNotes[p.id] ?? "").trim() || undefined}
+                            onClick={() => {
+                              const note = (rejectNotes[p.id] ?? "").trim();
+                              if (!note) {
+                                setRejectErrors((n) => ({
+                                  ...n,
+                                  [p.id]:
+                                    "Add a short note first — a reject is only useful if the author knows what to fix."
+                                }));
+                                document.getElementById(`reject-note-${p.id}`)?.focus();
+                                return;
+                              }
+                              void act(p.id, "decide", { approve: false, note });
+                            }}
                           >
                             Reject
                           </button>
+                          {rejectErrors[p.id] && (
+                            <p
+                              id={`reject-err-${p.id}`}
+                              className="basis-full text-xs text-rose-800"
+                            >
+                              {rejectErrors[p.id]}
+                            </p>
+                          )}
                         </>
                       ))}
                     {p.status === "approved" && (
@@ -455,7 +497,7 @@ export function WorkflowBoard({
         <ul className="space-y-2">
           {events.length === 0 && <li className="text-sm text-slate-500">No pack events yet.</li>}
           {events.map((e) => (
-            <li key={e.id} className="rounded border border-slate-200 px-3 py-2 text-xs text-slate-700">
+            <li key={e.id} className="card p-3 text-xs text-slate-700">
               <span className="font-semibold">{e.action}</span> on{" "}
               {titleById[e.packId] ?? `pack #${e.packId}`}
               {e.toVersion != null ? ` (v${e.toVersion})` : ""} — {e.actorName}

@@ -544,8 +544,20 @@ export function NoteForm({
         // renders the word "Details" with a disclosure triangle. Hiding the
         // summary swapped a redundant module title for a meaningless one.
         modules.length > 1 ? (
-        <details key={mod.id} open className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
-              <summary className="cursor-pointer select-none rounded-t-lg bg-slate-100 px-4 py-2.5 text-sm font-semibold text-slate-800">
+        // `card p-0`, not a hand-rolled near-copy of it. .card pairs a ring with
+        // a real shadow because — per its own comment — neither lifts a white
+        // card off this near-white page alone, and [data-contrast="high"]
+        // strengthens the ring for .card only. So the biggest surface on the
+        // screen was reading flatter than the Sidekick card beside it, and
+        // inverting outright in high contrast.
+        <details key={mod.id} open className="card p-0">
+              {/* .section-title, so a MODULE and a SECTION stop looking like the
+                  same rung. The section summaries inside this use .label-section
+                  (text-sm/semibold/slate-700) and this was text-sm/semibold/
+                  slate-800 — one slate step apart, otherwise identical, on a
+                  form where collapsing a module and collapsing a section are
+                  very different actions. */}
+              <summary className="section-title cursor-pointer select-none rounded-t-xl bg-brand-cream/70 px-4 py-2.5">
                 {mod.title}
               </summary>
               {mod.description && (
@@ -556,7 +568,7 @@ export function NoteForm({
           <div className="space-y-5 px-4 py-4">{sectionsFor(mod)}</div>
         </details>
         ) : (
-          <div key={mod.id} className="rounded-xl bg-white ring-1 ring-slate-200 shadow-sm">
+          <div key={mod.id} className="card p-0">
             <div className="space-y-5 px-4 py-4">{sectionsFor(mod)}</div>
           </div>
         )

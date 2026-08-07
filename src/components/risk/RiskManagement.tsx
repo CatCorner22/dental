@@ -231,22 +231,38 @@ export function RiskManagement() {
                       <legend className="px-1 text-xs font-semibold text-slate-700">
                         {topic.checklist.title}
                       </legend>
-                      {topic.checklist.items.map((item) => (
-                        <label
-                          key={item.id}
-                          className="mt-1 flex items-start gap-2 text-xs text-slate-800"
-                        >
-                          <input
-                            type="checkbox"
-                            className="mt-0.5"
-                            checked={!!checked[item.id]}
-                            onChange={() => toggle(item.id)}
-                          />
-                          <span className={checked[item.id] ? "text-slate-500 line-through" : ""}>
-                            {item.text}
-                          </span>
-                        </label>
-                      ))}
+                      {/* These get ticked one-handed on a phone in the operatory,
+                          and they are the checklist that exists to stop a chart
+                          mix-up — "the correct patient chart is open", "two
+                          identifiers matched". They were ~20px rows stacked 4px
+                          apart around a 13px default checkbox, which is a thumb
+                          landing on the neighbour with nothing to show it did.
+
+                          The <li> wrapper is load-bearing: .tap is unlayered and
+                          lands after the utilities, so its coarse-pointer
+                          `display: inline-flex` beats `flex` and these labels —
+                          direct children of the fieldset — would run together on
+                          one line without a block parent. Same shape UserAdmin
+                          uses for its checkbox rows. */}
+                      <ul className="space-y-1">
+                        {topic.checklist.items.map((item) => (
+                          <li key={item.id}>
+                            <label className="tap flex items-start gap-2 rounded px-1 text-xs text-slate-800">
+                              <input
+                                type="checkbox"
+                                className="mt-0.5 h-4 w-4 shrink-0 accent-brand-blue"
+                                checked={!!checked[item.id]}
+                                onChange={() => toggle(item.id)}
+                              />
+                              <span
+                                className={checked[item.id] ? "text-slate-500 line-through" : ""}
+                              >
+                                {item.text}
+                              </span>
+                            </label>
+                          </li>
+                        ))}
+                      </ul>
                     </fieldset>
                   )}
                   {topic.appLinks && topic.appLinks.length > 0 && (

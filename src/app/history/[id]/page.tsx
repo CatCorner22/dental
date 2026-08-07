@@ -49,10 +49,22 @@ export default async function SubmissionPage({ params }: { params: Promise<{ id:
         ruleVersion={s.ruleVersion}
         auditStatus={s.auditStatus}
       />
-      <h2 className="mb-2 text-lg font-semibold">Note</h2>
-      <pre className="mb-6 overflow-x-auto whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs">{s.noteMarkdown}</pre>
-      <h2 className="mb-2 text-lg font-semibold">Audit report</h2>
-      <pre className="overflow-x-auto whitespace-pre-wrap break-words rounded bg-slate-50 p-3 text-xs">{s.auditReport}</pre>
+      {/* text-sm on a real .card, not text-xs in a grey slab.
+          The frozen note is the entire point of this page and it was the
+          SMALLEST text on it — 12px, below the "Submitted by" metadata above it
+          and level with its own caption — while the print rule in globals.css
+          deliberately lifts this same content to 11pt on paper. Someone reading
+          a filed record in a bright operatory is reading tooth numbers, doses in
+          mg and probing depths.
+
+          .card rather than .card-inset for both: card-inset is bg-brand-cream/70
+          and the page ground is bg-brand-cream, so an un-nested one here would be
+          the same colour as the page. The navy .section-title headings are what
+          tells the two blocks apart, which is the job headings should be doing. */}
+      <h2 className="section-title mb-2">Note</h2>
+      <pre className="card mb-6 overflow-x-auto whitespace-pre-wrap break-words text-sm">{s.noteMarkdown}</pre>
+      <h2 className="section-title mb-2">Audit report</h2>
+      <pre className="card overflow-x-auto whitespace-pre-wrap break-words text-sm">{s.auditReport}</pre>
     </div>
   );
 }

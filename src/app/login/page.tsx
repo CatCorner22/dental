@@ -32,7 +32,12 @@ export default async function LoginPage() {
         {/* Sparkle on the sign-in card. Deterministic copy from a fixed table,
             like everywhere else she speaks — and the one screen in the app that
             is guaranteed to be seen by every person, every day. */}
-        <div className="mb-6 flex items-center gap-2.5 rounded-lg bg-brand-cream/70 px-3 py-2">
+        {/* .card-inset, not a hand-copy of it. This reproduced the class exactly
+            except for the ring — which meant the [data-contrast="high"] rule that
+            strengthens nested surfaces could never match it, so on the first
+            screen of every day the strip lost its edge entirely for the users who
+            turned high contrast on. */}
+        <div className="card-inset mb-6 flex items-center gap-2.5">
           <Character id="sparkle" size="sm" />
           <p className="text-xs text-slate-600">{sparkleLine("signIn", daySeed(new Date()))}</p>
         </div>

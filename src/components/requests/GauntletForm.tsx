@@ -148,7 +148,7 @@ export function GauntletForm({ initialSummary = "" }: { initialSummary?: string 
           <p className="text-xs font-semibold text-slate-500">
             Cycle {cycle.n} of 5
           </p>
-          <h2 className="mb-1 text-lg font-bold">{cycle.title}</h2>
+          <h2 className="section-title mb-1">{cycle.title}</h2>
           <p className="mb-3 text-sm text-slate-700">{cycle.prompt}</p>
 
           <div className="mb-3 grid gap-2 sm:grid-cols-2">
@@ -167,14 +167,34 @@ export function GauntletForm({ initialSummary = "" }: { initialSummary?: string 
           </label>
           <textarea
             id={`cycle-${cycle.id}`}
-            className="field-input min-h-32"
+            /* rows, not min-h-32. globals.css emits
+               `textarea.field-input { min-height: 44px }` for narrow/coarse
+               screens, and that selector is (0,1,1) against .min-h-32's (0,1,0)
+               — so specificity discards the 8rem floor no matter what the layer
+               order is, and on the operatory phone this paragraph-sized answer
+               collapsed to about two lines. Intrinsic row height sits above the
+               44px floor and cannot be out-specified. */
+            rows={6}
+            className="field-input"
             value={form.answers[cycle.id] ?? ""}
             onChange={(e) => setAnswer(cycle.id, e.target.value)}
             aria-invalid={answered && !cycleVerdict?.sterile ? true : undefined}
+            /* Same condition that renders the list below, so the reference is
+               never dangling. Without it the field announced "invalid" with no
+               programmatic route to the reasons sitting next to it. */
+            aria-describedby={
+              answered && cycleVerdict && !cycleVerdict.sterile
+                ? `cycle-${cycle.id}-problems`
+                : undefined
+            }
           />
 
           {answered && cycleVerdict && !cycleVerdict.sterile && (
-            <ul className="mt-2 space-y-1" role="alert">
+            /* role="status", not "alert": this mounts on the first keystroke and
+               re-fires whenever the problem set shifts mid-typing, so an
+               assertive region interrupted the writer's own typing echo to read
+               the whole failure list back at them. */
+            <ul id={`cycle-${cycle.id}-problems`} className="mt-2 space-y-1" role="status">
               {cycleVerdict.problems.map((p) => (
                 <li key={p} className="text-xs font-medium text-rose-800">
                   ✕ {p}
@@ -236,7 +256,7 @@ function PreFlight({
 }) {
   return (
     <div className="card">
-      <h2 className="mb-1 text-lg font-bold">Pre-flight checklist</h2>
+      <h2 className="section-title mb-1">Pre-flight checklist</h2>
       <p className="mb-3 text-sm text-slate-700">
         Confirm each of these before the request may be sent.
       </p>
@@ -373,8 +393,11 @@ function SterilizationReport({
 }) {
   return (
     <div className="card">
-      <h2 className="mb-1 text-lg font-bold">Sterilization report</h2>
-      <p className="mb-3 text-sm text-slate-700">
+      <h2 className="section-title mb-1">Sterilization report</h2>
+      {/* tabIndex -1 so the blocked Send below can move focus here: this
+          sentence already IS the reason, so the button describes itself with it
+          rather than repeating it in a tooltip. */}
+      <p id="gauntlet-send-blocked" tabIndex={-1} className="mb-3 text-sm text-slate-700">
         {verdict.sterile
           ? "Every cycle is clear. This request may be sent to the Smile Notes Team."
           : "This request is still contaminated. Fix each item below — it cannot be sent until every cycle clears."}
@@ -440,9 +463,22 @@ function SterilizationReport({
         <button
           type="button"
           className="btn-primary"
-          disabled={!verdict.sterile || sending}
-          title={verdict.sterile ? undefined : "Every cycle must clear first"}
-          onClick={onSubmit}
+          /* aria-disabled, not disabled — the convention globals.css spells out
+             and BuilderShell's Submit already follows. A native `disabled` drops
+             this out of the tab order and out of the accessibility tree, so a
+             screen-reader user tabbing the sterilization report never met the
+             page's only real control at all, and the one sentence explaining why
+             lived in a `title` no finger can open. .btn-primary[aria-disabled]
+             already supplies the off look. */
+          aria-disabled={!verdict.sterile || sending || undefined}
+          aria-describedby="gauntlet-send-blocked"
+          onClick={() => {
+            if (!verdict.sterile || sending) {
+              document.getElementById("gauntlet-send-blocked")?.focus();
+              return;
+            }
+            onSubmit();
+          }}
         >
           {sending ? "Sending…" : "Send to the Smile Notes Team"}
         </button>

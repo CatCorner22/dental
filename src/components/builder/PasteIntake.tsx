@@ -118,7 +118,12 @@ export function PasteIntake({
         {review === null ? null : (
           <>
             {review.pass.applied.length > 0 && (
-              <div className="rounded-lg border border-slate-200 bg-slate-50 p-3">
+              /* .card-inset is the defined level-2 surface — a block nested
+                 inside a card — and it already carries this radius and padding,
+                 so this is a 1:1 swap. It also picks up the ring bump that
+                 [data-contrast="high"] applies to .card/.card-inset only, which
+                 these hand-rolled boxes were silently missing. */
+              <div className="card-inset">
                 <p className="mb-1.5 text-xs font-semibold text-slate-700">
                   Wording this practice standardizes ({review.pass.applied.length})
                 </p>
@@ -161,7 +166,7 @@ export function PasteIntake({
               // and notes that already carry headings. Showing an empty panel
               // would read as "the tool did nothing"; showing the text with one
               // destination is honest and still useful.
-              <div className="rounded-lg border border-slate-200 p-3">
+              <div className="card-inset">
                 <p className="mb-2 flex items-center gap-2 text-xs text-slate-600">
                   <Character id="sparkle" size="xs" />
                   Too short to sort into sections — here it is as one piece.
@@ -184,7 +189,7 @@ export function PasteIntake({
                 {review.partitions.map((p) => {
                   const preferred = DESTINATIONS.find((d) => d.section === p.section);
                   return (
-                    <div key={p.section} className="rounded-lg border border-slate-200 p-3">
+                    <div key={p.section} className="card-inset">
                       <p className="eyebrow mb-1">{p.section}</p>
                       <p className="mb-2 whitespace-pre-wrap text-sm text-slate-800">{p.text}</p>
                       <SendRow
@@ -237,10 +242,28 @@ function SendRow({
             ? "The dentist records this section — send it to a field that is yours, or ask the dentist to complete it."
             : undefined
         }
+        aria-describedby={firstLocked ? `paste-locked-${first.key}` : undefined}
         onClick={() => onSend(first.key, text)}
       >
+        {/* The lock said out loud, exactly as the "somewhere else" buttons below
+            already say it. This one carried the same condition in a title
+            tooltip only — and `disabled` drops the button from the tab order, so
+            a keyboard user could never surface it and a tablet has no hover at
+            all. Same rule the rest of this cluster follows: a disabled control
+            says why, next to itself. */}
         {sent[first.key] ? "Sent again →" : "Send to"} {first.label}
+        {firstLocked ? " (dentist)" : ""}
       </button>
+      {firstLocked && (
+        /* basis-full so it takes its own row in the wrapping flex, and keyed by
+           first.key because SendRow renders once per SOAP partition — a fixed id
+           would collide across up to five rows and point aria-describedby at the
+           wrong sentence. */
+        <span id={`paste-locked-${first.key}`} className="basis-full text-xs text-slate-600">
+          The dentist records this section — send it to a field that is yours, or ask the dentist
+          to complete it.
+        </span>
+      )}
       {rest.length > 0 && (
         <>
           <button

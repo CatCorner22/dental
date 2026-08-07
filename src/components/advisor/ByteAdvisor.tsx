@@ -89,7 +89,7 @@ export function ByteAdvisor({
               {report.advice.length > 1 && (
                 <button
                   type="button"
-                  className="mt-1 text-xs font-medium text-brand-blue underline decoration-dotted underline-offset-2"
+                  className="tap mt-1 rounded text-xs font-medium text-brand-blue underline decoration-dotted underline-offset-2"
                   onClick={() => setTipIndex((i) => (i + 1) % report.advice.length)}
                 >
                   Next tip ({((tipIndex % report.advice.length) + 1)} of {report.advice.length})

@@ -68,7 +68,9 @@ export function BatchTriage() {
   return (
     <div className="card">
       <textarea
-        className="field-input mt-2 min-h-[8rem] font-mono text-xs"
+        /* No text-xs — it beats the 16px iOS zoom guard on .field-input (see
+           globals.css). font-mono and min-h are different properties and safe. */
+        className="field-input mt-2 min-h-[8rem] font-mono"
         value={batchInput}
         onChange={(e) => setBatchInput(e.target.value)}
         placeholder={"First note…\n---\nSecond note…\n---\nThird note…"}

@@ -292,7 +292,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                 <div className="mt-1.5 flex flex-wrap items-center gap-2">
                   <button
                     type="button"
-                    className="text-xs font-medium text-amber-900 underline decoration-dotted underline-offset-2"
+                    className="tap rounded text-xs font-medium text-amber-900 underline decoration-dotted underline-offset-2"
                     onClick={() =>
                       setTipIndex((i) => (i - 1 + observations.length) % observations.length)
                     }
@@ -301,7 +301,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
                   </button>
                   <button
                     type="button"
-                    className="text-xs font-medium text-amber-900 underline decoration-dotted underline-offset-2"
+                    className="tap rounded text-xs font-medium text-amber-900 underline decoration-dotted underline-offset-2"
                     onClick={() => setTipIndex((i) => (i + 1) % observations.length)}
                   >
                     Next reading ({(tipIndex % observations.length) + 1} of {observations.length})
@@ -333,11 +333,28 @@ export function ByteStarAdvisor({ text }: { text: string }) {
           <summary className="flex cursor-pointer list-none items-center justify-between gap-2 [&::-webkit-details-marker]:hidden">
             <h4 className="label-micro inline-flex items-center gap-1">
               Drift to NorthStar
-              <HelpTip label="About drift gauges" side="top">
-                Each rail shows how this draft sits against practice targets (read coverage, active
-                voice, later-reader pillars, TN cues). Toward / on-target / away is computed
-                locally — not a model score.
-              </HelpTip>
+              {/* HelpTip renders a real <button>, and this one sits inside the
+                  <summary> — so its click bubbled and toggled the disclosure
+                  too. Tapping the bulb to learn what "drift" means expanded the
+                  rails under your finger at the same instant the tooltip
+                  appeared, and tapping again to dismiss collapsed them. Same
+                  guard, and same reason, as OnboardingChecklist.
+
+                  Wrapped here rather than fixed inside HelpTip: it is used in
+                  twenty places that are NOT disclosures, and swallowing clicks
+                  for all of them to fix one would be the worse trade. */}
+              <span
+                onClick={(e) => {
+                  e.preventDefault();
+                  e.stopPropagation();
+                }}
+              >
+                <HelpTip label="About drift gauges" side="top">
+                  Each rail shows how this draft sits against practice targets (read coverage,
+                  active voice, later-reader pillars, TN cues). Toward / on-target / away is
+                  computed locally — not a model score.
+                </HelpTip>
+              </span>
             </h4>
             <div className="flex items-center gap-2">
               <TrendSpark samples={trend} />

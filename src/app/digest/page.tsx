@@ -120,11 +120,19 @@ export default async function DigestPage() {
             adding it here makes every future use free. Evidence is shown with everything outside the
             controlled vocabulary removed, so these lines carry no patient detail.
           </p>
+          {/* .card, not .card-inset. Every list on this page used the level-2
+              surface — which is bg-brand-cream/70, and the body ground is
+              bg-brand-cream. Cream at 70% over cream is the same cream: a 0%
+              luminance gap, leaving a 70%-opacity slate ring at about 1.04:1 as
+              the only edge. The whole digest read as one wall of grey paragraphs
+              with no visible boundary between findings. An outermost surface on
+              the cream ground is level 1; the chips inside moved to cream to
+              keep the same figure/ground relationship they had before. */}
           <ul className="space-y-3">
             {proposals.map((p) => (
-              <li key={p.id} className="card-inset">
+              <li key={p.id} className="card">
                 <p className="font-semibold text-slate-900">
-                  <span className="rounded bg-white px-1.5 py-0.5 font-mono">{p.subject}</span>{" "}
+                  <span className="rounded bg-brand-cream px-1.5 py-0.5 font-mono">{p.subject}</span>{" "}
                   <span className="font-normal text-slate-700">
                     — {p.evidence.occurrences} uses across {p.evidence.notes} notes by{" "}
                     {p.evidence.authors} people
@@ -173,9 +181,9 @@ export default async function DigestPage() {
           </p>
           <ul className="space-y-3">
             {grammarGrowth.map((g) => (
-              <li key={g.category} className="card-inset">
+              <li key={g.category} className="card">
                 <p className="font-semibold text-slate-900">
-                  <span className="rounded bg-white px-1.5 py-0.5 text-xs font-bold">
+                  <span className="rounded bg-brand-cream px-1.5 py-0.5 text-xs font-bold">
                     {UNPARSED_CATEGORY_LABEL[g.category]}
                   </span>{" "}
                   <span className="font-normal text-slate-700">
@@ -213,7 +221,7 @@ export default async function DigestPage() {
               </p>
               <ul className="space-y-3">
                 {practice.map((s) => (
-                  <li key={s.id} className="card-inset">
+                  <li key={s.id} className="card">
                     <p className="font-semibold text-slate-900">{s.headline}</p>
                     <p className="mt-1 text-sm text-slate-700">{s.detail}</p>
                     <p className="mt-1 text-xs text-slate-500">Based on {s.sample} notes.</p>
@@ -233,7 +241,7 @@ export default async function DigestPage() {
               </p>
               <ul className="space-y-3">
                 {people.map((s) => (
-                  <li key={s.id} className="card-inset">
+                  <li key={s.id} className="card">
                     <p className="font-semibold text-slate-900">{s.headline}</p>
                     <p className="mt-1 text-sm text-slate-700">{s.detail}</p>
                     <p className="mt-1 text-xs text-slate-500">Based on {s.sample} of their notes.</p>

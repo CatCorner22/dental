@@ -66,7 +66,7 @@ export function TeamDashboard({ view }: { view: TeamView }) {
       </section>
 
       <section>
-        <h2 className="mb-2 text-lg font-semibold">
+        <h2 className="section-title mb-2">
           Store fulfillment {open.length > 0 && <span className="text-sm font-normal text-amber-700">({open.length} waiting)</span>}
         </h2>
         {error && (
@@ -79,7 +79,7 @@ export function TeamDashboard({ view }: { view: TeamView }) {
         ) : (
           <ul className="space-y-2">
             {view.redemptions.map((r) => (
-              <li key={r.id} className="rounded border border-slate-200 bg-white px-3 py-2 text-sm">
+              <li key={r.id} className="card p-3 text-sm">
                 <div className="flex flex-wrap items-baseline justify-between gap-2">
                   <span>
                     <span className="font-medium">{r.userName}</span> — {r.itemTitle}{" "}

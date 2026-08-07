@@ -84,6 +84,7 @@ export function VoiceEnrollment({
   const [promptIndex, setPromptIndex] = useState(0);
   const [completedPrompts, setCompletedPrompts] = useState<Set<number>>(() => new Set());
   const [previewLines, setPreviewLines] = useState<string[]>([]);
+  const previewRef = useRef<HTMLUListElement>(null);
   const [interim, setInterim] = useState("");
   const [error, setError] = useState("");
   const [tidied, setTidied] = useState(0);
@@ -209,6 +210,26 @@ export function VoiceEnrollment({
 
   const remaining = enrollmentRemainingMs(listenedMs);
   const pct = enrollmentPercent(listenedMs);
+  // THE PREVIEW HAS TO KEEP MOVING.
+  //
+  // Lines are appended to the end and the pane holds about eight of them while
+  // retaining forty, and nothing ever scrolled it — so roughly forty seconds
+  // into a three-to-five minute read-aloud the box froze on the first few
+  // utterances while the user kept talking. That is indistinguishable from
+  // recognition having died, and people stopped and abandoned setup even though
+  // the timer and the utterance counter were still climbing.
+  //
+  // Pin to the bottom only when the reader is already there: someone who has
+  // scrolled up to check how a word came out should not be yanked back down by
+  // the next utterance.
+  useEffect(() => {
+    const el = previewRef.current;
+    if (!el) return;
+    if (el.scrollHeight - el.scrollTop - el.clientHeight < 40) {
+      el.scrollTop = el.scrollHeight;
+    }
+  }, [previewLines]);
+
   const glosses = glossColloquialisms(previewLines.slice(-3).join(" "), region);
   const ready =
     listenedMs >= ENROLLMENT_MIN_MS &&
@@ -350,7 +371,10 @@ export function VoiceEnrollment({
             {interim}
           </p>
         )}
-        <ul className="max-h-40 space-y-1 overflow-y-auto font-mono text-xs text-slate-800">
+        <ul
+          ref={previewRef}
+          className="max-h-40 space-y-1 overflow-y-auto font-mono text-xs text-slate-800"
+        >
           {previewLines.length === 0 ? (
             <li className="text-slate-500">Spoken finals will appear here.</li>
           ) : (

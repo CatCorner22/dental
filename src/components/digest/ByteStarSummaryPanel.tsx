@@ -36,7 +36,7 @@ export function ByteStarSummaryPanel({
         </Link>
         .
       </p>
-      <div className="card-inset">
+      <div className="card">
         <dl className="grid gap-x-6 gap-y-1.5 text-sm sm:grid-cols-2">
           <dt className="font-semibold text-slate-600">Model reads</dt>
           <dd>

@@ -86,6 +86,25 @@ for (const [engineName, engine] of ENGINES) {
       if (await legal.count()) {
         await legal.getByRole("button", { name: "I understand" }).click();
         await page.waitForTimeout(600);
+        // Acknowledging the notice is what calls markApiReady(), which releases
+        // the two fetches deferred behind it — BuilderShell's practice-packs
+        // load and the SuperByte deployment probe (see src/lib/client/apiReady.ts).
+        // They are therefore in flight at exactly this moment, and if the next
+        // goto() tears the document down first, WebKit reports the aborted
+        // request as "Fetch API cannot load … due to access control checks"
+        // rather than as an abort — because next.config.mjs sets
+        // Cross-Origin-Resource-Policy: same-origin and CORP gets evaluated
+        // against a document that is going away.
+        //
+        // That is the same engine behaviour isBenignRscCorpError already
+        // filters for Next's own prefetches; that filter requires `_rsc=` in
+        // the URL, so it does not cover these two app routes, and it should not
+        // be widened to — a blanket filter on that message would also swallow a
+        // real 403 regression, which is precisely what this assertion exists to
+        // catch. Wait for the requests to settle instead of hiding their
+        // failure. Observed as an intermittent webkit/desktop failure; the
+        // fixed 600ms above is not enough on a loaded runner.
+        await page.waitForLoadState("networkidle");
       }
 
       // Feedback reminder: present, with a here-link that emails the developer.

@@ -54,6 +54,7 @@ import { PriorNotes } from "./PriorNotes";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { SaveIndicator } from "./SaveIndicator";
+import { whenApiReady } from "@/lib/client/apiReady";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
 import { Dialog } from "@/components/ui/Dialog";
@@ -245,26 +246,34 @@ export function BuilderShell({
   const [practicePacks, setPracticePacks] = useState<PublishedPackLite[]>([]);
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/workflow/packs?status=published")
-      .then((r) => (r.ok ? r.json() : { packs: [] }))
-      .then((d: { packs?: Array<Record<string, unknown>> }) => {
-        if (cancelled || !Array.isArray(d.packs)) return;
-        setPracticePacks(
-          d.packs.map((p) => ({
-            id: Number(p.id),
-            title: String(p.title ?? ""),
-            description: String(p.description ?? ""),
-            moduleIds: Array.isArray(p.moduleIds) ? (p.moduleIds as string[]) : [],
-            blockIds: Array.isArray(p.blockIds) ? (p.blockIds as string[]) : [],
-            authorRoles: Array.isArray(p.authorRoles) ? (p.authorRoles as string[]) : []
-          }))
-        );
-      })
-      .catch(() => {
-        if (!cancelled) setPracticePacks([]);
-      });
+    // Deferred until the legal-record notice is acknowledged. This mounts the
+    // instant somebody signs in, so on a fresh session it used to fire while
+    // the blocking gate was still on screen and every route was answering 403
+    // — handled in JS, but a red console error on the first load of the app
+    // regardless. See src/lib/client/apiReady.ts.
+    const stop = whenApiReady(() => {
+      void fetch("/api/workflow/packs?status=published")
+        .then((r) => (r.ok ? r.json() : { packs: [] }))
+        .then((d: { packs?: Array<Record<string, unknown>> }) => {
+          if (cancelled || !Array.isArray(d.packs)) return;
+          setPracticePacks(
+            d.packs.map((p) => ({
+              id: Number(p.id),
+              title: String(p.title ?? ""),
+              description: String(p.description ?? ""),
+              moduleIds: Array.isArray(p.moduleIds) ? (p.moduleIds as string[]) : [],
+              blockIds: Array.isArray(p.blockIds) ? (p.blockIds as string[]) : [],
+              authorRoles: Array.isArray(p.authorRoles) ? (p.authorRoles as string[]) : []
+            }))
+          );
+        })
+        .catch(() => {
+          if (!cancelled) setPracticePacks([]);
+        });
+    });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
   // Add-ons beyond the always-on Universal Core. Drives the module rail's

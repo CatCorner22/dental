@@ -15,6 +15,7 @@ import {
 } from "@/lib/bytestar/liveStatus";
 import { TrendSpark, type TrendSample } from "./TrendSpark";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { whenApiReady } from "@/lib/client/apiReady";
 
 // BYTESTAR — observational pioneer. ONE-WAY FEEDBACK: SuperByte gives staff
 // objective language and graphics; staff never prompt, copy, or send feedback
@@ -96,17 +97,25 @@ export function ByteStarAdvisor({ text }: { text: string }) {
 
   useEffect(() => {
     let cancelled = false;
-    fetch("/api/bytestar")
-      .then((r) => r.json())
-      .then((d: { enabled?: boolean }) => {
-        if (!cancelled) setDeploy(d.enabled ? "on" : "off");
-      })
-      .catch(() => {
-        // Network/DB failure is not "feature off" — keep gauges honest.
-        if (!cancelled) setDeploy("unreachable");
-      });
+    // Held until the legal-record notice is acknowledged. Until then the server
+    // answers 403 to everything, and this probe treats any failure as
+    // "unreachable" — so on a fresh session it painted the gauges as broken and
+    // logged a console error, both for a rule rather than a fault. See
+    // src/lib/client/apiReady.ts.
+    const stop = whenApiReady(() => {
+      fetch("/api/bytestar")
+        .then((r) => r.json())
+        .then((d: { enabled?: boolean }) => {
+          if (!cancelled) setDeploy(d.enabled ? "on" : "off");
+        })
+        .catch(() => {
+          // Network/DB failure is not "feature off" — keep gauges honest.
+          if (!cancelled) setDeploy("unreachable");
+        });
+    });
     return () => {
       cancelled = true;
+      stop();
     };
   }, []);
 

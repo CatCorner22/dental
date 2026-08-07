@@ -121,6 +121,7 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
             key={key}
             type="button"
             onClick={() => setFilter(key as typeof filter)}
+            aria-pressed={filter === key}
             className={`tap rounded-full border px-3 text-sm ${
               filter === key
                 ? "border-brand-blue bg-brand-blue text-white"
@@ -133,7 +134,7 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
       </div>
 
       {shown.length === 0 ? (
-        <div className="flex items-center gap-3 rounded border border-slate-200 bg-white p-4 text-sm text-slate-500">
+        <div className="card flex items-center gap-3 text-sm text-slate-500">
           <Character id="sparkle" size="sm" />
           <p>
             Nothing here yet. If you have noticed something — a supply running low, a step that
@@ -141,7 +142,10 @@ export function WishList({ wishes, canDecide }: { wishes: WishRowView[]; canDeci
           </p>
         </div>
       ) : (
-        <ul className="space-y-2">
+        /* One surface with divided rows, the shape My notes shipped with, so
+           the two lists in this app read alike instead of as a lifted card
+           (My notes) beside a stack of flat boxes (wishes). */
+        <ul className="card divide-y divide-slate-100 overflow-hidden p-0">
           {shown.map((w) => (
             <WishCard key={w.id} wish={w} canDecide={canDecide} onChanged={() => router.refresh()} />
           ))}
@@ -188,9 +192,10 @@ function WishCard({
 
   return (
     <li
-      className={`rounded-lg border bg-white p-3 ${
-        isStandards && !settled ? "border-amber-400" : "border-slate-200"
-      }`}
+      /* The standards flag as a left rail rather than a full ring: inside a
+         divided list a ring would fight the dividers, and a rail is the cue
+         .card-note already uses for "this one is different". */
+      className={`p-3 ${isStandards && !settled ? "border-l-4 border-l-amber-400" : ""}`}
     >
       <div className="flex flex-wrap items-start justify-between gap-2">
         <div className="min-w-0">
@@ -221,7 +226,7 @@ function WishCard({
           name at all: the card just turned green with nobody attached to the
           decision. Who closed it is the part that must never be missing. */}
       {wish.decidedByName && (
-        <p className="mt-2 rounded border border-slate-200 bg-slate-50 px-3 py-1.5 text-sm">
+        <p className="card-inset mt-2 px-3 py-1.5 text-sm">
           <span className="text-slate-500">{wish.decidedByName}:</span>{" "}
           {wish.decidedNote || <span className="italic text-slate-500">no reply given</span>}
         </p>
@@ -337,13 +342,19 @@ function WishForm({ onDone }: { onDone: (msg: string) => void }) {
 
       <div className="space-y-3">
         <div>
-          <span className="field-label">What is it?</span>
-          <div className="flex flex-wrap gap-1.5">
+          {/* The label was a bare span naming nothing. With the group it now
+              labels, the eight category chips are announced as one required
+              choice instead of eight unrelated buttons. */}
+          <span id="wish-cat-label" className="field-label">
+            What is it?
+          </span>
+          <div className="flex flex-wrap gap-1.5" role="group" aria-labelledby="wish-cat-label">
             {WISH_CATEGORIES.map((c) => (
               <button
                 key={c.id}
                 type="button"
                 onClick={() => setCategory(c.id)}
+                aria-pressed={category === c.id}
                 className={`tap rounded-full border px-3 text-sm ${
                   category === c.id
                     ? "border-brand-blue bg-brand-blue text-white"

@@ -118,7 +118,18 @@ function FindingRow({
           )}
         </span>
         {finding.fieldRef && (
-          <button type="button" onClick={jump} className="shrink-0 underline">
+          <button
+            type="button"
+            /* The row itself is clickable, so an un-stopped click here runs jump()
+               twice — once directly, once on the way up. Harmless-looking, except
+               jump() moves focus, so the second pass re-focuses a field the writer
+               may already have started typing in. */
+            onClick={(e) => {
+              e.stopPropagation();
+              jump();
+            }}
+            className="shrink-0 underline"
+          >
             Go to field
           </button>
         )}
@@ -153,12 +164,30 @@ function FindingRow({
           Sent to a Team Lead as a rule disagreement.
         </p>
       ) : (attestable || escalatable) && (
-        <div className="mt-1.5">
+        /* STOP THE ROW EATING THIS BLOCK.
+           The <li> above carries onClick=jump whenever the finding has a fieldRef,
+           and every control below is a descendant of it — so without this, tapping
+           "This is right as written", typing in the reason box, or pressing
+           "Record it" ALSO fires jump(). Two ways that breaks:
+
+             - On a phone the panel renders inside the "Audit & copy" sheet with
+               onJump={() => setShowMobileAudit(false)}, so the first tap opens the
+               reason form and closes the sheet around it in the same event. The
+               writer never sees the form they just opened.
+             - On desktop, clicking into the reason input scrolls to the note field
+               and focuses it, so the keystrokes land in the clinical field instead.
+
+           attestable is exactly the advisory findings this flow exists for, and
+           spelling, plain-language and measurement all attach a fieldRef — so this
+           was every row that matters. */
+        <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
           {writing ? (
             <div className="space-y-1">
               <input
                 type="text"
-                className="field-input py-1 text-xs"
+                /* text-xs would beat the 16px iOS zoom guard .field-input carries
+                   for narrow/coarse screens — see globals.css. */
+                className="field-input py-1"
                 placeholder="Why the text is right as written"
                 aria-label="Why the text is right as written"
                 value={reason}

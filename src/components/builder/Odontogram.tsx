@@ -191,7 +191,11 @@ function Arch({
           y={y > 40 ? y + TOOTH_H + 11 : y - 4}
           textAnchor="middle"
           className="fill-slate-600"
-          style={{ fontSize: 9, fontVariantNumeric: "tabular-nums" }}
+          /* 11, not 9: these are the numbers the chart exists to make
+             unmistakable. The viewBox has room — the top baseline sits at y-4
+             against a -14 edge and the bottom at 2*TOOTH_H+43 against
+             2*TOOTH_H+52 — so nothing clips at either arch. */
+          style={{ fontSize: 11, fontVariantNumeric: "tabular-nums" }}
         >
           {id}
         </text>
@@ -258,9 +262,26 @@ export function Odontogram({ marks, regions = [], onSelectTooth }: OdontogramPro
 
   return (
     <div>
+      {/* SCROLL, DON'T SHRINK.
+          width="100%" over a 446-unit viewBox means every container narrower
+          than that scales the whole drawing down uniformly — and the real
+          containers are narrower: the mobile sidekick gives it ~342px (scale
+          0.77) and the desktop aside ~392px (scale 0.88). The tooth numbers are
+          sized in user units inside that viewBox, so they were landing at about
+          7px, and the in-app text-scale control cannot touch them because they
+          are not rem.
+
+          That is the one thing this chart must not do. It exists to catch a
+          transposed tooth number — #41 read as #14 — and globals.css self-hosts
+          Inter with tabular figures and a slashed zero for exactly that reason.
+          A floor plus a horizontal scroller keeps the glyphs at full size and
+          lets the chart slide under a finger, which is the same treatment .doc
+          table already gets. */}
+      <div className="overflow-x-auto">
       <svg
         viewBox={`0 -14 ${width} ${TOOTH_H * 2 + 66}`}
         width="100%"
+        style={{ minWidth: width }}
         role="img"
         aria-label={
           mentioned === 0
@@ -281,10 +302,10 @@ export function Odontogram({ marks, regions = [], onSelectTooth }: OdontogramPro
           stroke="#CBD5E1"
           strokeWidth={1}
         />
-        <text x={2} y={TOOTH_H + 19} className="fill-slate-500" style={{ fontSize: 9 }}>
+        <text x={2} y={TOOTH_H + 19} className="fill-slate-500" style={{ fontSize: 11 }}>
           patient&apos;s right
         </text>
-        <text x={width - 2} y={TOOTH_H + 19} textAnchor="end" className="fill-slate-500" style={{ fontSize: 9 }}>
+        <text x={width - 2} y={TOOTH_H + 19} textAnchor="end" className="fill-slate-500" style={{ fontSize: 11 }}>
           patient&apos;s left
         </text>
         <Arch order={PERMANENT_MANDIBULAR_ORDER} marks={byTooth} y={TOOTH_H + 32} onSelect={onSelectTooth} />
@@ -292,6 +313,7 @@ export function Odontogram({ marks, regions = [], onSelectTooth }: OdontogramPro
           <RegionBand key={q} quadrant={q} y={q === "UR" || q === "UL" ? 0 : TOOTH_H + 32} />
         ))}
       </svg>
+      </div>
 
       {regions.length > 0 && (
         <p className="mt-2 text-xs text-slate-700">

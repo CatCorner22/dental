@@ -1,7 +1,7 @@
 // @vitest-environment jsdom
 
 import { describe, expect, it, vi } from "vitest";
-import { render, screen } from "@testing-library/react";
+import { fireEvent, render, screen } from "@testing-library/react";
 
 import { AuditPanel, findingKey } from "./AuditPanel";
 import type { AuditFinding, AuditReport, Severity } from "@/lib/audit/types";
@@ -185,5 +185,44 @@ describe("jumping to a field", () => {
     expect(details.open).toBe(true);
     expect(document.activeElement).toBe(input);
     host.remove();
+  });
+
+  // The row is clickable when the finding has a fieldRef, and every resolution
+  // control sits INSIDE that row. Nothing here stopped the click bubbling, so
+  // pressing "This is right as written" also fired the jump — which on a phone
+  // closes the audit sheet the form just opened inside, and on desktop yanks
+  // focus into the note field mid-sentence.
+  //
+  // Nothing caught it because the two halves never met in a fixture: the
+  // `finding()` factory has no fieldRef, so its rows were not clickable, and
+  // `requiredMissing()` has one but is deliberately not attestable. The
+  // combination below — attestable AND field-linked — is what every real
+  // spelling, plain-language and measurement finding actually looks like.
+  it("does not jump when a resolution control inside a field-linked row is used", () => {
+    const onJump = vi.fn();
+    const linked = finding({ fieldRef: { moduleId: "universal-core", fieldId: "visit-purpose" } });
+
+    render(
+      <AuditPanel
+        report={report([linked])}
+        onAttest={() => {}}
+        onEscalate={() => {}}
+        onJump={onJump}
+      />
+    );
+
+    // fireEvent, not node.click(): the assertion below depends on React having
+    // re-rendered with the reason form open, and a bare DOM click is not
+    // wrapped in act() so that state update has not flushed yet.
+    fireEvent.click(screen.getByRole("button", { name: ATTEST }));
+
+    // The reason form opened, and the row did not also try to navigate away.
+    expect(screen.getByRole("textbox", { name: /why the text is right as written/i })).toBeTruthy();
+    expect(onJump).not.toHaveBeenCalled();
+
+    // The row itself still jumps — the fix stops propagation from the controls,
+    // it does not remove the affordance the HelpTip promises.
+    fireEvent.click(screen.getByText(linked.message));
+    expect(onJump).toHaveBeenCalledTimes(1);
   });
 });

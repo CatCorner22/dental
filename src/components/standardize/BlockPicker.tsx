@@ -100,7 +100,8 @@ export function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
       {formOpen && (
         <div className="mt-2 rounded border border-slate-200 bg-slate-50 p-2">
           <input
-            className="field-input py-1 text-xs"
+            /* No text-xs — it beats the 16px iOS zoom guard (see globals.css). */
+            className="field-input py-1"
             placeholder="Block name (for example: My adult recall opener)"
             value={title}
             maxLength={80}

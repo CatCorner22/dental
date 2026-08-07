@@ -431,7 +431,19 @@
   @apply mb-1 block text-xs font-semibold text-slate-700;
 }
 .chip {
-  @apply inline-flex cursor-pointer items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:border-brand-blue/60 hover:bg-brand-cream;
+  /* The disabled pair .btn has carried all along. .chip hardcodes cursor-pointer
+     and a hover lift, and :hover still matches a DISABLED button — so the one
+     disabled chip in the app (Standardize, while a proposal is on screen) lit up
+     under the cursor and showed a pointer while refusing every click, which
+     reads as broken rather than as off. */
+  @apply inline-flex cursor-pointer items-center rounded-full border border-slate-300 bg-white px-2 py-0.5 text-xs text-slate-700 hover:border-brand-blue/60 hover:bg-brand-cream disabled:cursor-not-allowed disabled:opacity-40;
+}
+/* A separate rule rather than a `disabled:hover:` variant stacked inside the
+   @apply above: Tailwind emits applied variants in its own order, not the order
+   they are written, so beating .chip:hover at equal specificity is only
+   guaranteed by source order. */
+.chip:disabled:hover {
+  @apply border-slate-300 bg-white;
 }
 .btn {
   /* Capsule buttons: the one place the atomic-age brand shows up in every

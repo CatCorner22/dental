@@ -824,6 +824,19 @@ export function BuilderShell({
     return dentistOwnedKeys(modules);
   }, [clinicalRole, modules]);
 
+  // Hoisted out of the modules dialog so the empty case can be answered. Filtered
+  // to nothing, the list used to collapse to a zero-height gap under a search box
+  // still holding the query that produced it — which reads as "module picking is
+  // broken" rather than "no match", and the reasonable response to that is to file
+  // the note without the add-on.
+  const visibleModules = useMemo(
+    () =>
+      ALL_MODULES.filter(
+        (m) => !m.alwaysOn && moduleVisibleInRail(clinicalRole, m.id) && moduleMatches(m, moduleQuery)
+      ),
+    [clinicalRole, moduleQuery]
+  );
+
   // Shared between the desktop sticky aside and the mobile audit sheet, so
   // the two never drift into two different implementations of the same
   // panel. Closes over local state directly rather than taking props — it is
@@ -1190,7 +1203,10 @@ export function BuilderShell({
   );
 
   return (
-    <div className={canEdit ? "pb-36 sm:pb-28" : undefined}>
+    /* No bottom reserve any more: the action bar below is sticky rather than
+       fixed, so it occupies real layout space at the end of the form instead of
+       floating over it. The old pb-36/sm:pb-28 now just added dead scroll. */
+    <div>
       {/* Sticky patient-header-style bar — IDENTITY AND STATE ONLY.
           It used to also carry Earlier saves, Save, Submit and a HelpTip, which
           put the controls you reach for at the END of a note in the most
@@ -1371,7 +1387,9 @@ export function BuilderShell({
         <button
           type="button"
           onClick={() => setShowMobileAudit(true)}
-          className="tap flex w-full items-center gap-3 rounded-xl bg-white ring-1 ring-slate-200 px-3 py-2 text-left shadow-sm"
+          /* The third copy of .card's recipe, now the real thing. px-3 py-2
+             covers both axes so .card's p-4 is fully overridden. */
+          className="card tap flex w-full items-center gap-3 px-3 py-2 text-left"
           aria-label="Open audit, copy, and preview"
         >
           <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
@@ -1459,7 +1477,21 @@ export function BuilderShell({
             an ENTRY mode: you reach for it once, at the start, and never again
             in that note. Verified blocks moved into the chip row of each text
             field, which deleted the destination dropdown outright. */}
-        <section className="min-w-0 flex-1 space-y-4">
+        {/* NAMED LANDMARK + THE EDITOR'S OWN HEADING.
+            An unnamed <section> is not exposed as a landmark at all, and this
+            component rendered no heading of any kind — so the home page's real
+            outline was h1 "Hi {name}" → nothing → h2 "Other notes", with the
+            note the whole page exists to write contributing zero. Pressing H in a
+            screen reader jumped straight past the editor.
+
+            A visually-hidden h2 rather than a visible one: the note's identity
+            already sits in the sticky bar above, so a second visible title would
+            be redundant ink. It also repairs the h1 → h3 jump that opening the
+            Chart tab introduces via NoteReadback's <h3>. */}
+        <section className="min-w-0 flex-1 space-y-4" aria-labelledby="note-fields-heading">
+          <h2 id="note-fields-heading" className="sr-only">
+            Note fields
+          </h2>
           {/* Progressive Fast Lane, from main: while this note is still
               Core-only, offer role-aware visit scaffolds in place. These add
               structure, never a second draft and never clinical values.
@@ -1524,7 +1556,14 @@ export function BuilderShell({
             means two elements answering to one id, and getElementById picks
             whichever comes first. So there is exactly ONE copy, and `order`
             moves it — above the form on a phone, beside it on a desktop. */}
-        <aside className="order-first shrink-0 lg:order-none lg:w-[26rem]">
+        {/* Named, so rotor/landmark navigation can tell this apart from the note
+            fields instead of announcing a bare "complementary" — without it the
+            only way between writing and the checks was arrowing through the
+            whole form. */}
+        <aside
+          className="order-first shrink-0 lg:order-none lg:w-[26rem]"
+          aria-label="Note checks and export"
+        >
           <div className="card p-3 lg:sticky lg:top-20">
             <div className="lg:mb-3">{advisors}</div>
             <div className="hidden lg:block">{sidekickBody}</div>
@@ -1544,7 +1583,25 @@ export function BuilderShell({
           old banner deliberately skipped, leaving the disabled control with no
           on-screen explanation at all. */}
       {canEdit && (
-        <div className="fixed inset-x-0 bottom-0 z-30 border-t border-slate-200 bg-white/95 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur">
+        /* STICKY, NOT FIXED — and the -mx-4/px-4 pair is the same full-bleed
+           trick the top bar above uses.
+
+           `fixed` pinned this bar to the VIEWPORT, so it sat on top of whatever
+           happened to be at the bottom of the screen forever. The space reserved
+           for it (pb-36 sm:pb-28) was on this component's own root div, but the
+           document does not end there — page.tsx renders HomeAside after the
+           builder and the root layout renders BrandFooter after </main>. So at
+           maximum scroll the bar covered the last ~80px of the page: the
+           copyright line, the privacy-policy link and the tail of the feedback
+           paragraph, all painted over and un-tappable, with no scroll position
+           that could reveal them.
+
+           Sticky pins it identically while there is note left to write — the bar
+           is the last in-flow child, so its natural position stays below the fold
+           for the whole form — and then lets it scroll away once the note ends,
+           which is where the footer starts and where a Save/Submit bar has no
+           further business. */
+        <div className="sticky bottom-0 z-30 -mx-4 border-t border-slate-200 bg-white/95 px-4 py-2.5 pb-[max(0.625rem,env(safe-area-inset-bottom))] backdrop-blur">
           {/* Finish cluster first — Gestalt: reason + Save + Submit is the job.
               Entry tools (paste / earlier version) sit in a disclosure so they
               never compete with the finish control on a tablet (UIX-004). That
@@ -1632,7 +1689,13 @@ export function BuilderShell({
           </p>
             <input
               type="search"
-              className="field-input mb-1.5 py-1 text-xs"
+              /* No text-xs: globals.css gives .field-input 16px on any narrow or
+                 finger-driven screen precisely so iOS Safari does not zoom the
+                 page in on focus and refuse to zoom back out — and because that
+                 rule lives in @layer components, a utility like text-xs beats it
+                 and silently turns the guard off. py-1 is safe; it is a different
+                 property from the min-height the same rule sets. */
+              className="field-input mb-1.5 py-1"
               placeholder="Filter modules…"
               value={moduleQuery}
               onChange={(e) => setModuleQuery(e.target.value)}
@@ -1642,12 +1705,17 @@ export function BuilderShell({
               <input type="checkbox" checked disabled /> Universal Core
             </label>
             <div className="pane-55 space-y-0.5">
-              {ALL_MODULES.filter(
-                (m) =>
-                  !m.alwaysOn &&
-                  moduleVisibleInRail(clinicalRole, m.id) &&
-                  moduleMatches(m, moduleQuery)
-              ).map((m) => (
+              {visibleModules.length === 0 && (
+                /* text-sm, not text-xs: 12px body copy is exactly what this app's
+                   type vocabulary keeps taking out. The message names the query
+                   back so it is obvious what was searched for, and stops short of
+                   blaming the role filter — that would be a guess. */
+                <p className="px-2 py-3 text-sm text-slate-600">
+                  No modules match “{moduleQuery}”. Check the spelling, or clear the box to see the
+                  full list.
+                </p>
+              )}
+              {visibleModules.map((m) => (
                 <label key={m.id} className="flex cursor-pointer items-center gap-2 rounded px-2 py-1 text-xs font-medium text-slate-700 hover:bg-brand-blue/10">
                   <input
                     type="checkbox"

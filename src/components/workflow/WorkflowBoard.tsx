@@ -391,7 +391,17 @@ export function WorkflowBoard({
                             Approve
                           </button>
                           <input
-                            className="field-input max-w-xs py-1 text-xs"
+                            /* No text-xs — it beats the 16px iOS zoom guard on
+                               .field-input (see globals.css). */
+                            className="field-input max-w-xs py-1"
+                            /* The placeholder was the only name this field had,
+                               and it is identical on every pack in the list — so
+                               a screen-reader user tabbing the review queue heard
+                               "Reject note (required)" over and over with nothing
+                               tying any of them to the pack it rejects. A
+                               placeholder is also not an accessible name once
+                               there is text in the box. */
+                            aria-label={`Reason for rejecting ${p.title}`}
                             placeholder="Reject note (required)"
                             value={rejectNotes[p.id] ?? ""}
                             onChange={(e) =>

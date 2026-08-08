@@ -5,6 +5,8 @@ import { Dialog } from "@/components/ui/Dialog";
 import type { AuditFinding } from "@/lib/audit/types";
 import { isValidPhiAttestation, PHI_ATTESTATION_RULE } from "@/lib/audit/engine";
 import type { NoteState } from "@/lib/schema/types";
+import type { CheckNoteSummary } from "@/lib/status/checkNoteSummary";
+import { CheckNoteSummaryPanel } from "@/components/builder/CheckNoteSummary";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { Character } from "@/components/mascot/Sparkle";
 
@@ -129,6 +131,10 @@ export interface FiledResult {
 export function SubmitDialog({
   draftId,
   phiOverrideReason,
+  checkNote,
+  killersAcknowledged,
+  onKillersAcknowledged,
+  onChangeFinding,
   onClose,
   onFiled,
   onStartAnother,
@@ -136,6 +142,10 @@ export function SubmitDialog({
 }: {
   draftId: string;
   phiOverrideReason: string | null;
+  checkNote: CheckNoteSummary;
+  killersAcknowledged: boolean;
+  onKillersAcknowledged: (acked: boolean) => void;
+  onChangeFinding: (finding: AuditFinding) => void;
   onClose: () => void;
   // Fires the moment the filing succeeds (even if the user stays), so the
   // builder can flip its status chip to Submitted right away.
@@ -187,6 +197,7 @@ export function SubmitDialog({
   }, []);
 
   const submit = async () => {
+    if (checkNote.requiresKillerAck && !killersAcknowledged) return;
     setStatus("sending");
     setError("");
     try {
@@ -300,6 +311,12 @@ export function SubmitDialog({
         This files the note with a ticket number and emails it (with its audit report) to the
         corporate address. Identifiers are completed later in the EDR.
       </p>
+      <CheckNoteSummaryPanel
+        summary={checkNote}
+        killersAcknowledged={killersAcknowledged}
+        onKillersAcknowledged={onKillersAcknowledged}
+        onChangeFinding={onChangeFinding}
+      />
       {cap.status === "ready" && !cap.emailConfigured && (
         <p className="mb-3 rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
           Email is not configured on the server, so the note will be filed with a ticket and shown
@@ -337,7 +354,13 @@ export function SubmitDialog({
           className="btn-primary"
           // Wait for the email-config check so the filed panel reports "sent"
           // vs "not sent" from real server state, never a pre-load guess.
-          disabled={status === "sending" || cap.status === "loading"}
+          // Killer ack is the Check-your-note gate — sparse MedPro-style notes
+          // cannot file past open litigation gaps without reviewing them.
+          disabled={
+            status === "sending" ||
+            cap.status === "loading" ||
+            (checkNote.requiresKillerAck && !killersAcknowledged)
+          }
           onClick={submit}
         >
           {status === "sending"

@@ -44,6 +44,7 @@ what a human typed, and nothing more.
 | 2026-08-06 | Researched Curve Hero note shape (Forms / QuickText / AI SOAP) vs Smile Notes builder acceleration. Filed `knowledge/sources/builder-text-blocks-predictive-ux.md`: verified blocks and MyBlocks already exist but are under-discovered; recommended section-scoped suggested blocks and Fast Lane text packs — not a Forms clone or ambient AI. |
 | 2026-08-08 | Market UX + four mock stakeholder panels (hygiene, dentists+OM, design/IT, temps). Filed `knowledge/sources/market-ux-stakeholder-panels.md`: Daylight-chart brand recommit, glove-first tablet finish, role-before-work; ambient AI / write-back / scoreboards rejected. |
 | 2026-08-08 | Shipped Daylight chart tokens + glove-first tablet finish + pinned My blocks + audit WHAT/WHY/HOW pedagogy (market panels #1/#2/#4/#5). |
+| 2026-08-08 | Ran expanded adversarial hate panels (≥4× prior pool of 5): 24 unique hostile lenses + per-lens digests; consolidated fix backlog and pilot kill criteria in `knowledge/sources/adversarial-hate-panels.md`. Simulated agents only — not live Cornerstone interviews. |
 
 ---
 

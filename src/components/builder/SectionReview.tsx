@@ -3,6 +3,7 @@
 import { useState } from "react";
 
 import { TextDiff } from "@/components/diff/TextDiff";
+import { ApplyWithReadback } from "@/components/builder/ReadbackConfirm";
 import { severityLabel } from "@/lib/audit/types";
 import type { SectionReview as Review } from "@/lib/review/sectionReview";
 
@@ -125,24 +126,17 @@ export function SectionReview({
           <div className="mt-1.5">
             <TextDiff before={p.before} after={p.after} />
           </div>
-          <div className="mt-2 flex flex-wrap gap-2">
-            <button
-              type="button"
-              className="btn-primary text-xs"
-              onClick={() => {
+          <div className="mt-2">
+            <ApplyWithReadback
+              before={p.before}
+              after={p.after}
+              applyLabel="Use this wording"
+              onApply={() => {
                 onApply(p.fieldKey, p.after);
                 setAnswered((a) => ({ ...a, [p.fieldKey]: "applied" }));
               }}
-            >
-              Use this wording
-            </button>
-            <button
-              type="button"
-              className="chip"
-              onClick={() => setAnswered((a) => ({ ...a, [p.fieldKey]: "kept" }))}
-            >
-              Keep mine
-            </button>
+              onKeep={() => setAnswered((a) => ({ ...a, [p.fieldKey]: "kept" }))}
+            />
           </div>
         </div>
       ))}

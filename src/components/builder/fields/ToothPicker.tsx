@@ -91,9 +91,9 @@ export function ToothPicker({
               aria-pressed={selected.includes(tooth.id)}
               onClick={() => toggle(tooth.id)}
               // Grows under a finger via .tap-sq. Tapping the tooth next to
-              // the one you meant is a documentation error in the legal
-              // record, so the touch case gets the larger target.
-              className={`tap-sq h-8 min-w-8 rounded border px-1 text-xs font-semibold ${
+              // Honest Finish / a11y: 44px floor on the default path — adjacent
+              // mistap is a documentation error in the legal record.
+              className={`tap-sq min-h-11 min-w-11 rounded border px-1 text-xs font-semibold ${
                 selected.includes(tooth.id)
                   ? "border-brand-blue bg-brand-blue text-white"
                   : "border-slate-300 bg-white text-slate-700 hover:bg-brand-blue/10"

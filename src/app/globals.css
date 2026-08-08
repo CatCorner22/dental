@@ -497,34 +497,31 @@
 }
 
 /* Touch-target helpers.
-   Driven by `pointer: coarse`, NOT by a width breakpoint. A tablet is 768px
-   wide and driven by a finger, so width-based rules hand it the same 20px
-   targets as a desktop mouse — which is precisely the device a clinician is
-   most likely to be holding. `.tap` is for text-ish controls, `.tap-sq` for
+   Honest Finish co-design: 44×44 is the DEFAULT clinical path — gloves and
+   tremor do not wait for `pointer: coarse`. Coarse media still bumps chip
+   padding/type for comfort. `.tap` is for text-ish controls, `.tap-sq` for
    the square tooth/surface cells where width matters as much as height. */
 .tap,
+.chip {
+  min-height: 44px;
+}
+.tap {
+  display: inline-flex;
+  align-items: center;
+}
 .tap-sq {
-  /* no-op on a mouse; the media query below does the work */
+  min-height: 44px;
+  min-width: 44px;
+}
+.tap-input {
+  min-height: 44px;
+}
+.chip {
+  @apply inline-flex items-center px-3 py-1.5 text-sm;
 }
 @media (pointer: coarse) {
-  .btn,
-  .chip,
-  .tap {
+  .btn {
     min-height: 44px;
-  }
-  .tap {
-    display: inline-flex;
-    align-items: center;
-  }
-  .tap-sq {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  .tap-input {
-    min-height: 44px;
-  }
-  .chip {
-    @apply px-3 py-1.5 text-sm;
   }
 }
 .btn-primary {
@@ -605,7 +602,8 @@ body {
 
 /* The queue-clear starburst. One four-point spark that pops when the andon
    goes green — the moment worth celebrating is the CLEAN note, and it earns
-   exactly one sparkle. Respects prefers-reduced-motion via the global rule. */
+   exactly one sparkle. Under prefers-reduced-motion: NO transform (a11y
+   co-design) — duration shrink alone still moves the control under a glove. */
 @keyframes sparkle-pop {
   0% {
     transform: scale(0) rotate(0deg);
@@ -623,6 +621,13 @@ body {
 .sparkle-pop {
   display: inline-block;
   animation: sparkle-pop 0.5s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sparkle-pop {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
 }
 
 /* Print.

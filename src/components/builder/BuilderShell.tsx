@@ -497,9 +497,18 @@ export function BuilderShell({
   // authority check, which is the one whose reason a person can least guess at
   // ("a dentist must file this note"). The aria-disabled Submit reads this and
   // so does the sentence beside it, so the two can never disagree about
+  // Honest Finish co-design: unset role is an authorship checkpoint on
+  // Copy/File — not a full role-before-work hard gate (policy lock).
+  const roleRecorded = clinicalRole !== "unset";
+  const exportLocked =
+    !hasContent || !gates.exportAllowed || !roleRecorded;
   // whether the button works.
   const submitBlocked =
-    !hasContent || !gates.emailAllowed || !filing.allowed || liveStatus === "submitted";
+    !hasContent ||
+    !gates.emailAllowed ||
+    !filing.allowed ||
+    !roleRecorded ||
+    liveStatus === "submitted";
 
   // Scope cue (Assessment/Plan are dentist) vs transfer-required (filing blocked).
   // Hygienists who may still file must not see "ownership must move" (UIX-002).
@@ -514,7 +523,10 @@ export function BuilderShell({
     filingAllowed: filing.allowed,
     exportAllowed: gates.exportAllowed,
     emailAllowed: gates.emailAllowed,
-    blockedReason
+    blockedReason,
+    roleRecorded,
+    requiresKillerAck: checkNote.requiresKillerAck,
+    openReviewCount: report.counts.S2
   });
 
   // Autosave on any change. The content-identity guard (not a first-render
@@ -1067,7 +1079,7 @@ export function BuilderShell({
             is why pressing "Copy for Curve Hero" and getting no clipboard read
             as a broken button. */}
         {EXPORT_ROUTES.map(({ intent, label, noun, verb }) => {
-          const locked = !hasContent || !gates.exportAllowed;
+          const locked = exportLocked;
           const primary = intent === "copy";
           return (
             <button
@@ -1080,9 +1092,11 @@ export function BuilderShell({
               title={
                 !hasContent
                   ? "Add note content first"
-                  : gates.exportAllowed
-                    ? `${verb} — after one check that the right chart is open`
-                    : "Resolve every stop finding before copy or download"
+                  : !roleRecorded
+                    ? "Record clinical role before Copy or download — ask a Team Lead"
+                    : gates.exportAllowed
+                      ? `${verb} — after one check that the right chart is open`
+                      : "Resolve every stop finding before copy or download"
               }
               onClick={() => {
                 if (locked) {
@@ -1121,7 +1135,7 @@ export function BuilderShell({
           </button>
         )}
       </div>
-      {hasContent && !gates.exportAllowed && (
+      {hasContent && exportLocked && (
         <p
           id="builder-export-locked"
           className="mt-2 text-xs text-rose-800"
@@ -1130,11 +1144,13 @@ export function BuilderShell({
           // cursor on the reason it is locked.
           tabIndex={-1}
         >
-          Copy and download are locked until every stop is fixed
-          {report.phiStops.length > 0 && !overrideActive
-            ? " (or a privacy stop is attested)"
-            : ""}
-          . Open findings are listed in the audit panel.
+          {!roleRecorded
+            ? "Copy and download are locked until a Team Lead records the clinical role on this account."
+            : `Copy and download are locked until every stop is fixed${
+                report.phiStops.length > 0 && !overrideActive
+                  ? " (or a privacy stop is attested)"
+                  : ""
+              }. Open findings are listed in the audit panel.`}
         </p>
       )}
     </>
@@ -1156,19 +1172,21 @@ export function BuilderShell({
         {/* Glove-first: full-width fat Copy is the primary tablet action. */}
         <button
           className={`tap w-full min-h-12 text-base ${
-            !hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"
+            exportLocked ? "btn-secondary" : "btn-complete"
           }`}
-          aria-disabled={!hasContent || !gates.exportAllowed}
+          aria-disabled={exportLocked}
           aria-expanded={exportIntent === "copy"}
           onClick={() => {
-            if (!hasContent || !gates.exportAllowed) return;
+            if (exportLocked) return;
             setPasteConfirmed(false);
             setExportIntent((cur) => (cur === "copy" ? null : "copy"));
           }}
         >
           {copied
             ? "Copied — ready to paste ✓"
-            : !gates.exportAllowed && hasContent
+            : !roleRecorded && hasContent
+              ? "🔒 Role required"
+              : !gates.exportAllowed && hasContent
               ? "🔒 Copy locked"
               : `Copy for ${edrName}…`}
         </button>
@@ -1186,13 +1204,15 @@ export function BuilderShell({
         )}
       </div>
       {exportCheck}
-      {hasContent && !gates.exportAllowed && (
+      {hasContent && exportLocked && (
         <p className="mb-3 text-xs text-rose-800" role="status">
-          Copy locked until every stop is fixed
-          {report.phiStops.length > 0 && !overrideActive
-            ? " (or a privacy stop is attested)"
-            : ""}
-          . Findings are listed below.
+          {!roleRecorded
+            ? "Copy locked until a Team Lead records the clinical role on this account."
+            : `Copy locked until every stop is fixed${
+                report.phiStops.length > 0 && !overrideActive
+                  ? " (or a privacy stop is attested)"
+                  : ""
+              }. Findings are listed below.`}
         </p>
       )}
       <AuditPanel
@@ -1435,7 +1455,7 @@ export function BuilderShell({
           then the audit sheet. Hygienists on a tablet should not archaeology
           the Sidekick to learn why Copy/Submit is off.
 
-          NO SECOND STATUS CHIP. The same "Review suggested" pill sits in the
+          NO SECOND STATUS CHIP. The same "Needs review" pill sits in the
           note bar sixty pixels above this one, so a phone showed one note's
           state twice on one screen — the duplication the sidekick's own comment
           calls out and then reintroduced here. The ring carries the severity
@@ -1475,10 +1495,10 @@ export function BuilderShell({
         >
           {clinicalRole === "unset" ? (
             <>
-              <p className="font-semibold">Clinical role is not recorded on this account</p>
-              <p className="mt-1 text-xs leading-relaxed">
-                Scope locks and role templates stay open until a Team Lead sets Assistant,
-                Hygienist, or Dentist on this account in User admin.
+              <p className="font-semibold">Clinical role not recorded</p>
+              <p className="mt-1 text-xs leading-snug">
+                Next: ask a Team Lead to set Assistant, Hygienist, or Dentist on this
+                account. Copy and File stay locked until then.
               </p>
             </>
           ) : needsTransfer ? (

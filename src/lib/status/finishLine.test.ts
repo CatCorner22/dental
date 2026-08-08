@@ -46,4 +46,23 @@ describe("builderFinishLine — first-impression finish control", () => {
   it("says Ready only when content, filing, and email gates all clear", () => {
     expect(builderFinishLine(ready)).toBe("Ready to file.");
   });
+
+  it("never says Ready when killers require ack (Honest Finish co-design)", () => {
+    const line = builderFinishLine({ ...ready, requiresKillerAck: true });
+    expect(line).toMatch(/Unresolved risk/i);
+    expect(line).not.toMatch(/Ready/i);
+  });
+
+  it("never says Ready when open S2 reviews remain", () => {
+    const line = builderFinishLine({ ...ready, openReviewCount: 2 });
+    expect(line).toMatch(/Review open items/i);
+    expect(line).toMatch(/Copy still allowed/i);
+    expect(line).not.toMatch(/Ready/i);
+  });
+
+  it("blocks Copy/File messaging when clinical role is unset", () => {
+    const line = builderFinishLine({ ...ready, roleRecorded: false });
+    expect(line).toMatch(/clinical role/i);
+    expect(line).not.toMatch(/Ready/i);
+  });
 });

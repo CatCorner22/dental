@@ -106,7 +106,9 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     rail: "bg-orange-400"
   },
   review: {
-    label: "Review suggested",
+    // Co-design Honest Finish: "suggested" softens open risk. Text-first label
+    // so CVD writers do not read this as almost-Ready amber comfort.
+    label: "Needs review",
     short: "Review",
     icon: "◆",
     chipClass: "border-amber-300 bg-amber-100 text-amber-900",

@@ -84,7 +84,7 @@ export function CheckNoteSummaryPanel({
             >
               <div className="min-w-0">
                 <span
-                  className={`mr-1 inline-block rounded px-1 py-px text-[0.65rem] font-semibold ${SEVERITY_CHIP[f.severity]}`}
+                  className={`mr-1 inline-block rounded px-1.5 py-0.5 text-xs font-semibold ${SEVERITY_CHIP[f.severity]}`}
                 >
                   {SEVERITY_LABELS[f.severity]}
                 </span>
@@ -92,7 +92,7 @@ export function CheckNoteSummaryPanel({
                   {killerShortLabel(f.ruleId)}
                 </span>
                 {f.suggestion && (
-                  <p className={`mt-0.5 text-slate-600 ${compact ? "text-[0.65rem]" : "text-xs"}`}>
+                  <p className={`mt-0.5 text-slate-600 ${compact ? "text-xs" : "text-sm"}`}>
                     {f.suggestion}
                   </p>
                 )}

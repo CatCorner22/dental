@@ -42,6 +42,7 @@ what a human typed, and nothing more.
 | 2026-08-03 | Created this Artifact. Seeded from five existing sources. Ingested nothing new. |
 | 2026-08-03 | Built the patient-experience layer from the practice's own standardization document: encounter types for phone and portal contact, an open-items handoff, an anxiety and comfort module, a patient-facing summary with its own plain-word rule, and a page splitting the note header between Curve Hero and Smile Notes. Money stays out of the clinical record entirely, at the practice's direction. |
 | 2026-08-06 | Researched Curve Hero note shape (Forms / QuickText / AI SOAP) vs Smile Notes builder acceleration. Filed `knowledge/sources/builder-text-blocks-predictive-ux.md`: verified blocks and MyBlocks already exist but are under-discovered; recommended section-scoped suggested blocks and Fast Lane text packs — not a Forms clone or ambient AI. |
+| 2026-08-08 | Malpractice carrier risk-manager attack on false confidence (Ready chip, GPA, S2 killers). Filed `knowledge/sources/carrier-risk-false-confidence-uw.md`: 5 UW concerns; preferred-rate mandates (hard-gate killers → frozen attest → IV); theater ignore list. |
 
 ---
 

@@ -279,14 +279,29 @@ export async function claimResend(
   return { version: row.version, lastSubmissionId: row.lastSubmissionId };
 }
 
-export async function transferDraft(db: Db, id: string, toUserId: string, now: Date): Promise<void> {
+export async function transferDraft(
+  db: Db,
+  id: string,
+  toUserId: string,
+  now: Date,
+  opts?: { status?: string }
+): Promise<void> {
   // Bump the version so an old owner's in-flight save loses its optimistic
   // check and gets a clean 409 instead of silently writing to a draft that no
   // longer belongs to them. The new owner loads after the transfer, so they
   // see the bumped version already.
+  //
+  // Status is recomputed for the RECIPIENT's clinical role at the call site —
+  // otherwise a hygienist→dentist handoff leaves "Dentist must file" forever,
+  // and the reverse leaves a green Ready on a note the new owner cannot file.
   await db
     .update(drafts)
-    .set({ ownerId: toUserId, version: sql`${drafts.version} + 1`, updatedAt: now })
+    .set({
+      ownerId: toUserId,
+      version: sql`${drafts.version} + 1`,
+      updatedAt: now,
+      ...(opts?.status !== undefined ? { status: opts.status } : {})
+    })
     .where(eq(drafts.id, id));
 }
 

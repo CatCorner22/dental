@@ -41,10 +41,19 @@ describe("TransferDraftDialog — honest load states", () => {
           JSON.stringify({
             users: [
               {
+                id: "u2",
+                username: "hyg.sam",
+                displayName: "Sam Hyg",
+                role: "user",
+                clinicalRole: "hygienist",
+                active: true
+              },
+              {
                 id: "u1",
                 username: "dr.lee",
                 displayName: "Dr Lee",
                 role: "user",
+                clinicalRole: "dentist",
                 active: true
               }
             ]
@@ -58,6 +67,14 @@ describe("TransferDraftDialog — honest load states", () => {
       expect(screen.getByRole("option", { name: /Dr Lee/i })).toBeTruthy();
     });
     expect(screen.queryByRole("option", { name: /Loading users/i })).toBeNull();
+    // Dentists sort first and carry a clinical label for the handoff picker.
+    const options = screen.getAllByRole("option").map((o) => o.textContent ?? "");
+    const lee = options.findIndex((t) => /Dr Lee/.test(t));
+    const sam = options.findIndex((t) => /Sam Hyg/.test(t));
+    expect(lee).toBeGreaterThan(-1);
+    expect(sam).toBeGreaterThan(-1);
+    expect(lee).toBeLessThan(sam);
+    expect(options[lee]).toMatch(/Dentist/i);
   });
 
   it("surfaces a connection error instead of an empty select", async () => {

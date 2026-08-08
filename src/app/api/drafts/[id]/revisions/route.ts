@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth/guards";
 import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
+import { resolveClinicalRole } from "@/lib/auth/clinicalRoles";
 import { getDb } from "@/lib/db/client";
 import {
   getDraft,
@@ -7,8 +8,8 @@ import {
   listDraftRevisions,
   updateDraftChecked
 } from "@/lib/db/repo/drafts";
+import { getUserById } from "@/lib/db/repo/users";
 import { readJsonRecord } from "@/lib/http/readJson";
-import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { statusForNote } from "@/lib/status/statusForNote";
 
 export const runtime = "nodejs";
@@ -71,6 +72,12 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     return Response.json({ error: "That revision was not found." }, { status: 404 });
   }
 
+  const owner = await getUserById(db, draft.ownerId);
+  const ownerClinicalRole = resolveClinicalRole(
+    owner?.role ?? "user",
+    owner?.clinicalRole
+  );
+
   const updated = await updateDraftChecked(
     db,
     id,
@@ -84,8 +91,7 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
       status: statusForNote(revision.noteState, {
         submitted: false,
         lastSendFailed: false,
-        clinicalRole:
-          (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
+        clinicalRole: ownerClinicalRole
       }).status
     },
     new Date()

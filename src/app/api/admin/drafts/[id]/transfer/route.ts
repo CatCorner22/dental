@@ -1,10 +1,12 @@
 import { requireRole } from "@/lib/auth/guards";
 import { canActOn, canReceiveTransfer, canTransferNotes, ROLE_LABEL } from "@/lib/auth/roles";
+import { resolveClinicalRole } from "@/lib/auth/clinicalRoles";
 import { getDb } from "@/lib/db/client";
 import { getDraft, transferDraft } from "@/lib/db/repo/drafts";
 import { getUserById, isCreatureOf } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
+import { statusForNote } from "@/lib/status/statusForNote";
 
 export const runtime = "nodejs";
 
@@ -114,7 +116,22 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
   if (toUserId === draft.ownerId) {
     return Response.json({ error: "That user already owns this draft." }, { status: 400 });
   }
-  await transferDraft(db, id, toUserId, new Date());
+
+  // Recompute the cached chip for the person who will open Home next. Leaving
+  // the previous owner's status intact is how a dentist inherits "Dentist must
+  // file" (or a hygienist inherits Ready) after a handoff — Andon lied about
+  // the finish line on the list even when the builder was honest.
+  const recipientRole = resolveClinicalRole(to.role, to.clinicalRole);
+  const nextStatus =
+    draft.status === "submitted"
+      ? draft.status
+      : statusForNote(draft.noteState, {
+          submitted: false,
+          lastSendFailed: Boolean(draft.lastSendFailed),
+          clinicalRole: recipientRole
+        }).status;
+
+  await transferDraft(db, id, toUserId, new Date(), { status: nextStatus });
   await logAction(db, {
     actorId: guard.user.id,
     actorName: `${guard.user.displayName} (${guard.user.username})`,
@@ -122,5 +139,5 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
     target: id,
     detail: `${draft.ownerId} -> ${toUserId}`
   });
-  return Response.json({ ok: true });
+  return Response.json({ ok: true, status: nextStatus });
 }

@@ -1,15 +1,28 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
+import {
+  CLINICAL_ROLE_LABEL,
+  type ClinicalRole
+} from "@/lib/auth/clinicalRoles";
 
 type TransferUser = {
   id: string;
   username: string;
   displayName: string;
   role: string;
+  clinicalRole?: ClinicalRole;
   active: boolean;
 };
+
+function clinicalRank(role: ClinicalRole | undefined): number {
+  // Dentist first — the usual destination for "Transfer to dentist".
+  if (role === "dentist") return 0;
+  if (role === "hygienist") return 1;
+  if (role === "assistant") return 2;
+  return 3;
+}
 
 /**
  * Ownership handoff — shared by DraftList and the note builder.
@@ -59,6 +72,16 @@ export function TransferDraftDialog({
     };
   }, []);
 
+  const sortedUsers = useMemo(
+    () =>
+      [...users].sort((a, b) => {
+        const byRole = clinicalRank(a.clinicalRole) - clinicalRank(b.clinicalRole);
+        if (byRole !== 0) return byRole;
+        return a.displayName.localeCompare(b.displayName);
+      }),
+    [users]
+  );
+
   const submit = async () => {
     setError("");
     setBusy(true);
@@ -97,22 +120,29 @@ export function TransferDraftDialog({
           className="field-input"
           value={toUserId}
           onChange={(e) => setToUserId(e.target.value)}
-          disabled={loadState !== "ready" || users.length === 0}
+          disabled={loadState !== "ready" || sortedUsers.length === 0}
         >
           {loadState === "loading" ? (
             <option value="">Loading users…</option>
           ) : loadState === "error" ? (
             <option value="">Could not load users</option>
-          ) : users.length === 0 ? (
+          ) : sortedUsers.length === 0 ? (
             <option value="">No active users available</option>
           ) : (
             <>
               <option value="">— select a user —</option>
-              {users.map((u) => (
-                <option key={u.id} value={u.id}>
-                  {u.displayName} ({u.username})
-                </option>
-              ))}
+              {sortedUsers.map((u) => {
+                const clinical =
+                  u.clinicalRole && u.clinicalRole !== "unset"
+                    ? CLINICAL_ROLE_LABEL[u.clinicalRole]
+                    : null;
+                return (
+                  <option key={u.id} value={u.id}>
+                    {u.displayName} ({u.username})
+                    {clinical ? ` · ${clinical}` : ""}
+                  </option>
+                );
+              })}
             </>
           )}
         </select>
@@ -128,7 +158,7 @@ export function TransferDraftDialog({
           <button
             type="button"
             className="btn-primary"
-            disabled={!toUserId || busy || loadState !== "ready"}
+            disabled={busy || !toUserId || loadState !== "ready"}
             onClick={() => void submit()}
           >
             Transfer

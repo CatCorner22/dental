@@ -1,5 +1,6 @@
 import { requireRole } from "@/lib/auth/guards";
 import { canWriteNote, seesAllNotes } from "@/lib/auth/roles";
+import { resolveClinicalRole, type ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { getDb } from "@/lib/db/client";
 import {
   deleteDraft,
@@ -8,11 +9,11 @@ import {
   updateDraftChecked
 } from "@/lib/db/repo/drafts";
 import { getOffice } from "@/lib/db/repo/offices";
+import { getUserById } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
 import { checkScope } from "@/lib/schema/scopeGuard";
-import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { activeModules } from "@/lib/modules";
 import { filedNoteEqual } from "@/lib/compose/filedNoteEqual";
 import { statusForNote } from "@/lib/status/statusForNote";
@@ -45,6 +46,15 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   if (!canWriteNote(guard.user.role, draft.ownerId, guard.user.id)) {
     return Response.json({ error: "You cannot edit this draft." }, { status: 403 });
   }
+
+  // Cached status answers "can the OWNER file this?" — Home and My notes show
+  // their chip. Using the editor's role let a Developer/Lead save stamp Ready
+  // onto a hygienist's note that still needs dentist filing.
+  const owner = await getUserById(db, draft.ownerId);
+  const ownerClinicalRole = resolveClinicalRole(
+    owner?.role ?? "user",
+    owner?.clinicalRole
+  );
 
   const parsed = await readJsonRecord(req);
   if (parsed.kind !== "object") {
@@ -128,8 +138,7 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
       patch.status = statusForNote(res.value, {
         submitted: false,
         lastSendFailed: false,
-        clinicalRole:
-          (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
+        clinicalRole: ownerClinicalRole
       }).status;
     }
   }
@@ -153,8 +162,7 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     patch.status = statusForNote(patch.noteState ?? draft.noteState, {
       submitted: false,
       lastSendFailed: false,
-      clinicalRole:
-        (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
+      clinicalRole: ownerClinicalRole
     }).status;
   }
 

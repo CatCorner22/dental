@@ -53,9 +53,7 @@ export function DigestFilingRollup({
 
         {rollup.modules.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Modules filed
-            </h3>
+            <h3 className="eyebrow">Modules filed</h3>
             <ul className="mt-1.5 columns-1 gap-x-6 sm:columns-2">
               {rollup.modules.map((m) => (
                 <li key={m.id} className="break-inside-avoid text-sm text-slate-800">
@@ -71,9 +69,7 @@ export function DigestFilingRollup({
 
         {rollup.categories.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Finding categories
-            </h3>
+            <h3 className="eyebrow">Finding categories</h3>
             <ul className="mt-1.5 space-y-0.5">
               {rollup.categories.map((c) => (
                 <li key={c.category} className="text-sm text-slate-800">
@@ -90,9 +86,7 @@ export function DigestFilingRollup({
 
         {rollup.killers.length > 0 && (
           <div>
-            <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-              Litigation / wrong-site items at file time
-            </h3>
+            <h3 className="eyebrow">Litigation / wrong-site items at file time</h3>
             <ul className="mt-1.5 space-y-0.5">
               {rollup.killers.map((k) => (
                 <li key={k.ruleId} className="text-sm text-slate-800">
@@ -107,10 +101,7 @@ export function DigestFilingRollup({
         )}
 
         <div>
-          <h3 className="text-xs font-semibold uppercase tracking-wide text-slate-500">
-            Severity at file time
-          </h3>
-          <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-800">
+          <h3 className="eyebrow">Severity at file time</h3>          <ul className="mt-1.5 flex flex-wrap gap-x-4 gap-y-1 text-sm text-slate-800">
             {SEV_ORDER.map((s) => {
               const findings = rollup.severityFindings[s];
               const notes = rollup.severityNotes[s];

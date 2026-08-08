@@ -3,7 +3,13 @@
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
 import type { AuditFinding } from "@/lib/audit/types";
-import { isValidPhiAttestation, PHI_ATTESTATION_RULE } from "@/lib/audit/engine";
+import { PHI_ATTESTATION_RULE } from "@/lib/audit/engine";
+import {
+  composePhiOverrideReason,
+  isValidPhiOverrideSelection,
+  PHI_OVERRIDE_CODES,
+  type PhiOverrideCode
+} from "@/lib/standardize/reasonCodes";
 import type { NoteState } from "@/lib/schema/types";
 import type { CheckNoteSummary } from "@/lib/status/checkNoteSummary";
 import { CheckNoteSummaryPanel } from "@/components/builder/CheckNoteSummary";
@@ -53,6 +59,7 @@ export function PhiOverrideDialog({
 }) {
   const [checked, setChecked] = useState(false);
   const [reason, setReason] = useState("");
+  const [code, setCode] = useState<PhiOverrideCode | "">("");
   return (
     <Dialog title="Privacy stop — review required" onClose={onClose}>
       <p className="mb-2 text-sm text-slate-700">
@@ -88,21 +95,46 @@ export function PhiOverrideDialog({
         <input type="checkbox" checked={checked} onChange={(e) => setChecked(e.target.checked)} className="mt-0.5" />
         <span>I reviewed every flagged item. None is a patient identifier, exact date, contact detail, or record number.</span>
       </label>
+      <label className="mb-2 block text-sm font-medium text-slate-700">
+        What the flagged text actually is
+        <select
+          className="field-input mt-1"
+          aria-label="PHI override reason code"
+          value={code}
+          onChange={(e) => setCode(e.target.value as PhiOverrideCode | "")}
+        >
+          <option value="">Select a category…</option>
+          {PHI_OVERRIDE_CODES.map((o) => (
+            <option key={o.code} value={o.code}>
+              {o.label}
+            </option>
+          ))}
+        </select>
+      </label>
       <input
         type="text"
         className="field-input mb-1"
-        placeholder="What the flagged text actually is (required)"
-        aria-label="What the flagged text actually is (required)"
+        placeholder="Optional detail (adds to the filed record)"
+        aria-label="Optional PHI override detail"
         value={reason}
         onChange={(e) => setReason(e.target.value)}
       />
-      {/* The server enforces the same validator; this mirror exists so nobody
-          types a reason the submit will refuse. The old five-character floor
-          was browser-only, which made the whole gate client-side theater. */}
-      <p className="mb-3 text-xs text-slate-500">{PHI_ATTESTATION_RULE} Your name and this reason become part of the filed record.</p>
+      {/* The server enforces isValidPhiAttestation on the composed reason; templates
+          clear that bar alone so a code selection is never client-only theater. */}
+      <p className="mb-3 text-xs text-slate-500">
+        {PHI_ATTESTATION_RULE} Your name and this reason become part of the filed record.
+      </p>
       <div className="flex justify-end gap-2">
         <button type="button" className="btn-secondary" onClick={onClose}>Cancel</button>
-        <button type="button" className="btn-primary" disabled={!checked || !isValidPhiAttestation(reason)} onClick={() => onConfirm(reason.trim())}>
+        <button
+          type="button"
+          className="btn-primary"
+          disabled={!isValidPhiOverrideSelection(code, reason, checked)}
+          onClick={() => {
+            if (!code) return;
+            onConfirm(composePhiOverrideReason(code, reason));
+          }}
+        >
           Override this privacy stop
         </button>
       </div>

@@ -534,13 +534,13 @@
      asserted in src/lib/theme/contrast.test.ts, because checking only one stop
      is how a gradient button ships half-unreadable — and hover brightens the
      whole surface rather than swapping colour, so the state still snaps. */
-  @apply btn border-transparent bg-gradient-to-b from-brand-navy to-brand-blue text-white shadow-[0_2px_6px_rgba(59,43,102,0.35)] hover:brightness-110 disabled:hover:brightness-100;
+  @apply btn border-transparent bg-gradient-to-b from-brand-navy to-brand-blue text-white shadow-[0_2px_6px_rgba(30,58,95,0.35)] hover:brightness-110 disabled:hover:brightness-100;
 }
 /* Handoff action: Copy for Curve / EDR. Solid brand-teal so it is strong but
-   never identical to Submit (filing). White on teal clears 7.4:1 — see
+   never identical to Submit (filing). White on teal clears AA — see
    tokens.test.ts. Semantic role: action.complete in src/lib/theme/tokens.ts. */
 .btn-complete {
-  @apply btn border-transparent bg-brand-teal text-white shadow-[0_2px_6px_rgba(59,43,102,0.28)] hover:brightness-110 disabled:hover:brightness-100;
+  @apply btn border-transparent bg-brand-teal text-white shadow-[0_2px_6px_rgba(15,118,110,0.28)] hover:brightness-110 disabled:hover:brightness-100;
 }
 .btn-secondary {
   @apply btn border-slate-300 bg-white text-slate-800 hover:bg-slate-50 disabled:hover:bg-white;
@@ -580,20 +580,21 @@
   touch-action: manipulation;
   min-height: 44px;
 }
+  /* Glove-first: fewer nested card rings on tablet (market UX panels). */
+  .card {
+    box-shadow: none;
+    --tw-ring-shadow: 0 0 #0000;
+  }
 }
 
 
-/* THE GROUND WASH — what makes the page bespoke instead of flat lilac.
-   Two enormous, almost-invisible radial tints in the brand's own interactive
-   purple and quiet chrome purple, fixed to the viewport so cards glide over
-   them on scroll. At 5% alpha they read as depth, not colour: every contrast
-   ratio measured on the solid ground still holds, because the wash only ever
-   LIGHTENS toward white at the top. Print stylesheets drop backgrounds by
-   default, so the record on paper is untouched. */
+/* THE GROUND WASH — daylight paper, not lilac SaaS chrome.
+   Soft navy/teal radials at low alpha so cards glide over depth without
+   shifting measured contrast on the solid cream ground. */
 body {
   background-image:
-    radial-gradient(1200px 500px at 85% -10%, rgba(109, 74, 196, 0.05), transparent 60%),
-    radial-gradient(1000px 420px at -10% 0%, rgba(91, 74, 143, 0.05), transparent 55%),
+    radial-gradient(1200px 500px at 85% -10%, rgba(43, 108, 184, 0.06), transparent 60%),
+    radial-gradient(1000px 420px at -10% 0%, rgba(15, 118, 110, 0.05), transparent 55%),
     linear-gradient(to bottom, rgba(255, 255, 255, 0.55), transparent 240px);
   background-attachment: fixed, fixed, scroll;
 }

@@ -46,6 +46,7 @@ import type { AuditFinding } from "@/lib/audit/types";
 import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
 import { FastLane } from "./FastLane";
+import { PinnedMyBlocks } from "./PinnedMyBlocks";
 import { PasteIntake } from "./PasteIntake";
 import {
   packBlockIdsForVisit,
@@ -1151,14 +1152,12 @@ export function BuilderShell({
           <p className="mt-1 text-xs font-medium text-slate-800">{finishLine}</p>
         </div>
       </div>
-      <div className="mb-3 flex flex-wrap gap-2">
-        {/* The same two-identifier check the desktop panel asks for. This
-            button used to call the old one-press `copy`, which went straight to
-            the clipboard — so the phone, which is the screen most likely to be
-            in someone's hand beside the wrong chart, was the one surface with
-            no check on it at all. */}
+      <div className="mb-3 flex flex-col gap-2">
+        {/* Glove-first: full-width fat Copy is the primary tablet action. */}
         <button
-          className={!hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"}
+          className={`tap w-full min-h-12 text-base ${
+            !hasContent || !gates.exportAllowed ? "btn-secondary" : "btn-complete"
+          }`}
           aria-disabled={!hasContent || !gates.exportAllowed}
           aria-expanded={exportIntent === "copy"}
           onClick={() => {
@@ -1446,20 +1445,15 @@ export function BuilderShell({
         <button
           type="button"
           onClick={() => setShowMobileAudit(true)}
-          /* The third copy of .card's recipe, now the real thing. px-3 py-2
-             covers both axes so .card's p-4 is fully overridden. */
-          className="card tap flex w-full items-center gap-3 px-3 py-2 text-left"
+          /* Flat border on tablet — nested .card rings read as dashboard stack
+             under gloves (market UX glove-first finish). */
+          className="tap flex w-full items-center gap-3 rounded-lg border border-slate-200 bg-white px-3 py-3 text-left"
           aria-label="Open audit, copy, and preview"
         >
           <ProgressRing counts={report.counts} filingAllowed={filing.allowed} />
           <span className="min-w-0 flex-1">
             <span className="block truncate text-sm font-medium text-slate-800">
-              {topStop ? `Stop: ${topStop.message}` : finishLine}
-            </span>
-            <span className="mt-0.5 block truncate text-[0.65rem] text-slate-500">
-              {report.findings.length === 0
-                ? "Tap for audit and copy"
-                : `${report.findings.length} finding${report.findings.length === 1 ? "" : "s"} — tap for audit and copy`}
+              Next: {topStop ? topStop.message : finishLine}
             </span>
           </span>
           <span aria-hidden className="shrink-0 text-slate-400">
@@ -1551,6 +1545,23 @@ export function BuilderShell({
           <h2 id="note-fields-heading" className="sr-only">
             Note fields
           </h2>
+          {/* My blocks on chrome — always visible when saved (not buried in Fast Lane). */}
+          <PinnedMyBlocks
+            canEdit={canEdit}
+            onInsert={(text) => {
+              const active = document.activeElement as HTMLElement | null;
+              const fieldRoot = active?.closest?.("[id^='field-']") as HTMLElement | null;
+              const id = fieldRoot?.id?.replace(/^field-/, "");
+              const key =
+                id && id.includes(".")
+                  ? id
+                  : fieldKey("universal-core", "narrative-subjective");
+              const cur = state.values[key];
+              const prior =
+                cur?.kind === "text" && cur.value.trim() !== "" ? `${cur.value.trim()}\n\n` : "";
+              setValue(key, { kind: "text", value: prior + text });
+            }}
+          />
           {/* Progressive Fast Lane, from main: while this note is still
               Core-only, offer role-aware visit scaffolds in place. These add
               structure, never a second draft and never clinical values.
@@ -1574,20 +1585,6 @@ export function BuilderShell({
                 pick.moduleIds
               );
               setPackStarterOffer(offer.blocks.length > 0 ? offer : null);
-            }}
-            onInsertMyBlock={(text) => {
-              // Prefer the focused prose control; fall back to Visit narrative.
-              const active = document.activeElement as HTMLElement | null;
-              const fieldRoot = active?.closest?.("[id^='field-']") as HTMLElement | null;
-              const id = fieldRoot?.id?.replace(/^field-/, "");
-              const key =
-                id && id.includes(".")
-                  ? id
-                  : fieldKey("universal-core", "narrative-subjective");
-              const cur = state.values[key];
-              const prior =
-                cur?.kind === "text" && cur.value.trim() !== "" ? `${cur.value.trim()}\n\n` : "";
-              setValue(key, { kind: "text", value: prior + text });
             }}
           />
           {canEdit && packStarterOffer && (

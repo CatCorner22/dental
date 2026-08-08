@@ -10,41 +10,53 @@
 // Keep this file and tailwind.config.ts in step. contrast.test.ts is what
 // notices when they drift apart, because it asserts the RELATIONSHIPS
 // (heading on ground, white on button, border on card) rather than the hexes.
+//
+// Daylight chart (2026-08-08 market stakeholder panels): warm paper ground,
+// space navy ink, note blue interactive, check-teal complete — not lilac /
+// AI-purple SaaS chrome. See knowledge/sources/market-ux-stakeholder-panels.md.
 
-/** Brand chrome. Purple ink and purple interactive, on a light-purple ground. */
+/** Brand chrome. Daylight clinical instrument — navy / blue / teal on paper. */
 export const BRAND = {
-  /** Page ground. Deliberately not lighter — see the note in tailwind.config.ts. */
-  cream: "#EDE9F6",
+  /**
+   * Page ground — warm paper with enough luminance gap from white cards.
+   * Slightly deeper than docs/brand.md `#FBF7EF` so cards do not read flat.
+   */
+  cream: "#F7F2E8",
   /** Ink: headings, the active nav pill, the top stop of the primary button. */
-  navy: "#3B2B66",
+  navy: "#1E3A5F",
   /** Interactive: links, the bottom stop of the primary button, focus. */
-  blue: "#6D4AC4",
-  /** Quiet chrome: the eyebrow, the .card-note rail. Never state. */
-  teal: "#5B4A8F",
+  blue: "#2B6CB8",
+  /**
+   * Quiet chrome + Copy/complete surface. Darker than the mark's decorative
+   * check badge (`#5FB3A8`) so white labels and eyebrow text clear WCAG AA.
+   */
+  teal: "#0F766E",
   /** The one surviving warm accent — the celebration star. */
   gold: "#F2CE4B"
 } as const;
 
 /**
- * The neutral ramp, tinted purple rather than blue.
+ * The neutral ramp — cool blue-gray (operatory daylight), not purple-tinted.
  *
  * This overrides Tailwind's own `slate`, which repaints roughly 676 utilities
  * across the app without editing a single component — and, just as importantly,
  * keeps the CLASS NAMES intact. The high-contrast rules in globals.css select on
  * `.text-slate-500` and `.border-slate-200` literally, so renaming the utility
  * would silently switch high-contrast mode off for the people who need it.
+ *
+ * slate-500 is darkened vs stock Tailwind so captions clear 4.5:1 on cream.
  */
 export const SLATE = {
-  50: "#F8F7FB",
-  100: "#F1EFF6",
-  200: "#E4E1EC",
-  300: "#CFCADB",
-  400: "#9C93B3",
-  500: "#6E6685",
-  600: "#565070",
-  700: "#433E58",
-  800: "#322E44",
-  900: "#23202F"
+  50: "#F8FAFC",
+  100: "#F1F5F9",
+  200: "#E2E8F0",
+  300: "#CBD5E1",
+  400: "#94A3B8",
+  500: "#5B6578",
+  600: "#475569",
+  700: "#334155",
+  800: "#1E293B",
+  900: "#0F172A"
 } as const;
 
 /** The two hexes the high-contrast block in globals.css hardcodes. */
@@ -79,6 +91,7 @@ export function luminance(hex: string): number {
 export function contrastRatio(a: string, b: string): number {
   const la = luminance(a);
   const lb = luminance(b);
-  const [hi, lo] = la > lb ? [la, lb] : [lb, la];
-  return (hi + 0.05) / (lo + 0.05);
+  const L = Math.max(la, lb);
+  const l = Math.min(la, lb);
+  return (L + 0.05) / (l + 0.05);
 }

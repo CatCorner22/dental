@@ -142,18 +142,23 @@ function FindingRow({
           </button>
         )}
       </div>
-      <p className="mt-1">{finding.message}</p>
-      {/* WHAT HAPPENS NEXT, said out loud. The single most common complaint in the
-          usability review was that the app says no without saying why or what it
-          costs: "does this stop me filing, or is it advice?" was unanswerable from
-          a colour and a word. */}
-      <p className="mt-1 opacity-80">{SEVERITY_MEANING[finding.severity]}</p>
-      {finding.suggestion && (
+      <p className="mt-1">
+        <span className="font-semibold">What:</span> {finding.message}
+      </p>
+      {/* WHY / HOW — existing severity meaning + suggestion. UI pedagogy only;
+          does not change rule text or RULESET_VERSION (market UX panel #5). */}
+      <p className="mt-1 opacity-80">
+        <span className="font-semibold">Why it stops:</span> {SEVERITY_MEANING[finding.severity]}
+      </p>
+      {finding.suggestion ? (
         <p className="mt-1">
-          <span className="font-semibold">Standard wording:</span> {finding.suggestion}
+          <span className="font-semibold">How to move:</span> {finding.suggestion}
         </p>
-      )}
-
+      ) : finding.fieldRef ? (
+        <p className="mt-1 opacity-80">
+          <span className="font-semibold">How to move:</span> Open the field and fix the text.
+        </p>
+      ) : null}
       {/* FIX, ATTEST, OR DISAGREE — the three endings the standardize screen
           offered and the builder never did. They are here because the writer
           who reads a finding and knows the text is right had nowhere to say so:

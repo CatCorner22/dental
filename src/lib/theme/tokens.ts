@@ -3,9 +3,9 @@
 // Architecture: primitive (palette.ts / tailwind.config.ts) → semantic (here)
 // → component CSS (.btn-primary, .btn-complete, .fast-lane-card).
 //
-// Primitives stay purple-branded (cream ground, navy ink, blue interactive).
-// This file does NOT invent a second palette — it names roles so Fast Lane /
-// handoff UI can speak intent without hardcoding hex in feature code.
+// Primitives stay Daylight-branded (cream paper, navy ink, blue interactive,
+// check teal). This file does NOT invent a second palette — it names roles so
+// Fast Lane / handoff UI can speak intent without hardcoding hex in feature code.
 //
 // Severity (rose/amber/green for audit state) is deliberately NOT here: it
 // lives in audit/types and must stay one source of truth.
@@ -54,7 +54,7 @@ export const ACTION = {
   primaryOn: WHITE,
   complete: BRAND.teal,
   completeOn: WHITE,
-  completeSoft: "rgba(91, 74, 143, 0.08)",
+  completeSoft: "rgba(15, 118, 110, 0.08)",
   soft: SLATE[100],
   softOn: SLATE[700]
 } as const;

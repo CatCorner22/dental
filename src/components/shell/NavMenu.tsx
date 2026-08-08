@@ -4,6 +4,7 @@ import Link from "next/link";
 import { usePathname } from "next/navigation";
 import { useEffect, useRef, useState } from "react";
 import { signOut } from "next-auth/react";
+import { clearAllDraftBackups } from "@/lib/client/draftBackup";
 
 export interface NavMenuItem {
   href: string;
@@ -124,7 +125,22 @@ export function NavMenu({
         <div className="mt-1.5 border-t border-slate-100 pt-1.5">
           <button
             type="button"
-            onClick={() => signOut({ callbackUrl: "/login" })}
+            onClick={() => {
+              void clearAllDraftBackups().finally(() => {
+                void signOut({ callbackUrl: "/login" });
+              });
+            }}
+            className="tap block w-full rounded-lg px-2.5 py-1.5 text-left text-sm font-semibold text-amber-950 hover:bg-amber-50"
+          >
+            Switch author
+          </button>
+          <button
+            type="button"
+            onClick={() => {
+              void clearAllDraftBackups().finally(() => {
+                void signOut({ callbackUrl: "/login" });
+              });
+            }}
             className="tap block w-full rounded-lg px-2.5 py-1.5 text-left text-sm text-slate-700 hover:bg-slate-50"
           >
             Sign out

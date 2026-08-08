@@ -64,11 +64,11 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | Contribution | Source table | Disposition | Follow-through |
 | --- | --- | --- | --- |
 | Never say “Ready to file” while S2/killers remain open | Legal | **Adopted** | `builderFinishLine` + review chip wording |
-| Keep Soft S2 from blocking Copy; warn only | Chairside / RDH | **Adopted** | No `computeGates` change; finish copy states risk |
-| Killer ack before Copy confirm | Legal (already shipped) | **Kept** | Honesty banner on finish line when ack required |
-| Role before Copy/File (not full role-before-work) | Legal Adopt / Board longer-term | **Adopted** (Copy/File gate) | BuilderShell + finish line; full role-before-work stays **policy lock** |
-| Hard-block all killers including S2 | Plaintiff dissent | **Policy lock** | Owner/counsel |
-| Hard shared-iPad author switch | IT / OM | **Deferred / policy** | Wipe mirrors on sign-out shipped; per-patient lock later |
+| Keep Soft S2 from blocking Copy; warn only | Chairside / RDH | **Adapted** | Soft S2 *non-killers* still warn; litigation killers hard-block |
+| Killer ack before Copy confirm | Legal (was soft) | **Superseded** | Checkbox escape removed |
+| Role before Copy/File only | Legal / Board | **Superseded** | Unset cannot **write** (role-before-work) |
+| Hard-block litigation killers | Plaintiff | **Adopted** | Client + submit 422; severity math unchanged |
+| Hard shared-iPad author switch | IT / OM | **Partial** | Switch author wipe+sign-out; not per-patient lock |
 | 44px targets by default (not only `pointer: coarse`) | Chairside / a11y | **Adopted** | `globals.css` + ToothPicker floor |
 | ProgressRing not hue-only | CVD | **Adopted** | Shape glyph + state word in `aria-label` / visible marker |
 | Reduced motion kills transforms | A11y | **Adopted** | `.sparkle-pop` disabled under reduced-motion |
@@ -79,17 +79,16 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | Ambient AI / Forms clone | All | **Rejected** | Charter |
 | Fast Lane must beat Favorites with sentences | Curve / owner / faculty | **Deferred** (product proof) | Measure in pilot; pack sentence quality backlog |
 | MFA-on production | IT | **Policy / ops** | Deployment flag — not a UI PR |
-| Dentist owns hygiene Assessment killers before Copy | Associate DDS | **Adopted** (Copy ownership gate) | `copyOwnership.ts` + BuilderShell Andon/transfer |
+| Dentist owns hygiene Assessment killers before Copy | Associate DDS | **Adopted** | Plus Copy blocked when `!filing.allowed` |
 
 ---
 
 ## Open dissent (preserved — Van Riper)
 
-- **Plaintiff:** still wants every killer hard-blocked.
-- **Board:** still wants role-before-work, not only Copy/File.
 - **RDH:** still distrusts post-file GPA/badge economy — keep it off the clinical path.
 - **Curve power user:** will not adopt until 90s Favorites race is measured in-office.
-- **IT:** clipboard egress remains a residual risk even with intentional Copy.
+- **IT:** clipboard egress + mid-session shared-iPad lock still residual.
+- **Plaintiff:** soft S2 non-killers can still Copy — may still argue for broader hard stops.
 
 ---
 
@@ -106,20 +105,26 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | Wipe all local draft mirrors on sign-out | `draftBackup.ts`, `SignOutButton.tsx` |
 | Readable severity chip type on Check-your-note | `CheckNoteSummary.tsx` |
 | Short unset-role Andon | `BuilderShell.tsx` |
-| Unresolved-risk honesty banner on killer ack | `CheckNoteSummary.tsx` |
+| Unresolved-risk honesty banner on killer ack | *(removed — hard-block replaced ack)* |
 | Audit finding jump as real `<button>` (keyboard) | `AuditPanel.tsx` |
 | Aux + dentist-judgement killers block Copy | `copyOwnership.ts`, `BuilderShell.tsx`, `finishLine.ts` |
+| **Brutal follow-up:** killers hard-block (no ack) | `CheckNoteSummary`, `handoffGates`, submit route |
+| **Brutal follow-up:** role-before-work on write | `editingEnabled` in `BuilderShell` |
+| **Brutal follow-up:** Copy locked when filing not allowed | `exportLocked` |
+| **Brutal follow-up:** Switch author (wipe + sign-out) | `SignOutButton`, `NavMenu` |
 
-**Not in this slice (policy locks):** hard-gate S2 killers, MFA enforcement, SSO, per-patient author lock, IV path, Favorites race instrumentation.
+**Still open (not fixed):** MFA-on as ops default, per-patient author lock mid-session, clipboard egress redesign, Favorites 90s race measurement, GPA/badge economy removal.
 
 ---
 
 ## Acceptance tests (falsifiers)
 
-- Finish line never contains “Ready” when open killers require ack or S2 reviews remain.
-- Unset role: Copy and Submit stay locked; finish line names the role gap.
+- Finish line never contains “Ready” when open killers or Soft S2 reviews remain.
+- Unset role: writing, Copy, and Submit stay locked.
+- Open killers: Copy/File locked; submit API returns 422; no ack checkbox.
+- Copy locked when filing authority is denied.
 - ProgressRing `aria-label` includes a non-color state word (Stop / Required / Review / Ready / Handoff).
 - `prefers-reduced-motion`: `.sparkle-pop` has `animation: none`.
-- Sign-out clears local draft backup keys.
-- Soft S2 still does not flip `computeGates.exportAllowed` by itself.
+- Sign-out / Switch author clears local draft backup keys.
+- Soft S2 non-killers still do not flip `computeGates.exportAllowed` by themselves.
 - Glove CSS: `.chip` / `.tap` / `.tap-sq` carry 44px mins without requiring `pointer: coarse`.

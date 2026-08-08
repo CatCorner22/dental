@@ -96,7 +96,7 @@ describe("buildCheckNoteSummary — storm", () => {
       "complete.anesthetic-no-amount",
       "complete.consent-thin-assertion"
     ]);
-    expect(summary.requiresKillerAck).toBe(true);
+    expect(summary.killersBlockHandoff).toBe(true);
     expect(summary.moduleTitles).toEqual(["Universal Core"]);
     // Spelling is noise at finish — not a stop, not a killer.
     expect(summary.openStops).toEqual([]);
@@ -112,7 +112,7 @@ describe("buildCheckNoteSummary — storm", () => {
       ]
     });
     expect(summary.killers).toEqual([]);
-    expect(summary.requiresKillerAck).toBe(false);
+    expect(summary.killersBlockHandoff).toBe(false);
     expect(summary.omissionCount).toBe(2);
     expect(summary.moduleTitles).toEqual(["Universal Core", "Preventive"]);
   });
@@ -138,7 +138,7 @@ describe("buildCheckNoteSummary — storm", () => {
     });
     expect(summary.killers).toHaveLength(1);
     expect(summary.openStops.map((s) => s.ruleId)).toEqual(["required.missing"]);
-    expect(summary.requiresKillerAck).toBe(true);
+    expect(summary.killersBlockHandoff).toBe(true);
   });
 
   it("does not mutate the audit report findings array", () => {

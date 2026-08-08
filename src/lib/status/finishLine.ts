@@ -1,14 +1,11 @@
 /**
  * One-line finish copy for the builder action bar and mobile strip.
  *
- * Order matters: empty draft → role authorship → filing authority → audit
- * gates → open risk / killer ack → Ready. A hygienist who has cleared every
- * S0 still cannot file dentist-owned content — saying "Ready to file" would
- * be a false green light on the finish control.
+ * Order matters: empty draft → role authorship → dentist ownership → filing
+ * authority → audit stops → open killers → open Soft S2 review → Ready.
  *
- * Co-design (Honest Finish): "Ready" must not appear while unresolved risk
- * items (S2) or litigation killers awaiting ack remain. Soft S2 may still
- * allow Copy; the line must say so plainly.
+ * Honest Finish: "Ready" never appears with open killers or open Soft S2
+ * reviews. Litigation killers hard-block Copy/File (no checkbox escape).
  */
 export function builderFinishLine(args: {
   hasContent: boolean;
@@ -16,15 +13,15 @@ export function builderFinishLine(args: {
   exportAllowed: boolean;
   emailAllowed: boolean;
   blockedReason: string | null;
-  /** Account has no clinical role — blocks Copy/File authorship checkpoint. */
+  /** Account has no clinical role — blocks write + Copy/File. */
   roleRecorded?: boolean;
-  /** Open litigation killers that require Check-your-note ack before Copy. */
-  requiresKillerAck?: boolean;
-  /** Open S2 review findings (does not hard-block Copy). */
+  /** Open litigation killers hard-block handoff. */
+  killersBlockHandoff?: boolean;
+  /** Open S2 review findings that are not killers (Copy still allowed). */
   openReviewCount?: number;
   /**
    * Aux writer + open dentist-judgement killers — Copy waits for dentist
-   * ownership (Honest Finish associate-DDS Adopt).
+   * ownership (subset of killersBlockHandoff; Andon messaging).
    */
   dentistMustOwnKillers?: boolean;
 }): string {
@@ -35,21 +32,23 @@ export function builderFinishLine(args: {
     emailAllowed,
     blockedReason,
     roleRecorded = true,
-    requiresKillerAck = false,
+    killersBlockHandoff = false,
     openReviewCount = 0,
     dentistMustOwnKillers = false
   } = args;
   if (!hasContent) return "Write something to unlock Submit and Copy.";
   if (!roleRecorded) {
-    return "Record clinical role before Copy or File — ask a Team Lead.";
+    return "Record clinical role before writing, Copy, or File — ask a Team Lead.";
   }
   if (dentistMustOwnKillers) {
     return "Dentist must accept Assessment risk items before Copy — transfer ownership.";
   }
-  if (!filingAllowed) return "Dentist must file this note — transfer ownership first.";
+  if (!filingAllowed) {
+    return "Dentist must file this note — transfer ownership before Copy.";
+  }
   if (!exportAllowed) return blockedReason || "Copy locked until every stop is fixed.";
-  if (requiresKillerAck) {
-    return "Unresolved risk items — acknowledge on Copy before the note leaves.";
+  if (killersBlockHandoff) {
+    return "Litigation-sensitive gaps block Copy and File until fixed — no checkbox bypass.";
   }
   if (openReviewCount > 0) {
     return "Review open items before filing. Copy still allowed.";

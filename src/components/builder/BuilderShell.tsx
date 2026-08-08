@@ -28,6 +28,7 @@ import { submitBlockedReason } from "@/lib/status/submitBlocked";
 import { builderFinishLine } from "@/lib/status/finishLine";
 import { buildCheckNoteSummary } from "@/lib/status/checkNoteSummary";
 import { copyBlockedForDentistJudgement } from "@/lib/status/copyOwnership";
+import { SwitchAuthorButton } from "@/components/shell/SignOutButton";
 import {
   CheckNoteSummaryPanel,
   jumpToFindingField
@@ -217,10 +218,6 @@ export function BuilderShell({
   // confirmation, three destinations.
   const [exportIntent, setExportIntent] = useState<null | "copy" | "md" | "txt">(null);
   const [pasteConfirmed, setPasteConfirmed] = useState(false);
-  // Killer-item ack for Check-your-note. Cleared when the finish surface closes
-  // or the killer set changes — acknowledging yesterday's gaps must not clear
-  // today's new ones.
-  const [killersAcknowledged, setKillersAcknowledged] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   // Below `lg` the module rail, form, and Sidekick stack vertically (see the
   // flex-col wrapper below), which buried live audit feedback under the
@@ -378,8 +375,9 @@ export function BuilderShell({
     () => checkNote.killers.map((f) => f.ruleId).join("|"),
     [checkNote.killers]
   );
+  // Reset chart confirm when the killer set changes (handoff surface stale).
   useEffect(() => {
-    setKillersAcknowledged(false);
+    setPasteConfirmed(false);
   }, [killerSignature, exportIntent, showSubmit]);
 
   const phiSignature = useMemo(
@@ -494,31 +492,35 @@ export function BuilderShell({
   // Why Submit is off. Pure and in lib/status so it can be tested — it named a
   // count of zero as a second task when a stop was the only blocker.
   const blockedReason = useMemo(() => submitBlockedReason(report.counts), [report.counts]);
-  // Every reason Submit is off, in one place — including main's filing
-  // authority check, which is the one whose reason a person can least guess at
-  // ("a dentist must file this note"). The aria-disabled Submit reads this and
-  // so does the sentence beside it, so the two can never disagree about
-  // Honest Finish co-design: unset role is an authorship checkpoint on
-  // Copy/File — not a full role-before-work hard gate (policy lock).
+  // Every reason Submit/Copy is off, in one place — including filing authority,
+  // role-before-work, and hard-blocked litigation killers (no checkbox escape).
   const roleRecorded = clinicalRole !== "unset";
+  const editingEnabled = canEdit && roleRecorded;
   const dentistMustOwnKillers = copyBlockedForDentistJudgement({
     clinicalRole,
     killers: checkNote.killers
   });
+  const killersBlock = checkNote.killersBlockHandoff;
   const exportLocked =
-    !hasContent || !gates.exportAllowed || !roleRecorded || dentistMustOwnKillers;
+    !hasContent ||
+    !gates.exportAllowed ||
+    !roleRecorded ||
+    dentistMustOwnKillers ||
+    !filing.allowed ||
+    killersBlock;
   // whether the button works.
   const submitBlocked =
     !hasContent ||
     !gates.emailAllowed ||
     !filing.allowed ||
     !roleRecorded ||
+    killersBlock ||
     liveStatus === "submitted";
 
   // Scope cue (Assessment/Plan are dentist) vs transfer-required (filing blocked).
   // Hygienists who may still file must not see "ownership must move" (UIX-002).
   const showScopeCue =
-    canEdit &&
+    editingEnabled &&
     liveStatus !== "submitted" &&
     !canRecordClinicalJudgement(clinicalRole);
   const needsTransfer = canEdit && liveStatus !== "submitted" && !filing.allowed;
@@ -530,7 +532,7 @@ export function BuilderShell({
     emailAllowed: gates.emailAllowed,
     blockedReason,
     roleRecorded,
-    requiresKillerAck: checkNote.requiresKillerAck,
+    killersBlockHandoff: killersBlock,
     openReviewCount: report.counts.S2,
     dentistMustOwnKillers
   });
@@ -539,7 +541,7 @@ export function BuilderShell({
   // ref) survives StrictMode's double effect run: until a real edit, `state`
   // IS `initialNote` and `title` IS `initialTitle`, so nothing fires.
   useEffect(() => {
-    if (!canEdit) return;
+    if (!editingEnabled) return;
     // On MOUNT, unchanged means "do not save" — otherwise opening a note would
     // write it. After the first real edit it means something different and
     // dangerous: a value was already queued, and returning here leaves it
@@ -560,7 +562,7 @@ export function BuilderShell({
     // Submit and Resend, wedging the edited draft behind a false status.
     setResentNow(false);
     markEdited(state, title, officeId);
-  }, [state, title, officeId, canEdit, markEdited, initialNote, initialTitle, initialOfficeId]);
+  }, [state, title, officeId, editingEnabled, markEdited, initialNote, initialTitle, initialOfficeId]);
 
   // OFFLINE SAFETY NET — same-device IndexedDB ring + localStorage fallback.
   //
@@ -579,7 +581,7 @@ export function BuilderShell({
   const [revisionsBusy, setRevisionsBusy] = useState(false);
 
   useEffect(() => {
-    if (!canEdit) return;
+    if (!editingEnabled) return;
     let cancelled = false;
     void (async () => {
       const mirror = await readLatestDraftBackup(draftId);
@@ -608,7 +610,7 @@ export function BuilderShell({
   }, []);
 
   useEffect(() => {
-    if (!canEdit || !hasEdited.current) return;
+    if (!editingEnabled || !hasEdited.current) return;
     if (isDirty(autosave.state)) {
       void writeDraftBackup(draftId, {
         note: state,
@@ -619,7 +621,7 @@ export function BuilderShell({
     } else if (autosave.state.status === "saved") {
       void clearDraftBackup(draftId);
     }
-  }, [state, title, officeId, autosave.state, canEdit, draftId]);
+  }, [state, title, officeId, autosave.state, editingEnabled, draftId]);
 
   const openRevisions = useCallback(async () => {
     setShowRevisions(true);
@@ -729,7 +731,7 @@ export function BuilderShell({
   // moment later. No scroll: the narrative sits at the top of the note, and
   // scrolling on arrival is disorienting when nothing asked for it.
   useEffect(() => {
-    if (!autoFocusKey || !canEdit) return;
+    if (!autoFocusKey || !editingEnabled) return;
     const [moduleId, fieldId] = autoFocusKey.split(".");
     if (!moduleId || !fieldId) return;
     const active = document.activeElement;
@@ -849,10 +851,9 @@ export function BuilderShell({
   const confirmExport = async () => {
     const intent = exportIntent;
     if (!intent || !pasteConfirmed) return;
-    if (checkNote.requiresKillerAck && !killersAcknowledged) return;
+    if (exportLocked || killersBlock) return;
     setExportIntent(null);
     setPasteConfirmed(false);
-    setKillersAcknowledged(false);
     await runExport(intent);
   };
 
@@ -935,8 +936,6 @@ export function BuilderShell({
       </p>
       <CheckNoteSummaryPanel
         summary={checkNote}
-        killersAcknowledged={killersAcknowledged}
-        onKillersAcknowledged={setKillersAcknowledged}
         onChangeFinding={handleCheckNoteChange}
         compact
       />
@@ -957,9 +956,7 @@ export function BuilderShell({
         <button
           className="btn-complete text-xs"
           onClick={() => void confirmExport()}
-          aria-disabled={
-            !pasteConfirmed || (checkNote.requiresKillerAck && !killersAcknowledged)
-          }
+          aria-disabled={!pasteConfirmed || exportLocked || killersBlock}
         >
           {EXPORT_ROUTES.find((r) => r.intent === exportIntent)?.verb ?? "Continue"}
         </button>
@@ -1058,8 +1055,8 @@ export function BuilderShell({
             started={hasContent}
             attestations={resolutionsForNote.attested}
             escalated={resolutionsForNote.escalated}
-            onAttest={canEdit ? recordAttestation : undefined}
-            onEscalate={canEdit ? escalateFinding : undefined}
+            onAttest={editingEnabled ? recordAttestation : undefined}
+            onEscalate={editingEnabled ? escalateFinding : undefined}
           />
         ) : tab === "prior" ? (
           /* A frozen filed note beside the draft — for checking against the
@@ -1156,11 +1153,15 @@ export function BuilderShell({
             ? "Copy and download are locked until a Team Lead records the clinical role on this account."
             : dentistMustOwnKillers
               ? "Copy is locked until a dentist accepts or edits Assessment risk items — transfer ownership."
-              : `Copy and download are locked until every stop is fixed${
-                  report.phiStops.length > 0 && !overrideActive
-                    ? " (or a privacy stop is attested)"
-                    : ""
-                }. Open findings are listed in the audit panel.`}
+              : !filing.allowed
+                ? "Copy is locked until a dentist owns filing — transfer ownership first."
+                : killersBlock
+                  ? "Copy is locked until every litigation-sensitive gap is fixed. There is no checkbox bypass."
+                  : `Copy and download are locked until every stop is fixed${
+                      report.phiStops.length > 0 && !overrideActive
+                        ? " (or a privacy stop is attested)"
+                        : ""
+                    }. Open findings are listed in the audit panel.`}
         </p>
       )}
     </>
@@ -1198,6 +1199,8 @@ export function BuilderShell({
               ? "🔒 Role required"
               : dentistMustOwnKillers && hasContent
                 ? "🔒 Dentist must accept"
+                : killersBlock && hasContent
+                  ? "🔒 Fix litigation gaps"
               : !gates.exportAllowed && hasContent
               ? "🔒 Copy locked"
               : `Copy for ${edrName}…`}
@@ -1222,11 +1225,15 @@ export function BuilderShell({
             ? "Copy locked until a Team Lead records the clinical role on this account."
             : dentistMustOwnKillers
               ? "Copy locked until a dentist accepts Assessment risk items — transfer ownership."
-              : `Copy locked until every stop is fixed${
-                  report.phiStops.length > 0 && !overrideActive
-                    ? " (or a privacy stop is attested)"
-                    : ""
-                }. Findings are listed below.`}
+              : !filing.allowed
+                ? "Copy locked until a dentist owns filing — transfer ownership first."
+                : killersBlock
+                  ? "Copy locked until litigation-sensitive gaps are fixed. No checkbox bypass."
+                  : `Copy locked until every stop is fixed${
+                      report.phiStops.length > 0 && !overrideActive
+                        ? " (or a privacy stop is attested)"
+                        : ""
+                    }. Findings are listed below.`}
         </p>
       )}
       <AuditPanel
@@ -1235,8 +1242,8 @@ export function BuilderShell({
         started={hasContent}
         attestations={resolutionsForNote.attested}
         escalated={resolutionsForNote.escalated}
-        onAttest={canEdit ? recordAttestation : undefined}
-        onEscalate={canEdit ? escalateFinding : undefined}
+        onAttest={editingEnabled ? recordAttestation : undefined}
+        onEscalate={editingEnabled ? escalateFinding : undefined}
       />
       {/* Advisors are ONE copy below the note (see aside). Mounting them here
           again duplicated advisor-byte / advisor-superbyte ids and fought the
@@ -1323,7 +1330,7 @@ export function BuilderShell({
           <input
             className="tap-input w-full min-w-0 rounded border border-transparent px-1 py-1.5 text-lg font-semibold hover:border-slate-300 focus:border-brand-blue focus:outline-none disabled:bg-transparent sm:w-auto sm:flex-1"
             value={title}
-            disabled={!canEdit}
+            disabled={!editingEnabled}
             onChange={(e) => setTitle(e.target.value)}
             aria-label="Smile Note title"
           />
@@ -1338,7 +1345,7 @@ export function BuilderShell({
             <select
               className="tap-input rounded border border-slate-300 bg-white px-2 py-1.5 text-sm"
               value={officeId ?? ""}
-              disabled={!canEdit}
+              disabled={!editingEnabled}
               // Picking the office also completes the note's own name.
               //
               // A draft is created before anyone has chosen where the visit
@@ -1364,7 +1371,7 @@ export function BuilderShell({
               ))}
             </select>
           )}
-          {canEdit && (
+          {editingEnabled && (
             <button
               type="button"
               className="chip"
@@ -1375,7 +1382,8 @@ export function BuilderShell({
             </button>
           )}
           <StatusChip status={liveStatus} size="md" />
-          {canEdit && <SaveIndicator state={autosave.state} onRetry={() => void flush()} />}
+          {canEdit && <SwitchAuthorButton />}
+          {editingEnabled && <SaveIndicator state={autosave.state} onRetry={() => void flush()} />}
           {canEdit && liveStatus === "error" && (
             <button
               className="btn-primary border-rose-600 bg-rose-600 hover:bg-rose-700"
@@ -1516,8 +1524,8 @@ export function BuilderShell({
             <>
               <p className="font-semibold">Clinical role not recorded</p>
               <p className="mt-1 text-xs leading-snug">
-                Next: ask a Team Lead to set Assistant, Hygienist, or Dentist on this
-                account. Copy and File stay locked until then.
+                Writing, Copy, and File stay locked until a Team Lead sets Assistant,
+                Hygienist, or Dentist on this account. Use Switch author on a shared tablet.
               </p>
             </>
           ) : dentistMustOwnKillers ? (
@@ -1608,7 +1616,7 @@ export function BuilderShell({
           </h2>
           {/* My blocks on chrome — always visible when saved (not buried in Fast Lane). */}
           <PinnedMyBlocks
-            canEdit={canEdit}
+            canEdit={editingEnabled}
             onInsert={(text) => {
               const active = document.activeElement as HTMLElement | null;
               const fieldRoot = active?.closest?.("[id^='field-']") as HTMLElement | null;
@@ -1632,7 +1640,7 @@ export function BuilderShell({
               than absent. */}
           <FastLane
             clinicalRole={clinicalRole}
-            canEdit={canEdit}
+            canEdit={editingEnabled}
             visible={extraModuleCount === 0}
             practicePacks={practicePacks}
             // Structure only — packs re-rank Section starters and featured
@@ -1648,7 +1656,7 @@ export function BuilderShell({
               setPackStarterOffer(offer.blocks.length > 0 ? offer : null);
             }}
           />
-          {canEdit && packStarterOffer && (
+          {editingEnabled && packStarterOffer && (
             <FastLanePackOffer
               packTitles={packStarterOffer.packTitles}
               blocks={packStarterOffer.blocks}
@@ -1675,7 +1683,7 @@ export function BuilderShell({
               }}
             />
           )}
-          <fieldset disabled={!canEdit} className="min-w-0">
+          <fieldset disabled={!editingEnabled} className="min-w-0">
             <DictationUserContext.Provider
               value={{
                 username,
@@ -1889,7 +1897,7 @@ export function BuilderShell({
           the moment it is used, while paste is reached for deliberately. */}
       {showPaste && (
         <Dialog title="Paste an existing note" onClose={() => setShowPaste(false)}>
-          <PasteIntake onSend={appendToField} canEdit={canEdit} lockedSections={lockedFieldKeys} />
+          <PasteIntake onSend={appendToField} canEdit={editingEnabled} lockedSections={lockedFieldKeys} />
         </Dialog>
       )}
 
@@ -1988,8 +1996,6 @@ export function BuilderShell({
           draftId={draftId}
           phiOverrideReason={overrideActive ? override!.reason : null}
           checkNote={checkNote}
-          killersAcknowledged={killersAcknowledged}
-          onKillersAcknowledged={setKillersAcknowledged}
           onChangeFinding={handleCheckNoteChange}
           onClose={() => setShowSubmit(false)}
           onFiled={(r) => {

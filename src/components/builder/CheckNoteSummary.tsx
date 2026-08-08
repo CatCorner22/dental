@@ -35,18 +35,15 @@ export function jumpToFindingField(finding: AuditFinding, beforeJump?: () => voi
  * Check-your-note body for Copy confirm and Submit dialog.
  *
  * One job: make killer items and open stops visible before the irreversible
- * handoff. Does not invent clinical facts. Does not auto-apply fixes.
+ * handoff. Open killers hard-block — no checkbox escape. Does not invent
+ * clinical facts. Does not auto-apply fixes.
  */
 export function CheckNoteSummaryPanel({
   summary,
-  killersAcknowledged,
-  onKillersAcknowledged,
   onChangeFinding,
   compact
 }: {
   summary: Summary;
-  killersAcknowledged: boolean;
-  onKillersAcknowledged: (acked: boolean) => void;
   /** Change link: jump to field, or fall back (e.g. open audit) when no fieldRef. */
   onChangeFinding: (finding: AuditFinding) => void;
   /** Tighter padding for the Copy aside strip. */
@@ -132,7 +129,7 @@ export function CheckNoteSummaryPanel({
             </li>
           ))}
           {summary.openStops.length > 5 && (
-            <li className={`text-slate-600 ${compact ? "text-[0.65rem]" : "text-xs"}`}>
+            <li className={`text-slate-600 ${compact ? "text-xs" : "text-xs"}`}>
               +{summary.openStops.length - 5} more in the audit panel
             </li>
           )}
@@ -154,33 +151,15 @@ export function CheckNoteSummaryPanel({
         </p>
       )}
 
-      {summary.requiresKillerAck && (
-        <>
-          <p
-            className={`mb-2 rounded border border-amber-400/80 bg-white/80 px-2 py-1.5 font-medium text-amber-950 ${compact ? "text-xs" : "text-sm"}`}
-            role="status"
-            data-testid="check-note-unresolved-risk"
-          >
-            Copy allowed with unresolved risk items. These do not block filing by
-            policy — you must accept them before the note leaves.
-          </p>
-          <label className={`flex items-start gap-2 text-amber-950 ${text}`}>
-            <input
-              type="checkbox"
-              className="mt-0.5"
-              checked={killersAcknowledged}
-              onChange={(e) => onKillersAcknowledged(e.target.checked)}
-              data-testid="check-note-killer-ack"
-            />
-            <span>
-              I am filing / copying this note with the unresolved items listed here
-              {summary.killers.some((k) => !k.fieldRef)
-                ? " (use Change, or fix them in the visit narrative / audit panel)"
-                : ""}
-              .
-            </span>
-          </label>
-        </>
+      {summary.killersBlockHandoff && (
+        <p
+          className={`rounded border border-rose-400/80 bg-rose-50 px-2 py-1.5 font-medium text-rose-950 ${compact ? "text-xs" : "text-sm"}`}
+          role="status"
+          data-testid="check-note-killers-block"
+        >
+          Copy and File are locked until every litigation-sensitive gap above is
+          fixed. There is no checkbox bypass.
+        </p>
       )}
     </div>
   );

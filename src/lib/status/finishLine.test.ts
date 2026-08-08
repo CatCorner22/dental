@@ -21,7 +21,6 @@ describe("builderFinishLine — first-impression finish control", () => {
   });
 
   it("prefers filing authority over a cleared audit (no false green)", () => {
-    // Hygienist cleared stops but note still needs dentist filing.
     expect(
       builderFinishLine({
         ...ready,
@@ -47,22 +46,24 @@ describe("builderFinishLine — first-impression finish control", () => {
     expect(builderFinishLine(ready)).toBe("Ready to file.");
   });
 
-  it("never says Ready when killers require ack (Honest Finish co-design)", () => {
-    const line = builderFinishLine({ ...ready, requiresKillerAck: true });
-    expect(line).toMatch(/Unresolved risk/i);
+  it("never says Ready when killers hard-block handoff", () => {
+    const line = builderFinishLine({ ...ready, killersBlockHandoff: true });
+    expect(line).toMatch(/Litigation-sensitive gaps block/i);
     expect(line).not.toMatch(/Ready/i);
+    expect(line).toMatch(/no checkbox bypass/i);
   });
 
-  it("never says Ready when open S2 reviews remain", () => {
+  it("never says Ready when open Soft S2 reviews remain", () => {
     const line = builderFinishLine({ ...ready, openReviewCount: 2 });
     expect(line).toMatch(/Review open items/i);
     expect(line).toMatch(/Copy still allowed/i);
     expect(line).not.toMatch(/Ready/i);
   });
 
-  it("blocks Copy/File messaging when clinical role is unset", () => {
+  it("blocks writing/Copy messaging when clinical role is unset", () => {
     const line = builderFinishLine({ ...ready, roleRecorded: false });
     expect(line).toMatch(/clinical role/i);
+    expect(line).toMatch(/writing/i);
     expect(line).not.toMatch(/Ready/i);
   });
 

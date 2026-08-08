@@ -5,7 +5,10 @@ const updateSet = vi.fn(() => ({ where: updateWhere }));
 const selectFrom = vi.fn();
 const selectWhere = vi.fn();
 
-const statusForNoteMock = vi.fn(() => ({
+// Rest params are required: a zero-arg vi.fn() is typed with no parameters, and
+// spreading unknown[] into it is TS2556 under strict tsc (CI gate). Vitest still
+// ran the file; only typecheck refused it.
+const statusForNoteMock = vi.fn((..._args: unknown[]) => ({
   status: "handoff" as const,
   counts: { S0: 0, S1: 0, S2: 0, S3: 0, S4: 0 }
 }));

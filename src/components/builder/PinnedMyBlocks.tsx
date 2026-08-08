@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import { whenApiReady } from "@/lib/client/apiReady";
 
 const DEFAULT_PIN_LIMIT = 5;
 
@@ -25,19 +26,28 @@ export function PinnedMyBlocks({
   useEffect(() => {
     if (!canEdit) return;
     let cancelled = false;
-    void fetch("/api/me/blocks")
-      .then((r) => r.json())
-      .then((d: { blocks?: { id: number; title: string; body: string }[] }) => {
-        if (!cancelled) setBlocks(Array.isArray(d.blocks) ? d.blocks : []);
-      })
-      .catch(() => {
-        if (!cancelled) {
-          setBlocks([]);
-          setError("Could not load your blocks.");
-        }
-      });
+    // Deferred until the legal-record notice is acknowledged. This strip
+    // mounts with the builder the instant somebody signs in, so on a fresh
+    // session a bare fetch fires while the blocking gate is still up and every
+    // route answers 403 — handled in JS, but a red console error on the very
+    // first load. Third component to walk into this; see src/lib/client/apiReady.ts.
+    const stop = whenApiReady(() => {
+      if (cancelled) return;
+      void fetch("/api/me/blocks")
+        .then((r) => r.json())
+        .then((d: { blocks?: { id: number; title: string; body: string }[] }) => {
+          if (!cancelled) setBlocks(Array.isArray(d.blocks) ? d.blocks : []);
+        })
+        .catch(() => {
+          if (!cancelled) {
+            setBlocks([]);
+            setError("Could not load your blocks.");
+          }
+        });
+    });
     return () => {
       cancelled = true;
+      stop();
     };
   }, [canEdit]);
 

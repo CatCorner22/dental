@@ -28,6 +28,11 @@ import { submitBlockedReason } from "@/lib/status/submitBlocked";
 import { builderFinishLine } from "@/lib/status/finishLine";
 import { buildCheckNoteSummary } from "@/lib/status/checkNoteSummary";
 import { copyBlockedForDentistJudgement } from "@/lib/status/copyOwnership";
+import {
+  copyExportLocked,
+  submitHandoffBlocked,
+  writingEnabled
+} from "@/lib/status/handoffGates";
 import { SwitchAuthorButton } from "@/components/shell/SignOutButton";
 import {
   CheckNoteSummaryPanel,
@@ -496,27 +501,29 @@ export function BuilderShell({
   // Every reason Submit/Copy is off, in one place — including filing authority,
   // role-before-work, and hard-blocked litigation killers (no checkbox escape).
   const roleRecorded = clinicalRole !== "unset";
-  const editingEnabled = canEdit && roleRecorded;
+  const editingEnabled = writingEnabled(canEdit, roleRecorded);
   const dentistMustOwnKillers = copyBlockedForDentistJudgement({
     clinicalRole,
     killers: checkNote.killers
   });
   const killersBlock = checkNote.killersBlockHandoff;
-  const exportLocked =
-    !hasContent ||
-    !gates.exportAllowed ||
-    !roleRecorded ||
-    dentistMustOwnKillers ||
-    !filing.allowed ||
-    killersBlock;
+  const exportLocked = copyExportLocked({
+    hasContent,
+    exportAllowed: gates.exportAllowed,
+    roleRecorded,
+    dentistMustOwnKillers,
+    filingAllowed: filing.allowed,
+    killersBlock
+  });
   // whether the button works.
-  const submitBlocked =
-    !hasContent ||
-    !gates.emailAllowed ||
-    !filing.allowed ||
-    !roleRecorded ||
-    killersBlock ||
-    liveStatus === "submitted";
+  const submitBlocked = submitHandoffBlocked({
+    hasContent,
+    emailAllowed: gates.emailAllowed,
+    filingAllowed: filing.allowed,
+    roleRecorded,
+    killersBlock,
+    alreadySubmitted: liveStatus === "submitted"
+  });
 
   // Scope cue (Assessment/Plan are dentist) vs transfer-required (filing blocked).
   // Hygienists who may still file must not see "ownership must move" (UIX-002).

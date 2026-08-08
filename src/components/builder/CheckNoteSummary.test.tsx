@@ -50,6 +50,14 @@ describe("CheckNoteSummaryPanel — finish gate", () => {
     expect(onChange).toHaveBeenCalledWith(anestheticKiller);
   });
 
+  it("shows severity shape glyphs with labels (CVD channel)", () => {
+    render(
+      <CheckNoteSummaryPanel summary={sparseSummary} onChangeFinding={() => {}} />
+    );
+    expect(screen.getByText(/◆/)).toBeTruthy();
+    expect(screen.getByText(/^Review$/)).toBeTruthy();
+  });
+
   it("clean note has no killer hard-block banner", () => {
     render(
       <CheckNoteSummaryPanel summary={cleanSummary} onChangeFinding={() => {}} />

@@ -9,7 +9,6 @@ import {
   packPreferredModuleIds,
   type PublishedPackLite
 } from "@/lib/packs/publishedForVisit";
-import { PinnedMyBlocks } from "./PinnedMyBlocks";
 
 /**
  * Progressive Fast Lane — structure scaffolds on the open note.
@@ -17,15 +16,14 @@ import { PinnedMyBlocks } from "./PinnedMyBlocks";
  * Published packs re-order featured picks and boost Section starters elsewhere.
  * They do NOT dump pack text here. After apply, BuilderShell may offer optional
  * attested pack starters (Yes / Not now) — still per-block confirm, never silent.
- * My blocks is one closed chip in this strip — not a second card.
+ * My blocks live on builder chrome above this strip (PinnedMyBlocks) — not here.
  */
 export function FastLane({
   clinicalRole,
   canEdit,
   visible,
   practicePacks = [],
-  onApply,
-  onInsertMyBlock
+  onApply
 }: {
   clinicalRole: ClinicalRole;
   canEdit: boolean;
@@ -33,7 +31,6 @@ export function FastLane({
   visible: boolean;
   practicePacks?: readonly PublishedPackLite[];
   onApply: (pick: QuickPick) => void;
-  onInsertMyBlock: (text: string) => void;
 }) {
   const preferredModules = useMemo(
     () => packPreferredModuleIds(practicePacks, clinicalRole),
@@ -45,24 +42,9 @@ export function FastLane({
   );
   const cue = authorCapabilities(clinicalRole).structureCue;
 
-  if (!canEdit) return null;
+  if (!canEdit || !visible) return null;
 
-  // After Fast Lane applies, keep My blocks as a lone chip (no empty Fast Lane card).
-  if (!visible) {
-    return (
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
-      </div>
-    );
-  }
-
-  if (picks.length === 0) {
-    return (
-      <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5">
-        <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
-      </div>
-    );
-  }
+  if (picks.length === 0) return null;
 
   return (
     <section className="card p-2.5" aria-label="Fast Lane visit scaffolds">
@@ -79,7 +61,6 @@ export function FastLane({
             {p.label}
           </button>
         ))}
-        <PinnedMyBlocks canEdit={canEdit} onInsert={onInsertMyBlock} />
         <span className="sr-only">{cue}</span>
       </div>
       {/* Visible on touch — title= never appears on a tablet finger (UIX-006). */}

@@ -30,21 +30,25 @@ wide, rounded cusps, two stubby root-feet, deliberately non-phallic, G-rated.
 
 ## Palette
 
+Live tokens: `src/lib/theme/palette.ts` + `tailwind.config.ts` (**Daylight chart**,
+2026-08-08). Work surfaces use warm paper + navy/blue/check-teal. Coral/gold stay
+at brand edges (mark orbit, queue-clear sparkle) — not as page chrome.
+
 | Color | Hex | Token | Role |
 |---|---|---|---|
-| Note blue | `#2B6CB8` | `brand-blue` | Primary brand color, card ground |
-| Check teal | `#5FB3A8` | `brand-teal` | Verification accent — the color of "cleared" |
-| Orbit coral | `#F26D6D` | `brand-coral` | The atomic orbit and its satellite |
+| Warm paper | `#F7F2E8` | `brand-cream` | App ground (slightly deeper than `#FBF7EF` so white cards separate) |
+| Space navy | `#1E3A5F` | `brand-navy` | Wordmark ink, headings, Submit top |
+| Note blue | `#2B6CB8` | `brand-blue` | Primary interactive / focus / Submit bottom |
+| Check teal | `#0F766E` | `brand-teal` | Copy/complete + eyebrow chrome (WCAG AA on paper) |
+| Badge teal | `#5FB3A8` | mark only | Decorative check on the logomark |
+| Orbit coral | `#F26D6D` | mark only | Atomic orbit on the logomark |
 | Starburst gold | `#F2CE4B` | `brand-gold` | Celebration sparks (queue-clear) |
-| Space navy | `#1E3A5F` | `brand-navy` | Wordmark ink |
-| Cream | `#FBF7EF` | `brand-cream` | App ground — warm paper, not gray |
-| White | `#FFFFFF` | — | Molar, badge check |
+| White | `#FFFFFF` | — | Cards, molar, badge check |
 
 Tokens live in [`tailwind.config.ts`](../tailwind.config.ts) under `colors.brand`.
 
-The blues and teal are drawn from the existing character-set palette
-(`docs/characters.md`), so the brand and the mascots read as one family.
-
+The navy/blue/teal family matches the practice character-set blues
+(`docs/characters.md`) so brand and mascots read as one family.
 ## Wordmark
 
 "Smile Notes" set bold with tight tracking; "Notes" carries the brand blue. The lockup

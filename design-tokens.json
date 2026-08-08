@@ -1,28 +1,28 @@
 {
   "$schema": "https://design-tokens.org/schema/2025.10/format.json",
   "name": "Smile Notes",
-  "version": "1.0.0",
-  "description": "Production design tokens for Smile Notes. Purple brand (cream/navy/blue/teal). Primitive → semantic → component. Severity colors are NOT in this sheet — they live in audit types.",
+  "version": "1.1.0",
+  "description": "Production design tokens for Smile Notes. Daylight chart (cream paper / navy / note blue / check teal). Primitive → semantic → component. Severity colors are NOT in this sheet — they live in audit types.",
   "primitive": {
     "color": {
       "brand": {
-        "cream": { "$type": "color", "$value": "#EDE9F6" },
-        "navy": { "$type": "color", "$value": "#3B2B66" },
-        "blue": { "$type": "color", "$value": "#6D4AC4" },
-        "teal": { "$type": "color", "$value": "#5B4A8F" },
+        "cream": { "$type": "color", "$value": "#F7F2E8" },
+        "navy": { "$type": "color", "$value": "#1E3A5F" },
+        "blue": { "$type": "color", "$value": "#2B6CB8" },
+        "teal": { "$type": "color", "$value": "#0F766E" },
         "gold": { "$type": "color", "$value": "#F2CE4B" }
       },
       "slate": {
-        "50": { "$type": "color", "$value": "#F8F7FB" },
-        "100": { "$type": "color", "$value": "#F1EFF6" },
-        "200": { "$type": "color", "$value": "#E4E1EC" },
-        "300": { "$type": "color", "$value": "#CFCADB" },
-        "400": { "$type": "color", "$value": "#9C93B3" },
-        "500": { "$type": "color", "$value": "#6E6685" },
-        "600": { "$type": "color", "$value": "#565070" },
-        "700": { "$type": "color", "$value": "#433E58" },
-        "800": { "$type": "color", "$value": "#322E44" },
-        "900": { "$type": "color", "$value": "#23202F" }
+        "50": { "$type": "color", "$value": "#F8FAFC" },
+        "100": { "$type": "color", "$value": "#F1F5F9" },
+        "200": { "$type": "color", "$value": "#E2E8F0" },
+        "300": { "$type": "color", "$value": "#CBD5E1" },
+        "400": { "$type": "color", "$value": "#94A3B8" },
+        "500": { "$type": "color", "$value": "#5B6578" },
+        "600": { "$type": "color", "$value": "#475569" },
+        "700": { "$type": "color", "$value": "#334155" },
+        "800": { "$type": "color", "$value": "#1E293B" },
+        "900": { "$type": "color", "$value": "#0F172A" }
       },
       "white": { "$type": "color", "$value": "#FFFFFF" }
     },
@@ -84,13 +84,6 @@
       "complete": {
         "bg": { "$type": "color", "$value": "{semantic.color.action.complete}" },
         "fg": { "$type": "color", "$value": "{semantic.color.action.complete.on}" }
-      }
-    },
-    "fastLane": {
-      "card": {
-        "bg": { "$type": "color", "$value": "{semantic.color.surface.card}" },
-        "border": { "$type": "color", "$value": "{semantic.color.border.default}" },
-        "radius": { "$type": "dimension", "$value": "{primitive.radius.lg}" }
       }
     }
   }

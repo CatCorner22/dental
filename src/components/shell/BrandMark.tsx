@@ -32,7 +32,7 @@ export function MarkGlyph({ px }: { px: number }) {
         />
         <circle cx="498" cy="256" r="16" fill="#F26D6D" />
       </g>
-      <rect x="56" y="56" width="400" height="400" rx="96" fill="#6D4AC4" />
+      <rect x="56" y="56" width="400" height="400" rx="96" fill="#1E3A5F" />
       <rect x="126" y="128" width="140" height="17" rx="8.5" fill="#FFFFFF" opacity="0.35" />
       <rect x="126" y="164" width="90" height="17" rx="8.5" fill="#FFFFFF" opacity="0.22" />
       <path
@@ -42,7 +42,7 @@ export function MarkGlyph({ px }: { px: number }) {
       <path
         d="M226 258 q30 24 60 0"
         fill="none"
-        stroke="#6D4AC4"
+        stroke="#1E3A5F"
         strokeWidth="14"
         strokeLinecap="round"
       />

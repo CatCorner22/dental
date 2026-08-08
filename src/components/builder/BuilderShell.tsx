@@ -26,6 +26,11 @@ import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
 import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { submitBlockedReason } from "@/lib/status/submitBlocked";
 import { builderFinishLine } from "@/lib/status/finishLine";
+import { buildCheckNoteSummary } from "@/lib/status/checkNoteSummary";
+import {
+  CheckNoteSummaryPanel,
+  jumpToFindingField
+} from "@/components/builder/CheckNoteSummary";
 import { withOffice } from "@/lib/drafts/autoTitle";
 import { isValueEmpty } from "@/lib/schema/conditions";
 import { validateNoteState } from "@/lib/schema/validateNoteState";
@@ -206,6 +211,10 @@ export function BuilderShell({
   // confirmation, three destinations.
   const [exportIntent, setExportIntent] = useState<null | "copy" | "md" | "txt">(null);
   const [pasteConfirmed, setPasteConfirmed] = useState(false);
+  // Killer-item ack for Check-your-note. Cleared when the finish surface closes
+  // or the killer set changes — acknowledging yesterday's gaps must not clear
+  // today's new ones.
+  const [killersAcknowledged, setKillersAcknowledged] = useState(false);
   const [toast, setToast] = useState<{ text: string; tone: "success" | "error" } | null>(null);
   // Below `lg` the module rail, form, and Sidekick stack vertically (see the
   // flex-col wrapper below), which buried live audit feedback under the
@@ -345,6 +354,22 @@ export function BuilderShell({
     () => omissionReport(deferredState, auditModules),
     [deferredState, auditModules]
   );
+  const checkNote = useMemo(
+    () =>
+      buildCheckNoteSummary({
+        report,
+        omissions,
+        modules: auditModules.map((m) => ({ id: m.id, title: m.title }))
+      }),
+    [report, omissions, auditModules]
+  );
+  const killerSignature = useMemo(
+    () => checkNote.killers.map((f) => f.ruleId).join("|"),
+    [checkNote.killers]
+  );
+  useEffect(() => {
+    setKillersAcknowledged(false);
+  }, [killerSignature, exportIntent, showSubmit]);
 
   const phiSignature = useMemo(
     () => JSON.stringify(report.phiStops.map((f) => [f.ruleId, f.matchedText]).sort()),
@@ -796,9 +821,23 @@ export function BuilderShell({
   const confirmExport = async () => {
     const intent = exportIntent;
     if (!intent || !pasteConfirmed) return;
+    if (checkNote.requiresKillerAck && !killersAcknowledged) return;
     setExportIntent(null);
     setPasteConfirmed(false);
+    setKillersAcknowledged(false);
     await runExport(intent);
+  };
+
+  const handleCheckNoteChange = (finding: AuditFinding) => {
+    // Leaving the finish surface so Change is not scrolling behind a confirm.
+    setExportIntent(null);
+    setShowSubmit(false);
+    setShowMobileAudit(false);
+    if (!jumpToFindingField(finding)) {
+      // Text-level completeness killers have no fieldRef — open the audit so
+      // the writer still lands somewhere that shows the finding.
+      setShowMobileAudit(true);
+    }
   };
 
   const setValue = (key: string, value: FieldValue) => dispatch({ type: "setValue", key, value });
@@ -866,6 +905,13 @@ export function BuilderShell({
       <p className="mb-1 text-xs font-semibold text-brand-navy">
         One check before this leaves Smile Notes
       </p>
+      <CheckNoteSummaryPanel
+        summary={checkNote}
+        killersAcknowledged={killersAcknowledged}
+        onKillersAcknowledged={setKillersAcknowledged}
+        onChangeFinding={handleCheckNoteChange}
+        compact
+      />
       <label className="flex items-start gap-2 text-xs text-brand-navy">
         <input
           type="checkbox"
@@ -883,7 +929,9 @@ export function BuilderShell({
         <button
           className="btn-complete text-xs"
           onClick={() => void confirmExport()}
-          aria-disabled={!pasteConfirmed}
+          aria-disabled={
+            !pasteConfirmed || (checkNote.requiresKillerAck && !killersAcknowledged)
+          }
         >
           {EXPORT_ROUTES.find((r) => r.intent === exportIntent)?.verb ?? "Continue"}
         </button>
@@ -1836,6 +1884,10 @@ export function BuilderShell({
         <SubmitDialog
           draftId={draftId}
           phiOverrideReason={overrideActive ? override!.reason : null}
+          checkNote={checkNote}
+          killersAcknowledged={killersAcknowledged}
+          onKillersAcknowledged={setKillersAcknowledged}
+          onChangeFinding={handleCheckNoteChange}
           onClose={() => setShowSubmit(false)}
           onFiled={(r) => {
             // A failed send stays resubmittable (matches the server, which

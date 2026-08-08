@@ -111,7 +111,11 @@ export async function POST(req: Request): Promise<Response> {
   // Cache the derived status at creation exactly like the PATCH path does —
   // otherwise a complete note created via POST shows "Unfinished" on the
   // dashboard until its first save recomputes it.
-  const derived = statusForNote(note, { submitted: false, lastSendFailed: false });
+  const derived = statusForNote(note, {
+    submitted: false,
+    lastSendFailed: false,
+    clinicalRole: (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
+  });
   const draft = await insertDraft(db, {
     id: crypto.randomUUID(),
     ownerId: guard.user.id,

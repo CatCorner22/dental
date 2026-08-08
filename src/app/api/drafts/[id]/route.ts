@@ -125,7 +125,12 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
       // what makes an edited draft submittable again after a filing.
       patch.lastSendFailed = false;
       patch.lastSubmissionId = null;
-      patch.status = statusForNote(res.value, { submitted: false, lastSendFailed: false }).status;
+      patch.status = statusForNote(res.value, {
+        submitted: false,
+        lastSendFailed: false,
+        clinicalRole:
+          (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
+      }).status;
     }
   }
 
@@ -147,7 +152,9 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
     patch.lastSubmissionId = null;
     patch.status = statusForNote(patch.noteState ?? draft.noteState, {
       submitted: false,
-      lastSendFailed: false
+      lastSendFailed: false,
+      clinicalRole:
+        (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
     }).status;
   }
 

@@ -8,6 +8,7 @@ import {
   updateDraftChecked
 } from "@/lib/db/repo/drafts";
 import { readJsonRecord } from "@/lib/http/readJson";
+import type { ClinicalRole } from "@/lib/auth/clinicalRoles";
 import { statusForNote } from "@/lib/status/statusForNote";
 
 export const runtime = "nodejs";
@@ -80,7 +81,12 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
       noteState: revision.noteState,
       lastSendFailed: false,
       lastSubmissionId: null,
-      status: statusForNote(revision.noteState, { submitted: false, lastSendFailed: false }).status
+      status: statusForNote(revision.noteState, {
+        submitted: false,
+        lastSendFailed: false,
+        clinicalRole:
+          (guard.user as { clinicalRole?: ClinicalRole }).clinicalRole ?? "unset"
+      }).status
     },
     new Date()
   );

@@ -842,21 +842,13 @@ export function BuilderShell({
   // panel. Closes over local state directly rather than taking props — it is
   // rendered, not reused as a component, so there is no extra fiber or
   // remount cost to doing it this way.
-  // BYTE AND SUPERBYTE ARE NOT TABS, AND NOT DESKTOP-ONLY EITHER.
+  // BYTE AND SUPERBYTE ARE NOT TABS.
   //
   // They were two of six tabs, so seeing either one meant losing sight of the
-  // audit, and a writer who never pressed a tab never met them at all — a
-  // real-time helper you have to go and find is not a real-time helper. That
-  // was fixed by lifting them above the tabs.
-  //
-  // It was only half a fix. They still lived inside the sidekick, and the
-  // sidekick is `hidden lg:block`, so on a phone or a portrait tablet the pair
-  // was `display: none` — present in the markup, invisible to the writer and
-  // skipped by a screen reader — until somebody tapped the audit bar. "Always
-  // visible, for every role" cannot mean "on a wide screen". So they are their
-  // own fragment now, rendered in the aside on a wide screen and inline above
-  // the form on a narrow one, and NOT inside the mobile sheet, which would put
-  // two live copies on screen at once.
+  // audit, and a writer who never pressed a tab never met them at all. They
+  // live once in the aside (ids for jump links) — beside the note on desktop,
+  // below the fields on a phone so the first viewport stays the note. The
+  // mobile audit sheet must NOT remount them (duplicate ids + density).
   // THE CHART CHECK, RENDERED WHEREVER AN EXPORT CAN BE STARTED.
   //
   // Two surfaces offer Copy — the desktop sidekick and the phone's audit sheet
@@ -1154,15 +1146,23 @@ export function BuilderShell({
         onAttest={canEdit ? recordAttestation : undefined}
         onEscalate={canEdit ? escalateFinding : undefined}
       />
-      <details className="mt-3 rounded-lg border border-slate-200 p-2">
-        <summary className="tap cursor-pointer text-xs font-semibold text-slate-700">
-          Byte & SuperByte
-        </summary>
-        <div className="mt-2 space-y-2">
-          <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
-          <ByteStarAdvisor text={markdown} />
-        </div>
-      </details>
+      {/* Advisors are ONE copy below the note (see aside). Mounting them here
+          again duplicated advisor-byte / advisor-superbyte ids and fought the
+          first-viewport rule the sheet exists to protect. */}
+      <button
+        type="button"
+        className="tap mt-3 w-full rounded-lg border border-slate-200 px-3 py-2 text-left text-xs font-semibold text-slate-700"
+        onClick={() => {
+          setShowMobileAudit(false);
+          requestAnimationFrame(() =>
+            document
+              .getElementById("advisor-byte")
+              ?.scrollIntoView({ behavior: "smooth", block: "nearest" })
+          );
+        }}
+      >
+        Byte & SuperByte — below the note
+      </button>
       <details className="mt-2 rounded-lg border border-slate-200 p-2">
         <summary className="tap cursor-pointer text-xs font-semibold text-slate-700">
           Chart · Prior · Preview
@@ -1542,30 +1542,22 @@ export function BuilderShell({
           </fieldset>
         </section>
 
-        {/* Sidekick — and, above `lg`, the advisors that lead it.
-            The rest of the sidekick is desktop-only: the mobile bar and sheet
-            above cover the same ground where this would otherwise sit below the
-            entire form.
-
-            THE ASIDE ITSELF IS NOT HIDDEN ANY MORE. It was `hidden lg:block`,
-            which is what made Byte and SuperByte `display: none` on a phone —
-            present in the markup, invisible on screen, skipped by a screen
-            reader. The obvious fix, a second inline copy for narrow screens,
-            stopped being available the moment main gave the advisors ids
-            (`advisor-byte`, `advisor-superbyte`) for its jump links: two copies
-            means two elements answering to one id, and getElementById picks
-            whichever comes first. So there is exactly ONE copy, and `order`
-            moves it — above the form on a phone, beside it on a desktop. */}
+        {/* Sidekick — and the advisors that lead it.
+            One copy of Byte/SuperByte (ids advisor-byte / advisor-superbyte).
+            On a phone they sit AFTER the form — `order-first` put them in the
+            first viewport and undid go-live calm (#95). Desktop keeps them
+            sticky beside the note. The rest of the sidekick stays `lg`-only;
+            the mobile audit sheet covers Copy / Audit. */}
         {/* Named, so rotor/landmark navigation can tell this apart from the note
             fields instead of announcing a bare "complementary" — without it the
             only way between writing and the checks was arrowing through the
             whole form. */}
         <aside
-          className="order-first shrink-0 lg:order-none lg:w-[26rem]"
+          className="shrink-0 lg:w-[26rem]"
           aria-label="Note checks and export"
         >
           <div className="card p-3 lg:sticky lg:top-20">
-            <div className="lg:mb-3">{advisors}</div>
+            <div className="mb-3">{advisors}</div>
             <div className="hidden lg:block">{sidekickBody}</div>
           </div>
         </aside>

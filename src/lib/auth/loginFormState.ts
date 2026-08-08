@@ -33,12 +33,27 @@ export const initialLoginState: LoginState = {
 /**
  * Reduce an attacker-influenceable callbackUrl to a same-origin path.
  *
+ * The input this MUST accept is absolute: next-auth's `authorized` bounce
+ * builds the login redirect as
+ * `signInUrl.searchParams.set("callbackUrl", request.nextUrl.href)` — the full
+ * URL, origin included. The first version of this function accepted only
+ * paths, so every real deep-link bounce ("visit /notes?tab=filed signed out,
+ * sign in") quietly landed on the home page — the tests covered a relative
+ * shape no code path in this app produces. Caught in review, on merged code.
+ *
  * Taking only pathname+search makes the result same-origin by construction —
- * there is no origin left to escape to. The one hole that survives that
- * reduction is a protocol-relative "//evil.org" (its pathname parses as
- * "//evil.org" in some URL libraries and the browser would treat a bare
- * "//host" location as cross-origin), so anything not starting with exactly
- * one "/" falls back to home.
+ * there is no origin left to escape to, so even a crafted
+ * `?callbackUrl=https://evil.example/phish` reduces to `/phish` on THIS
+ * origin: a harmless local path, not an open redirect. That is also why this
+ * strips origins instead of matching them: an origin match would have to
+ * trust Host / x-forwarded-host on the server, exactly the headers the
+ * self-hosted nginx deployments rewrite, and a wrong guess there would break
+ * every deep link again. Stripping needs no context and cannot be wrong about
+ * the request's real origin.
+ *
+ * Two shapes are refused outright: a protocol-relative "//host" (a bare
+ * "//host" location is cross-origin in a browser), and any absolute scheme
+ * other than http/https ("javascript:", "data:").
  *
  * Runs twice on purpose: in the login page (deciding what goes into the
  * hidden input) and again in the action (deciding where to redirect), because
@@ -46,7 +61,10 @@ export const initialLoginState: LoginState = {
  * guarantee.
  */
 export function sanitizeCallbackPath(raw: string | undefined | null): string {
-  if (!raw || !raw.startsWith("/") || raw.startsWith("//")) return "/";
+  if (!raw) return "/";
+  const isPath = raw.startsWith("/") && !raw.startsWith("//");
+  const isHttpAbsolute = /^https?:\/\//i.test(raw);
+  if (!isPath && !isHttpAbsolute) return "/";
   try {
     const u = new URL(raw, "http://internal");
     const path = u.pathname + u.search;

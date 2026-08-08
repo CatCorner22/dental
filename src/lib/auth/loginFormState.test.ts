@@ -16,6 +16,25 @@ describe("sanitizeCallbackPath", () => {
     expect(sanitizeCallbackPath("/notes#x")).toBe("/notes");
   });
 
+  it("reduces the absolute URL next-auth actually sends to its path", () => {
+    // THE case whose absence shipped a regression: the authorized-callback
+    // bounce sets callbackUrl to request.nextUrl.href — absolute — and the
+    // first version of the sanitizer refused it, sending every bounced deep
+    // link to the home page after sign-in.
+    expect(sanitizeCallbackPath("https://smile.example.com/notes?tab=filed")).toBe(
+      "/notes?tab=filed"
+    );
+    expect(sanitizeCallbackPath("http://127.0.0.1:3100/digest")).toBe("/digest");
+  });
+
+  it("strips a foreign origin to a harmless local path", () => {
+    // Same-origin by construction: whatever host a crafted link names, only
+    // the path survives, and a path on our own origin is not a redirect
+    // anywhere.
+    expect(sanitizeCallbackPath("http://evil.com/phish")).toBe("/phish");
+    expect(sanitizeCallbackPath("https://evil.com")).toBe("/");
+  });
+
   it("refuses protocol-relative escapes", () => {
     // "//evil.org" is the one shape that survives a pathname+search
     // reduction and still leaves the origin.
@@ -23,9 +42,7 @@ describe("sanitizeCallbackPath", () => {
     expect(sanitizeCallbackPath("//evil.org/phish")).toBe("/");
   });
 
-  it("refuses absolute URLs and schemes outright", () => {
-    expect(sanitizeCallbackPath("http://evil.com/x")).toBe("/");
-    expect(sanitizeCallbackPath("https://evil.com")).toBe("/");
+  it("refuses non-http schemes outright", () => {
     expect(sanitizeCallbackPath("javascript:alert(1)")).toBe("/");
     expect(sanitizeCallbackPath("data:text/html,hi")).toBe("/");
   });

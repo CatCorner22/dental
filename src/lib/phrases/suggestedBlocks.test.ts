@@ -3,6 +3,7 @@ import { describe, expect, it } from "vitest";
 import {
   insertFieldForBlock,
   preferredInsertFieldId,
+  suggestableBlockHome,
   suggestedBlocksFor,
   SUGGESTABLE_BLOCK_IDS
 } from "./suggestedBlocks";
@@ -194,5 +195,20 @@ describe("insertFieldForBlock", () => {
         { id: "instructions", type: "textarea" }
       ])
     ).toBe("instructions");
+  });
+});
+
+describe("suggestableBlockHome — Fast Lane pack insert targets", () => {
+  it("maps every suggestable id to a Universal Core field home", () => {
+    for (const id of SUGGESTABLE_BLOCK_IDS) {
+      const home = suggestableBlockHome(id);
+      expect(home, id).not.toBeNull();
+      expect(home!.fieldId.length).toBeGreaterThan(0);
+    }
+  });
+
+  it("refuses unknown / non-suggestable ids — never invents a field", () => {
+    expect(suggestableBlockHome("des-12-general")).toBeNull();
+    expect(suggestableBlockHome("")).toBeNull();
   });
 });

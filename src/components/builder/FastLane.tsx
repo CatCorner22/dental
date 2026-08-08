@@ -15,8 +15,9 @@ import { PinnedMyBlocks } from "./PinnedMyBlocks";
  * Progressive Fast Lane — structure scaffolds on the open note.
  *
  * Published packs re-order featured picks and boost Section starters elsewhere.
- * They do NOT add a pack-browser chip wall here. My blocks is one closed chip
- * in this strip — not a second card.
+ * They do NOT dump pack text here. After apply, BuilderShell may offer optional
+ * attested pack starters (Yes / Not now) — still per-block confirm, never silent.
+ * My blocks is one closed chip in this strip — not a second card.
  */
 export function FastLane({
   clinicalRole,
@@ -72,7 +73,7 @@ export function FastLane({
             key={p.id}
             type="button"
             className="chip"
-            title={`${p.description} — adds modules only. Nothing clinical is filled in. Open Care delivered or Handoff for Section starters.`}
+            title={`${p.description} — adds modules only. Nothing clinical is filled in. Matching packs may offer attested starters next.`}
             onClick={() => onApply(p)}
           >
             {p.label}
@@ -83,8 +84,8 @@ export function FastLane({
       </div>
       {/* Visible on touch — title= never appears on a tablet finger (UIX-006). */}
       <p className="mt-1.5 text-[0.65rem] leading-snug text-slate-500">
-        Adds visit modules only — nothing clinical is filled in. Open Care delivered or Handoff for
-        Section starters.
+        Adds visit modules only — nothing clinical is filled in. Matching practice packs may offer
+        attested starters next; section starters also stay under Care delivered and Handoff.
       </p>
     </section>
   );

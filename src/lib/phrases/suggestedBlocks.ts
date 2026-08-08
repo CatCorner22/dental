@@ -236,6 +236,21 @@ export function suggestedBlocksFor(q: SuggestedBlocksQuery): VerifiedBlock[] {
 }
 
 /**
+ * Default Universal Core home for a suggestable block (section + field).
+ * Used by Fast Lane pack offers, which insert outside an open section strip.
+ * Returns null when the block is not in the suggestable home map.
+ */
+export function suggestableBlockHome(
+  blockId: string
+): { sectionId: string; fieldId: string } | null {
+  for (const [sectionId, map] of Object.entries(BLOCK_FIELD_HINTS)) {
+    const fieldId = map[blockId as SuggestableBlockId];
+    if (fieldId) return { sectionId, fieldId };
+  }
+  return null;
+}
+
+/**
  * Which field in a section should receive an inserted block.
  * Prefers the first textarea, then the first text field — never invents a key.
  */

@@ -1,6 +1,7 @@
 import {
   canAssignClinicalRole,
   isClinicalRole,
+  resolveClinicalRole,
   type ClinicalRole
 } from "@/lib/auth/clinicalRoles";
 import { requireRole } from "@/lib/auth/guards";
@@ -22,6 +23,7 @@ import {
   type Role
 } from "@/lib/auth/roles";
 import { emailPolicyError, normalizeEmail } from "@/lib/auth/emails";
+import { recomputeOpenDraftStatusesForOwner } from "@/lib/status/recomputeOwned";
 
 export const runtime = "nodejs";
 
@@ -234,6 +236,18 @@ export async function PATCH(req: Request, { params }: Ctx): Promise<Response> {
   // Only once the account update has actually landed — including the
   // last-admin guard above, which can refuse it.
   if (officeIds !== null) await setOfficesForUser(db, id, officeIds);
+
+  // Clinical role decides filing authority. Open-draft chips are cached; leave
+  // them alone and Home keeps saying Ready (or Handoff) for the old licence
+  // until someone happens to edit the note.
+  if (patch.clinicalRole !== undefined && patch.clinicalRole !== target.clinicalRole) {
+    await recomputeOpenDraftStatusesForOwner(
+      db,
+      id,
+      resolveClinicalRole(effectiveRole, patch.clinicalRole)
+    );
+  }
+
   await logAction(db, {
     actorId: guard.user.id,
     actorName: `${guard.user.displayName} (${guard.user.username})`,

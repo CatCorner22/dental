@@ -39,9 +39,14 @@ const browser = await chromium.launch();
     return route.continue();
   });
   const page = await ctx.newPage();
-  await page.goto(`${BASE}/login?callbackUrl=%2Fnotes%3Ftab%3Dfiled`, {
-    waitUntil: "domcontentloaded"
-  });
+  // ABSOLUTE callbackUrl, exactly the shape next-auth's authorized-callback
+  // bounce produces (`request.nextUrl.href`). The first version of this probe
+  // used a relative path here — a shape no code path in the app emits — and
+  // green-lit a sanitizer that sent every real bounced deep link to "/".
+  await page.goto(
+    `${BASE}/login?callbackUrl=${encodeURIComponent(`${BASE}/notes?tab=filed`)}`,
+    { waitUntil: "domcontentloaded" }
+  );
   await page.fill("#li-user", USER);
   await page.fill("#li-pass", PASS);
   await Promise.all([

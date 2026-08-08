@@ -32,58 +32,44 @@ export default {
         "title-2": ["1.375rem", { lineHeight: "1.3", letterSpacing: "-0.01em" }],
         "title-3": ["1.125rem", { lineHeight: "1.4", letterSpacing: "-0.005em" }]
       },
-      // The brand palette: light purple ground, purple ink, purple interactive.
-      // Colour is used for CHROME — headings, rails, the shell — and NEVER for
-      // state: severity (red/orange/amber/green) is untouched and lives in
-      // src/lib/audit/types.ts.
+      // The brand palette: Daylight chart — warm paper, space navy, note blue,
+      // check teal. Colour is used for CHROME — headings, rails, the shell —
+      // and NEVER for state: severity (red/orange/amber/green) is untouched and
+      // lives in src/lib/audit/types.ts.
       //
-      // The token KEYS are historical. They kept their names through the move
-      // off the old atomic-age set so that ~86 existing `brand-navy` /
-      // `brand-blue` / `brand-teal` utilities did not all have to be rewritten
-      // in the same commit that changed the colours. Read them by their role,
-      // which is what the comments below give.
+      // The token KEYS are historical. They kept their names through palette
+      // moves so existing `brand-navy` / `brand-blue` / `brand-teal` utilities
+      // did not all have to be rewritten. Read them by their role.
       //
-      // The values are restated as data in src/lib/theme/palette.ts, where
-      // contrast.test.ts asserts the ratios. Change one, change both.
+      // Values are restated in src/lib/theme/palette.ts (contrast.test.ts).
+      // Change one, change both. See market-ux-stakeholder-panels.md.
       colors: {
         brand: {
-          // GROUND. Deliberately not lighter: the previous value was deepened
-          // from #FBF7EF because a white card on it had roughly a 2% luminance
-          // gap from the page and a design review called the result
-          // "aggressively flat" — correctly. Darkening the GROUND rather than
-          // tinting the cards keeps every card white, which is what keeps the
-          // text on it maximally readable, and buys the separation from the
-          // page. A paler lilac here reintroduces exactly that bug.
-          cream: "#EDE9F6",
+          // GROUND — warm paper; deep enough that white cards separate.
+          cream: "#F7F2E8",
           // INK: headings, the active nav pill, the top stop of .btn-primary.
-          navy: "#3B2B66",
+          navy: "#1E3A5F",
           // INTERACTIVE: links, the bottom stop of .btn-primary, focus.
-          blue: "#6D4AC4",
-          // QUIET CHROME: the .eyebrow, the .card-note rail. Carries no
-          // severity, which is exactly why it is safe on an informational rail.
-          teal: "#5B4A8F",
+          blue: "#2B6CB8",
+          // QUIET CHROME + Copy/complete: WCAG-safe check teal (mark badge
+          // may still use the brighter decorative #5FB3A8).
+          teal: "#0F766E",
           // The one surviving warm accent — the queue-clear starburst.
           gold: "#F2CE4B"
-          // coral: retired. It had zero uses in src/.
+          // coral: retired from tokens; lives only in the brand mark orbit.
         },
-        // The neutral ramp, tinted purple rather than blue. Overriding Tailwind's
-        // own `slate` repaints roughly 676 utilities across the app without
-        // editing a single component — and keeps the CLASS NAMES intact, which
-        // matters more than it looks: the high-contrast rules in globals.css
-        // select on `.text-slate-500` and `.border-slate-200` literally, so
-        // renaming the utility would silently switch high-contrast mode off for
-        // the people who need it most.
+        // Cool blue-gray operatory neutrals (not purple-tinted).
         slate: {
-          50: "#F8F7FB",
-          100: "#F1EFF6",
-          200: "#E4E1EC",
-          300: "#CFCADB",
-          400: "#9C93B3",
-          500: "#6E6685",
-          600: "#565070",
-          700: "#433E58",
-          800: "#322E44",
-          900: "#23202F"
+          50: "#F8FAFC",
+          100: "#F1F5F9",
+          200: "#E2E8F0",
+          300: "#CBD5E1",
+          400: "#94A3B8",
+          500: "#5B6578",
+          600: "#475569",
+          700: "#334155",
+          800: "#1E293B",
+          900: "#0F172A"
         }
       }
     }

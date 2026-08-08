@@ -2,23 +2,28 @@
 
 import { useEffect, useState } from "react";
 
+const DEFAULT_PIN_LIMIT = 5;
+
 /**
- * Personal starters as a single closed chip — no second card above the note.
- * Prefer inserting into the focused prose field; fall back to Visit narrative.
+ * Personal starters on the builder chrome — always visible when the writer
+ * has saved blocks (market UX: Curve QuickText analogue, not a closed chip
+ * buried in Fast Lane). Caps at five Insert chips so the strip stays scannable.
  */
 export function PinnedMyBlocks({
   canEdit,
-  onInsert
+  onInsert,
+  limit = DEFAULT_PIN_LIMIT
 }: {
   canEdit: boolean;
   onInsert: (text: string) => void;
+  /** Max chips shown — research: pin 3–5. */
+  limit?: number;
 }) {
-  const [open, setOpen] = useState(false);
   const [blocks, setBlocks] = useState<{ id: number; title: string; body: string }[] | null>(null);
   const [error, setError] = useState("");
 
   useEffect(() => {
-    if (!open || blocks !== null) return;
+    if (!canEdit) return;
     let cancelled = false;
     void fetch("/api/me/blocks")
       .then((r) => r.json())
@@ -34,59 +39,39 @@ export function PinnedMyBlocks({
     return () => {
       cancelled = true;
     };
-  }, [open, blocks]);
+  }, [canEdit]);
 
   if (!canEdit) return null;
 
+  const pinned = (blocks ?? []).slice(0, Math.max(1, Math.min(limit, 5)));
+
   return (
-    <div className={open ? "basis-full mt-1.5" : "contents"}>
-      <button
-        type="button"
-        className="chip"
-        aria-expanded={open}
-        onClick={() => setOpen((v) => !v)}
-      >
-        My blocks {open ? "▾" : "▸"}
-      </button>
-      {open && (
-        <div className="mt-1.5 space-y-1.5 rounded-lg border border-slate-200 bg-slate-50 p-2">
-          <p className="text-[0.7rem] leading-snug text-slate-600">
-            Your personal starters. Inserts into the box you are in, or the Visit narrative if none
-            is focused.
-          </p>
-          {error && (
-            <p className="text-xs text-rose-700" role="alert">
-              {error}
-            </p>
-          )}
-          {blocks === null && <p className="text-xs text-slate-500">Loading…</p>}
-          {blocks && blocks.length === 0 && (
-            <p className="text-xs text-slate-500">
-              None yet. Save one under a field&rsquo;s Verified block → My blocks.
-            </p>
-          )}
-          {blocks && blocks.length > 0 && (
-            <ul className="space-y-1">
-              {blocks.map((b) => (
-                <li key={b.id} className="flex items-center justify-between gap-2 text-xs">
-                  <span className="truncate font-medium text-slate-800" title={b.body}>
-                    {b.title}
-                  </span>
-                  <button
-                    type="button"
-                    className="btn-secondary shrink-0 text-xs"
-                    onClick={() => {
-                      onInsert(b.body);
-                      setOpen(false);
-                    }}
-                  >
-                    Insert
-                  </button>
-                </li>
-              ))}
-            </ul>
-          )}
-        </div>
+    <div className="flex flex-wrap items-center gap-x-2 gap-y-1.5" aria-label="My blocks">
+      <span className="eyebrow shrink-0">My blocks</span>
+      {blocks === null && <span className="text-xs text-slate-500">Loading…</span>}
+      {error && (
+        <span className="text-xs text-rose-700" role="alert">
+          {error}
+        </span>
+      )}
+      {blocks && blocks.length === 0 && (
+        <span className="text-xs text-slate-500">
+          None yet — save one under a field&rsquo;s Verified block.
+        </span>
+      )}
+      {pinned.map((b) => (
+        <button
+          key={b.id}
+          type="button"
+          className="chip max-w-[12rem] truncate"
+          title={b.body}
+          onClick={() => onInsert(b.body)}
+        >
+          {b.title}
+        </button>
+      ))}
+      {blocks && blocks.length > pinned.length && (
+        <span className="text-[0.65rem] text-slate-500">+{blocks.length - pinned.length} more in field picker</span>
       )}
     </div>
   );

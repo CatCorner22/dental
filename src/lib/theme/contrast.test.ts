@@ -98,11 +98,9 @@ describe("slate-400 stays out of running text", () => {
   });
 
   it("holds up as caption text on the ground too, where it is closest to the line", () => {
-    // slate-500 is now every caption in the app, and on the purple ground it
-    // clears 4.5 by seven thousandths — measured, not estimated. That is a pass
-    // and it is also no margin at all: darken the ground or lighten the ramp by
-    // one step and forty captions go under at once, silently. This is the
-    // assertion that makes that loud.
+    // slate-500 is now every caption in the app, and on the Daylight cream
+    // ground it must clear 4.5. This is the assertion that makes a lightened
+    // ground or lightened ramp loud before forty captions go under silently.
     expect(contrastRatio(SLATE[500], GROUND)).toBeGreaterThanOrEqual(TEXT);
   });
 

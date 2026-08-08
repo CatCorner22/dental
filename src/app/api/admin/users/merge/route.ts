@@ -4,6 +4,8 @@ import { getUserById, mergeUsers } from "@/lib/db/repo/users";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { canMergeUsers, ROLE_LABEL } from "@/lib/auth/roles";
+import { resolveClinicalRole } from "@/lib/auth/clinicalRoles";
+import { recomputeOpenDraftStatusesForOwner } from "@/lib/status/recomputeOwned";
 
 export const runtime = "nodejs";
 
@@ -108,6 +110,16 @@ export async function POST(req: Request): Promise<Response> {
     target: `${source.username} → ${target.username}`,
     detail: `${result.draftsMoved} draft(s) moved; ${result.submissionsKept} filed submission(s) keep their original attribution`
   });
+
+  // Moved drafts kept the source owner's cached chip. Restamp for the account
+  // that now owns them — same Andon class as transfer.
+  if (result.draftsMoved > 0) {
+    await recomputeOpenDraftStatusesForOwner(
+      db,
+      targetId,
+      resolveClinicalRole(target.role, target.clinicalRole)
+    );
+  }
 
   return Response.json({
     ok: true,

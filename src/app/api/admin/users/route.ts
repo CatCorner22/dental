@@ -15,6 +15,7 @@ import {
   type Role
 } from "@/lib/auth/roles";
 import { emailPolicyError, normalizeEmail } from "@/lib/auth/emails";
+import { resolveClinicalRole } from "@/lib/auth/clinicalRoles";
 import { issueResetLink } from "@/lib/auth/issueResetLink";
 import { generateResetToken } from "@/lib/auth/resetToken";
 import { checkThrottle, inviteKey, recordFailure } from "@/lib/auth/throttle";
@@ -40,6 +41,9 @@ export async function GET(): Promise<Response> {
       username: u.username,
       displayName: u.displayName,
       role: u.role,
+      // Clinical licence axis — transfer picker needs it to prefer/label
+      // dentists when handing off a note that only a dentist may file.
+      clinicalRole: resolveClinicalRole(u.role, u.clinicalRole),
       active: u.active,
       // Addresses are where a reset link is DELIVERED, so they are targeting
       // data for an account takeover. Only shown for accounts this caller is

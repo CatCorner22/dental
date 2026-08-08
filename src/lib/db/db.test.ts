@@ -273,6 +273,19 @@ describe("db layer (PGlite)", () => {
     expect(stale).toBeUndefined();
   });
 
+  it("can restamp status for the recipient on transfer (Andon list honesty)", async () => {
+    const from = await freshUser("pat");
+    const to = await freshUser("quinn");
+    const d = await insertDraft(db, {
+      id: crypto.randomUUID(),
+      ownerId: from.id,
+      noteState: note,
+      status: "handoff"
+    });
+    await transferDraft(db, d.id, to.id, new Date(), { status: "ready" });
+    expect((await getDraft(db, d.id))!.status).toBe("ready");
+  });
+
   // Acknowledging is idempotent; only the call that actually records it
   // reports true, so a repeat POST cannot append another audit-log row.
   it("reports the notice acknowledgement only once", async () => {

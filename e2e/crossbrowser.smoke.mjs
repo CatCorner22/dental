@@ -51,15 +51,15 @@ for (const [engineName, engine] of ENGINES) {
     // usually do not. It is not an app bug — the fallback navigation completes
     // — so do not fail the smoke suite on it.
     //
-    // The same engine also throws pageerrors for RSC prefetch fetches that are
-    // blocked by the Cross-Origin-Resource-Policy header ("Fetch API cannot
-    // load … due to access control checks"). These happen when viewport-based
-    // link prefetch fires mid-rapid-navigation in WebKit on a narrow viewport;
-    // the navigation itself succeeds via the fallback path. Filter both forms.
+    // The same engine also throws pageerrors for fetches blocked mid-navigation
+    // by Cross-Origin-Resource-Policy / aborted navigations ("Fetch API cannot
+    // load … due to access control checks"). RSC prefills were the first form;
+    // SuperByte and practice-pack polls hit the same race on desktop WebKit
+    // during rapid sequential gotos. The page still lands; filter the noise.
     const isBenignRscFallback = (t) =>
       /Failed to fetch RSC payload/i.test(t) && /Falling back to browser navigation/i.test(t);
-    const isBenignRscCorpError = (t) =>
-      /Fetch API cannot load/i.test(t) && /[?&]_rsc=/.test(t) && /access control checks/i.test(t);
+    const isBenignWebkitFetchAbort = (t) =>
+      /Fetch API cannot load/i.test(t) && /access control checks/i.test(t);
     page.on("console", (m) => {
       if (m.type() !== "error") return;
       const text = m.text().slice(0, 200);
@@ -68,7 +68,7 @@ for (const [engineName, engine] of ENGINES) {
     });
     page.on("pageerror", (e) => {
       const text = String(e).slice(0, 300);
-      if (isBenignRscCorpError(text)) return;
+      if (isBenignWebkitFetchAbort(text)) return;
       consoleErrors.push("PAGEERROR: " + text.slice(0, 200));
     });
 

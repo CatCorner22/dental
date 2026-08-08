@@ -27,6 +27,7 @@ import { deriveDraftStatus } from "@/lib/status/draftStatus";
 import { submitBlockedReason } from "@/lib/status/submitBlocked";
 import { builderFinishLine } from "@/lib/status/finishLine";
 import { buildCheckNoteSummary } from "@/lib/status/checkNoteSummary";
+import { copyBlockedForDentistJudgement } from "@/lib/status/copyOwnership";
 import {
   CheckNoteSummaryPanel,
   jumpToFindingField
@@ -500,8 +501,12 @@ export function BuilderShell({
   // Honest Finish co-design: unset role is an authorship checkpoint on
   // Copy/File — not a full role-before-work hard gate (policy lock).
   const roleRecorded = clinicalRole !== "unset";
+  const dentistMustOwnKillers = copyBlockedForDentistJudgement({
+    clinicalRole,
+    killers: checkNote.killers
+  });
   const exportLocked =
-    !hasContent || !gates.exportAllowed || !roleRecorded;
+    !hasContent || !gates.exportAllowed || !roleRecorded || dentistMustOwnKillers;
   // whether the button works.
   const submitBlocked =
     !hasContent ||
@@ -526,7 +531,8 @@ export function BuilderShell({
     blockedReason,
     roleRecorded,
     requiresKillerAck: checkNote.requiresKillerAck,
-    openReviewCount: report.counts.S2
+    openReviewCount: report.counts.S2,
+    dentistMustOwnKillers
   });
 
   // Autosave on any change. The content-identity guard (not a first-render
@@ -1094,9 +1100,11 @@ export function BuilderShell({
                   ? "Add note content first"
                   : !roleRecorded
                     ? "Record clinical role before Copy or download — ask a Team Lead"
-                    : gates.exportAllowed
-                      ? `${verb} — after one check that the right chart is open`
-                      : "Resolve every stop finding before copy or download"
+                    : dentistMustOwnKillers
+                      ? "Dentist must accept Assessment risk items before Copy — transfer ownership"
+                      : gates.exportAllowed
+                        ? `${verb} — after one check that the right chart is open`
+                        : "Resolve every stop finding before copy or download"
               }
               onClick={() => {
                 if (locked) {
@@ -1146,11 +1154,13 @@ export function BuilderShell({
         >
           {!roleRecorded
             ? "Copy and download are locked until a Team Lead records the clinical role on this account."
-            : `Copy and download are locked until every stop is fixed${
-                report.phiStops.length > 0 && !overrideActive
-                  ? " (or a privacy stop is attested)"
-                  : ""
-              }. Open findings are listed in the audit panel.`}
+            : dentistMustOwnKillers
+              ? "Copy is locked until a dentist accepts or edits Assessment risk items — transfer ownership."
+              : `Copy and download are locked until every stop is fixed${
+                  report.phiStops.length > 0 && !overrideActive
+                    ? " (or a privacy stop is attested)"
+                    : ""
+                }. Open findings are listed in the audit panel.`}
         </p>
       )}
     </>
@@ -1186,6 +1196,8 @@ export function BuilderShell({
             ? "Copied — ready to paste ✓"
             : !roleRecorded && hasContent
               ? "🔒 Role required"
+              : dentistMustOwnKillers && hasContent
+                ? "🔒 Dentist must accept"
               : !gates.exportAllowed && hasContent
               ? "🔒 Copy locked"
               : `Copy for ${edrName}…`}
@@ -1208,11 +1220,13 @@ export function BuilderShell({
         <p className="mb-3 text-xs text-rose-800" role="status">
           {!roleRecorded
             ? "Copy locked until a Team Lead records the clinical role on this account."
-            : `Copy locked until every stop is fixed${
-                report.phiStops.length > 0 && !overrideActive
-                  ? " (or a privacy stop is attested)"
-                  : ""
-              }. Findings are listed below.`}
+            : dentistMustOwnKillers
+              ? "Copy locked until a dentist accepts Assessment risk items — transfer ownership."
+              : `Copy locked until every stop is fixed${
+                  report.phiStops.length > 0 && !overrideActive
+                    ? " (or a privacy stop is attested)"
+                    : ""
+                }. Findings are listed below.`}
         </p>
       )}
       <AuditPanel
@@ -1484,10 +1498,15 @@ export function BuilderShell({
 
       {/* One Andon card — coalesce unset-role + scope/transfer so the first
           viewport is not a stack of amber slabs (swarm / Chicken Little). */}
-      {(clinicalRole === "unset" || showScopeCue || needsTransfer) && canEdit && liveStatus !== "submitted" && (
+      {(clinicalRole === "unset" ||
+        showScopeCue ||
+        needsTransfer ||
+        dentistMustOwnKillers) &&
+        canEdit &&
+        liveStatus !== "submitted" && (
         <div
           className={`mb-4 rounded-xl px-3 py-2.5 text-sm ${
-            needsTransfer || clinicalRole === "unset"
+            needsTransfer || clinicalRole === "unset" || dentistMustOwnKillers
               ? "border border-amber-300 bg-amber-50 text-amber-950"
               : "border border-slate-300 bg-slate-50 text-slate-800"
           }`}
@@ -1500,6 +1519,28 @@ export function BuilderShell({
                 Next: ask a Team Lead to set Assistant, Hygienist, or Dentist on this
                 account. Copy and File stay locked until then.
               </p>
+            </>
+          ) : dentistMustOwnKillers ? (
+            <>
+              <p className="font-semibold">Dentist must accept Assessment risk items</p>
+              <p className="mt-1 text-xs leading-snug">
+                Next: transfer ownership so a dentist accepts, edits, or returns these
+                items before Copy. Soft review items that are not dentist judgement still
+                allow Copy after acknowledge.
+              </p>
+              <div className="mt-2 flex flex-wrap gap-2">
+                {canTransfer ? (
+                  <button
+                    type="button"
+                    className="btn-primary text-xs"
+                    onClick={() => setShowTransfer(true)}
+                  >
+                    Transfer to a dentist…
+                  </button>
+                ) : (
+                  <p className="text-xs">Ask a Team Lead to transfer this draft.</p>
+                )}
+              </div>
             </>
           ) : needsTransfer ? (
             <>

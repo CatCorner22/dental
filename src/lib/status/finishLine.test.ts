@@ -65,4 +65,10 @@ describe("builderFinishLine — first-impression finish control", () => {
     expect(line).toMatch(/clinical role/i);
     expect(line).not.toMatch(/Ready/i);
   });
+
+  it("blocks Copy when dentist must own Assessment killers", () => {
+    const line = builderFinishLine({ ...ready, dentistMustOwnKillers: true });
+    expect(line).toMatch(/Dentist must accept Assessment/i);
+    expect(line).not.toMatch(/Ready/i);
+  });
 });

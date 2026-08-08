@@ -42,6 +42,8 @@ describe("CheckNoteSummaryPanel — finish gate", () => {
     );
     expect(screen.getByText(/Anesthetic amount missing/i)).toBeTruthy();
     expect(screen.getByTestId("check-note-killer-ack")).toBeTruthy();
+    expect(screen.getByTestId("check-note-unresolved-risk")).toBeTruthy();
+    expect(screen.getByText(/Copy allowed with unresolved risk/i)).toBeTruthy();
     expect(screen.getByText(/Universal Core · Preventive/)).toBeTruthy();
   });
 

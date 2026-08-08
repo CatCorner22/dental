@@ -79,7 +79,7 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | Ambient AI / Forms clone | All | **Rejected** | Charter |
 | Fast Lane must beat Favorites with sentences | Curve / owner / faculty | **Deferred** (product proof) | Measure in pilot; pack sentence quality backlog |
 | MFA-on production | IT | **Policy / ops** | Deployment flag — not a UI PR |
-| Dentist owns hygiene Assessment killers before Copy | Associate DDS | **Deferred** | Needs transfer/ownership UX design; not this slice |
+| Dentist owns hygiene Assessment killers before Copy | Associate DDS | **Adopted** (Copy ownership gate) | `copyOwnership.ts` + BuilderShell Andon/transfer |
 
 ---
 
@@ -106,6 +106,9 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | Wipe all local draft mirrors on sign-out | `draftBackup.ts`, `SignOutButton.tsx` |
 | Readable severity chip type on Check-your-note | `CheckNoteSummary.tsx` |
 | Short unset-role Andon | `BuilderShell.tsx` |
+| Unresolved-risk honesty banner on killer ack | `CheckNoteSummary.tsx` |
+| Audit finding jump as real `<button>` (keyboard) | `AuditPanel.tsx` |
+| Aux + dentist-judgement killers block Copy | `copyOwnership.ts`, `BuilderShell.tsx`, `finishLine.ts` |
 
 **Not in this slice (policy locks):** hard-gate S2 killers, MFA enforcement, SSO, per-patient author lock, IV path, Favorites race instrumentation.
 

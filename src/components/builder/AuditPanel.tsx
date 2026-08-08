@@ -96,13 +96,8 @@ function FindingRow({
     // instead of scroll-then-click for every finding fixed.
     el.querySelector<HTMLElement>("input, select, textarea, button")?.focus({ preventScroll: true });
   };
-  return (
-    <li
-      className={`rounded-r border-l-4 px-3 py-2.5 text-xs text-slate-800 ${
-        SEVERITY_RAIL[finding.severity]
-      } ${finding.fieldRef ? "cursor-pointer hover:bg-white" : ""}`}
-      onClick={finding.fieldRef ? jump : undefined}
-    >
+  const findingBody = (
+    <>
       <div className="flex items-start justify-between gap-2">
         <span className="font-semibold">
           {/* A chip, not a headline. The plain label only: the raw code (S0..S4) is
@@ -110,7 +105,7 @@ function FindingRow({
               of a person trying to finish a note — a reviewer with no clinical
               training read "S1 REQUIRED" as an error code they had caused. */}
           <span
-            className={`rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold ${
+            className={`rounded-full px-1.5 py-0.5 text-xs font-bold ${
               SEVERITY_CHIP[finding.severity]
             }`}
           >
@@ -126,20 +121,9 @@ function FindingRow({
           )}
         </span>
         {finding.fieldRef && (
-          <button
-            type="button"
-            /* The row itself is clickable, so an un-stopped click here runs jump()
-               twice — once directly, once on the way up. Harmless-looking, except
-               jump() moves focus, so the second pass re-focuses a field the writer
-               may already have started typing in. */
-            onClick={(e) => {
-              e.stopPropagation();
-              jump();
-            }}
-            className="shrink-0 underline"
-          >
+          <span className="shrink-0 underline" aria-hidden="true">
             Go to field
-          </button>
+          </span>
         )}
       </div>
       <p className="mt-1">
@@ -159,6 +143,29 @@ function FindingRow({
           <span className="font-semibold">How to move:</span> Open the field and fix the text.
         </p>
       ) : null}
+    </>
+  );
+
+  return (
+    <li
+      className={`rounded-r border-l-4 px-3 py-2.5 text-xs text-slate-800 ${
+        SEVERITY_RAIL[finding.severity]
+      }`}
+    >
+      {/* Honest Finish / a11y: jump is a real <button>, not a mouse-only <li>.
+          Attest/escalate stay siblings so we never nest interactive controls. */}
+      {finding.fieldRef ? (
+        <button
+          type="button"
+          className="tap w-full rounded text-left hover:bg-white/80"
+          aria-label={`Go to field: ${SEVERITY_LABELS[finding.severity]} — ${finding.message}`}
+          onClick={jump}
+        >
+          {findingBody}
+        </button>
+      ) : (
+        <div>{findingBody}</div>
+      )}
       {/* FIX, ATTEST, OR DISAGREE — the three endings the standardize screen
           offered and the builder never did. They are here because the writer
           who reads a finding and knows the text is right had nowhere to say so:
@@ -177,23 +184,7 @@ function FindingRow({
           Sent to a Team Lead as a rule disagreement.
         </p>
       ) : (attestable || escalatable) && (
-        /* STOP THE ROW EATING THIS BLOCK.
-           The <li> above carries onClick=jump whenever the finding has a fieldRef,
-           and every control below is a descendant of it — so without this, tapping
-           "This is right as written", typing in the reason box, or pressing
-           "Record it" ALSO fires jump(). Two ways that breaks:
-
-             - On a phone the panel renders inside the "Audit & copy" sheet with
-               onJump={() => setShowMobileAudit(false)}, so the first tap opens the
-               reason form and closes the sheet around it in the same event. The
-               writer never sees the form they just opened.
-             - On desktop, clicking into the reason input scrolls to the note field
-               and focuses it, so the keystrokes land in the clinical field instead.
-
-           attestable is exactly the advisory findings this flow exists for, and
-           spelling, plain-language and measurement all attach a fieldRef — so this
-           was every row that matters. */
-        <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
+        <div className="mt-1.5">
           {writing ? (
             <div className="space-y-1">
               <label className="block text-[0.7rem] font-medium text-slate-700">

@@ -155,22 +155,32 @@ export function CheckNoteSummaryPanel({
       )}
 
       {summary.requiresKillerAck && (
-        <label className={`flex items-start gap-2 text-amber-950 ${text}`}>
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={killersAcknowledged}
-            onChange={(e) => onKillersAcknowledged(e.target.checked)}
-            data-testid="check-note-killer-ack"
-          />
-          <span>
-            I reviewed the litigation-sensitive items above
-            {summary.killers.some((k) => !k.fieldRef)
-              ? " (use Change, or fix them in the visit narrative / audit panel)"
-              : ""}
-            .
-          </span>
-        </label>
+        <>
+          <p
+            className={`mb-2 rounded border border-amber-400/80 bg-white/80 px-2 py-1.5 font-medium text-amber-950 ${compact ? "text-xs" : "text-sm"}`}
+            role="status"
+            data-testid="check-note-unresolved-risk"
+          >
+            Copy allowed with unresolved risk items. These do not block filing by
+            policy — you must accept them before the note leaves.
+          </p>
+          <label className={`flex items-start gap-2 text-amber-950 ${text}`}>
+            <input
+              type="checkbox"
+              className="mt-0.5"
+              checked={killersAcknowledged}
+              onChange={(e) => onKillersAcknowledged(e.target.checked)}
+              data-testid="check-note-killer-ack"
+            />
+            <span>
+              I am filing / copying this note with the unresolved items listed here
+              {summary.killers.some((k) => !k.fieldRef)
+                ? " (use Change, or fix them in the visit narrative / audit panel)"
+                : ""}
+              .
+            </span>
+          </label>
+        </>
       )}
     </div>
   );

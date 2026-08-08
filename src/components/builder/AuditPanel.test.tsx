@@ -237,9 +237,24 @@ describe("jumping to a field", () => {
     expect(screen.getByLabelText(/optional attestation detail/i)).toBeTruthy();
     expect(onJump).not.toHaveBeenCalled();
 
-    // The row itself still jumps — the fix stops propagation from the controls,
-    // it does not remove the affordance the HelpTip promises.
+    // The jump button still jumps — attest controls are siblings, not nested
+    // under the row click target (Honest Finish a11y).
     fireEvent.click(screen.getByText(linked.message));
+    expect(onJump).toHaveBeenCalledTimes(1);
+  });
+
+  it("exposes a keyboard-reachable Go to field control (Honest Finish a11y)", () => {
+    const onJump = vi.fn();
+    const linked = finding({
+      fieldRef: { moduleId: "universal-core", fieldId: "visit-purpose" },
+      message: "Vague phrase in visit purpose."
+    });
+    render(
+      <AuditPanel report={report([linked])} onAttest={() => {}} onEscalate={() => {}} onJump={onJump} />
+    );
+    // Real <button>, not a mouse-only <li> — Enter/Space are native button activation.
+    const row = screen.getByRole("button", { name: /Go to field: Review/i });
+    fireEvent.click(row);
     expect(onJump).toHaveBeenCalledTimes(1);
   });
 });

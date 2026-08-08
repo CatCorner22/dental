@@ -22,6 +22,11 @@ export function builderFinishLine(args: {
   requiresKillerAck?: boolean;
   /** Open S2 review findings (does not hard-block Copy). */
   openReviewCount?: number;
+  /**
+   * Aux writer + open dentist-judgement killers — Copy waits for dentist
+   * ownership (Honest Finish associate-DDS Adopt).
+   */
+  dentistMustOwnKillers?: boolean;
 }): string {
   const {
     hasContent,
@@ -31,11 +36,15 @@ export function builderFinishLine(args: {
     blockedReason,
     roleRecorded = true,
     requiresKillerAck = false,
-    openReviewCount = 0
+    openReviewCount = 0,
+    dentistMustOwnKillers = false
   } = args;
   if (!hasContent) return "Write something to unlock Submit and Copy.";
   if (!roleRecorded) {
     return "Record clinical role before Copy or File — ask a Team Lead.";
+  }
+  if (dentistMustOwnKillers) {
+    return "Dentist must accept Assessment risk items before Copy — transfer ownership.";
   }
   if (!filingAllowed) return "Dentist must file this note — transfer ownership first.";
   if (!exportAllowed) return blockedReason || "Copy locked until every stop is fixed.";

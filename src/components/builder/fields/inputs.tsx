@@ -13,6 +13,7 @@ import type {
 import { standardize } from "@/lib/standardize/standardize";
 import { OMISSION_LICENCES, exactLicence, licenceText } from "@/lib/audit/omissions";
 import { TextDiff } from "@/components/diff/TextDiff";
+import { ApplyWithReadback } from "@/components/builder/ReadbackConfirm";
 import { DictationField } from "./DictationField";
 import { BlockChips } from "./BlockChips";
 
@@ -350,34 +351,25 @@ function StandardizeField({
           answered by a button alone. Keep mine is listed second but is the
           zero-cost option — declining changes nothing at all. */}
       {pending && (
-        <>
-          <button
-            type="button"
-            className="btn-primary text-xs"
-            onClick={() => {
-              onApply(pending.after);
-              setPrior(pending);
-              setPending(null);
-              setShowDiff(false);
-              setNote("applied — Undo puts your wording back");
-              setTimeout(() => setNote(null), 6000);
-            }}
-          >
-            Apply this wording
-          </button>
-          <button
-            type="button"
-            className="chip"
-            onClick={() => {
-              setPending(null);
-              setShowDiff(false);
-              setNote("kept your wording");
-              setTimeout(() => setNote(null), 6000);
-            }}
-          >
-            Keep mine
-          </button>
-        </>
+        <ApplyWithReadback
+          before={pending.before}
+          after={pending.after}
+          applyLabel="Apply this wording"
+          onApply={() => {
+            onApply(pending.after);
+            setPrior(pending);
+            setPending(null);
+            setShowDiff(false);
+            setNote("applied — Undo puts your wording back");
+            setTimeout(() => setNote(null), 6000);
+          }}
+          onKeep={() => {
+            setPending(null);
+            setShowDiff(false);
+            setNote("kept your wording");
+            setTimeout(() => setNote(null), 6000);
+          }}
+        />
       )}
       {/*
         The way back.

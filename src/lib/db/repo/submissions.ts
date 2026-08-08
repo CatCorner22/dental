@@ -26,6 +26,8 @@ export interface SubmissionShellFields {
   // AI-assist provenance: capabilities, prompt versions, retrieved sources —
   // identifiers only, never text.
   assistProvenance?: Record<string, unknown> | null;
+  // Practice filing rollup stamp — module ids / categories / killers / counts.
+  filingRollup?: Record<string, unknown> | null;
 }
 
 export type FileSubmissionResult =
@@ -180,6 +182,7 @@ export async function listSubmissionsForDigest(
     noteMarkdown: string;
     auditReport: string;
     filename: string;
+    filingRollup: Record<string, unknown> | null;
   }>
 > {
   return db
@@ -190,7 +193,8 @@ export async function listSubmissionsForDigest(
       submittedAtEt: submissions.submittedAtEt,
       noteMarkdown: submissions.noteMarkdown,
       auditReport: submissions.auditReport,
-      filename: submissions.filename
+      filename: submissions.filename,
+      filingRollup: submissions.filingRollup
     })
     .from(submissions)
     .where(gte(submissions.submittedAtUtc, sinceUtc))

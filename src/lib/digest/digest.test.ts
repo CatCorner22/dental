@@ -25,6 +25,15 @@ describe("metrics survive whatever the record holds", () => {
     expect(parseFindingCounts("null")).toEqual({ S0: 0, S1: 0, S2: 0, S3: 0, S4: 0 });
   });
 
+  it("recovers severity counts from frozen audit markdown", () => {
+    const markdown = [
+      "| ID | Severity |",
+      "| 1 | S1 Required | Core | x | y | z | clinician |",
+      "| 2 | S1 Required | Core | a | b | c | clinician |"
+    ].join("\n");
+    expect(parseFindingCounts(markdown)).toEqual({ S0: 0, S1: 2, S2: 0, S3: 0, S4: 0 });
+  });
+
   it("ignores nonsense values inside a well-formed report", () => {
     const counts = parseFindingCounts(JSON.stringify({ counts: { S0: -5, S1: "x", S2: 2.7 } }));
     expect(counts.S0).toBe(0);

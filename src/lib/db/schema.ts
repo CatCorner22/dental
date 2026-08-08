@@ -185,7 +185,11 @@ export const submissions = pgTable("submissions", {
   // AI-assist provenance for this filing: which capabilities touched the
   // draft's text, under which prompt version, with which retrieved sources.
   // Hashes and identifiers only — never note text.
-  assistProvenance: jsonb("assist_provenance").$type<Record<string, unknown>>()
+  assistProvenance: jsonb("assist_provenance").$type<Record<string, unknown>>(),
+  // Practice filing rollup stamp: module ids + finding category / killer
+  // ruleIds + severity counts at file time. Identifiers only — never note
+  // prose. Optional so historical rows stay valid without rewrite.
+  filingRollup: jsonb("filing_rollup").$type<Record<string, unknown>>()
 });
 
 // ---------------------------------------------------------------------------

@@ -7,7 +7,7 @@
 // Bump SCHEMA_BOOT_VERSION whenever SCHEMA_STATEMENTS gains a statement that
 // must run on existing databases. Cold starts skip the full DDL loop when the
 // stored boot version already matches (see ensureSchema in client.ts).
-export const SCHEMA_BOOT_VERSION = 1;
+export const SCHEMA_BOOT_VERSION = 2;
 
 export const SCHEMA_STATEMENTS: string[] = [
   `DO $$ BEGIN
@@ -150,6 +150,9 @@ export const SCHEMA_STATEMENTS: string[] = [
   `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "gpa" text;`,
   `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "gpa_subscores" jsonb;`,
   `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "assist_provenance" jsonb;`,
+  // Practice filing rollup (digest #5): modules + finding categories/killers
+  // stamped at submit. Additive — never rewrites frozen note/audit text.
+  `ALTER TABLE "submissions" ADD COLUMN IF NOT EXISTS "filing_rollup" jsonb;`,
   `CREATE TABLE IF NOT EXISTS "points_ledger" (
      "id" serial PRIMARY KEY NOT NULL,
      "user_id" text NOT NULL,

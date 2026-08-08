@@ -51,6 +51,8 @@ import {
   packBlockIdsForVisit,
   type PublishedPackLite
 } from "@/lib/packs/publishedForVisit";
+import { packStartersForAppliedModules } from "@/lib/packs/packStartersForModules";
+import { suggestableBlockHome } from "@/lib/phrases/suggestedBlocks";
 import { fieldKey } from "@/lib/schema/types";
 import { DictationUserContext } from "./fields/DictationField";
 import { AuditPanel } from "./AuditPanel";
@@ -68,6 +70,8 @@ import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
 import { TransferDraftDialog } from "@/components/notes/TransferDraftDialog";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import type { UsaRegionId } from "@/lib/dictation/regional";
+import { FastLanePackOffer } from "./FastLanePackOffer";
+import type { VerifiedBlock } from "@/lib/phrases/blocks";
 
 // None of these three render on first paint — a conflict, a PHI override,
 // and a submit confirmation are all things that happen only after an edit
@@ -253,6 +257,11 @@ export function BuilderShell({
   // Published practice packs (Team Lead Workflow) — boost Section starters and
   // reorder Fast Lane featured picks (no pack-browser chip wall).
   const [practicePacks, setPracticePacks] = useState<PublishedPackLite[]>([]);
+  // Optional attested starters after Fast Lane apply — ask first, never silent dump.
+  const [packStarterOffer, setPackStarterOffer] = useState<{
+    packTitles: string[];
+    blocks: VerifiedBlock[];
+  } | null>(null);
   useEffect(() => {
     // Abort on unmount so WebKit does not turn a navigation teardown into a
     // CORP pageerror on this probe (same class as the SuperByte deploy fetch).
@@ -1556,7 +1565,16 @@ export function BuilderShell({
             practicePacks={practicePacks}
             // Structure only — packs re-rank Section starters and featured
             // pick order; they are not a second Fast Lane chip browser.
-            onApply={(pick) => dispatch({ type: "applyModules", moduleIds: pick.moduleIds })}
+            // Matching packs may offer attested starters in the panel below.
+            onApply={(pick) => {
+              dispatch({ type: "applyModules", moduleIds: pick.moduleIds });
+              const offer = packStartersForAppliedModules(
+                practicePacks,
+                clinicalRole,
+                pick.moduleIds
+              );
+              setPackStarterOffer(offer.blocks.length > 0 ? offer : null);
+            }}
             onInsertMyBlock={(text) => {
               // Prefer the focused prose control; fall back to Visit narrative.
               const active = document.activeElement as HTMLElement | null;
@@ -1572,6 +1590,33 @@ export function BuilderShell({
               setValue(key, { kind: "text", value: prior + text });
             }}
           />
+          {canEdit && packStarterOffer && (
+            <FastLanePackOffer
+              packTitles={packStarterOffer.packTitles}
+              blocks={packStarterOffer.blocks}
+              onDismiss={() => setPackStarterOffer(null)}
+              onInsert={(blockId, text) => {
+                const home = suggestableBlockHome(blockId);
+                if (!home) return;
+                const key = fieldKey("universal-core", home.fieldId);
+                if (lockedFieldKeys.has(key)) return;
+                const cur = state.values[key];
+                const prior =
+                  cur?.kind === "text" && cur.value.trim() !== ""
+                    ? `${cur.value.trim()}\n\n`
+                    : "";
+                setValue(key, { kind: "text", value: prior + text });
+                requestAnimationFrame(() => {
+                  const root = document.getElementById(`field-universal-core-${home.fieldId}`);
+                  const control =
+                    (document.getElementById(`ctl-${key}`) as HTMLElement | null) ??
+                    root?.querySelector<HTMLElement>("textarea, input");
+                  root?.scrollIntoView({ block: "nearest" });
+                  control?.focus({ preventScroll: true });
+                });
+              }}
+            />
+          )}
           <fieldset disabled={!canEdit} className="min-w-0">
             <DictationUserContext.Provider
               value={{

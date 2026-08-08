@@ -42,6 +42,7 @@ what a human typed, and nothing more.
 | 2026-08-03 | Created this Artifact. Seeded from five existing sources. Ingested nothing new. |
 | 2026-08-03 | Built the patient-experience layer from the practice's own standardization document: encounter types for phone and portal contact, an open-items handoff, an anxiety and comfort module, a patient-facing summary with its own plain-word rule, and a page splitting the note header between Curve Hero and Smile Notes. Money stays out of the clinical record entirely, at the practice's direction. |
 | 2026-08-06 | Researched Curve Hero note shape (Forms / QuickText / AI SOAP) vs Smile Notes builder acceleration. Filed `knowledge/sources/builder-text-blocks-predictive-ux.md`: verified blocks and MyBlocks already exist but are under-discovered; recommended section-scoped suggested blocks and Fast Lane text packs — not a Forms clone or ambient AI. |
+| 2026-08-08 | Hostile Practice IT / HIPAA security officer panel. Filed `knowledge/sources/adversarial-it-hipaa-security.md`: 7 kill/pain findings (shared tablet identity, MFA default-off, clipboard egress, local draft mirrors, session bleed, unmanaged browsers, title/PHI story); 5 demanded controls; theater = privacy banner. |
 
 ---
 
@@ -235,9 +236,11 @@ which fields belong in Curve.*
    process; none observed the actual ninety seconds between patients.
 7. **Decide on the HIPAA 2026 operational controls** — mandatory multi-factor sign-in, encryption at
    rest, annual security risk analysis, business-associate agreement tracking, and Tennessee's
-   45-day breach notification. These are practice operations and hosting, not app features, and the
-   repository documents none of them. Multi-factor sign-in and encryption at rest are partly
-   app-side and could be built.
+   45-day breach notification. The IT/HIPAA hate panel
+   ([adversarial-it-hipaa-security.md](../sources/adversarial-it-hipaa-security.md)) adds chairside
+   demands: hard author switch on shared tablets, MFA on in prod, clipboard as disclosure,
+   wipe local draft mirrors on logout/switch, idle lock shorter than the 30-day cookie. Privacy
+   banners alone are theater.
 
 ---
 

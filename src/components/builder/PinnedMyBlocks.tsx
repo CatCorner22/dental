@@ -71,7 +71,7 @@ export function PinnedMyBlocks({
         </button>
       ))}
       {blocks && blocks.length > pinned.length && (
-        <span className="text-[0.65rem] text-slate-500">+{blocks.length - pinned.length} more in field picker</span>
+        <span className="text-xs text-slate-600">+{blocks.length - pinned.length} more in field picker</span>
       )}
     </div>
   );

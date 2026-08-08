@@ -67,11 +67,7 @@ export function checkFilingAuthority(
   if (selectedHighRisk.length > 0) {
     return {
       allowed: false,
-      message:
-        `This note contains a ${selectedHighRisk[0].title} record, which files as a ` +
-        `dentist-level act whoever typed it. Transfer the draft to the dentist — they review ` +
-        `the content and file it under their own name, which is what puts the right license on ` +
-        `the frozen record. Nothing you wrote is lost in the transfer.`
+      message: `Dentist must file — ${selectedHighRisk[0].title} is a dentist-level act. Transfer ownership.`
     };
   }
 
@@ -80,10 +76,7 @@ export function checkFilingAuthority(
     if (hasValue(note, key)) {
       return {
         allowed: false,
-        message:
-          "This note carries an assessment or plan — a dentist's judgment — so a dentist files " +
-          "it. Transfer the draft to the dentist; they review the content and file under their " +
-          "own name. Nothing you wrote is lost in the transfer."
+        message: "Dentist must file — Assessment or Plan present. Transfer ownership."
       };
     }
   }

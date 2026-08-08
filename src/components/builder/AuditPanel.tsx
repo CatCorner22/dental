@@ -7,6 +7,7 @@ import {
   SEVERITY_RAIL,
   SEVERITY_MEANING,
   SEVERITY_ORDER,
+  SEVERITY_SHAPE,
   STATUS_CLASS,
   statusLabel
 } from "@/lib/audit/types";
@@ -109,6 +110,7 @@ function FindingRow({
               SEVERITY_CHIP[finding.severity]
             }`}
           >
+            <span aria-hidden="true">{SEVERITY_SHAPE[finding.severity]} </span>
             {SEVERITY_LABELS[finding.severity]}
           </span>
           {finding.matchedText && (

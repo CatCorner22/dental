@@ -64,7 +64,7 @@ export function FastLane({
         <span className="sr-only">{cue}</span>
       </div>
       {/* Visible on touch — title= never appears on a tablet finger (UIX-006). */}
-      <p className="mt-1.5 text-[0.65rem] leading-snug text-slate-500">
+      <p className="mt-1.5 text-xs leading-snug text-slate-600">
         Adds visit modules only — nothing clinical is filled in. Matching practice packs may offer
         attested starters next; section starters also stay under Care delivered and Handoff.
       </p>

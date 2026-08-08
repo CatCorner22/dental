@@ -1,7 +1,7 @@
 "use client";
 
 import type { AuditFinding } from "@/lib/audit/types";
-import { SEVERITY_CHIP, SEVERITY_LABELS } from "@/lib/audit/types";
+import { SEVERITY_CHIP, SEVERITY_LABELS, SEVERITY_SHAPE } from "@/lib/audit/types";
 import { killerShortLabel } from "@/lib/audit/killers";
 import type { CheckNoteSummary as Summary } from "@/lib/status/checkNoteSummary";
 
@@ -60,9 +60,9 @@ export function CheckNoteSummaryPanel({
       data-testid="check-note-summary"
     >
       <p className={`mb-1 font-semibold text-amber-950 ${text}`}>Check your note</p>
-      <p className={`mb-2 text-amber-950/90 ${compact ? "text-[0.7rem]" : "text-xs"}`}>
-        Before this leaves Smile Notes — modules, litigation-sensitive gaps, and open stops.
-        Change opens the field; nothing here invents a clinical fact.
+      <p className={`mb-2 text-amber-950/90 ${compact ? "text-xs" : "text-xs"}`}>
+        Fix litigation gaps and open stops before handoff. Change opens the field —
+        nothing here invents a clinical fact.
       </p>
 
       {summary.moduleTitles.length > 0 && (
@@ -83,6 +83,7 @@ export function CheckNoteSummaryPanel({
                 <span
                   className={`mr-1 inline-block rounded px-1.5 py-0.5 text-xs font-semibold ${SEVERITY_CHIP[f.severity]}`}
                 >
+                  <span aria-hidden="true">{SEVERITY_SHAPE[f.severity]} </span>
                   {SEVERITY_LABELS[f.severity]}
                 </span>
                 <span className={`font-medium text-slate-900 ${text}`}>

@@ -5,6 +5,7 @@ import {
   SEVERITY_CHIP,
   SEVERITY_CLASS,
   SEVERITY_RAIL,
+  SEVERITY_SHAPE,
   STATUS_CLASS,
   SEVERITY_ORDER
 } from "./types";
@@ -57,7 +58,8 @@ describe("one severity ramp, shared", () => {
     for (const [name, ramp] of [
       ["SEVERITY_CLASS", SEVERITY_CLASS],
       ["SEVERITY_RAIL", SEVERITY_RAIL],
-      ["SEVERITY_CHIP", SEVERITY_CHIP]
+      ["SEVERITY_CHIP", SEVERITY_CHIP],
+      ["SEVERITY_SHAPE", SEVERITY_SHAPE]
     ] as const) {
       expect(new Set(Object.values(ramp)).size, `${name} has two identical entries`).toBe(
         SEVERITY_ORDER.length

@@ -55,8 +55,8 @@ describe("builderFinishLine — first-impression finish control", () => {
 
   it("never says Ready when open Soft S2 reviews remain", () => {
     const line = builderFinishLine({ ...ready, openReviewCount: 2 });
-    expect(line).toMatch(/Review open items/i);
-    expect(line).toMatch(/Copy still allowed/i);
+    expect(line).toMatch(/Open review items remain/i);
+    expect(line).toMatch(/Copy does not clear them/i);
     expect(line).not.toMatch(/Ready/i);
   });
 

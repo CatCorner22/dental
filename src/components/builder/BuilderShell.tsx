@@ -67,6 +67,7 @@ import { SaveIndicator } from "./SaveIndicator";
 import { whenApiReady } from "@/lib/client/apiReady";
 import { StatusChip } from "@/components/ui/StatusChip";
 import { ProgressRing } from "./ProgressRing";
+import { SharedTabletIdleLock } from "./SharedTabletIdleLock";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
@@ -934,6 +935,10 @@ export function BuilderShell({
       <p className="mb-1 text-xs font-semibold text-brand-navy">
         One check before this leaves Smile Notes
       </p>
+      <p className="mb-2 rounded border border-amber-300 bg-amber-50 px-2 py-1.5 text-xs text-amber-950">
+        Copy puts the full note into this device’s clipboard. Paste into the open chart
+        now, then clear the clipboard if your device keeps history.
+      </p>
       <CheckNoteSummaryPanel
         summary={checkNote}
         onChangeFinding={handleCheckNoteChange}
@@ -1306,6 +1311,8 @@ export function BuilderShell({
        fixed, so it occupies real layout space at the end of the form instead of
        floating over it. The old pb-36/sm:pb-28 now just added dead scroll. */
     <div>
+      {/* Shared-tablet idle lock: 10 min no activity → Switch author / Still me. */}
+      <SharedTabletIdleLock displayName={username} />
       {/* Sticky patient-header-style bar — IDENTITY AND STATE ONLY.
           It used to also carry Earlier saves, Save, Submit and a HelpTip, which
           put the controls you reach for at the END of a note in the most
@@ -1532,9 +1539,8 @@ export function BuilderShell({
             <>
               <p className="font-semibold">Dentist must accept Assessment risk items</p>
               <p className="mt-1 text-xs leading-snug">
-                Next: transfer ownership so a dentist accepts, edits, or returns these
-                items before Copy. Soft review items that are not dentist judgement still
-                allow Copy after acknowledge.
+                Next: transfer ownership. Soft review items that are not dentist judgement
+                still allow Copy after you fix or leave them open — never via checkbox.
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {canTransfer ? (
@@ -1553,9 +1559,8 @@ export function BuilderShell({
           ) : needsTransfer ? (
             <>
               <p className="font-semibold">Dentist must file this note</p>
-              <p className="mt-1 text-xs leading-relaxed">
-                {filing.message ??
-                  "This draft includes dentist-owned content or a dentist-level module. Transfer ownership so a dentist reviews and files under their license. Nothing you wrote is lost."}
+              <p className="mt-1 text-xs leading-snug">
+                {filing.message ?? "Dentist must file — Assessment, Plan, or dentist-level module. Transfer ownership."}
               </p>
               <div className="mt-2 flex flex-wrap gap-2">
                 {canTransfer ? (
@@ -1568,11 +1573,11 @@ export function BuilderShell({
                   </button>
                 ) : (
                   <p className="text-xs text-slate-700">
-                    Ask a Team Lead to transfer this note, or open{" "}
+                    Ask a Team Lead to transfer —{" "}
                     <Link href="/notes" className="font-medium text-brand-blue underline">
                       My notes
-                    </Link>{" "}
-                    if you have transfer rights on another account.
+                    </Link>
+                    .
                   </p>
                 )}
               </div>
@@ -1580,10 +1585,9 @@ export function BuilderShell({
           ) : (
             <>
               <p className="font-semibold">Assessment and Plan stay with the dentist</p>
-              <p className="mt-1 text-xs leading-relaxed">
-                Record findings in Objective and Care delivered. Locked sections read as waiting
-                for the dentist — not as fields you left unfinished. You can file when this note
-                stays in your license scope.
+              <p className="mt-1 text-xs leading-snug">
+                Next: record findings in Objective and Care delivered. Locked sections wait
+                for the dentist — not unfinished work of yours.
               </p>
             </>
           )}

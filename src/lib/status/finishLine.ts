@@ -51,7 +51,7 @@ export function builderFinishLine(args: {
     return "Litigation-sensitive gaps block Copy and File until fixed — no checkbox bypass.";
   }
   if (openReviewCount > 0) {
-    return "Review open items before filing. Copy still allowed.";
+    return "Open review items remain — Copy does not clear them.";
   }
   if (emailAllowed) return "Ready to file.";
   return blockedReason || "Fix open stops before filing.";

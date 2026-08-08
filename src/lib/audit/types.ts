@@ -29,6 +29,18 @@ export const SEVERITY_LABELS: Record<Severity, string> = {
 };
 
 /**
+ * Non-color channel for CVD / glove glance — shape travels with the word.
+ * Hue alone collapses S0/S1/S2 under deuteranopia (Honest Finish hate panels).
+ */
+export const SEVERITY_SHAPE: Record<Severity, string> = {
+  S0: "■",
+  S1: "▲",
+  S2: "◆",
+  S3: "●",
+  S4: "○"
+};
+
+/**
  * What a severity means, in a sentence, for the person reading it.
  *
  * The labels above are the practice's formal audit vocabulary and they stay. These
@@ -42,7 +54,7 @@ export const SEVERITY_LABELS: Record<Severity, string> = {
 export const SEVERITY_MEANING: Record<Severity, string> = {
   S0: "Must be fixed. This blocks copying and filing.",
   S1: "Needed before this note can be filed.",
-  S2: "Worth a look before you file. Does not block.",
+  S2: "Open review. Does not block Copy. Does not mean finished.",
   S3: "Wording only. Does not block.",
   S4: "For information. Does not block."
 };
@@ -214,8 +226,9 @@ export const STATUS_CLASS: Record<OverallStatus, string> = {
 export const STATUS_DISPLAY: Record<OverallStatus, string> = {
   BLOCKED: "Blocked",
   "NEEDS CLINICIAN ACTION": "Needs clinician action",
-  "READY FOR CLINICIAN REVIEW": "Ready for clinician review",
-  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "Audit pass — clinician review still required"
+  // Honest Finish: never lead with "Ready" while review items remain.
+  "READY FOR CLINICIAN REVIEW": "Needs clinician review",
+  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "Audit clear — clinician review still required"
 };
 
 /**

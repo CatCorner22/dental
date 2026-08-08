@@ -4,7 +4,7 @@ import { useDeferredValue, useMemo, useState } from "react";
 import { partitionIntoSoap, type SoapSection } from "@/lib/standardize/structure";
 import { standardize } from "@/lib/standardize/standardize";
 import { runTextAudit } from "@/lib/audit/engine";
-import { SEVERITY_CHIP, SEVERITY_LABELS, SEVERITY_ORDER } from "@/lib/audit/types";
+import { SEVERITY_CHIP, SEVERITY_LABELS, SEVERITY_ORDER, SEVERITY_SHAPE } from "@/lib/audit/types";
 import { Character } from "@/components/mascot/Sparkle";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import { TextDiff } from "@/components/diff/TextDiff";
@@ -145,8 +145,9 @@ export function PasteIntake({
                       .map((f, i) => (
                         <li key={`${sev}-${i}`} className="text-xs text-slate-800">
                           <span
-                            className={`mr-1.5 rounded-full px-1.5 py-0.5 text-[0.65rem] font-bold ${SEVERITY_CHIP[f.severity]}`}
+                            className={`mr-1.5 rounded-full px-1.5 py-0.5 text-xs font-bold ${SEVERITY_CHIP[f.severity]}`}
                           >
+                            <span aria-hidden="true">{SEVERITY_SHAPE[f.severity]} </span>
                             {SEVERITY_LABELS[f.severity]}
                           </span>
                           {f.message}

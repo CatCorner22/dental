@@ -68,7 +68,7 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | Killer ack before Copy confirm | Legal (was soft) | **Superseded** | Checkbox escape removed |
 | Role before Copy/File only | Legal / Board | **Superseded** | Unset cannot **write** (role-before-work) |
 | Hard-block litigation killers | Plaintiff | **Adopted** | Client + submit 422; severity math unchanged |
-| Hard shared-iPad author switch | IT / OM | **Partial** | Switch author wipe+sign-out; not per-patient lock |
+| Hard shared-iPad author switch | IT / OM | **Partial** | Switch author wipe+sign-out + 10 min idle lock; not MFA / per-patient |
 | 44px targets by default (not only `pointer: coarse`) | Chairside / a11y | **Adopted** | `globals.css` + ToothPicker floor |
 | ProgressRing not hue-only | CVD | **Adopted** | Shape glyph + state word in `aria-label` / visible marker |
 | Reduced motion kills transforms | A11y | **Adopted** | `.sparkle-pop` disabled under reduced-motion |
@@ -87,7 +87,7 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 
 - **RDH:** still distrusts post-file GPA/badge economy — keep it off the clinical path.
 - **Curve power user:** will not adopt until 90s Favorites race is measured in-office.
-- **IT:** clipboard egress + mid-session shared-iPad lock still residual.
+- **IT:** clipboard egress redesign + MFA-on still residual (idle lock + Switch author ship).
 - **Plaintiff:** soft S2 non-killers can still Copy — may still argue for broader hard stops.
 
 ---
@@ -112,8 +112,17 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 | **Brutal follow-up:** role-before-work on write | `editingEnabled` in `BuilderShell` |
 | **Brutal follow-up:** Copy locked when filing not allowed | `exportLocked` |
 | **Brutal follow-up:** Switch author (wipe + sign-out) | `SignOutButton`, `NavMenu` |
+| **UI pass:** Soft S2 honesty (no Ready lead; review ≠ finished) | `STATUS_DISPLAY`, `SEVERITY_MEANING`, `finishLine` |
+| **UI pass:** Severity shape channel (CVD) | `SEVERITY_SHAPE` + Audit / Check / Paste chips |
+| **UI pass:** ProgressRing visible state word + shape | `ProgressRing` |
+| **UI pass:** Clipboard egress banner on Copy confirm | `BuilderShell` export check |
+| **UI pass:** Short Andon / filing messages | `approval.ts`, BuilderShell cards |
+| **UI pass:** Micro-type floors (xs, not 0.65rem) | FastLane, PinnedMyBlocks, PasteIntake, CheckNote |
+| **UI pass:** Shared-tablet 10 min idle lock | `SharedTabletIdleLock` + BuilderShell |
+| **UI pass:** Inline dictation enroll (no Account pilgrimage) | `DictationField` + VoiceEnrollment |
+| **UI pass:** Strip streak/score smell from firstPass sparkle | `sparkle.ts` |
 
-**Still open (not fixed):** MFA-on as ops default, per-patient author lock mid-session, clipboard egress redesign, Favorites 90s race measurement, GPA/badge economy removal.
+**Still open (not fixed):** MFA-on as ops default, true per-patient re-auth mid-session, clipboard egress redesign / copy-event audit log, Favorites 90s race measurement, GPA/badge economy removal from `/store`.
 
 ---
 
@@ -128,3 +137,6 @@ Pass only if one real visit flow beats Favorites **and** catches a consent/risk/
 - Sign-out / Switch author clears local draft backup keys.
 - Soft S2 non-killers still do not flip `computeGates.exportAllowed` by themselves.
 - Glove CSS: `.chip` / `.tap` / `.tap-sq` carry 44px mins without requiring `pointer: coarse`.
+- Idle lock appears after configured idle; Switch author and Still me are both offered.
+- Unenrolled + ready browser: “Set up dictation here” is a button (not `/account` only).
+- STATUS_DISPLAY for clinician-review states does not lead with the word Ready.

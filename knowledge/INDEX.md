@@ -20,6 +20,8 @@ sources below rather than repeating them, and carries the open questions and nex
 
 ## Assessments derived from the sources above
 
+- **[Adversarial hate — DSO VP of Compliance (40-office scale)](sources/adversarial-dso-compliance-vp-hate.md)** — Hostile enterprise kill sheet: 6 kills (Lead SPOF, unscoped pack governance, unset clinical roles, no SSO/IdP, unread/truncated digest, offices-as-labels not tenancy), 5 must-haves (SSO lifecycle, role-before-write, corporate pack catalog, closed-loop oversight, real multi-site authz), trap = “enterprise ready” vocabulary on a practice pilot. Tags: dso, enterprise, compliance, sso, rbac, practice-packs, digest, multi-office, red-team. Ingested: 2026-08-08.
+
 - **[Benchmark: Smile Notes vs Curve Hero](benchmarks/smile-notes-vs-curve-hero.md)** — Capability-by-capability assessment against the Curve Hero baseline, assessed against the code rather than the README, and careful about the framing: Curve Hero is an all-in-one practice management system, so most of its surface is out of scope by design rather than a gap. Tags: dental, pms, benchmarking, clinical-notes. Ingested: 2026-08-03.
 - **[Assessment: UX, visual design, and performance review](benchmarks/ux-performance-review.md)** — Live-browser walkthrough at desktop and mobile widths plus a production-build audit; two real issues found and fixed (mobile audit panel buried below the form, unlazy note-page dialogs), one issue found and deliberately left for a dedicated pass (mobile nav wrapping), and an explicit distinction between what "promote use" should mean for an internal tool versus a storefront. Tags: ux, accessibility, performance, mobile, next.js, benchmarking. Ingested: 2026-08-03.
 

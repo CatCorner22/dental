@@ -45,6 +45,7 @@ what a human typed, and nothing more.
 | 2026-08-08 | Co-design with top-12 adversarial hate lenses → Honest Finish contract. Ship-now: finish-line honesty (no Ready with open risk), unset-role Copy/File gate, glove 44px defaults, ProgressRing shape+word, draft-mirror wipe on sign-out. Policy locks preserved (hard-gate S2 killers, MFA, per-patient author lock). Filed `knowledge/sources/adversarial-hate-codesign.md`. |
 | 2026-08-08 | Market UX + four mock stakeholder panels (hygiene, dentists+OM, design/IT, temps). Filed `knowledge/sources/market-ux-stakeholder-panels.md`: Daylight-chart brand recommit, glove-first tablet finish, role-before-work; ambient AI / write-back / scoreboards rejected. |
 | 2026-08-08 | Shipped Daylight chart tokens + glove-first tablet finish + pinned My blocks + audit WHAT/WHY/HOW pedagogy (market panels #1/#2/#4/#5). |
+| 2026-08-08 | Ran expanded adversarial hate panels (≥4× prior pool of 5): 24 unique hostile lenses + per-lens digests; consolidated fix backlog and pilot kill criteria in `knowledge/sources/adversarial-hate-panels.md`. Simulated agents only — not live Cornerstone interviews. |
 
 ---
 

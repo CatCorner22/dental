@@ -112,6 +112,22 @@ describe("what the audit panel offers per finding", () => {
     expect(screen.getByText(/asked and reported no discomfort/)).toBeTruthy();
     expect(screen.queryByRole("button", { name: ATTEST })).toBeNull();
   });
+
+  it("requires a reason code before Record it, and stores the coded reason", () => {
+    const onAttest = vi.fn();
+    render(<AuditPanel report={report([finding()])} onAttest={onAttest} onEscalate={() => {}} />);
+    fireEvent.click(screen.getByRole("button", { name: ATTEST }));
+    const record = screen.getByRole("button", { name: /record it/i }) as HTMLButtonElement;
+    expect(record.disabled).toBe(true);
+    fireEvent.change(screen.getByLabelText(/attestation reason code/i), {
+      target: { value: "correct-as-written" }
+    });
+    expect(record.disabled).toBe(false);
+    fireEvent.click(record);
+    expect(onAttest).toHaveBeenCalledTimes(1);
+    const [, reason] = onAttest.mock.calls[0];
+    expect(String(reason)).toMatch(/^\[correct-as-written\]/);
+  });
 });
 
 describe("telling two findings apart", () => {
@@ -217,7 +233,8 @@ describe("jumping to a field", () => {
     fireEvent.click(screen.getByRole("button", { name: ATTEST }));
 
     // The reason form opened, and the row did not also try to navigate away.
-    expect(screen.getByRole("textbox", { name: /why the text is right as written/i })).toBeTruthy();
+    expect(screen.getByLabelText(/attestation reason code/i)).toBeTruthy();
+    expect(screen.getByLabelText(/optional attestation detail/i)).toBeTruthy();
     expect(onJump).not.toHaveBeenCalled();
 
     // The row itself still jumps — the fix stops propagation from the controls,

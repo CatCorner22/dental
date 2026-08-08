@@ -11,7 +11,14 @@ import {
   statusLabel
 } from "@/lib/audit/types";
 import { useState } from "react";
-import { ATTESTATION_RULE, isValidAttestation } from "@/lib/standardize/resolution";
+import { ATTESTATION_RULE } from "@/lib/standardize/resolution";
+import {
+  composeFindingAttestation,
+  displayReasonCode,
+  FINDING_ATTEST_CODES,
+  isValidFindingAttestSelection,
+  type FindingAttestCode
+} from "@/lib/standardize/reasonCodes";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { Character } from "@/components/mascot/Sparkle";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
@@ -45,6 +52,7 @@ function FindingRow({
 }) {
   const [writing, setWriting] = useState(false);
   const [reason, setReason] = useState("");
+  const [attestCode, setAttestCode] = useState<FindingAttestCode | "">("");
   const key = findingKey(finding);
   // Fix-only, and both halves matter.
   //
@@ -157,7 +165,7 @@ function FindingRow({
           is a note on a row — not permission. */}
       {attestation ? (
         <p className="mt-1.5 rounded bg-white/70 px-2 py-1 text-[0.7rem] text-slate-700">
-          <span className="font-semibold">You recorded:</span> {attestation}
+          <span className="font-semibold">You recorded:</span> {displayReasonCode(attestation)}
         </p>
       ) : escalated ? (
         <p className="mt-1.5 rounded bg-white/70 px-2 py-1 text-[0.7rem] text-slate-700">
@@ -183,13 +191,29 @@ function FindingRow({
         <div className="mt-1.5" onClick={(e) => e.stopPropagation()}>
           {writing ? (
             <div className="space-y-1">
+              <label className="block text-[0.7rem] font-medium text-slate-700">
+                Reason code
+                <select
+                  className="field-input mt-0.5 py-1"
+                  aria-label="Attestation reason code"
+                  value={attestCode}
+                  onChange={(e) => setAttestCode(e.target.value as FindingAttestCode | "")}
+                >
+                  <option value="">Select why this text is right…</option>
+                  {FINDING_ATTEST_CODES.map((o) => (
+                    <option key={o.code} value={o.code}>
+                      {o.label}
+                    </option>
+                  ))}
+                </select>
+              </label>
               <input
                 type="text"
                 /* text-xs would beat the 16px iOS zoom guard .field-input carries
                    for narrow/coarse screens — see globals.css. */
                 className="field-input py-1"
-                placeholder="Why the text is right as written"
-                aria-label="Why the text is right as written"
+                placeholder="Optional detail (adds to the record)"
+                aria-label="Optional attestation detail"
                 value={reason}
                 onChange={(e) => setReason(e.target.value)}
               />
@@ -197,10 +221,13 @@ function FindingRow({
                 <button
                   type="button"
                   className="btn-primary text-xs"
-                  disabled={!isValidAttestation(reason)}
+                  disabled={!isValidFindingAttestSelection(attestCode, reason)}
                   onClick={() => {
-                    onAttest?.(key, reason.trim());
+                    if (!attestCode) return;
+                    onAttest?.(key, composeFindingAttestation(attestCode, reason));
                     setWriting(false);
+                    setAttestCode("");
+                    setReason("");
                   }}
                 >
                   Record it
@@ -208,14 +235,21 @@ function FindingRow({
                 <button
                   type="button"
                   className="btn-secondary text-xs"
-                  onClick={() => setWriting(false)}
+                  onClick={() => {
+                    setWriting(false);
+                    setAttestCode("");
+                    setReason("");
+                  }}
                 >
                   Cancel
                 </button>
               </div>
-              {/* The same substance bar the PHI override uses. Friction plus a
-                  named record is the enforceable part; "ok" is not a reason. */}
-              <p className="text-[0.7rem] opacity-70">{ATTESTATION_RULE}</p>
+              {/* Code is required; optional prose still uses the substance bar when
+                  present. Rule disagreement stays on Escalate — not an attest code. */}
+              <p className="text-[0.7rem] opacity-70">
+                Pick a code. Optional detail: {ATTESTATION_RULE} Disagree with the rule? Use
+                “Disagree with this rule” instead.
+              </p>
             </div>
           ) : (
             <div className="flex flex-wrap gap-2 text-[0.7rem]">

@@ -5,13 +5,15 @@ const updateSet = vi.fn(() => ({ where: updateWhere }));
 const selectFrom = vi.fn();
 const selectWhere = vi.fn();
 
-const statusForNoteMock = vi.fn(() => ({
-  status: "handoff" as const,
-  counts: { S0: 0, S1: 0, S2: 0, S3: 0, S4: 0 }
-}));
+const statusForNoteMock = vi.fn(
+  (_opts?: unknown): { status: "handoff"; counts: Record<string, number> } => ({
+    status: "handoff",
+    counts: { S0: 0, S1: 0, S2: 0, S3: 0, S4: 0 }
+  })
+);
 
 vi.mock("@/lib/status/statusForNote", () => ({
-  statusForNote: (...args: unknown[]) => statusForNoteMock(...args)
+  statusForNote: (opts: unknown) => statusForNoteMock(opts)
 }));
 
 vi.mock("@/lib/db/schema", () => ({

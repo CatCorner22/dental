@@ -170,7 +170,19 @@ const nextConfig = {
         source: "/reset/:path*",
         headers: [
           { key: "Cache-Control", value: "no-store, max-age=0" },
-          ...securityHeaders
+          ...securityHeaders,
+          // AFTER the spread, so it wins (Next keeps the last same-key header a
+          // route matches). The reset token lives in this URL's path, and under
+          // the global `same-origin` policy that full token-bearing URL rides
+          // as the Referer on the page's own subresource requests — the
+          // /api/reset POST, the font, every _next asset — and lands in
+          // whichever access logs those hit. This route can afford the policy
+          // that broke Server Actions globally (the Origin:null browser
+          // behavior documented above) because its form submits via fetch, not
+          // an action. Raised in review; scoped here rather than weakening the
+          // global header to `origin`, which would announce this origin to
+          // every external site staff click out to.
+          { key: "Referrer-Policy", value: "no-referrer" }
         ]
       }
     ];

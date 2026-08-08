@@ -59,6 +59,16 @@ const browser = await chromium.launch();
     cookies.some((c) => /session-token/i.test(c.name)),
     "session cookie set by the same response"
   );
+  // Not just the URL — the PAGE. This probe once "passed" on URL + cookie
+  // while the landed document was the "This session is no longer valid" dead
+  // end: the login action's bundle layer had bootstrapped its own in-memory
+  // PGlite, so the minted session's user id existed in no other layer's
+  // database. A session is only proven by an authenticated render.
+  const landedBody = (await page.locator("body").textContent().catch(() => "")) ?? "";
+  check(
+    !/session is no longer valid/i.test(landedBody),
+    "landed page renders authenticated (not the invalid-session dead end)"
+  );
   check(
     !seenUrls.some((u) => u.includes(encodeURIComponent(PASS)) || u.includes(PASS)),
     "password appears in no request URL"

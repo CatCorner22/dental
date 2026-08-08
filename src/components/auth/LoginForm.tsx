@@ -1,85 +1,49 @@
 "use client";
 
-import { useState } from "react";
-import { signIn } from "next-auth/react";
+import { useActionState, useState } from "react";
 import { HelpTip } from "@/components/ui/HelpTip";
+import { loginAction } from "@/lib/auth/loginAction";
+import { initialLoginState } from "@/lib/auth/loginFormState";
 
-// mfaAvailable comes from the server (deployment-level switch). When false,
-// the authenticator-code field never appears — a code box offered on a
-// deployment that will never check a code reads as "you are locked out of
-// something you never set up".
-export function LoginForm({ mfaAvailable = true }: { mfaAvailable?: boolean }) {
-  const [username, setUsername] = useState("");
+// A server-action form, not an onSubmit-fetch form — see the WHY-comment in
+// loginAction.ts. The short version: the old shape lost whatever was typed if
+// the submit landed before hydration; this shape signs the user in either way.
+//
+// callbackUrl arrives from the page already sanitized (and the action
+// sanitizes it again before redirecting — the hidden input is tamperable).
+export function LoginForm({ callbackUrl = "/" }: { callbackUrl?: string }) {
+  const [state, formAction, pending] = useActionState(loginAction, initialLoginState);
+  // CONTROLLED ON PURPOSE. React 19 auto-resets *uncontrolled* form fields
+  // when an action completes, which would wipe the typed username and
+  // password on every hydrated failure — a regression from the fetch era.
+  // Controlled inputs survive the reset; before hydration controlled-ness is
+  // moot because React is not running and the DOM values ride the native POST
+  // body directly. Do not "simplify" these to uncontrolled + defaultValue.
+  //
+  // Username seeds from state so a no-JS failure re-render keeps the field
+  // the user got right. The password never round-trips — the action refuses
+  // to echo a secret into a response — so in that one mode it must be
+  // retyped; honest, and only on the no-JS failure path.
+  const [username, setUsername] = useState(state.username);
   const [password, setPassword] = useState("");
   const [showPassword, setShowPassword] = useState(false);
   const [totp, setTotp] = useState("");
-  const [showTotp, setShowTotp] = useState(false);
-  const [error, setError] = useState("");
-  const [busy, setBusy] = useState(false);
-  const [attempts, setAttempts] = useState(0);
-
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setBusy(true);
-    setError("");
-    let res;
-    try {
-      res = await signIn("credentials", { username, password, totp, redirect: false });
-    } catch {
-      setError("Could not reach the server — check the connection and try again.");
-      setBusy(false);
-      return;
-    }
-    if (res?.error) {
-      const nextAttempts = attempts + 1;
-      setAttempts(nextAttempts);
-      // A failure with correct-looking credentials may be a missing second
-      // factor. The server never says which (an attacker must not learn
-      // whether an account has MFA from the error), so the form OFFERS the
-      // code field after any failure instead of asserting it is needed —
-      // but only on deployments where a code could ever be the answer.
-      if (mfaAvailable) setShowTotp(true);
-      const throttleHint =
-        nextAttempts >= 3
-          ? " If you have tried several times, wait a few minutes — sign-in is briefly paused after repeated failures."
-          : "";
-      setError(
-        (!mfaAvailable
-          ? "Sign-in failed. Check the username and password."
-          : showTotp || totp
-            ? "Sign-in failed. Check the username, password, and authenticator code."
-            : "Sign-in failed. If this account uses an authenticator app, enter the current code below.") +
-          throttleHint
-      );
-      setBusy(false);
-      return;
-    }
-    // FeedbackNotice is once per browser via localStorage — login does not
-    // re-arm it (that gauntlet fought chairside first paint).
-    // Full navigation reliably picks up the new session cookie. Honor the
-    // page the middleware bounced the user from — same-origin paths only,
-    // so a crafted link can never redirect the login off-site.
-    let dest = "/";
-    const cb = new URLSearchParams(window.location.search).get("callbackUrl");
-    if (cb) {
-      try {
-        const u = new URL(cb, window.location.origin);
-        if (u.origin === window.location.origin) dest = u.pathname + u.search;
-      } catch {
-        /* keep "/" */
-      }
-    }
-    window.location.assign(dest);
-  };
 
   return (
-    <form onSubmit={submit} className="space-y-3">
+    <form action={formAction} className="space-y-3">
+      {/* The action's inputs beyond the visible fields. Hidden values rather
+          than client state so the message branches and the redirect work even
+          when every submission is a full-page POST with no JS at all. */}
+      <input type="hidden" name="callbackUrl" value={callbackUrl} />
+      <input type="hidden" name="attempts" value={state.attempts} />
+      <input type="hidden" name="mfaOffered" value={state.offerTotp ? "1" : "0"} />
       <div>
         <label className="field-label" htmlFor="li-user">
           Username
         </label>
         <input
           id="li-user"
+          name="username"
           className="field-input"
           value={username}
           onChange={(e) => setUsername(e.target.value)}
@@ -105,6 +69,7 @@ export function LoginForm({ mfaAvailable = true }: { mfaAvailable?: boolean }) {
         </div>
         <input
           id="li-pass"
+          name="password"
           type={showPassword ? "text" : "password"}
           className="field-input"
           value={password}
@@ -113,13 +78,17 @@ export function LoginForm({ mfaAvailable = true }: { mfaAvailable?: boolean }) {
           required
         />
       </div>
-      {showTotp && (
+      {state.offerTotp && (
         <div>
           <label className="field-label" htmlFor="li-totp">
             Authenticator code
           </label>
+          {/* Offered after any failure on an MFA-enabled deployment, never
+              asserted: the server keeps every failure identical so an
+              attacker cannot learn whether an account has MFA. */}
           <input
             id="li-totp"
+            name="totp"
             className="field-input"
             value={totp}
             onChange={(e) => setTotp(e.target.value)}
@@ -130,13 +99,13 @@ export function LoginForm({ mfaAvailable = true }: { mfaAvailable?: boolean }) {
           />
         </div>
       )}
-      {error && (
+      {state.error && (
         <p className="text-sm text-red-700" role="alert">
-          {error}
+          {state.error}
         </p>
       )}
-      <button type="submit" className="btn-primary w-full justify-center" disabled={busy}>
-        {busy ? "Signing in…" : "Sign in"}
+      <button type="submit" className="btn-primary w-full justify-center" disabled={pending}>
+        {pending ? "Signing in…" : "Sign in"}
       </button>
 
       <div className="rounded-lg bg-slate-50 px-3 py-2 text-xs leading-relaxed text-slate-600 ring-1 ring-slate-200">

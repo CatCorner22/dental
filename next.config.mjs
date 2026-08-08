@@ -72,8 +72,19 @@ const securityHeaders = [
   { key: "X-Frame-Options", value: "DENY" },
   { key: "X-Content-Type-Options", value: "nosniff" },
   // A password-reset token lives in a URL path. Sending a full URL to another
-  // origin as a Referer would leak it; this sends nothing cross-origin.
-  { key: "Referrer-Policy", value: "no-referrer" },
+  // origin as a Referer would leak it; same-origin sends NOTHING cross-origin,
+  // which is exactly that goal.
+  //
+  // Deliberately not the stricter `no-referrer`: under that policy Chromium
+  // (and Firefox) also blank the Origin header on form POST navigations —
+  // they send the literal string "null" — and Next's Server Action origin
+  // check does `new URL(origin)` on it, so every no-JS action POST died with
+  // `TypeError: Invalid URL, input: 'null'` before the action ran. The login
+  // form is a server action precisely so a pre-hydration submit still signs
+  // the user in; `same-origin` keeps that working while leaking nothing to
+  // other origins. The only delta vs no-referrer is that SAME-origin requests
+  // carry a Referer — the app telling itself a path it already knows.
+  { key: "Referrer-Policy", value: "same-origin" },
   // Deny device APIs the app does not use. Microphone is the exception:
   // Standardize dictation (browser SpeechRecognition) must be able to prompt
   // on this origin. `microphone=(self)` allows same-origin only — embedded

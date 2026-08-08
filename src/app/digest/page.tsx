@@ -206,8 +206,12 @@ export default async function DigestPage() {
         <div className="card-note mt-6">
           <p className="font-semibold text-brand-navy">Nothing to raise this period.</p>
           <p className="mt-1 text-sm text-slate-700">
-            No pattern crossed a reporting threshold across {digest.notesReviewed} notes. That is a
-            result, not an absence of one.
+            {/* Seen in the wild as "across 1 notes" the first day a practice
+                files anything — which is exactly the day this page makes its
+                first impression. */}
+            No pattern crossed a reporting threshold across {digest.notesReviewed}{" "}
+            {digest.notesReviewed === 1 ? "note" : "notes"}. That is a result, not an absence of
+            one.
           </p>
         </div>
       ) : (

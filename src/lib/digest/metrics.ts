@@ -34,6 +34,7 @@
 import { extractFacts, coverage as parseCoverage } from "@/lib/extract/extract";
 import { licenceFor } from "@/lib/audit/omissions";
 import type { Severity } from "@/lib/audit/types";
+import { parseSeverityCountsFromFrozenAudit } from "./filingRollup";
 
 export interface FiledNote {
   submissionId: number;
@@ -78,18 +79,25 @@ const EMPTY_COUNTS: Record<Severity, number> = { S0: 0, S1: 0, S2: 0, S3: 0, S4:
  * counts toward the denominator, which is the honest direction to fail in.
  */
 export function parseFindingCounts(auditReportJson: string): Record<Severity, number> {
+  // Prefer structured JSON when present (tests + any future stamp). Real filings
+  // store composeAuditReport markdown — fall back to parsing the Issues table
+  // so the digest does not silently treat every filed note as finding-free.
   try {
     const parsed = JSON.parse(auditReportJson) as { counts?: Partial<Record<Severity, number>> };
-    if (!parsed || typeof parsed !== "object" || !parsed.counts) return { ...EMPTY_COUNTS };
-    const out = { ...EMPTY_COUNTS };
-    for (const key of Object.keys(out) as Severity[]) {
-      const value = parsed.counts[key];
-      if (typeof value === "number" && Number.isFinite(value) && value >= 0) out[key] = Math.floor(value);
+    if (parsed && typeof parsed === "object" && parsed.counts) {
+      const out = { ...EMPTY_COUNTS };
+      for (const key of Object.keys(out) as Severity[]) {
+        const value = parsed.counts[key];
+        if (typeof value === "number" && Number.isFinite(value) && value >= 0) {
+          out[key] = Math.floor(value);
+        }
+      }
+      return out;
     }
-    return out;
   } catch {
-    return { ...EMPTY_COUNTS };
+    // not JSON — try frozen markdown below
   }
+  return parseSeverityCountsFromFrozenAudit(auditReportJson);
 }
 
 /** Words, counted the way a person would count them. */

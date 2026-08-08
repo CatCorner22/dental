@@ -13,6 +13,8 @@ import { HelpTip } from "@/components/ui/HelpTip";
 import { listAuditLogByActionPrefix } from "@/lib/db/repo/auditLog";
 import { buildByteStarSummary } from "@/lib/bytestar/summary";
 import { ByteStarSummaryPanel } from "@/components/digest/ByteStarSummaryPanel";
+import { buildPracticeFilingRollup } from "@/lib/digest/filingRollup";
+import { DigestFilingRollup } from "@/components/digest/DigestFilingRollup";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Documentation digest" };
@@ -57,6 +59,12 @@ export default async function DigestPage() {
   const digest = buildDigest(notes, since.toISOString().slice(0, 10), new Date().toISOString().slice(0, 10));
   const practice = digest.signals.filter((s) => s.scope === "practice");
   const people = digest.signals.filter((s) => s.scope === "person");
+  const filingRollup = buildPracticeFilingRollup(
+    rows.map((row) => ({
+      filingRollup: row.filingRollup,
+      auditReport: row.auditReport
+    }))
+  );
 
   // Vocabulary proposals, from the same notes already loaded. No extra query.
   //
@@ -170,6 +178,8 @@ export default async function DigestPage() {
       )}
 
       <ByteStarSummaryPanel summary={byteStarSummary} windowDays={PERIOD_DAYS} />
+
+      <DigestFilingRollup rollup={filingRollup} periodDays={PERIOD_DAYS} />
 
       {grammarGrowth.length > 0 && (
         <section className="mt-6">

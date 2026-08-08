@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { signIn } from "next-auth/react";
 import { PASSWORD_HINT, PASSWORD_MIN, passwordPolicyError } from "@/lib/auth/password";
 import { generatePassword } from "@/lib/auth/genPassword";
@@ -14,6 +14,20 @@ export function SetupForm() {
   const [showPassword, setShowPassword] = useState(false);
   const [error, setError] = useState("");
   const [busy, setBusy] = useState(false);
+  // Disabled until hydration, enabled by the mount effect below. These are
+  // still onSubmit-fetch forms, and a submit that lands before React hydrates
+  // falls back to NATIVE submission — a GET that reloads the page and silently
+  // discards everything typed. With the default button disabled, implicit
+  // (Enter-key) submission is a no-op too, so pre-hydration the form simply
+  // waits instead of eating input. LoginForm solved this properly with a
+  // server action (see src/lib/auth/loginAction.ts) — that is the pattern to
+  // follow when these forms are next touched; this is the minimal guard for
+  // two rarely-used flows (one-time setup, emailed reset link).
+  const [hydrated, setHydrated] = useState(false);
+  useEffect(() => {
+    setHydrated(true);
+  }, []);
+
   const [createdPendingLogin, setCreatedPendingLogin] = useState(false);
 
   const clientError = (): string | null => {
@@ -186,8 +200,12 @@ export function SetupForm() {
           Go to sign in
         </a>
       ) : (
-        <button type="submit" className="btn-primary w-full justify-center" disabled={busy}>
-          {busy ? "Creating…" : "Create admin & sign in"}
+        <button
+          type="submit"
+          className="btn-primary w-full justify-center"
+          disabled={busy || !hydrated}
+        >
+          {busy ? "Creating…" : hydrated ? "Create admin & sign in" : "Loading…"}
         </button>
       )}
     </form>

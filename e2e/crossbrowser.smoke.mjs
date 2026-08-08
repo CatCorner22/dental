@@ -109,6 +109,12 @@ for (const [engineName, engine] of ENGINES) {
 
       // Feedback reminder: present, with a here-link that emails the developer.
       const fb = page.getByRole("dialog").filter({ hasText: "Send feedback" });
+      // The dialog mounts client-side after hydration, so give it a real wait
+      // instead of a single instantaneous count. A bare count() raced the
+      // mount and lost exactly once — on webkit/desktop, the slowest engine,
+      // the first run after login became a server-action redirect — while the
+      // dismissal checks two lines later found the same dialog just fine.
+      await fb.first().waitFor({ state: "visible", timeout: 8000 }).catch(() => {});
       check((await fb.count()) > 0, `${tag}: feedback dialog shown on login`);
       if (await fb.count()) {
         const here = fb.getByRole("link", { name: "here" });

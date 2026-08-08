@@ -52,14 +52,21 @@ for (const [engineName, engine] of ENGINES) {
     // — so do not fail the smoke suite on it.
     //
     // The same engine also throws pageerrors for fetches blocked mid-navigation
-    // by Cross-Origin-Resource-Policy / aborted navigations ("Fetch API cannot
-    // load … due to access control checks"). RSC prefills were the first form;
-    // SuperByte and practice-pack polls hit the same race on desktop WebKit
-    // during rapid sequential gotos. The page still lands; filter the noise.
+    // by Cross-Origin-Resource-Policy ("Fetch API cannot load … due to access
+    // control checks"). Keep this filter NARROW: `_rsc=` prefills, plus the two
+    // apiReady probes (/api/bytestar, /api/workflow/packs) that can still race
+    // a rapid goto even after AbortController cleanup. Do not match every
+    // "access control checks" string — that would also swallow a real 403
+    // regression, which is precisely what this assertion exists to catch.
+    // After legal ack we also wait for networkidle so those probes settle.
     const isBenignRscFallback = (t) =>
       /Failed to fetch RSC payload/i.test(t) && /Falling back to browser navigation/i.test(t);
-    const isBenignWebkitFetchAbort = (t) =>
-      /Fetch API cannot load/i.test(t) && /access control checks/i.test(t);
+    const isBenignWebkitNavAbort = (t) =>
+      /Fetch API cannot load/i.test(t) &&
+      /access control checks/i.test(t) &&
+      (/[?&]_rsc=/.test(t) ||
+        /\/api\/bytestar\b/.test(t) ||
+        /\/api\/workflow\/packs\b/.test(t));
     page.on("console", (m) => {
       if (m.type() !== "error") return;
       const text = m.text().slice(0, 200);
@@ -68,7 +75,7 @@ for (const [engineName, engine] of ENGINES) {
     });
     page.on("pageerror", (e) => {
       const text = String(e).slice(0, 300);
-      if (isBenignWebkitFetchAbort(text)) return;
+      if (isBenignWebkitNavAbort(text)) return;
       consoleErrors.push("PAGEERROR: " + text.slice(0, 200));
     });
 
@@ -89,21 +96,11 @@ for (const [engineName, engine] of ENGINES) {
         // Acknowledging the notice is what calls markApiReady(), which releases
         // the two fetches deferred behind it — BuilderShell's practice-packs
         // load and the SuperByte deployment probe (see src/lib/client/apiReady.ts).
-        // They are therefore in flight at exactly this moment, and if the next
-        // goto() tears the document down first, WebKit reports the aborted
-        // request as "Fetch API cannot load … due to access control checks"
-        // rather than as an abort — because next.config.mjs sets
-        // Cross-Origin-Resource-Policy: same-origin and CORP gets evaluated
-        // against a document that is going away.
-        //
-        // That is the same engine behaviour isBenignRscCorpError already
-        // filters for Next's own prefetches; that filter requires `_rsc=` in
-        // the URL, so it does not cover these two app routes, and it should not
-        // be widened to — a blanket filter on that message would also swallow a
-        // real 403 regression, which is precisely what this assertion exists to
-        // catch. Wait for the requests to settle instead of hiding their
-        // failure. Observed as an intermittent webkit/desktop failure; the
-        // fixed 600ms above is not enough on a loaded runner.
+        // They are therefore in flight at exactly this moment. The probes now
+        // AbortController-cancel on unmount, and isBenignWebkitNavAbort allowlists
+        // only those two routes (plus `_rsc=`), but waiting for networkidle still
+        // cuts the race window before the next goto(). Observed as an intermittent
+        // webkit/desktop failure when the fixed 600ms alone was not enough.
         await page.waitForLoadState("networkidle");
       }
 

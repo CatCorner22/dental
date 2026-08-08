@@ -245,17 +245,19 @@ export function BuilderShell({
   // reorder Fast Lane featured picks (no pack-browser chip wall).
   const [practicePacks, setPracticePacks] = useState<PublishedPackLite[]>([]);
   useEffect(() => {
-    let cancelled = false;
+    // Abort on unmount so WebKit does not turn a navigation teardown into a
+    // CORP pageerror on this probe (same class as the SuperByte deploy fetch).
+    const ac = new AbortController();
     // Deferred until the legal-record notice is acknowledged. This mounts the
     // instant somebody signs in, so on a fresh session it used to fire while
     // the blocking gate was still on screen and every route was answering 403
     // — handled in JS, but a red console error on the first load of the app
     // regardless. See src/lib/client/apiReady.ts.
     const stop = whenApiReady(() => {
-      void fetch("/api/workflow/packs?status=published")
+      void fetch("/api/workflow/packs?status=published", { signal: ac.signal })
         .then((r) => (r.ok ? r.json() : { packs: [] }))
         .then((d: { packs?: Array<Record<string, unknown>> }) => {
-          if (cancelled || !Array.isArray(d.packs)) return;
+          if (ac.signal.aborted || !Array.isArray(d.packs)) return;
           setPracticePacks(
             d.packs.map((p) => ({
               id: Number(p.id),
@@ -268,11 +270,11 @@ export function BuilderShell({
           );
         })
         .catch(() => {
-          if (!cancelled) setPracticePacks([]);
+          if (!ac.signal.aborted) setPracticePacks([]);
         });
     });
     return () => {
-      cancelled = true;
+      ac.abort();
       stop();
     };
   }, []);

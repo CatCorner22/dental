@@ -96,25 +96,31 @@ export function ByteStarAdvisor({ text }: { text: string }) {
           : "idle";
 
   useEffect(() => {
-    let cancelled = false;
+    // Abort on unmount. Without a signal, WebKit reports a mid-navigation CORP
+    // pageerror ("Fetch API cannot load … access control checks") when the
+    // smoke suite leaves home after markApiReady releases this probe — the
+    // fetch is still in flight, the document is gone, and the console assertion
+    // goes red for a teardown race rather than an app fault.
+    const ac = new AbortController();
     // Held until the legal-record notice is acknowledged. Until then the server
     // answers 403 to everything, and this probe treats any failure as
     // "unreachable" — so on a fresh session it painted the gauges as broken and
     // logged a console error, both for a rule rather than a fault. See
     // src/lib/client/apiReady.ts.
     const stop = whenApiReady(() => {
-      fetch("/api/bytestar")
+      fetch("/api/bytestar", { signal: ac.signal })
         .then((r) => r.json())
         .then((d: { enabled?: boolean }) => {
-          if (!cancelled) setDeploy(d.enabled ? "on" : "off");
+          if (!ac.signal.aborted) setDeploy(d.enabled ? "on" : "off");
         })
         .catch(() => {
+          if (ac.signal.aborted) return;
           // Network/DB failure is not "feature off" — keep gauges honest.
-          if (!cancelled) setDeploy("unreachable");
+          setDeploy("unreachable");
         });
     });
     return () => {
-      cancelled = true;
+      ac.abort();
       stop();
     };
   }, []);
@@ -124,6 +130,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
       setPioneerObs([]);
       return;
     }
+    const ac = new AbortController();
     const t = window.setTimeout(() => {
       if (lastFetched.current === deferred) return;
       lastFetched.current = deferred;
@@ -131,7 +138,8 @@ export function ByteStarAdvisor({ text }: { text: string }) {
       void fetch("/api/bytestar", {
         method: "POST",
         headers: { "content-type": "application/json" },
-        body: JSON.stringify({ text: deferred })
+        body: JSON.stringify({ text: deferred }),
+        signal: ac.signal
       })
         .then((r) => r.json())
         .then(
@@ -142,6 +150,7 @@ export function ByteStarAdvisor({ text }: { text: string }) {
             profile?: string;
             jurisdictionNotice?: string;
           }) => {
+            if (ac.signal.aborted) return;
             if (d.unavailable) {
               setPioneerObs([]);
               setProfile(null);
@@ -158,10 +167,17 @@ export function ByteStarAdvisor({ text }: { text: string }) {
             setTipIndex(0);
           }
         )
-        .catch(() => setPioneerObs([]))
-        .finally(() => setObserving(false));
+        .catch(() => {
+          if (!ac.signal.aborted) setPioneerObs([]);
+        })
+        .finally(() => {
+          if (!ac.signal.aborted) setObserving(false);
+        });
     }, OBSERVE_DEBOUNCE_MS);
-    return () => window.clearTimeout(t);
+    return () => {
+      window.clearTimeout(t);
+      ac.abort();
+    };
   }, [deferred, deploy]);
 
   const tip = observations[Math.min(tipIndex, Math.max(0, observations.length - 1))];

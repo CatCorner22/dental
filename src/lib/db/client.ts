@@ -89,9 +89,29 @@ export async function ensureSchema(db: Db): Promise<"skipped" | "applied"> {
   return "applied";
 }
 
-// One memoized bootstrap per process: pick the driver, ensure schema matches
-// SCHEMA_BOOT_VERSION, seed the first admin from env if the users table is empty.
-let bootstrap: Promise<Db> | null = null;
+// One memoized bootstrap per process — held on globalThis, NOT in module
+// scope, and the difference is load-bearing.
+//
+// Next bundles this file into more than one webpack layer: pages and API
+// routes share one module instance, and a Server Action gets another. A
+// `let bootstrap` at module scope is therefore one memo PER LAYER. Against
+// Postgres that only means an extra pool; against PGlite with
+// PGLITE_DIR=memory:// it means two separate in-memory databases, each
+// seeding its own first admin with its own random id — so signing in through
+// the login action minted a session whose user id existed only in the
+// action layer's database, and every page render answered "This session is
+// no longer valid". CI's cross-browser smoke caught it the first time the
+// smoke logged in through the action form. globalThis is process-wide, so
+// every layer resolves the same database.
+const g = globalThis as typeof globalThis & {
+  __smileNotesDb?: {
+    bootstrap: Promise<Db> | null;
+    lastFailureAt: number;
+    lastFailure: unknown;
+  };
+};
+g.__smileNotesDb ??= { bootstrap: null, lastFailureAt: 0, lastFailure: null };
+const slot = g.__smileNotesDb;
 
 async function build(): Promise<Db> {
   const backend = resolveDbBackend();
@@ -259,38 +279,36 @@ async function seedAdmin(db: Db): Promise<void> {
 // failure be cheap: one attempt per window, everyone else gets the error
 // immediately. Short enough that recovery is noticed within seconds.
 const BOOTSTRAP_COOLDOWN_MS = 3000;
-let lastFailureAt = 0;
-let lastFailure: unknown = null;
 
 export function getDb(): Promise<Db> {
-  if (!bootstrap) {
+  if (!slot.bootstrap) {
     // A transient bootstrap failure (db briefly unreachable on a cold start)
     // must not be memoized forever — that would pin every future request,
     // including /setup and login, to the original error until the process
     // restarts. Clear the slot on rejection so a later request retries.
-    const sinceFailure = Date.now() - lastFailureAt;
-    if (lastFailure !== null && sinceFailure < BOOTSTRAP_COOLDOWN_MS) {
-      return Promise.reject(lastFailure);
+    const sinceFailure = Date.now() - slot.lastFailureAt;
+    if (slot.lastFailure !== null && sinceFailure < BOOTSTRAP_COOLDOWN_MS) {
+      return Promise.reject(slot.lastFailure);
     }
     const attempt = build();
-    bootstrap = attempt;
+    slot.bootstrap = attempt;
     attempt.then(
       () => {
-        lastFailure = null;
+        slot.lastFailure = null;
       },
       (err) => {
-        lastFailureAt = Date.now();
-        lastFailure = err;
-        if (bootstrap === attempt) bootstrap = null;
+        slot.lastFailureAt = Date.now();
+        slot.lastFailure = err;
+        if (slot.bootstrap === attempt) slot.bootstrap = null;
       }
     );
   }
-  return bootstrap;
+  return slot.bootstrap;
 }
 
 // For tests: inject a ready db and skip env bootstrap.
 export function __setDbForTests(db: Db | null): void {
-  bootstrap = db ? Promise.resolve(db) : null;
-  lastFailure = null;
-  lastFailureAt = 0;
+  slot.bootstrap = db ? Promise.resolve(db) : null;
+  slot.lastFailure = null;
+  slot.lastFailureAt = 0;
 }

@@ -3,7 +3,7 @@ import { getDb } from "@/lib/db/client";
 import { countUsers } from "@/lib/db/repo/users";
 import { LoginForm } from "@/components/auth/LoginForm";
 import { BrandMark } from "@/components/shell/BrandMark";
-import { mfaFeatureEnabled } from "@/lib/auth/mfaFeature";
+import { sanitizeCallbackPath } from "@/lib/auth/loginFormState";
 import { APP_TAGLINE, PRIVACY_POLICY } from "@/lib/brand";
 import { Character } from "@/components/mascot/Sparkle";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
@@ -15,9 +15,19 @@ export const metadata = { title: "Sign in" };
 // surface, the gradient hairline is the same one-line brand gesture the
 // primary button carries, and everything else stays quiet — a sign-in page
 // earns trust by being calm, not by being loud.
-export default async function LoginPage() {
+export default async function LoginPage({
+  searchParams
+}: {
+  searchParams: Promise<Record<string, string | string[] | undefined>>;
+}) {
   const db = await getDb();
   if ((await countUsers(db)) === 0) redirect("/setup");
+  // The page the middleware bounced the user from, reduced to a same-origin
+  // path on the server before it is ever rendered into the form. The action
+  // sanitizes it a second time before redirecting — the hidden input in
+  // between is client-tamperable.
+  const rawCb = (await searchParams).callbackUrl;
+  const callbackUrl = sanitizeCallbackPath(typeof rawCb === "string" ? rawCb : undefined);
   return (
     <div className="mx-auto max-w-md py-14">
       <div className="relative overflow-hidden rounded-2xl bg-white p-8 shadow-[0_4px_24px_rgba(59,43,102,0.10),0_1px_3px_rgba(59,43,102,0.06)] ring-1 ring-slate-200">
@@ -41,7 +51,10 @@ export default async function LoginPage() {
           <Character id="sparkle" size="sm" />
           <p className="text-xs text-slate-600">{sparkleLine("signIn", daySeed(new Date()))}</p>
         </div>
-        <LoginForm mfaAvailable={mfaFeatureEnabled()} />
+        {/* mfaAvailable no longer threads through here: the action consults
+            mfaFeatureEnabled() itself when shaping the failure state, so the
+            deployment switch has one reader instead of two. */}
+        <LoginForm callbackUrl={callbackUrl} />
         {/* Break-glass recovery is for Developers — not part of the staff first
             viewport. Collapsed so shared-clinic sign-in stays calm.
 

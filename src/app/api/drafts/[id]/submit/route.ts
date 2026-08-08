@@ -28,6 +28,7 @@ import { deriveGpa } from "@/lib/gpa/deriveGpa";
 import { assistEventsForDraft } from "@/lib/db/repo/auditLog";
 import { statRowsForUser } from "@/lib/db/repo/submissions";
 import { computeStats } from "@/lib/stats/computeStats";
+import { buildFilingRollupSnapshot } from "@/lib/digest/filingRollup";
 import { awardForSubmission, awardOnce } from "@/lib/db/repo/gamify";
 import { BADGES } from "@/lib/stats/badges";
 import { FIRST_PASS_STATUS } from "@/lib/stats/computeStats";
@@ -237,10 +238,13 @@ class ByteAuditRefusal extends Error {
         gpa: grade.gpa.toFixed(2),
         gpaSubscores: grade.subscores as unknown as Record<string, number>,
         assistProvenance,
+        filingRollup: buildFilingRollupSnapshot(report, note.selectedModuleIds) as unknown as Record<
+          string,
+          unknown
+        >,
         officeId: draft.officeId,
         officeName
-      },
-      // Pin the claim to the exact version whose noteState was composed and
+      },      // Pin the claim to the exact version whose noteState was composed and
       // audited above — an autosave landing mid-submit must not be frozen out
       // of the record, nor a stale copy frozen into it.
       draft.version,

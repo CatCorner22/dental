@@ -44,6 +44,23 @@ EMAIL_ASSIST_ENV=(
 
 stop_server() { pkill -f "next-serve[r]" >/dev/null 2>&1; sleep 2; }
 
+# NEXT AUTO-LOADS .env.local, AND THAT RUINS TWO PROBES.
+#
+# It is a development convenience that no deployment has, but `next start`
+# reads it anyway, so its ADMIN_USERNAME/ADMIN_PASSWORD seed an admin into
+# what setup.firstboot needs to be a genuinely empty deployment — the setup
+# form then never renders because the deployment is already claimed. Moving it
+# aside for the duration makes the battery test the app as shipped rather than
+# the app plus this machine's dotfile. Restored on any exit, including Ctrl-C.
+ENVLOCAL=".env.local"
+ENVSTASH=".env.local.battery-stash"
+restore_env() {
+  [ -f "$ENVSTASH" ] && mv -f "$ENVSTASH" "$ENVLOCAL"
+  return 0
+}
+trap 'stop_server; restore_env' EXIT INT TERM
+[ -f "$ENVLOCAL" ] && mv -f "$ENVLOCAL" "$ENVSTASH" && echo "(moved .env.local aside for the run)"
+
 start_server() { # start_server <extra env...>
   stop_server
   env "${COMMON_ENV[@]}" "$@" nohup npx next start -p "$PORT" \
@@ -65,7 +82,9 @@ run_probe() { # run_probe <name> [extra server env...]
   if ! start_server "$@"; then FAIL+=("$name (server)"); echo "SERVER-FAIL"; return; fi
   local log="$LOG_DIR/${name}.log"
   if BASE_URL="$BASE" timeout 900 node "e2e/${name}.mjs" > "$log" 2>&1; then
-    local n; n=$(grep -c '^ok' "$log" 2>/dev/null || echo 0)
+    # grep -c already prints 0 when it matches nothing; the `|| echo 0` that
+    # used to be here appended a SECOND zero on a no-match exit status.
+    local n; n=$(grep -c '^ok' "$log" 2>/dev/null); n=${n:-0}
     PASS+=("$name"); echo "PASS (${n} checks)"
   else
     FAIL+=("$name"); echo "FAIL"

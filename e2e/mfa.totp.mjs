@@ -51,12 +51,26 @@ const hookErrors = (page, tag) => {
   page.on("pageerror", (e) => errs.push(`${tag} PAGEERROR ${String(e).slice(0, 140)}`));
   page.on("console", (m) => { if (m.type() === "error") errs.push(`${tag} ${m.text().slice(0, 140)}`); });
 };
+// BOTH blocking dialogs, not just the feedback one.
+//
+// This handled only "Send feedback" and passed for a long time — because it
+// used to run against a server whose database another probe had already
+// touched, so the legal notice was acknowledged and never appeared. Given a
+// genuinely fresh deployment (which is how scripts/stability-battery.sh runs
+// every probe now) the unacknowledged notice renders its fixed inset-0
+// overlay, and every click in this file times out against it. The notice is
+// acknowledged per user in the database, so a first sign-in always meets it.
 const dismiss = async (page) => {
-  const fb = page.getByRole("dialog").filter({ hasText: "Send feedback" });
-  if (await fb.count()) {
-    const d = fb.getByRole("button", { name: /not now|got it|dismiss/i });
-    if (await d.count()) await d.first().click().catch(() => {});
-    await fb.first().waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+  for (const [text, name] of [
+    ["Before you begin", /i understand/i],
+    ["Send feedback", /not now|got it|dismiss/i]
+  ]) {
+    const d = page.getByRole("dialog").filter({ hasText: text });
+    if (await d.count()) {
+      const b = d.getByRole("button", { name });
+      if (await b.count()) await b.first().click().catch(() => {});
+      await d.first().waitFor({ state: "hidden", timeout: 5000 }).catch(() => {});
+    }
   }
 };
 const hydrated = (page) =>

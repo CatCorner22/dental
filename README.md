@@ -299,9 +299,21 @@ note sections start open, which audit findings may be attested (never a missing
 required field — the server refuses that at submit), and that the paste intake
 moves nothing into a note by itself.
 
-See `.env.example` for the full list. Do **not** run without `POSTGRES_URL` in production —
-PGlite's per-instance storage does not persist across serverless cold starts (the app logs a loud
-warning).
+See `.env.example` for the full list. `POSTGRES_URL` is **required** in production: PGlite's
+per-instance storage does not persist across serverless cold starts, so the app refuses to boot
+without it rather than serving a deployment whose clinical records vanish on the next restart.
+`PGLITE_DIR=memory://` is refused in production too, unless a test harness also sets
+`ALLOW_EPHEMERAL_DB=1` — that pair exists so CI can run a production build against a throwaway
+database, and must never appear in a real deployment's environment.
+
+Before going live, prove the database end of it against the real connection string:
+
+```sh
+POSTGRES_URL='postgresql://…' scripts/postgres-durability.sh
+```
+
+It files a note, restarts the server, and confirms the record is still there. `scripts/stability-battery.sh`
+runs every end-to-end probe against freshly booted servers (pass a repeat count to hunt flakes).
 
 ## Keep it current
 

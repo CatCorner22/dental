@@ -25,6 +25,10 @@ COMMON_ENV=(
   ADMIN_USERNAME=smokeadmin
   ADMIN_PASSWORD=smoke-pass-12345
   PGLITE_DIR=memory://
+  # `next start` is a production build, and production refuses an in-memory
+  # database without this deliberate opt-in. A harness can say so explicitly;
+  # an operator pasting env vars never types it by accident.
+  ALLOW_EPHEMERAL_DB=1
   MFA_ENABLED=1
 )
 # The output artery needs a mail sink target and the assist switches; the probe
@@ -85,7 +89,7 @@ for round in $(seq 1 "$REPEATS"); do
   # First boot wants an EMPTY deployment: no seeded admin, its own port.
   printf '%-26s ' "setup.firstboot"
   stop_server
-  env AUTH_SECRET=battery-secret-not-a-real-one PGLITE_DIR=memory:// \
+  env AUTH_SECRET=battery-secret-not-a-real-one PGLITE_DIR=memory:// ALLOW_EPHEMERAL_DB=1 \
     nohup npx next start -p 3101 > "$LOG_DIR/server-firstboot.log" 2>&1 &
   for _ in $(seq 1 45); do curl -s -o /dev/null --max-time 2 http://127.0.0.1:3101/ && break; sleep 1; done
   if BASE_URL=http://127.0.0.1:3101 timeout 300 node e2e/setup.firstboot.mjs \

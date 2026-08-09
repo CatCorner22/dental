@@ -14,9 +14,16 @@ describe("resolveDbBackend", () => {
     if (b.kind === "reject") expect(b.reason).toMatch(/POSTGRES_URL/);
   });
 
-  it("allows explicit memory:// PGlite in production for CI smoke", () => {
+  // This case USED to allow memory:// in production on PGLITE_DIR alone, which
+  // is the operator-paste trap. CI and the local battery now declare
+  // ALLOW_EPHEMERAL_DB=1; see the two cases at the end of this block.
+  it("allows explicit memory:// PGlite in production for a declared harness", () => {
     expect(
-      resolveDbBackend({ NODE_ENV: "production", PGLITE_DIR: "memory://" })
+      resolveDbBackend({
+        NODE_ENV: "production",
+        PGLITE_DIR: "memory://",
+        ALLOW_EPHEMERAL_DB: "1"
+      })
     ).toEqual({ kind: "pglite", dir: "memory://" });
   });
 
@@ -48,6 +55,37 @@ describe("resolveDbBackend", () => {
       kind: "pglite",
       dir: "memory://"
     });
+  });
+
+  // The one-line paste that would have shipped a self-wiping deployment: this
+  // repo's own .env.local carries PGLITE_DIR=memory://, and production used to
+  // accept it — every isolate holding its own empty database, cleared on each
+  // cold start, while the app looked perfectly healthy.
+  it("refuses an in-memory database in production without a deliberate opt-in", () => {
+    const got = resolveDbBackend({ NODE_ENV: "production", PGLITE_DIR: "memory://" });
+    expect(got.kind).toBe("reject");
+    expect(got.kind === "reject" && got.reason).toMatch(/cold start|POSTGRES_URL/i);
+  });
+
+  it("allows an in-memory database in production only for a harness that says so", () => {
+    expect(
+      resolveDbBackend({
+        NODE_ENV: "production",
+        PGLITE_DIR: "memory://",
+        ALLOW_EPHEMERAL_DB: "1"
+      })
+    ).toEqual({ kind: "pglite", dir: "memory://" });
+  });
+
+  it("still prefers POSTGRES_URL over any ephemeral opt-in", () => {
+    expect(
+      resolveDbBackend({
+        NODE_ENV: "production",
+        PGLITE_DIR: "memory://",
+        ALLOW_EPHEMERAL_DB: "1",
+        POSTGRES_URL: "postgres://h/db"
+      })
+    ).toEqual({ kind: "postgres", url: "postgres://h/db" });
   });
 });
 

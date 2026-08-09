@@ -136,6 +136,19 @@ async function build(): Promise<Db> {
     return db;
   }
 
+  // An ephemeral database in a production build is only ever a test harness
+  // (resolveDbBackend demands ALLOW_EPHEMERAL_DB=1 to get here). Say so on
+  // every boot anyway: if this line ever appears in a real deployment's logs,
+  // it is the only warning anyone will get before the next cold start takes
+  // the clinical records with it.
+  if (process.env.NODE_ENV === "production" && backend.dir === "memory://") {
+    console.error(
+      "[db] EPHEMERAL DATABASE — production build running on an in-memory store. " +
+        "Every record is lost on restart. This is only valid for tests; a real " +
+        "deployment must set POSTGRES_URL."
+    );
+  }
+
   const { PGlite } = await import("@electric-sql/pglite");
   // Vercel's serverless FS is read-only except /tmp. A relative `.data/pglite`
   // mkdir fails with ENOENT and takes login down with it. Prefer an explicit

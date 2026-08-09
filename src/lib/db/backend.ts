@@ -19,10 +19,29 @@ export function resolveDbBackend(
 
   if (env.NODE_ENV === "production") {
     const explicitDir = env.PGLITE_DIR?.trim();
-    // CI cross-browser smoke runs `next start` with PGLITE_DIR=memory:// on
-    // purpose. Allow only that explicit in-memory path — not Vercel /tmp.
-    if (explicitDir === "memory://") {
+    // THE EPHEMERAL ESCAPE HATCH NEEDS TWO HANDS ON IT.
+    //
+    // CI's smoke tests and the local e2e battery legitimately run `next start`
+    // (which sets NODE_ENV=production) against an in-memory database. But
+    // `PGLITE_DIR=memory://` alone used to be enough, and that is a one-line
+    // paste away from a catastrophe: this repo's own .env.local carries that
+    // exact line, and an operator who copies their working local env into the
+    // Vercel dashboard gets a deployment that looks perfectly healthy — logins
+    // work, notes save, history renders — while every isolate holds its own
+    // empty database that is wiped on the next cold start. Silent, total,
+    // ongoing loss of clinical records.
+    //
+    // A test harness can afford to say so explicitly. An operator pasting env
+    // vars never types ALLOW_EPHEMERAL_DB=1 by accident.
+    if (explicitDir === "memory://" && env.ALLOW_EPHEMERAL_DB === "1") {
       return { kind: "pglite", dir: explicitDir };
+    }
+    if (explicitDir === "memory://") {
+      return {
+        kind: "reject",
+        reason:
+          "PGLITE_DIR=memory:// in production would give every instance its own empty database, wiped on each cold start — clinical records would disappear silently. Set POSTGRES_URL. (Test harnesses that really do want a throwaway database must also set ALLOW_EPHEMERAL_DB=1.)"
+      };
     }
     return {
       kind: "reject",

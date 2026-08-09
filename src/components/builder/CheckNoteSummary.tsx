@@ -1,7 +1,7 @@
 "use client";
 
 import type { AuditFinding } from "@/lib/audit/types";
-import { SEVERITY_CHIP, SEVERITY_LABELS } from "@/lib/audit/types";
+import { SEVERITY_CHIP, SEVERITY_LABELS, SEVERITY_SHAPE } from "@/lib/audit/types";
 import { killerShortLabel } from "@/lib/audit/killers";
 import type { CheckNoteSummary as Summary } from "@/lib/status/checkNoteSummary";
 
@@ -35,18 +35,15 @@ export function jumpToFindingField(finding: AuditFinding, beforeJump?: () => voi
  * Check-your-note body for Copy confirm and Submit dialog.
  *
  * One job: make killer items and open stops visible before the irreversible
- * handoff. Does not invent clinical facts. Does not auto-apply fixes.
+ * handoff. Open killers hard-block — no checkbox escape. Does not invent
+ * clinical facts. Does not auto-apply fixes.
  */
 export function CheckNoteSummaryPanel({
   summary,
-  killersAcknowledged,
-  onKillersAcknowledged,
   onChangeFinding,
   compact
 }: {
   summary: Summary;
-  killersAcknowledged: boolean;
-  onKillersAcknowledged: (acked: boolean) => void;
   /** Change link: jump to field, or fall back (e.g. open audit) when no fieldRef. */
   onChangeFinding: (finding: AuditFinding) => void;
   /** Tighter padding for the Copy aside strip. */
@@ -63,9 +60,9 @@ export function CheckNoteSummaryPanel({
       data-testid="check-note-summary"
     >
       <p className={`mb-1 font-semibold text-amber-950 ${text}`}>Check your note</p>
-      <p className={`mb-2 text-amber-950/90 ${compact ? "text-[0.7rem]" : "text-xs"}`}>
-        Before this leaves Smile Notes — modules, litigation-sensitive gaps, and open stops.
-        Change opens the field; nothing here invents a clinical fact.
+      <p className={`mb-2 text-amber-950/90 ${compact ? "text-xs" : "text-xs"}`}>
+        Fix litigation gaps and open stops before handoff. Change opens the field —
+        nothing here invents a clinical fact.
       </p>
 
       {summary.moduleTitles.length > 0 && (
@@ -84,15 +81,16 @@ export function CheckNoteSummaryPanel({
             >
               <div className="min-w-0">
                 <span
-                  className={`mr-1 inline-block rounded px-1 py-px text-[0.65rem] font-semibold ${SEVERITY_CHIP[f.severity]}`}
+                  className={`mr-1 inline-block rounded px-1.5 py-0.5 text-xs font-semibold ${SEVERITY_CHIP[f.severity]}`}
                 >
+                  <span aria-hidden="true">{SEVERITY_SHAPE[f.severity]} </span>
                   {SEVERITY_LABELS[f.severity]}
                 </span>
                 <span className={`font-medium text-slate-900 ${text}`}>
                   {killerShortLabel(f.ruleId)}
                 </span>
                 {f.suggestion && (
-                  <p className={`mt-0.5 text-slate-600 ${compact ? "text-[0.65rem]" : "text-xs"}`}>
+                  <p className={`mt-0.5 text-slate-600 ${compact ? "text-xs" : "text-sm"}`}>
                     {f.suggestion}
                   </p>
                 )}
@@ -132,7 +130,7 @@ export function CheckNoteSummaryPanel({
             </li>
           ))}
           {summary.openStops.length > 5 && (
-            <li className={`text-slate-600 ${compact ? "text-[0.65rem]" : "text-xs"}`}>
+            <li className={`text-slate-600 ${compact ? "text-xs" : "text-xs"}`}>
               +{summary.openStops.length - 5} more in the audit panel
             </li>
           )}
@@ -154,23 +152,15 @@ export function CheckNoteSummaryPanel({
         </p>
       )}
 
-      {summary.requiresKillerAck && (
-        <label className={`flex items-start gap-2 text-amber-950 ${text}`}>
-          <input
-            type="checkbox"
-            className="mt-0.5"
-            checked={killersAcknowledged}
-            onChange={(e) => onKillersAcknowledged(e.target.checked)}
-            data-testid="check-note-killer-ack"
-          />
-          <span>
-            I reviewed the litigation-sensitive items above
-            {summary.killers.some((k) => !k.fieldRef)
-              ? " (use Change, or fix them in the visit narrative / audit panel)"
-              : ""}
-            .
-          </span>
-        </label>
+      {summary.killersBlockHandoff && (
+        <p
+          className={`rounded border border-rose-400/80 bg-rose-50 px-2 py-1.5 font-medium text-rose-950 ${compact ? "text-xs" : "text-sm"}`}
+          role="status"
+          data-testid="check-note-killers-block"
+        >
+          Copy and File are locked until every litigation-sensitive gap above is
+          fixed. There is no checkbox bypass.
+        </p>
       )}
     </div>
   );

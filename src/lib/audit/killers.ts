@@ -3,10 +3,12 @@ import type { AuditFinding } from "./types";
 /**
  * Litigation / wrong-site items to hoist at Copy and Submit.
  *
- * This is a UI finish-discipline set, not a new severity. Completeness killers
- * stay S2 (they do not change computeGates). Anatomy wrong-site stays S0.
+ * UI finish-discipline set. Completeness killers are often S2 in the audit
+ * report (severity math unchanged). Honest Finish brutal follow-up: open
+ * killers **hard-block** Copy and File — no checkbox ack escape. Anatomy
+ * wrong-site stays S0 and already hard-blocks via computeGates.
  * Tagging here does not alter stamped AuditFinding shape — no RULESET_VERSION
- * bump (see knowledge/sources/check-your-note-ux-research.md).
+ * bump (product handoff gate, not a new rule).
  *
  * Source: Doctors Company findings/consent/rationale gaps + MedPro sparse
  * operative chart + anatomy S0 wrong-site stops

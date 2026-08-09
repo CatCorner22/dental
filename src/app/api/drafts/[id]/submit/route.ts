@@ -18,6 +18,7 @@ import {
   runAudit,
   visibleText
 } from "@/lib/audit/engine";
+import { isKillerFinding } from "@/lib/audit/killers";
 import { sendSubmissionEmail } from "@/lib/email/sendSubmission";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { slugifyTitle } from "@/lib/tickets/slug";
@@ -179,6 +180,24 @@ export async function POST(req: Request, { params }: Ctx): Promise<Response> {
         findings: report.findings
           .filter((f) => f.severity === "S0" || f.severity === "S1")
           .map((f) => ({ ruleId: f.ruleId, severity: f.severity, message: f.message }))
+      },
+      { status: 422 }
+    );
+  }
+
+  // Honest Finish: litigation killers hard-block File — no checkbox escape.
+  // Severity may still be S2; handoff policy is separate from computeGates.
+  const openKillers = report.findings.filter(isKillerFinding);
+  if (openKillers.length > 0) {
+    return Response.json(
+      {
+        error:
+          "Litigation-sensitive gaps block filing until fixed. There is no checkbox bypass.",
+        findings: openKillers.map((f) => ({
+          ruleId: f.ruleId,
+          severity: f.severity,
+          message: f.message
+        }))
       },
       { status: 422 }
     );

@@ -9,7 +9,7 @@ const cleanCheckNote: CheckNoteSummary = {
   killers: [],
   openStops: [],
   omissionCount: 0,
-  requiresKillerAck: false
+  killersBlockHandoff: false
 };
 
 const sparseCheckNote: CheckNoteSummary = {
@@ -24,17 +24,15 @@ const sparseCheckNote: CheckNoteSummary = {
   ],
   openStops: [],
   omissionCount: 0,
-  requiresKillerAck: true
+  killersBlockHandoff: true
 };
 
-function renderSubmit(checkNote: CheckNoteSummary = cleanCheckNote, killersAcknowledged = false) {
+function renderSubmit(checkNote: CheckNoteSummary = cleanCheckNote) {
   return render(
     <SubmitDialog
       draftId="d1"
       phiOverrideReason={null}
       checkNote={checkNote}
-      killersAcknowledged={killersAcknowledged}
-      onKillersAcknowledged={() => {}}
       onChangeFinding={() => {}}
       onClose={() => {}}
       onFiled={() => {}}
@@ -123,7 +121,7 @@ describe("SubmitDialog — Check your note killer gate", () => {
     vi.restoreAllMocks();
   });
 
-  it("disables Submit while litigation killers are unacknowledged", async () => {
+  it("keeps Submit disabled while litigation killers remain open (no checkbox escape)", async () => {
     vi.stubGlobal(
       "fetch",
       vi.fn((url: string) => {
@@ -136,33 +134,13 @@ describe("SubmitDialog — Check your note killer gate", () => {
       })
     );
 
-    renderSubmit(sparseCheckNote, false);
+    renderSubmit(sparseCheckNote);
     expect(await screen.findByText(/Anesthetic amount missing/i)).toBeTruthy();
+    expect(screen.getByTestId("check-note-killers-block")).toBeTruthy();
     await waitFor(() => {
       expect(
         (screen.getByRole("button", { name: /Submit note/i }) as HTMLButtonElement).disabled
       ).toBe(true);
-    });
-  });
-
-  it("enables Submit after killer acknowledgment", async () => {
-    vi.stubGlobal(
-      "fetch",
-      vi.fn((url: string) => {
-        if (String(url).includes("submit-config")) {
-          return Promise.resolve(
-            new Response(JSON.stringify({ emailConfigured: true }), { status: 200 })
-          );
-        }
-        return Promise.reject(new Error(`unexpected ${url}`));
-      })
-    );
-
-    renderSubmit(sparseCheckNote, true);
-    await waitFor(() => {
-      expect(
-        (screen.getByRole("button", { name: /Submit note/i }) as HTMLButtonElement).disabled
-      ).toBe(false);
     });
   });
 });

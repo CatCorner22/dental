@@ -164,8 +164,6 @@ export function SubmitDialog({
   draftId,
   phiOverrideReason,
   checkNote,
-  killersAcknowledged,
-  onKillersAcknowledged,
   onChangeFinding,
   onClose,
   onFiled,
@@ -175,8 +173,6 @@ export function SubmitDialog({
   draftId: string;
   phiOverrideReason: string | null;
   checkNote: CheckNoteSummary;
-  killersAcknowledged: boolean;
-  onKillersAcknowledged: (acked: boolean) => void;
   onChangeFinding: (finding: AuditFinding) => void;
   onClose: () => void;
   // Fires the moment the filing succeeds (even if the user stays), so the
@@ -229,7 +225,7 @@ export function SubmitDialog({
   }, []);
 
   const submit = async () => {
-    if (checkNote.requiresKillerAck && !killersAcknowledged) return;
+    if (checkNote.killersBlockHandoff) return;
     setStatus("sending");
     setError("");
     try {
@@ -345,8 +341,6 @@ export function SubmitDialog({
       </p>
       <CheckNoteSummaryPanel
         summary={checkNote}
-        killersAcknowledged={killersAcknowledged}
-        onKillersAcknowledged={onKillersAcknowledged}
         onChangeFinding={onChangeFinding}
       />
       {cap.status === "ready" && !cap.emailConfigured && (
@@ -391,7 +385,7 @@ export function SubmitDialog({
           disabled={
             status === "sending" ||
             cap.status === "loading" ||
-            (checkNote.requiresKillerAck && !killersAcknowledged)
+            checkNote.killersBlockHandoff
           }
           onClick={submit}
         >

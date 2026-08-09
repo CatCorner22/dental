@@ -185,15 +185,14 @@
 [data-contrast="high"] .text-slate-400,
 [data-contrast="high"] .text-slate-500,
 [data-contrast="high"] .text-slate-600 {
-  /* slate-400 on white is 2.9:1 — below the 4.5:1 that normal text needs, and it
-     is what help text and timestamps were rendered in. This is slate-700, which
-     is 10.1:1; src/lib/theme/contrast.test.ts asserts it beats what it replaces. */
-  color: #433e58 !important;
+  /* Must match HIGH_CONTRAST.text in palette.ts (slate-700). */
+  color: #334155 !important;
 }
 [data-contrast="high"] .border-slate-100,
 [data-contrast="high"] .border-slate-200,
 [data-contrast="high"] .border-slate-300 {
-  border-color: #565070 !important;
+  /* Must match HIGH_CONTRAST.border in palette.ts (slate-600). */
+  border-color: #475569 !important;
 }
 [data-contrast="high"] .field-input,
 [data-contrast="high"] .chip,
@@ -206,7 +205,7 @@
 [data-contrast="high"] ::placeholder {
   /* Placeholders were the worst offender: grey-on-white at 11px, holding the
      format hint a writer needs most on their first note. */
-  color: #565070 !important;
+  color: #475569 !important;
   opacity: 1;
 }
 
@@ -316,7 +315,7 @@
      come back up or the surface hierarchy vanishes for the people who most need
      to see it. */
   --tw-ring-opacity: 1;
-  --tw-ring-color: #565070;
+  --tw-ring-color: #475569;
 }
 
 /* Rendered reference markdown */
@@ -497,34 +496,31 @@
 }
 
 /* Touch-target helpers.
-   Driven by `pointer: coarse`, NOT by a width breakpoint. A tablet is 768px
-   wide and driven by a finger, so width-based rules hand it the same 20px
-   targets as a desktop mouse — which is precisely the device a clinician is
-   most likely to be holding. `.tap` is for text-ish controls, `.tap-sq` for
+   Honest Finish co-design: 44×44 is the DEFAULT clinical path — gloves and
+   tremor do not wait for `pointer: coarse`. Coarse media still bumps chip
+   padding/type for comfort. `.tap` is for text-ish controls, `.tap-sq` for
    the square tooth/surface cells where width matters as much as height. */
 .tap,
+.chip {
+  min-height: 44px;
+}
+.tap {
+  display: inline-flex;
+  align-items: center;
+}
 .tap-sq {
-  /* no-op on a mouse; the media query below does the work */
+  min-height: 44px;
+  min-width: 44px;
+}
+.tap-input {
+  min-height: 44px;
+}
+.chip {
+  @apply inline-flex items-center px-3 py-1.5 text-sm;
 }
 @media (pointer: coarse) {
-  .btn,
-  .chip,
-  .tap {
+  .btn {
     min-height: 44px;
-  }
-  .tap {
-    display: inline-flex;
-    align-items: center;
-  }
-  .tap-sq {
-    min-height: 44px;
-    min-width: 44px;
-  }
-  .tap-input {
-    min-height: 44px;
-  }
-  .chip {
-    @apply px-3 py-1.5 text-sm;
   }
 }
 .btn-primary {
@@ -605,7 +601,8 @@ body {
 
 /* The queue-clear starburst. One four-point spark that pops when the andon
    goes green — the moment worth celebrating is the CLEAN note, and it earns
-   exactly one sparkle. Respects prefers-reduced-motion via the global rule. */
+   exactly one sparkle. Under prefers-reduced-motion: NO transform (a11y
+   co-design) — duration shrink alone still moves the control under a glove. */
 @keyframes sparkle-pop {
   0% {
     transform: scale(0) rotate(0deg);
@@ -623,6 +620,13 @@ body {
 .sparkle-pop {
   display: inline-block;
   animation: sparkle-pop 0.5s ease-out both;
+}
+@media (prefers-reduced-motion: reduce) {
+  .sparkle-pop {
+    animation: none;
+    transform: none;
+    opacity: 1;
+  }
 }
 
 /* Print.

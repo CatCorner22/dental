@@ -54,18 +54,18 @@ describe("when dictation is set up", () => {
   it("offers no setup prompt to somebody who has already done it", () => {
     setEnvironment();
     renderField(USER({ enrolled: true }));
-    expect(screen.queryByRole("link", { name: /set up dictation/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /set up dictation here/i })).toBeNull();
   });
 });
 
 describe("when it is not set up yet", () => {
-  it("says so, and says where to go", () => {
-    // The whole point. Silence here was indistinguishable from the feature
-    // not existing.
+  it("offers inline setup here — not an Account pilgrimage", () => {
+    // Honest Finish / RSI hate: leaving the note mid-chair to enroll was the
+    // discovery hole. Silence was worse; /account-only was the next failure.
     setEnvironment();
     renderField(USER());
-    const link = screen.getByRole("link", { name: /set up dictation/i });
-    expect(link.getAttribute("href")).toBe("/account");
+    expect(screen.getByRole("button", { name: /set up dictation here/i })).toBeTruthy();
+    expect(screen.queryByRole("link", { name: /set up dictation/i })).toBeNull();
   });
 
   it("says how long it takes, because that is the question", () => {
@@ -79,7 +79,7 @@ describe("when it is not set up yet", () => {
     // has spent its whole redesign removing.
     setEnvironment();
     renderField(USER(), false);
-    expect(screen.queryByRole("link", { name: /set up dictation/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /set up dictation here/i })).toBeNull();
   });
 });
 
@@ -137,7 +137,7 @@ describe("the sentence goes away, the button does not", () => {
   it("drops the setup offer from a box that has words but no cursor", () => {
     setEnvironment();
     renderField(USER(), true, false);
-    expect(screen.queryByRole("link", { name: /set up dictation/i })).toBeNull();
+    expect(screen.queryByRole("button", { name: /set up dictation here/i })).toBeNull();
   });
 
   it("drops the cannot-do-this explanation there too", () => {

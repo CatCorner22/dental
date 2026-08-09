@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
 import {
+  clearAllDraftBackups,
   clearDraftBackup,
   readLatestDraftBackup,
   writeDraftBackup
@@ -93,5 +94,23 @@ describe("draftBackup (localStorage fallback)", () => {
     await clearDraftBackup("a");
     expect(await readLatestDraftBackup("a")).toBeNull();
     expect((await readLatestDraftBackup("b"))?.title).toBe("B");
+  });
+
+  it("clearAllDraftBackups wipes every local mirror (shared-tablet sign-out)", async () => {
+    await writeDraftBackup("a", {
+      note,
+      title: "A",
+      officeId: null,
+      at: 1
+    });
+    await writeDraftBackup("b", {
+      note: { selectedModuleIds: [], values: {} },
+      title: "B",
+      officeId: null,
+      at: 2
+    });
+    await clearAllDraftBackups();
+    expect(await readLatestDraftBackup("a")).toBeNull();
+    expect(await readLatestDraftBackup("b")).toBeNull();
   });
 });

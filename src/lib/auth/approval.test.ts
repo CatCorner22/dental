@@ -23,8 +23,8 @@ describe("checkFilingAuthority", () => {
     const n = note(["sedation-anesthesia"]);
     const verdict = checkFilingAuthority("hygienist", activeModules(n.selectedModuleIds), n);
     expect(verdict.allowed).toBe(false);
-    expect(verdict.message).toMatch(/Transfer the draft to the dentist/);
-    expect(verdict.message).toMatch(/Nothing you wrote is lost/);
+    expect(verdict.message).toMatch(/Transfer ownership/i);
+    expect(verdict.message).toMatch(/dentist/i);
   });
 
   it("an assistant cannot file a robotic-surgery record", () => {
@@ -48,7 +48,8 @@ describe("checkFilingAuthority", () => {
     });
     const verdict = checkFilingAuthority("hygienist", activeModules(n.selectedModuleIds), n);
     expect(verdict.allowed).toBe(false);
-    expect(verdict.message).toMatch(/dentist's judgment|dentist files/i);
+    expect(verdict.message).toMatch(/Dentist must file/i);
+    expect(verdict.message).toMatch(/Transfer ownership/i);
   });
 
   it("a filled plan field makes the note dentist-filed", () => {

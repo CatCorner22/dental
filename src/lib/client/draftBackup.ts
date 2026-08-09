@@ -187,3 +187,36 @@ export async function clearDraftBackup(draftId: string): Promise<void> {
     db.close();
   }
 }
+
+/**
+ * Wipe every local draft mirror on this device.
+ *
+ * Honest Finish / IT co-design: shared tablets must not leave the prior
+ * author's note recoverable after sign-out. Best-effort; never throws.
+ */
+export async function clearAllDraftBackups(): Promise<void> {
+  try {
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k && k.startsWith("smile-notes.draft-backup.")) keys.push(k);
+    }
+    for (const k of keys) localStorage.removeItem(k);
+  } catch {
+    /* ignore */
+  }
+  const db = await openDb();
+  if (!db) return;
+  try {
+    const tx = db.transaction(STORE, "readwrite");
+    tx.objectStore(STORE).clear();
+    await new Promise<void>((resolve, reject) => {
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error ?? new Error("IndexedDB clear failed"));
+    });
+  } catch {
+    /* ignore */
+  } finally {
+    db.close();
+  }
+}

@@ -14,14 +14,18 @@
 // Daylight chart (2026-08-08 market stakeholder panels): warm paper ground,
 // space navy ink, note blue interactive, check-teal complete — not lilac /
 // AI-purple SaaS chrome. See knowledge/sources/market-ux-stakeholder-panels.md.
+//
+// Severity fills (2026-08-09 color-theory digest): luminance ladder + violet
+// Style + bluish-green clear — hue is never the only channel (shapes/words
+// still required). See knowledge/sources/color-theory-uiux.md.
 
 /** Brand chrome. Daylight clinical instrument — navy / blue / teal on paper. */
 export const BRAND = {
   /**
-   * Page ground — warm paper with enough luminance gap from white cards.
-   * Slightly deeper than docs/brand.md `#FBF7EF` so cards do not read flat.
+   * Page ground — cooler Daylight paper (less yellow fog under operatory LEDs)
+   * while keeping enough luminance gap from white cards.
    */
-  cream: "#F7F2E8",
+  cream: "#F3F1EB",
   /** Ink: headings, the active nav pill, the top stop of the primary button. */
   navy: "#1E3A5F",
   /** Interactive: links, the bottom stop of the primary button, focus. */
@@ -33,6 +37,59 @@ export const BRAND = {
   teal: "#0F766E",
   /** The one surviving warm accent — the celebration star. */
   gold: "#F2CE4B"
+} as const;
+
+/**
+ * Audit / Andon severity fills — third channel beside shape + word.
+ *
+ * Chip fills for S0→S1→S2 are monotonic in relative luminance so grayscale
+ * (and deuteranopia) still ranks urgency. Style is violet (not brand blue).
+ * Clear is bluish emerald (Okabe-style separation from vermillion Stop).
+ */
+export const SEVERITY_COLOR = {
+  stop: {
+    fill: "#9B1C1C",
+    soft: "#FEF2F2",
+    ink: "#7F1D1D",
+    rail: "#B91C1C",
+    onFill: "#FFFFFF"
+  },
+  required: {
+    fill: "#C2410C",
+    soft: "#FFF7ED",
+    ink: "#9A3412",
+    rail: "#EA580C",
+    onFill: "#FFFFFF"
+  },
+  review: {
+    fill: "#D97706",
+    soft: "#FFFBEB",
+    ink: "#1C1917",
+    rail: "#D97706",
+    onFill: "#1C1917"
+  },
+  style: {
+    fill: "#6D28D9",
+    soft: "#F5F3FF",
+    ink: "#5B21B6",
+    rail: "#7C3AED",
+    onFill: "#FFFFFF"
+  },
+  info: {
+    fill: "#475569",
+    soft: "#F8FAFC",
+    ink: "#334155",
+    rail: "#64748B",
+    onFill: "#FFFFFF"
+  },
+  /** Audit-clear / Ready — not brand Copy-teal, not lime-on-red traffic green. */
+  clear: {
+    fill: "#047857",
+    soft: "#ECFDF5",
+    ink: "#065F46",
+    rail: "#059669",
+    onFill: "#FFFFFF"
+  }
 } as const;
 
 /**
@@ -59,7 +116,7 @@ export const SLATE = {
   900: "#0F172A"
 } as const;
 
-/** The two hexes the high-contrast block in globals.css hardcodes. */
+/** The two hexes the high-contrast block in globals.css must mirror. */
 export const HIGH_CONTRAST = {
   /** Replaces text-slate-400/500/600 when [data-contrast="high"]. */
   text: SLATE[700],

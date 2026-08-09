@@ -45,9 +45,9 @@ const LINES: Record<SparkleContext, string[]> = {
     "Sparkle says: that ticket is officially on the books."
   ],
   firstPass: [
-    "Sparkle says: first-pass clean — the whole team feels that!",
-    "Sparkle says: zero flags. Absolutely gleaming.",
-    "Sparkle says: spotless note. The streak lives on!",
+    "Sparkle says: first-pass clean — the next reader feels that.",
+    "Sparkle says: zero flags on this pass. Gleaming.",
+    "Sparkle says: spotless note. Nothing left open.",
     "Sparkle says: clean on the first try — the next reader thanks you."
   ],
   empty: [

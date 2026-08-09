@@ -7,9 +7,11 @@ import type { OmissionReport } from "@/lib/audit/omissions";
  * Finish-gate checklist for Copy / Submit — GOV.UK check-answers style.
  *
  * Pure: does not mutate the report, does not invent clinical facts, does not
- * change computeGates. Killers stay hoistable even when they are only S2.
+ * change computeGates severity math. Open litigation killers hard-block
+ * handoff (Honest Finish brutal follow-up) — no checkbox escape.
  *
- * See knowledge/sources/check-your-note-ux-research.md.
+ * See knowledge/sources/check-your-note-ux-research.md and
+ * knowledge/sources/adversarial-hate-codesign.md.
  */
 export interface CheckNoteModuleRef {
   id: string;
@@ -18,12 +20,13 @@ export interface CheckNoteModuleRef {
 
 export interface CheckNoteSummary {
   moduleTitles: string[];
-  /** Litigation / wrong-site items — shown first, require ack when any open. */
+  /** Litigation / wrong-site items — shown first; block Copy/File until cleared. */
   killers: AuditFinding[];
   /** S0/S1 that are not already in killers (required.missing, PHI, etc.). */
   openStops: AuditFinding[];
   omissionCount: number;
-  requiresKillerAck: boolean;
+  /** True when open killers hard-block Copy and File. */
+  killersBlockHandoff: boolean;
 }
 
 function severityRank(s: Severity): number {
@@ -62,6 +65,6 @@ export function buildCheckNoteSummary(args: {
     killers,
     openStops,
     omissionCount: args.omissions.licensed,
-    requiresKillerAck: killers.length > 0
+    killersBlockHandoff: killers.length > 0
   };
 }

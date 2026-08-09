@@ -18,7 +18,7 @@ const cleanSummary: CheckNoteSummary = {
   killers: [],
   openStops: [],
   omissionCount: 0,
-  requiresKillerAck: false
+  killersBlockHandoff: false
 };
 
 const sparseSummary: CheckNoteSummary = {
@@ -26,49 +26,43 @@ const sparseSummary: CheckNoteSummary = {
   killers: [anestheticKiller],
   openStops: [],
   omissionCount: 0,
-  requiresKillerAck: true
+  killersBlockHandoff: true
 };
 
 describe("CheckNoteSummaryPanel — finish gate", () => {
-  it("MedPro-sparse note shows killer and requires ack checkbox", () => {
-    const onAck = vi.fn();
+  it("MedPro-sparse note shows killers and hard-blocks handoff (no checkbox escape)", () => {
     render(
-      <CheckNoteSummaryPanel
-        summary={sparseSummary}
-        killersAcknowledged={false}
-        onKillersAcknowledged={onAck}
-        onChangeFinding={() => {}}
-      />
+      <CheckNoteSummaryPanel summary={sparseSummary} onChangeFinding={() => {}} />
     );
     expect(screen.getByText(/Anesthetic amount missing/i)).toBeTruthy();
-    expect(screen.getByTestId("check-note-killer-ack")).toBeTruthy();
+    expect(screen.getByTestId("check-note-killers-block")).toBeTruthy();
+    expect(screen.queryByTestId("check-note-killer-ack")).toBeNull();
+    expect(screen.getByText(/no checkbox bypass/i)).toBeTruthy();
     expect(screen.getByText(/Universal Core · Preventive/)).toBeTruthy();
   });
 
   it("Change fires for a killer without inventing clinical content", () => {
     const onChange = vi.fn();
     render(
-      <CheckNoteSummaryPanel
-        summary={sparseSummary}
-        killersAcknowledged={false}
-        onKillersAcknowledged={() => {}}
-        onChangeFinding={onChange}
-      />
+      <CheckNoteSummaryPanel summary={sparseSummary} onChangeFinding={onChange} />
     );
     fireEvent.click(screen.getByRole("button", { name: /^Change$/i }));
     expect(onChange).toHaveBeenCalledWith(anestheticKiller);
   });
 
-  it("clean note has no killer ack checkbox", () => {
+  it("shows severity shape glyphs with labels (CVD channel)", () => {
     render(
-      <CheckNoteSummaryPanel
-        summary={cleanSummary}
-        killersAcknowledged={false}
-        onKillersAcknowledged={() => {}}
-        onChangeFinding={() => {}}
-      />
+      <CheckNoteSummaryPanel summary={sparseSummary} onChangeFinding={() => {}} />
     );
-    expect(screen.queryByTestId("check-note-killer-ack")).toBeNull();
+    expect(screen.getByText(/◆/)).toBeTruthy();
+    expect(screen.getByText(/^Review$/)).toBeTruthy();
+  });
+
+  it("clean note has no killer hard-block banner", () => {
+    render(
+      <CheckNoteSummaryPanel summary={cleanSummary} onChangeFinding={() => {}} />
+    );
+    expect(screen.queryByTestId("check-note-killers-block")).toBeNull();
     expect(screen.getByText(/No litigation-sensitive gaps/i)).toBeTruthy();
   });
 });

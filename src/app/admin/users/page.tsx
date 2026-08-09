@@ -1,5 +1,6 @@
 import { isClinicalRole } from "@/lib/auth/clinicalRoles";
 import { redirect } from "next/navigation";
+import { mfaFeatureEnabled } from "@/lib/auth/mfaFeature";
 import { canManageUsers, canSendResetLink } from "@/lib/auth/roles";
 import { freshSessionUser } from "@/lib/auth/freshUser";
 import { getDb } from "@/lib/db/client";
@@ -28,6 +29,7 @@ export default async function AdminUsersPage() {
     <UserAdmin
       selfId={user.id}
       selfRole={user.role}
+      mfaFeatureOn={mfaFeatureEnabled()}
       offices={offices.map((o) => ({ id: o.id, name: o.name }))}
       users={users.map((u) => ({
         id: u.id,
@@ -37,6 +39,11 @@ export default async function AdminUsersPage() {
         active: u.active,
         officeIds: assignments.get(u.id) ?? [],
         clinicalRole: isClinicalRole(u.clinicalRole) ? u.clinicalRole : "unset",
+        // A BOOLEAN, never the secret. The screen only needs to know whether
+        // there is a factor to clear; a half-finished enrollment (secret
+        // stored, not yet confirmed) counts, because it too blocks a clean
+        // re-enrollment after a lost device.
+        mfaArmed: u.mfaEnabled || u.mfaSecret !== null,
         // Mirrors the rule in GET /api/admin/users: an address is the delivery
         // target for an account takeover, so it is only sent to a viewer who is
         // allowed to mail a reset link there anyway.

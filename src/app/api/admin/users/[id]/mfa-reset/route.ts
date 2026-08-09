@@ -25,6 +25,21 @@ export async function POST(_req: Request, { params }: Ctx): Promise<Response> {
     );
   }
   const { id } = await params;
+  // Never self. Turning MFA off normally DEMANDS a current code, precisely so
+  // a walked-away-unlocked screen cannot strip the account's second factor —
+  // and this route with a self-target was a code-free bypass of that exact
+  // control on the most powerful account in the system. Another Developer can
+  // still reset it, which also makes the audit trail's "who did it" a second
+  // person by construction.
+  if (id === guard.user.id) {
+    return Response.json(
+      {
+        error:
+          "You cannot reset your own two-factor authentication from here. Turn it off with a current code in Account settings, or ask another Smile Notes Developer."
+      },
+      { status: 403 }
+    );
+  }
   const db = await getDb();
   const target = await getUserById(db, id);
   if (!target) return Response.json({ error: "Not found." }, { status: 404 });

@@ -47,6 +47,9 @@ interface Row {
   // simply a fact about the rota.
   officeIds: string[];
   clinicalRole: ClinicalRole;
+  // Whether the account holds a second factor (enrolled OR half-enrolled) —
+  // a boolean derived server-side; the secret itself never reaches this screen.
+  mfaArmed?: boolean;
 }
 
 const ROLES: Role[] = ["readonly", "user", "lead", "manager", "admin"];
@@ -71,9 +74,10 @@ interface Perms {
   clinicalRoleOptions: ClinicalRole[];
   showMerge: boolean;
   showDelete: boolean;
+  showMfaReset: boolean;
 }
 
-function permsFor(u: Row, selfId: string, selfRole: Role): Perms {
+function permsFor(u: Row, selfId: string, selfRole: Role, mfaFeatureOn = false): Perms {
   const isSelf = u.id === selfId;
   const roleOptions = ROLES.filter((r) => r === u.role || canAssignRole(selfRole, u.role, r));
   return {
@@ -110,7 +114,14 @@ function permsFor(u: Row, selfId: string, selfRole: Role): Perms {
         : []
     ),
     showMerge: !isSelf && u.active && canMergeUsers(selfRole, u.role),
-    showDelete: !isSelf && canDeleteUser(selfRole, u.role)
+    showDelete: !isSelf && canDeleteUser(selfRole, u.role),
+    // The lost-device path (MfaSettings promises "a Smile Notes Developer can
+    // reset MFA for your account" — this is where that happens). Developer
+    // only, same bar as the API; never self, because turning off one's OWN
+    // factor rightly demands a current code in Account settings; and only
+    // when there is actually a factor to clear while the deployment offers
+    // MFA at all.
+    showMfaReset: !isSelf && canSetPasswordDirectly(selfRole) && mfaFeatureOn && Boolean(u.mfaArmed)
   };
 }
 
@@ -122,7 +133,8 @@ function hasActions(p: Perms): boolean {
     p.showSetPassword ||
     p.showContact ||
     p.showMerge ||
-    p.showDelete
+    p.showDelete ||
+    p.showMfaReset
   );
 }
 
@@ -135,6 +147,7 @@ interface RowHandlers {
   onOffices: (row: Row) => void;
   onClinicalRole: (row: Row, role: ClinicalRole) => void;
   onMerge: (row: Row) => void;
+  onMfaReset: (row: Row) => void;
 }
 
 function StatusPill({ active }: { active: boolean }) {
@@ -277,6 +290,14 @@ function RowActions({
           Merge away
         </button>
       )}
+      {perms.showMfaReset && (
+        <button
+          className="tap rounded px-2 text-brand-blue hover:underline"
+          onClick={() => handlers.onMfaReset(user)}
+        >
+          Reset MFA
+        </button>
+      )}
       {perms.showDelete && (
         <button
           className="tap rounded px-2 text-rose-700 hover:underline"
@@ -313,12 +334,14 @@ export function UserAdmin({
   users,
   selfId,
   selfRole,
-  offices
+  offices,
+  mfaFeatureOn = false
 }: {
   users: Row[];
   selfId: string;
   selfRole: Role;
   offices: { id: string; name: string }[];
+  mfaFeatureOn?: boolean;
 }) {
   const router = useRouter();
   const [showAdd, setShowAdd] = useState(false);
@@ -327,6 +350,7 @@ export function UserAdmin({
   const [mergeFrom, setMergeFrom] = useState<Row | null>(null);
   const [contactFor, setContactFor] = useState<Row | null>(null);
   const [officesFor, setOfficesFor] = useState<Row | null>(null);
+  const [mfaResetFor, setMfaResetFor] = useState<Row | null>(null);
   const [error, setError] = useState("");
   const [notice, setNotice] = useState("");
 
@@ -364,7 +388,8 @@ export function UserAdmin({
     onOffices: setOfficesFor,
     onClinicalRole: (row: Row, clinicalRole: ClinicalRole) =>
       void patch(row.id, { clinicalRole }),
-    onMerge: setMergeFrom
+    onMerge: setMergeFrom,
+    onMfaReset: setMfaResetFor
   };
 
   return (
@@ -401,7 +426,7 @@ export function UserAdmin({
           was unreachable without discovering a swipe nothing hinted at. */}
       <ul className="space-y-2 sm:hidden">
         {users.map((u) => {
-          const perms = permsFor(u, selfId, selfRole);
+          const perms = permsFor(u, selfId, selfRole, mfaFeatureOn);
           return (
             <li key={u.id} className="card p-3">
               <div className="flex flex-wrap items-center justify-between gap-2">
@@ -439,7 +464,7 @@ export function UserAdmin({
           </thead>
           <tbody>
             {users.map((u) => {
-              const perms = permsFor(u, selfId, selfRole);
+              const perms = permsFor(u, selfId, selfRole, mfaFeatureOn);
               return (
                 <tr key={u.id} className="border-b border-slate-100 last:border-0">
                   <td className="px-3 py-2 font-mono">{u.username}</td>
@@ -547,7 +572,74 @@ export function UserAdmin({
           }}
         />
       )}
+      {mfaResetFor && (
+        <MfaResetDialog
+          row={mfaResetFor}
+          onClose={() => setMfaResetFor(null)}
+          onDone={(message) => {
+            setMfaResetFor(null);
+            setNotice(message);
+            router.refresh();
+          }}
+        />
+      )}
     </div>
+  );
+}
+
+// The lost-device path, behind a real confirmation. Clearing a factor is
+// credential-adjacent power (same authority bar as setting a password), so the
+// dialog says exactly what happens and that the action is recorded.
+function MfaResetDialog({
+  row,
+  onClose,
+  onDone
+}: {
+  row: Row;
+  onClose: () => void;
+  onDone: (message: string) => void;
+}) {
+  const [error, setError] = useState("");
+  const [busy, setBusy] = useState(false);
+  const submit = async () => {
+    setBusy(true);
+    setError("");
+    const res = await send(`/api/admin/users/${row.id}/mfa-reset`, { method: "POST" });
+    if (res.ok) {
+      return onDone(
+        `Two-factor authentication was cleared for ${row.username}. They can sign in with their password and re-enroll from Account settings.`
+      );
+    }
+    setError(res.error);
+    setBusy(false);
+  };
+  return (
+    <Dialog title={`Reset MFA — ${row.username}`} onClose={onClose}>
+      <div className="space-y-3">
+        <p className="text-sm text-slate-700">
+          This removes the authenticator-app second factor from{" "}
+          <strong>{row.displayName}</strong>&rsquo;s account — the lost-device path. They will be
+          able to sign in with their password alone until they re-enroll.
+        </p>
+        <p className="rounded border border-amber-300 bg-amber-50 p-2 text-xs text-amber-900">
+          Only do this for a request you can verify came from them. The reset is recorded in the
+          audit log with your name, and they can see it there too.
+        </p>
+        {error && (
+          <p className="text-sm text-red-700" role="alert">
+            {error}
+          </p>
+        )}
+        <div className="flex justify-end gap-2">
+          <button className="btn-secondary" onClick={onClose}>
+            Cancel
+          </button>
+          <button className="btn-primary" disabled={busy} onClick={submit}>
+            {busy ? "Clearing…" : "Clear second factor"}
+          </button>
+        </div>
+      </div>
+    </Dialog>
   );
 }
 

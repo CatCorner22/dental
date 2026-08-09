@@ -13,6 +13,7 @@ import {
 } from "@/lib/db/repo/drafts";
 import { getOffice, officesForPicker } from "@/lib/db/repo/offices";
 import { edrProductShort } from "@/lib/edr/product";
+import { getAssistConfig } from "@/lib/assist/service";
 import { listUsers } from "@/lib/db/repo/users";
 import { formatEasternTime } from "@/lib/tickets/etTime";
 import { BuilderShell } from "@/components/builder/BuilderShell";
@@ -125,6 +126,7 @@ export default async function HomePage() {
         username={user.username}
         dictationEnrolled={user.dictationEnrolled ?? false}
         dictationRegion={user.dictationRegion ?? null}
+        assistEnabled={getAssistConfig().enabled}
         // The one thing the home page does that /note/[id] does not: land the
         // cursor. Time-to-first-editable-field is the metric this whole page
         // exists to move, and it is zero only if something is focused.

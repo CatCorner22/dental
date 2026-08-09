@@ -146,7 +146,27 @@ export const { handlers, auth, signIn, signOut } = NextAuth({
         // same budget as a wrong password and neither is free.
         const chargeFailure = async () => {
           if (!pairKey || !ip) return;
-          await recordFailure(db, pairKey, now, FREE_ATTEMPTS, IP_MAX_LOCK_MS);
+          const pair = await recordFailure(db, pairKey, now, FREE_ATTEMPTS, IP_MAX_LOCK_MS);
+          // The moment the pair CROSSES into locked, say so where a manager
+          // looks. The audit page has carried the "Sign-in locked (too many
+          // attempts)" label since the throttle shipped, but nothing ever
+          // wrote the row — the one event that answers "why can't they sign
+          // in" was invisible. justLocked keeps it to one row per lock, and
+          // only a real, active account is named: an unknown username is
+          // unbounded input (see below) and its lock is attacker noise the
+          // spray row already covers.
+          if (pair.justLocked && user && user.active) {
+            try {
+              await logAction(db, {
+                actorId: null, // a system observation, not the account acting
+                action: "auth.lockout",
+                target: user.username,
+                detail: `${FREE_ATTEMPTS}+ failed sign-ins for this account from one address`
+              });
+            } catch {
+              // Same rule as logAuth: a logging failure must not become an outage.
+            }
+          }
           // The address, metered but NEVER used to refuse. Spraying many
           // usernames from one source is the shape of credential stuffing and a
           // manager should see it — but blocking on this key is precisely the

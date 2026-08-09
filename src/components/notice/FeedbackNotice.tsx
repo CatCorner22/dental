@@ -2,7 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { Dialog } from "@/components/ui/Dialog";
-import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
+import { FEEDBACK_CONFIGURED, FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
 
 // Shown once per browser until dismissed. Login used to clear a sessionStorage
 // key on every sign-in, which re-armed a modal gauntlet before the note —
@@ -23,6 +23,10 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
 
   useEffect(() => {
     if (!enabled) return;
+    // The whole point of this dialog is to hand someone an address. With none
+    // configured (NEXT_PUBLIC_FEEDBACK_EMAIL unset) it would interrupt a
+    // clinician on their first sign-in to offer a dead end.
+    if (!FEEDBACK_CONFIGURED) return;
     let seen = false;
     try {
       seen = localStorage.getItem(SEEN_KEY) === "1";
@@ -62,7 +66,7 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
             <p>
               Send feedback{" "}
               <a
-                href={feedbackMailto()}
+                href={feedbackMailto() ?? undefined}
                 className="rounded font-bold text-amber-900 underline decoration-amber-500 decoration-2 underline-offset-2 hover:bg-amber-200 hover:text-amber-950 focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-amber-700"
               >
                 here
@@ -94,7 +98,7 @@ export function FeedbackNotice({ enabled }: { enabled: boolean }) {
         <button type="button" className="btn-secondary" onClick={dismiss}>
           Not now
         </button>
-        <a href={feedbackMailto()} className="btn-primary text-center" onClick={dismiss}>
+        <a href={feedbackMailto() ?? undefined} className="btn-primary text-center" onClick={dismiss}>
           Send feedback
         </a>
       </div>

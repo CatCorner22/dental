@@ -13,7 +13,10 @@ import { chromium, firefox, webkit } from "playwright";
 const BASE = process.env.BASE_URL || "http://127.0.0.1:3000";
 const USER = process.env.SMOKE_USER || "smokeadmin";
 const PASS = process.env.SMOKE_PASS || "smoke-pass-12345";
-const FEEDBACK_EMAIL = "blakereagan@protonmail.com";
+// Configured per deployment (NEXT_PUBLIC_FEEDBACK_EMAIL, inlined at build).
+// No longer a hardcoded personal address: a clinical tool must not ship one,
+// and this assertion should follow whatever the deployment actually set.
+const FEEDBACK_EMAIL = process.env.NEXT_PUBLIC_FEEDBACK_EMAIL || "feedback@example.test";
 
 const ENGINES = [
   ["chromium", chromium],

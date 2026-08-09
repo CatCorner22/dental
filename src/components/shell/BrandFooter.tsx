@@ -1,5 +1,5 @@
 import { APP_NAME, COPYRIGHT, PRIVACY_POLICY } from "@/lib/brand";
-import { FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
+import { FEEDBACK_CONFIGURED, FEEDBACK_EMAIL, feedbackMailto } from "@/lib/feedback";
 import { MarkGlyph } from "@/components/shell/BrandMark";
 
 // The footer carries three things, in descending order of how often someone
@@ -25,16 +25,21 @@ export function BrandFooter() {
       </p>
       {/* The login reminder is dismissible, so the route to the developer has
           to survive it being dismissed. */}
-      <p className="mt-3">
-        Support, upgrade requests, ideas and suggestions, or a bug to report?{" "}
-        <a
-          href={feedbackMailto()}
-          className="tap rounded font-semibold text-brand-blue underline underline-offset-2 hover:text-brand-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
-        >
-          Send feedback
-        </a>{" "}
-        <span className="text-slate-500">({FEEDBACK_EMAIL})</span>
-      </p>
+      {/* Only when the deployment configured an address — see lib/feedback.ts.
+          With none set there is no link and no address on screen, rather than
+          a route to somebody's personal mailbox. */}
+      {FEEDBACK_CONFIGURED && (
+        <p className="mt-3">
+          Support, upgrade requests, ideas and suggestions, or a bug to report?{" "}
+          <a
+            href={feedbackMailto() ?? undefined}
+            className="tap rounded font-semibold text-brand-blue underline underline-offset-2 hover:text-brand-navy focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-brand-blue"
+          >
+            Send feedback
+          </a>{" "}
+          <span className="text-slate-500">({FEEDBACK_EMAIL})</span>
+        </p>
+      )}
       <p className="mt-4 border-t border-slate-200 pt-3 text-slate-500">
         {COPYRIGHT} {PRIVACY_POLICY}
       </p>

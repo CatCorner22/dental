@@ -37,8 +37,21 @@ const subs = (await (await ctx.request.get(`${BASE}/api/submissions?limit=50`)).
 const mine = subs.find((s) => s.ticket === TICKET);
 check(Boolean(mine), `the filed submission survives under its ticket (${TICKET})`);
 check(
-  Boolean(mine) && typeof mine.filename === "string" && mine.filename.includes("durability-check-visit"),
-  `the frozen filename survives (${mine?.filename ?? "none"})`
+  Boolean(mine) && typeof mine.ruleVersion === "string" && mine.ruleVersion.length > 0,
+  `the frozen ruleset stamp survives (${mine?.ruleVersion ?? "none"})`
+);
+
+// The frozen FILENAME — the emailed attachment's name, and the field the
+// history list deliberately omits from its slim projection (see the route:
+// it sends id/ticket/actor/office/time/status/version and nothing else). The
+// CSV export is the app surface that carries it, so read it there rather than
+// going behind the app into Postgres: a row that exists but is unreachable
+// through the app is not a surviving record.
+const csv = await ctx.request.get(`${BASE}/api/export/submissions`);
+const csvText = csv.ok() ? await csv.text() : "";
+check(
+  csvText.includes("durability-check-visit"),
+  `the frozen filename survives into the export (${csv.status()})`
 );
 
 // The open draft — unfinished work is the thing a clinician would lose.

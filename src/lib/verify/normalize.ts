@@ -13,7 +13,7 @@
 // folds the text to one canonical form FIRST and lets every check run against
 // that, rather than teaching each check about Unicode separately.
 
-import { visibleText } from "@/lib/audit/engine";
+import { visibleText } from "@/lib/audit/attestation";
 import { foldDigits } from "@/lib/text/foldDigits";
 
 /**

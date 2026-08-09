@@ -3,7 +3,7 @@ import { SEVERITY_LABELS, statusLabel } from "@/lib/audit/types";
 import type { ModuleDef } from "@/lib/schema/types";
 import { MODULES_BY_ID } from "@/lib/modules";
 import { RULESET_VERSION } from "@/lib/version";
-import { visibleText } from "@/lib/audit/engine";
+import { visibleText } from "@/lib/audit/attestation";
 
 export const AUDIT_VERSION = `deterministic-checker ${RULESET_VERSION}`;
 

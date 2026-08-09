@@ -207,22 +207,6 @@ async function pruneDraftRevisions(
     .where(and(eq(draftRevisions.draftId, draftId), notInArray(draftRevisions.id, keepIds)));
 }
 
-// Atomically claim a draft for submission. Exactly one of any set of
-// concurrent submit requests flips the status to "submitted"; the rest see
-// zero rows and give up. This closes the double-click / two-tab race that a
-// read-then-check cannot: two tickets and two corporate emails for one note.
-// If the process dies between this claim and inserting the submission row,
-// the draft merely reads "submitted" until the next edit recomputes it —
-// no phantom ticket exists.
-export async function claimDraftForSubmit(db: Db, id: string, now: Date): Promise<boolean> {
-  const rows = await db
-    .update(drafts)
-    .set({ status: "submitted", lastSendFailed: false, updatedAt: now })
-    .where(and(eq(drafts.id, id), ne(drafts.status, "submitted")))
-    .returning();
-  return rows.length > 0;
-}
-
 // Post-email status write (submit and resend call it after the send round-trip).
 // Bumps updatedAt (a submission is activity) but NOT version, so an open builder
 // tab's next save does not hit a false conflict.

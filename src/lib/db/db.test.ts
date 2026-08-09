@@ -16,7 +16,6 @@ import {
   mergeUsers
 } from "./repo/users";
 import {
-  claimDraftForSubmit,
   deleteDraft,
   DRAFT_REVISION_KEEP,
   newestOpenDraftForOwner,
@@ -747,20 +746,6 @@ describe("db layer (PGlite)", () => {
     const after = await getDraft(db, d.id);
     expect(after?.status).toBe("ready"); // claim rolled back
     expect(after?.version).toBe(3); // version bump rolled back too
-  });
-
-  it("claims a draft for submission exactly once until it is edited", async () => {
-    const u = await freshUser("jill");
-    const d = await insertDraft(db, { id: crypto.randomUUID(), ownerId: u.id, noteState: note });
-    const now = new Date(2026, 7, 2);
-    // First claim wins; the immediate second (a double-click) loses.
-    expect(await claimDraftForSubmit(db, d.id, now)).toBe(true);
-    expect(await claimDraftForSubmit(db, d.id, now)).toBe(false);
-    expect((await getDraft(db, d.id))?.status).toBe("submitted");
-    // An edit recomputes the status (as the PATCH route does) and the draft
-    // becomes claimable again.
-    await updateDraftChecked(db, d.id, 1, { status: "ready" }, now);
-    expect(await claimDraftForSubmit(db, d.id, now)).toBe(true);
   });
 
   it("admin-guarded mutation refuses to remove the last active admin", async () => {

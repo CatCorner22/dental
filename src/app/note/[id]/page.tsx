@@ -6,6 +6,7 @@ import { getDraft } from "@/lib/db/repo/drafts";
 import { BuilderShell } from "@/components/builder/BuilderShell";
 import { getOffice, officesForPicker } from "@/lib/db/repo/offices";
 import { edrProductShort } from "@/lib/edr/product";
+import { getAssistConfig } from "@/lib/assist/service";
 
 export const runtime = "nodejs";
 export const metadata = { title: "Note" };
@@ -61,6 +62,7 @@ export default async function NotePage({ params }: { params: Promise<{ id: strin
       username={user.username}
       dictationEnrolled={user.dictationEnrolled ?? false}
       dictationRegion={user.dictationRegion ?? null}
+      assistEnabled={getAssistConfig().enabled}
     />
   );
 }

@@ -63,7 +63,7 @@ import { suggestableBlockHome } from "@/lib/phrases/suggestedBlocks";
 import { fieldKey } from "@/lib/schema/types";
 import { DictationUserContext } from "./fields/DictationField";
 import { AuditPanel } from "./AuditPanel";
-import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
+import { ByteAskDeeper } from "@/components/advisor/ByteAskDeeper";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { SaveIndicator } from "./SaveIndicator";
 import { whenApiReady } from "@/lib/client/apiReady";
@@ -183,7 +183,8 @@ export function BuilderShell({
   edrName,
   username,
   dictationEnrolled = false,
-  dictationRegion = null
+  dictationRegion = null,
+  assistEnabled = false
 }: {
   draftId: string;
   initialTitle: string;
@@ -224,6 +225,12 @@ export function BuilderShell({
    */
   dictationEnrolled?: boolean;
   dictationRegion?: string | null;
+  /**
+   * Server-known assist enablement (ASSIST_ENABLED + key, read by the page
+   * from getAssistConfig). Gates Byte's "Think deeper" affordance; every
+   * capability/PHI/throttle decision stays on the server at POST time.
+   */
+  assistEnabled?: boolean;
 }) {
   const router = useRouter();
   const [state, dispatch] = useReducer(noteReducer, initialNote);
@@ -1042,7 +1049,15 @@ export function BuilderShell({
       {/* Byte first: it is the deterministic advisor reading the note that was
           just typed, and it is the one whose advice cites a rule. SuperByte is
           the experimental one and sits under it. */}
-      <ByteAdvisor text={markdown} clinicalRole={clinicalRole} />
+      {/* Byte + the "Think deeper" wire live together in ByteAskDeeper —
+          the host stays out of the outcome rendering so the whole exchange
+          (button, POST, every visible outcome) is one testable unit. */}
+      <ByteAskDeeper
+        text={markdown}
+        clinicalRole={clinicalRole}
+        draftId={draftId}
+        assistEnabled={assistEnabled}
+      />
       <ByteStarAdvisor text={markdown} />
     </div>
   );

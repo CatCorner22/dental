@@ -102,13 +102,22 @@ export function BatchTriage() {
               <span className="shrink-0 tabular-nums">
                 {r.blocking > 0 ? `${r.blocking} to resolve` : "clean"}
               </span>
-              <button
-                type="button"
-                className="btn-secondary shrink-0 text-xs"
-                onClick={() => copyOne(r.index, r.text)}
-              >
-                {copiedIndex === r.index ? "Copied ✓" : "Copy this one"}
-              </button>
+              {/* Copy ONLY when the row's checks came back clean. An amber row
+                  copied to the clipboard is a note leaving the tool around the
+                  audit — the exact path the builder's export gates close, and
+                  the page's stated contract ("past the audit ... or it does
+                  not leave"). Blocked notes go through the builder. */}
+              {r.blocking > 0 ? (
+                <span className="shrink-0 text-[0.65rem] text-amber-800">resolve in the builder</span>
+              ) : (
+                <button
+                  type="button"
+                  className="btn-secondary shrink-0 text-xs"
+                  onClick={() => copyOne(r.index, r.text)}
+                >
+                  {copiedIndex === r.index ? "Copied ✓" : "Copy this one"}
+                </button>
+              )}
             </li>
           ))}
         </ul>

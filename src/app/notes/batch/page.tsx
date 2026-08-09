@@ -22,9 +22,12 @@ export const metadata = { title: "Batch check" };
 // textarea inside a single note — which is the sort of thing that makes people
 // paste one patient's note into another's.
 //
-// It triages only. There is deliberately no copy button: a note leaves through
-// the note builder, past the audit and the two-identifier check, or it does not
-// leave.
+// It triages only. A row offers Copy ONLY when its checks come back clean; a
+// note with open findings leaves through the note builder, past the audit and
+// the two-identifier check, or it does not leave. (This comment once claimed
+// no copy button existed at all while the component rendered an ungated one —
+// the batch-13 drive caught the contradiction and the gate now matches the
+// contract.)
 export default async function BatchPage() {
   const user = await freshSessionUser();
   if (!user) redirect("/login");

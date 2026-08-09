@@ -6,6 +6,11 @@ import { getAssistConfig, type GenerateListFn } from "@/lib/assist/service";
 import { runLegalWatch } from "@/lib/law/watch";
 
 export const runtime = "nodejs";
+// Six source fetches at 8s each PLUS a model pass, so the platform default
+// (10s Hobby / 15s Pro) would 504 this route mid-sweep and leave the caller
+// with nothing. Matched to the assist routes' ceiling; the provider call below
+// carries its own, shorter budget so the route can still log and answer.
+export const maxDuration = 60;
 
 // LEGAL WATCH SWEEP — Team Lead and above, on demand.
 //
@@ -17,6 +22,8 @@ export const runtime = "nodejs";
 // sweep, counts only.
 
 const FETCH_TIMEOUT_MS = 8000;
+/** Provider budget — shorter than maxDuration so the route can still answer. */
+const PROVIDER_TIMEOUT_MS = 20_000;
 
 async function fetchPage(url: string): Promise<string> {
   const controller = new AbortController();
@@ -46,7 +53,12 @@ export async function POST(): Promise<Response> {
         system,
         prompt,
         schema: jsonSchema(schema),
-        schemaName
+        schemaName,
+        // Bounded like every other provider call in the app. Without this a
+        // hung gateway pins the sweep until the platform kills the whole
+        // function, so the deterministic keyword signals — which are already
+        // computed and useful on their own — never reach the caller either.
+        abortSignal: AbortSignal.timeout(PROVIDER_TIMEOUT_MS)
       });
       return res.object;
     };

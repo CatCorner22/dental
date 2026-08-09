@@ -16,7 +16,20 @@ interface AppToken {
 export const authConfig: NextAuthConfig = {
   trustHost: true,
   pages: { signIn: "/login" },
-  session: { strategy: "jwt" },
+  // A WORKDAY, NOT A MONTH.
+  //
+  // next-auth's default is 30 days, and this app runs on shared operatory
+  // workstations reached by whoever is standing at them. A cookie that
+  // outlives the appointment, the shift, and the month is a standing key to
+  // the clinical record for anyone who picks up that tablet. Twelve hours
+  // covers the longest realistic shift and expires overnight; updateAge keeps
+  // an active writer from being logged out mid-note by refreshing the token
+  // at most every fifteen minutes.
+  //
+  // This bounds the WINDOW. It is not the whole answer to a shared machine —
+  // SharedTabletIdleLock covers the walk-away, and the watermark in
+  // requireRole revokes a session the moment an admin deactivates the account.
+  session: { strategy: "jwt", maxAge: 60 * 60 * 12, updateAge: 60 * 15 },
   providers: [], // real provider added in auth.ts
   callbacks: {
     jwt({ token, user }) {

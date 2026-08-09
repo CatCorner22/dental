@@ -1,9 +1,25 @@
+import { createHash, timingSafeEqual } from "node:crypto";
 import { getDb } from "@/lib/db/client";
 import { logAction } from "@/lib/db/repo/auditLog";
 import { runLegalWatch } from "@/lib/law/watch";
 import { sendLawWatchAlert } from "@/lib/email/sendLawWatchAlert";
 
 export const runtime = "nodejs";
+// Six source fetches at 8s plus a mail round-trip sit right at the platform
+// default; give the scheduled sweep the same ceiling as the manual one.
+export const maxDuration = 60;
+
+/**
+ * Constant-time string compare for a shared secret.
+ *
+ * timingSafeEqual throws on length mismatch, which would itself leak the
+ * secret's length, so compare fixed-width digests of both sides instead.
+ */
+function timingSafeEqualStr(a: string, b: string): boolean {
+  const da = createHash("sha256").update(a).digest();
+  const db = createHash("sha256").update(b).digest();
+  return timingSafeEqual(da, db);
+}
 
 // SCHEDULED LAW-WATCH ALERT — the sweep the Team Lead runs by hand, on a
 // timer, with the result mailed to the practice inbox.
@@ -37,7 +53,9 @@ async function fetchPage(url: string): Promise<string> {
 export async function GET(req: Request): Promise<Response> {
   const secret = process.env.CRON_SECRET?.trim();
   const auth = req.headers.get("authorization");
-  if (!secret || auth !== `Bearer ${secret}`) {
+  // Fails closed when unset, and compares in constant time: `!==` on a secret
+  // leaks its prefix through response timing to an endpoint anyone can reach.
+  if (!secret || !timingSafeEqualStr(auth ?? "", `Bearer ${secret}`)) {
     return Response.json({ error: "Unauthorized." }, { status: 401 });
   }
 

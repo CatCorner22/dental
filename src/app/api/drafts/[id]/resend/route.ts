@@ -9,6 +9,8 @@ import { formatTicket } from "@/lib/tickets/ticket";
 import { checkThrottle, clearThrottle, recordFailure, resendKey } from "@/lib/auth/throttle";
 
 export const runtime = "nodejs";
+// Same outbound mail round-trip as filing.
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 

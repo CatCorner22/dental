@@ -39,6 +39,10 @@ import { sparkleLine } from "@/lib/stats/sparkle";
 import { byteAuditVerify, type ByteAuditVerdict } from "@/lib/byteaudit/verify";
 
 export const runtime = "nodejs";
+// Filing runs the audit, freezes the record in one transaction, and waits on
+// an outbound mail round-trip. The platform default would 504 mid-send and
+// leave a ticket filed with no email and no answer to the clinician.
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ id: string }> };
 

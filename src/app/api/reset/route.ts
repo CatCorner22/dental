@@ -1,6 +1,7 @@
 import { getDb } from "@/lib/db/client";
 import { readJsonRecord } from "@/lib/http/readJson";
 import { hashPassword, passwordPolicyError } from "@/lib/auth/password";
+import { RESET_LINK_DEAD_MESSAGE } from "@/lib/auth/resetDeadLink";
 import { hashResetToken } from "@/lib/auth/resetToken";
 import { findLiveResetToken, redeemResetToken } from "@/lib/db/repo/resetTokens";
 import { getUserById } from "@/lib/db/repo/users";
@@ -21,8 +22,8 @@ export async function POST(req: Request): Promise<Response> {
   const password = typeof b.password === "string" ? b.password : "";
   // One deliberately vague message for every token failure — expired, already
   // used, or never existed. Distinguishing them would let someone probe which
-  // tokens are real.
-  const INVALID = "This link is no longer valid. Ask for a new one.";
+  // tokens are real. Shared with ResetForm's terminal panel — see resetDeadLink.ts.
+  const INVALID = RESET_LINK_DEAD_MESSAGE;
   if (!token) return Response.json({ error: INVALID }, { status: 400 });
 
   const pwError = passwordPolicyError(password);

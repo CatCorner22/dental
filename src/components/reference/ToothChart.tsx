@@ -24,7 +24,10 @@ function ChartRow({ ids, selected, onPick }: { ids: string[]; selected: string |
             aria-label={tooth ? `${id} — ${tooth.name}` : id}
             aria-pressed={selected === id}
             onClick={() => onPick(id)}
-            className={`tap-sq h-9 w-9 rounded border text-sm font-medium ${
+            /* print-keep: these buttons ARE the chart. The global print CSS
+               hides buttons as chrome; without the opt-out the printed
+               tooth-numbering handout has arch labels and no teeth. */
+            className={`print-keep tap-sq h-9 w-9 rounded border text-sm font-medium ${
               selected === id
                 ? "border-brand-blue bg-brand-blue text-white"
                 : tooth?.isAnterior
@@ -59,7 +62,9 @@ export function ToothChart() {
               setDentition(d);
               setSelected(null);
             }}
-            className={`rounded px-3 py-1 text-sm font-medium ${
+            /* print-keep: on paper the filled toggle is the caption that says
+               which numbering system the printed chart uses. */
+            className={`print-keep rounded px-3 py-1 text-sm font-medium ${
               dentition === d ? "bg-brand-blue text-white" : "bg-slate-100 text-slate-700"
             }`}
           >

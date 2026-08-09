@@ -649,6 +649,19 @@ body {
   body {
     background: #fff;
     color: #000;
+    /* On paper the OpenType alternates come OFF. The slashed zero and the
+       serifed l/I disambiguators exist for reading on screen; in Chromium's
+       print-to-PDF they are emitted as glyph substitutions with no ToUnicode
+       mapping, so the PDF's *text layer* silently loses every digit and every
+       lowercase l — a filed record whose dates, doses, and tooth numbers
+       cannot be searched or copied out of the PDF. The printed shapes lose
+       nothing a page needs: ink is high-contrast enough without them.
+       "calt" 0 rather than `normal`: declaring the property already discards
+       the screen list above, but Inter's contextual alternates (calt) are a
+       DEFAULT feature `normal` leaves on, and they substitute the hyphens and
+       colon inside "2026-08-08 17:21" the same unmappable way — the date of a
+       filed record extracted as "20260808 1721". */
+    font-feature-settings: "calt" 0;
   }
   main {
     max-width: none;
@@ -662,10 +675,17 @@ body {
     background: transparent !important;
     border: 0 !important;
     padding: 0 !important;
+    /* The record's <pre> also carries .card, and the handout block below gives
+       .card `break-inside: avoid`. For a note longer than one page that is an
+       instruction the layout engine can only satisfy by pushing the entire
+       unbreakable block to a fresh page — page 1 of the legal record printed
+       80% blank. A pre must always be allowed to break across pages. */
+    break-inside: auto !important;
     /* Print stays in pt deliberately: paper has physical dimensions and a
        reader's screen preference should not change what a filed record looks
-       like on a page in a records request. */
-    font-size: 11pt;
+       like on a page in a records request. !important because the same .card
+       class brings text-sm along, which otherwise wins and prints 10.5pt. */
+    font-size: 11pt !important;
   }
   h1,
   h2 {
@@ -753,10 +773,26 @@ body {
   header,
   nav,
   footer,
-  button,
+  /* Buttons are chrome — except when they are the content. The tooth chart's
+     teeth are <button>s (they toggle highlights on screen); hiding every
+     button printed a tooth-numbering handout with no teeth on it. Anything
+     that must survive on paper opts out with .print-keep. */
+  button:not(.print-keep),
   [role="tooltip"],
   .print-hidden {
     display: none !important;
+  }
+  /* Kept buttons must carry their state in ink. Printers drop background
+     colors, so the screen's active style — white text on a filled button —
+     prints as white on white: the chart's "Permanent (1-32)" caption vanished
+     and the page read as if Primary were selected. Ink versions: black text
+     everywhere, and the pressed state says so with weight and a solid border. */
+  button.print-keep {
+    color: #000 !important;
+  }
+  button.print-keep[aria-pressed="true"] {
+    font-weight: 700;
+    border: 1.5px solid #000 !important;
   }
   main {
     max-width: none !important;

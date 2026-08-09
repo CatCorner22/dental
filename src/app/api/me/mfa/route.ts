@@ -20,8 +20,10 @@ export const runtime = "nodejs";
 //   disable → requires a valid CURRENT code, so a walked-away-unlocked
 //             session cannot quietly strip the account's second factor. A
 //             lost device is the one case this cannot serve, and that path
-//             goes through a Smile Notes Developer (admin MFA reset), which
-//             is a named, logged, two-person event.
+//             goes through a Smile Notes Developer (admin MFA reset): a
+//             second person by construction — the reset route refuses a
+//             self-target — and named in the audit log for the account
+//             holder to see.
 //
 // Any signed-in role may protect their own account, read-only included.
 export async function POST(req: Request): Promise<Response> {

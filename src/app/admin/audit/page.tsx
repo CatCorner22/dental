@@ -18,10 +18,21 @@ const ACTION_LABEL: Record<string, string> = {
   "setup.mfa-sweep": "Second factors cleared (MFA off)",
   "auth.signin": "Signed in",
   "auth.failed": "Failed sign-in",
+  // Distinguished HERE, never at the login screen: this viewer is manager+
+  // and its job is diagnosing "why can't they sign in" — password wrong and
+  // code wrong need different help.
+  "auth.failed-mfa": "Failed sign-in (authenticator code)",
   "auth.lockout": "Sign-in locked (too many attempts)",
+  "auth.spray": "Many failed sign-ins from one address",
   "auth.revoke-sessions": "Signed out all devices",
+  "auth.mfa-enabled": "Two-factor authentication turned on",
+  "auth.mfa-disabled": "Two-factor authentication turned off",
+  "user.mfa-reset": "Second factor cleared (by Developer)",
   "user.reset-link-sent": "Reset link sent",
   "user.reset-link-failed": "Reset link failed",
+  "password.reset-completed": "Password set from reset link",
+  "change-request.submitted": "Change request sent",
+  "change-request.send-failed": "Change request could not be emailed",
   "user.invite-sent": "Invite sent",
   "user.invite-failed": "Invite failed",
   "user.merge": "Users merged",

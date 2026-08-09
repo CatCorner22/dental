@@ -11,7 +11,7 @@
  * See knowledge/sources/high-stakes-documentation-patterns.md §2 / §6.
  */
 
-import { isValidPhiAttestation } from "@/lib/audit/engine";
+import { isValidPhiAttestation } from "@/lib/audit/attestation";
 
 export type FindingAttestCode =
   | "correct-as-written"

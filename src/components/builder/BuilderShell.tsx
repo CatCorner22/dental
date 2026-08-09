@@ -19,7 +19,7 @@ import { ALL_MODULES, activeModules, moduleMatches } from "@/lib/modules";
 import { moduleVisibleInRail } from "@/lib/scope/authorCapabilities";
 import { noteReducer } from "@/lib/state/noteReducer";
 import { composeNote, composeNoteText, suggestedFilename } from "@/lib/compose/composeNote";
-import { computeGates, runAudit } from "@/lib/audit/engine";
+import type { AuditGates, AuditReport } from "@/lib/audit/types";
 import { OMISSION_NOTICE_THRESHOLD, omissionReport } from "@/lib/audit/omissions";
 import { findingsByField } from "@/lib/audit/byField";
 import { applyMaskPlan, buildMaskPlan } from "@/lib/audit/maskPhi";
@@ -54,7 +54,6 @@ import { dentistOwnedKeys } from "@/lib/schema/scopeGuard";
 import { NoteForm } from "./NoteForm";
 import { FastLane } from "./FastLane";
 import { PinnedMyBlocks } from "./PinnedMyBlocks";
-import { PasteIntake } from "./PasteIntake";
 import {
   packBlockIdsForVisit,
   type PublishedPackLite
@@ -64,8 +63,6 @@ import { suggestableBlockHome } from "@/lib/phrases/suggestedBlocks";
 import { fieldKey } from "@/lib/schema/types";
 import { DictationUserContext } from "./fields/DictationField";
 import { AuditPanel } from "./AuditPanel";
-import { NoteReadback } from "./NoteReadback";
-import { PriorNotes } from "./PriorNotes";
 import { ByteAdvisor } from "@/components/advisor/ByteAdvisor";
 import { ByteStarAdvisor } from "@/components/advisor/ByteStarAdvisor";
 import { SaveIndicator } from "./SaveIndicator";
@@ -76,10 +73,8 @@ import { SharedTabletIdleLock } from "./SharedTabletIdleLock";
 import { Dialog } from "@/components/ui/Dialog";
 import { HelpTip } from "@/components/ui/HelpTip";
 import { LicenseScopeCard } from "@/components/law/LicenseScopeCard";
-import { TransferDraftDialog } from "@/components/notes/TransferDraftDialog";
 import { daySeed, sparkleLine } from "@/lib/stats/sparkle";
 import type { UsaRegionId } from "@/lib/dictation/regional";
-import { FastLanePackOffer } from "./FastLanePackOffer";
 import type { VerifiedBlock } from "@/lib/phrases/blocks";
 
 // None of these three render on first paint — a conflict, a PHI override,
@@ -98,6 +93,49 @@ const PhiOverrideDialog = dynamic(() => import("./BuilderDialogs").then((m) => m
 const SubmitDialog = dynamic(() => import("./BuilderDialogs").then((m) => m.SubmitDialog), {
   ssr: false
 });
+// Same rule, five more takers — none of these exists at first paint either.
+// Paste and Transfer live behind their own dialogs, the pack offer behind a
+// state that starts null, and Prior/Readback behind tabs that default to
+// "audit". Splitting them keeps their weight (paste's SOAP partitioner, the
+// readback composer) off the path between navigation and the first keystroke.
+const PasteIntake = dynamic(() => import("./PasteIntake").then((m) => m.PasteIntake), {
+  ssr: false
+});
+const TransferDraftDialog = dynamic(
+  () => import("@/components/notes/TransferDraftDialog").then((m) => m.TransferDraftDialog),
+  { ssr: false }
+);
+const FastLanePackOffer = dynamic(
+  () => import("./FastLanePackOffer").then((m) => m.FastLanePackOffer),
+  { ssr: false }
+);
+const PriorNotes = dynamic(() => import("./PriorNotes").then((m) => m.PriorNotes), {
+  ssr: false
+});
+const NoteReadback = dynamic(() => import("./NoteReadback").then((m) => m.NoteReadback), {
+  ssr: false
+});
+
+// Grading waits; typing does not. The audit engine — every rule plus the
+// practice vocabulary, ~180 KB of client JS — is not needed to render the note
+// or accept the first keystroke, only to grade what was typed. It loads right
+// after mount, off the path between navigation and typing. Until it lands the
+// builder holds this explicit pending report and every gate stays CLOSED: the
+// only dishonest states would be an open gate or a green chip claimed before
+// any audit ran. deriveDraftStatus already renders `counts: null` as the
+// neutral Draft chip, the audit pane shows a checking line instead of a
+// banner, and the finish line says "Checking" — pending is never dressed as
+// PASS or as BLOCKED.
+type AuditEngine = typeof import("@/lib/audit/engine");
+const AUDIT_PENDING_REPORT: AuditReport = {
+  findings: [],
+  counts: { S0: 0, S1: 0, S2: 0, S3: 0, S4: 0 },
+  // Never rendered: while pending the panel shows the checking placeholder,
+  // so no OverallStatus value has to claim anything about an unrun audit.
+  status: "READY FOR CLINICIAN REVIEW",
+  phiStops: []
+};
+const CLOSED_GATES: AuditGates = { exportAllowed: false, emailAllowed: false };
 
 function download(filename: string, content: string) {
   const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
@@ -329,7 +367,18 @@ export function BuilderShell({
   // finding. While the panel catches up it says so out loud rather than letting a
   // settled-looking report describe a note that has moved on.
   const deferredState = useDeferredValue(state);
-  const auditing = deferredState !== state;
+  const [auditEngine, setAuditEngine] = useState<AuditEngine | null>(null);
+  useEffect(() => {
+    let live = true;
+    void import("@/lib/audit/engine").then((m) => {
+      if (live) setAuditEngine(m);
+    });
+    return () => {
+      live = false;
+    };
+  }, []);
+  const auditPending = auditEngine === null;
+  const auditing = deferredState !== state || auditPending;
 
   // The FORM's module list stays fresh: ticking a module is a discrete choice and
   // its section has to appear under the finger that ticked it. activeModules is a
@@ -351,13 +400,15 @@ export function BuilderShell({
   );
   const report = useMemo(
     () =>
-      runAudit({
-        note: deferredState,
-        modules: auditModules,
-        composedText: markdown,
-        clinicalRole
-      }),
-    [deferredState, auditModules, markdown, clinicalRole]
+      auditEngine
+        ? auditEngine.runAudit({
+            note: deferredState,
+            modules: auditModules,
+            composedText: markdown,
+            clinicalRole
+          })
+        : AUDIT_PENDING_REPORT,
+    [auditEngine, deferredState, auditModules, markdown, clinicalRole]
   );
   const fieldFindings = useMemo(() => findingsByField(report.findings), [report.findings]);
 
@@ -466,7 +517,7 @@ export function BuilderShell({
     }
     return changed;
   }, [phiFindings, state.values, dispatch]);
-  const gates = computeGates(report, overrideActive);
+  const gates = auditEngine ? auditEngine.computeGates(report, overrideActive) : CLOSED_GATES;
   // From the SAME snapshot the report came from, deliberately. Read from the fresh
   // state instead, the first keystroke of a note would set hasContent true while
   // the counts were still all zero — and deriveDraftStatus turns that pair into
@@ -487,7 +538,9 @@ export function BuilderShell({
 
   const liveStatus = deriveDraftStatus({
     hasContent,
-    counts: report.counts,
+    // null, not zeros, while the engine loads: zeros with content reads as
+    // "Ready" and the chip must never claim green for an audit that never ran.
+    counts: auditPending ? null : report.counts,
     phiStops: report.phiStops.length,
     submitted: resentNow || (initialSubmitted && !editedSinceLoad) || submittedNow,
     // A successful resend clears the failure — it wins over the stored flag.
@@ -533,17 +586,22 @@ export function BuilderShell({
     !canRecordClinicalJudgement(clinicalRole);
   const needsTransfer = canEdit && liveStatus !== "submitted" && !filing.allowed;
   const topStop = report.findings.find((f) => f.severity === "S0");
-  const finishLine = builderFinishLine({
-    hasContent,
-    filingAllowed: filing.allowed,
-    exportAllowed: gates.exportAllowed,
-    emailAllowed: gates.emailAllowed,
-    blockedReason,
-    roleRecorded,
-    killersBlockHandoff: killersBlock,
-    openReviewCount: report.counts.S2,
-    dentistMustOwnKillers
-  });
+  // While the engine loads, the finish copy says so — builderFinishLine fed
+  // closed gates and zero counts would say "Copy locked until every stop is
+  // fixed", which claims stops were counted before any audit ran.
+  const finishLine = auditPending
+    ? "Checking the note…"
+    : builderFinishLine({
+        hasContent,
+        filingAllowed: filing.allowed,
+        exportAllowed: gates.exportAllowed,
+        emailAllowed: gates.emailAllowed,
+        blockedReason,
+        roleRecorded,
+        killersBlockHandoff: killersBlock,
+        openReviewCount: report.counts.S2,
+        dentistMustOwnKillers
+      });
 
   // Autosave on any change. The content-identity guard (not a first-render
   // ref) survives StrictMode's double effect run: until a real edit, `state`
@@ -1061,15 +1119,23 @@ export function BuilderShell({
       </div>
       <div className="pane-60">
         {tab === "audit" ? (
-          <AuditPanel
-            report={report}
-            onJump={() => setShowMobileAudit(false)}
-            started={hasContent}
-            attestations={resolutionsForNote.attested}
-            escalated={resolutionsForNote.escalated}
-            onAttest={editingEnabled ? recordAttestation : undefined}
-            onEscalate={editingEnabled ? escalateFinding : undefined}
-          />
+          auditPending ? (
+            /* The engine is still loading — say that, never a PASS/BLOCKED
+               banner about an audit that has not run. */
+            <p role="status" className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+              Checking the note…
+            </p>
+          ) : (
+            <AuditPanel
+              report={report}
+              onJump={() => setShowMobileAudit(false)}
+              started={hasContent}
+              attestations={resolutionsForNote.attested}
+              escalated={resolutionsForNote.escalated}
+              onAttest={editingEnabled ? recordAttestation : undefined}
+              onEscalate={editingEnabled ? escalateFinding : undefined}
+            />
+          )
         ) : tab === "prior" ? (
           /* A frozen filed note beside the draft — for checking against the
              last visit, never for copying it forward. */
@@ -1248,15 +1314,21 @@ export function BuilderShell({
                     }. Findings are listed below.`}
         </p>
       )}
-      <AuditPanel
-        report={report}
-        onJump={() => setShowMobileAudit(false)}
-        started={hasContent}
-        attestations={resolutionsForNote.attested}
-        escalated={resolutionsForNote.escalated}
-        onAttest={editingEnabled ? recordAttestation : undefined}
-        onEscalate={editingEnabled ? escalateFinding : undefined}
-      />
+      {auditPending ? (
+        <p role="status" className="rounded border border-slate-200 bg-slate-50 px-3 py-2 text-sm text-slate-600">
+          Checking the note…
+        </p>
+      ) : (
+        <AuditPanel
+          report={report}
+          onJump={() => setShowMobileAudit(false)}
+          started={hasContent}
+          attestations={resolutionsForNote.attested}
+          escalated={resolutionsForNote.escalated}
+          onAttest={editingEnabled ? recordAttestation : undefined}
+          onEscalate={editingEnabled ? escalateFinding : undefined}
+        />
+      )}
       {/* Advisors are ONE copy below the note (see aside). Mounting them here
           again duplicated advisor-byte / advisor-superbyte ids and fought the
           first-viewport rule the sheet exists to protect. */}

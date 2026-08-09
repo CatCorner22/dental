@@ -1,6 +1,6 @@
 import type { RaisedFlag, StandardizeResult } from "./standardize";
 import type { Severity } from "@/lib/audit/types";
-import { isValidPhiAttestation } from "@/lib/audit/engine";
+import { isValidPhiAttestation } from "@/lib/audit/attestation";
 
 // FIX-OR-ATTEST: the resolution model for everything the transformer catches.
 //

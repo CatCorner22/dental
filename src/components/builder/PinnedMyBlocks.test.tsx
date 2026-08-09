@@ -65,7 +65,12 @@ describe("PinnedMyBlocks behind the notice gate", () => {
     expect(fetchMock).not.toHaveBeenCalled();
 
     await ackNotice();
-    expect(fetchMock).toHaveBeenCalledWith("/api/me/blocks");
+    // The abort signal is part of the contract now: WebKit page-errors on a
+    // fetch torn down by navigation unless the component aborts it on unmount.
+    expect(fetchMock).toHaveBeenCalledWith(
+      "/api/me/blocks",
+      expect.objectContaining({ signal: expect.any(AbortSignal) })
+    );
     expect(await screen.findByRole("button", { name: "Post-op check" })).toBeTruthy();
   });
 

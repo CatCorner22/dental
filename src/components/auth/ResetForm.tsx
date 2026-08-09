@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import { PASSWORD_HINT, PASSWORD_MIN } from "@/lib/auth/password";
+import { isResetLinkDeadMessage } from "@/lib/auth/resetDeadLink";
 
 export function ResetForm({ token }: { token: string }) {
   const [password, setPassword] = useState("");
@@ -58,12 +59,13 @@ export function ResetForm({ token }: { token: string }) {
         return;
       }
       const data = (await res.json().catch(() => ({}))) as { error?: string };
-      // The route sends one sentence — "This link is no longer valid." — for
-      // every way a token can fail: absent, unknown, expired, already spent,
-      // or belonging to a deactivated account. Deliberately one sentence, so
-      // the reply distinguishes none of those for whoever is guessing. It is
-      // still the one reply that means "stop typing".
-      if (/no longer valid/i.test(data.error ?? "")) {
+      // The route sends ONE sentence for every way a token can fail: absent,
+      // unknown, expired, already spent, or belonging to a deactivated
+      // account — deliberately indistinguishable for whoever is guessing. It
+      // is still the one reply that means "stop typing", so it is matched via
+      // the shared sentinel rather than a regex that a copy edit on the route
+      // would silently break.
+      if (isResetLinkDeadMessage(data.error)) {
         setDead(true);
         return;
       }

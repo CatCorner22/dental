@@ -185,15 +185,14 @@
 [data-contrast="high"] .text-slate-400,
 [data-contrast="high"] .text-slate-500,
 [data-contrast="high"] .text-slate-600 {
-  /* slate-400 on white is 2.9:1 — below the 4.5:1 that normal text needs, and it
-     is what help text and timestamps were rendered in. This is slate-700, which
-     is 10.1:1; src/lib/theme/contrast.test.ts asserts it beats what it replaces. */
-  color: #433e58 !important;
+  /* Must match HIGH_CONTRAST.text in palette.ts (slate-700). */
+  color: #334155 !important;
 }
 [data-contrast="high"] .border-slate-100,
 [data-contrast="high"] .border-slate-200,
 [data-contrast="high"] .border-slate-300 {
-  border-color: #565070 !important;
+  /* Must match HIGH_CONTRAST.border in palette.ts (slate-600). */
+  border-color: #475569 !important;
 }
 [data-contrast="high"] .field-input,
 [data-contrast="high"] .chip,
@@ -206,7 +205,7 @@
 [data-contrast="high"] ::placeholder {
   /* Placeholders were the worst offender: grey-on-white at 11px, holding the
      format hint a writer needs most on their first note. */
-  color: #565070 !important;
+  color: #475569 !important;
   opacity: 1;
 }
 
@@ -316,7 +315,7 @@
      come back up or the surface hierarchy vanishes for the people who most need
      to see it. */
   --tw-ring-opacity: 1;
-  --tw-ring-color: #565070;
+  --tw-ring-color: #475569;
 }
 
 /* Rendered reference markdown */

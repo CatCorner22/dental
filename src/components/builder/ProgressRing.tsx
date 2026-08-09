@@ -26,13 +26,28 @@ export function ProgressRing({
   const state =
     blockers > 0
       ? counts.S0 > 0
-        ? ({ word: "Stop", shape: "■", color: "text-red-500", cap: "butt" as const } as const)
-        : ({ word: "Required", shape: "▲", color: "text-orange-500", cap: "butt" as const } as const)
+        ? ({ word: "Stop", shape: "■", color: "text-severity-stop-rail", cap: "butt" as const } as const)
+        : ({
+            word: "Required",
+            shape: "▲",
+            color: "text-severity-required-rail",
+            cap: "butt" as const
+          } as const)
       : reviews > 0
-        ? ({ word: "Review", shape: "◆", color: "text-amber-500", cap: "square" as const } as const)
+        ? ({
+            word: "Review",
+            shape: "◆",
+            color: "text-severity-review-rail",
+            cap: "square" as const
+          } as const)
         : !filingAllowed
-          ? ({ word: "Handoff", shape: "→", color: "text-amber-500", cap: "round" as const } as const)
-          : ({ word: "Ready", shape: "●", color: "text-green-500", cap: "round" as const } as const);
+          ? ({ word: "Handoff", shape: "→", color: "text-slate-500", cap: "round" as const } as const)
+          : ({
+              word: "Ready",
+              shape: "●",
+              color: "text-severity-clear-rail",
+              cap: "round" as const
+            } as const);
   const label =
     !filingAllowed && blockers === 0 && reviews === 0
       ? "Handoff — audit clear, dentist must file"

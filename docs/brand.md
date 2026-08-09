@@ -36,7 +36,7 @@ at brand edges (mark orbit, queue-clear sparkle) — not as page chrome.
 
 | Color | Hex | Token | Role |
 |---|---|---|---|
-| Warm paper | `#F7F2E8` | `brand-cream` | App ground (slightly deeper than `#FBF7EF` so white cards separate) |
+| Warm paper | `#F3F1EB` | `brand-cream` | App ground (cooler Daylight paper — less yellow fog under LEDs) |
 | Space navy | `#1E3A5F` | `brand-navy` | Wordmark ink, headings, Submit top |
 | Note blue | `#2B6CB8` | `brand-blue` | Primary interactive / focus / Submit bottom |
 | Check teal | `#0F766E` | `brand-teal` | Copy/complete + eyebrow chrome (WCAG AA on paper) |

@@ -2,15 +2,59 @@
   "$schema": "https://design-tokens.org/schema/2025.10/format.json",
   "name": "Smile Notes",
   "version": "1.1.0",
-  "description": "Production design tokens for Smile Notes. Daylight chart (cream paper / navy / note blue / check teal). Primitive → semantic → component. Severity colors are NOT in this sheet — they live in audit types.",
+  "description": "Production design tokens for Smile Notes. Daylight chart (cooler cream paper / navy / note blue / check teal) plus severity luminance ladder. Primitive → semantic → component.",
   "primitive": {
     "color": {
       "brand": {
-        "cream": { "$type": "color", "$value": "#F7F2E8" },
+        "cream": { "$type": "color", "$value": "#F3F1EB" },
         "navy": { "$type": "color", "$value": "#1E3A5F" },
         "blue": { "$type": "color", "$value": "#2B6CB8" },
         "teal": { "$type": "color", "$value": "#0F766E" },
         "gold": { "$type": "color", "$value": "#F2CE4B" }
+      },
+      "severity": {
+        "stop": {
+          "fill": { "$type": "color", "$value": "#9B1C1C" },
+          "soft": { "$type": "color", "$value": "#FEF2F2" },
+          "ink": { "$type": "color", "$value": "#7F1D1D" },
+          "rail": { "$type": "color", "$value": "#B91C1C" },
+          "on": { "$type": "color", "$value": "#FFFFFF" }
+        },
+        "required": {
+          "fill": { "$type": "color", "$value": "#C2410C" },
+          "soft": { "$type": "color", "$value": "#FFF7ED" },
+          "ink": { "$type": "color", "$value": "#9A3412" },
+          "rail": { "$type": "color", "$value": "#EA580C" },
+          "on": { "$type": "color", "$value": "#FFFFFF" }
+        },
+        "review": {
+          "fill": { "$type": "color", "$value": "#D97706" },
+          "soft": { "$type": "color", "$value": "#FFFBEB" },
+          "ink": { "$type": "color", "$value": "#1C1917" },
+          "rail": { "$type": "color", "$value": "#D97706" },
+          "on": { "$type": "color", "$value": "#1C1917" }
+        },
+        "style": {
+          "fill": { "$type": "color", "$value": "#6D28D9" },
+          "soft": { "$type": "color", "$value": "#F5F3FF" },
+          "ink": { "$type": "color", "$value": "#5B21B6" },
+          "rail": { "$type": "color", "$value": "#7C3AED" },
+          "on": { "$type": "color", "$value": "#FFFFFF" }
+        },
+        "info": {
+          "fill": { "$type": "color", "$value": "#475569" },
+          "soft": { "$type": "color", "$value": "#F8FAFC" },
+          "ink": { "$type": "color", "$value": "#334155" },
+          "rail": { "$type": "color", "$value": "#64748B" },
+          "on": { "$type": "color", "$value": "#FFFFFF" }
+        },
+        "clear": {
+          "fill": { "$type": "color", "$value": "#047857" },
+          "soft": { "$type": "color", "$value": "#ECFDF5" },
+          "ink": { "$type": "color", "$value": "#065F46" },
+          "rail": { "$type": "color", "$value": "#059669" },
+          "on": { "$type": "color", "$value": "#FFFFFF" }
+        }
       },
       "slate": {
         "50": { "$type": "color", "$value": "#F8FAFC" },

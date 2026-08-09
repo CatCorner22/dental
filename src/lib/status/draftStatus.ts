@@ -93,17 +93,18 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     label: "Blocked — must fix",
     short: "Blocked",
     icon: "■",
-    chipClass: "border-red-300 bg-red-100 text-red-900",
-    ring: "text-red-500",
-    rail: "bg-red-500"
+    chipClass: "border-severity-stop/40 bg-severity-stop-soft text-severity-stop-ink",
+    ring: "text-severity-stop-rail",
+    rail: "bg-severity-stop-rail"
   },
   "action-needed": {
     label: "Action needed",
     short: "Action",
     icon: "▲",
-    chipClass: "border-orange-300 bg-orange-100 text-orange-900",
-    ring: "text-orange-500",
-    rail: "bg-orange-400"
+    chipClass:
+      "border-severity-required/40 bg-severity-required-soft text-severity-required-ink",
+    ring: "text-severity-required-rail",
+    rail: "bg-severity-required-rail"
   },
   review: {
     // Co-design Honest Finish: "suggested" softens open risk. Text-first label
@@ -111,9 +112,9 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     label: "Needs review",
     short: "Review",
     icon: "◆",
-    chipClass: "border-amber-300 bg-amber-100 text-amber-900",
-    ring: "text-amber-500",
-    rail: "bg-amber-400"
+    chipClass: "border-severity-review/40 bg-severity-review-soft text-severity-review-ink",
+    ring: "text-severity-review-rail",
+    rail: "bg-severity-review-rail"
   },
   handoff: {
     label: "Dentist must file",
@@ -127,17 +128,17 @@ export const STATUS_META: Record<DraftStatus, StatusMeta> = {
     label: "Ready to submit",
     short: "Ready",
     icon: "●",
-    chipClass: "border-green-300 bg-green-100 text-green-900",
-    ring: "text-green-500",
-    rail: "bg-green-500"
+    chipClass: "border-severity-clear/40 bg-severity-clear-soft text-severity-clear-ink",
+    ring: "text-severity-clear-rail",
+    rail: "bg-severity-clear-rail"
   },
   submitted: {
     label: "Submitted",
     short: "Sent",
     icon: "✓",
-    chipClass: "border-blue-300 bg-blue-100 text-blue-900",
-    ring: "text-blue-500",
-    rail: "bg-blue-400"
+    chipClass: "border-brand-blue/40 bg-blue-50 text-brand-navy",
+    ring: "text-brand-blue",
+    rail: "bg-brand-blue"
   },
   error: {
     label: "Send failed",

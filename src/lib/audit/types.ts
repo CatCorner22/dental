@@ -142,11 +142,11 @@ export interface AuditContext {
 // KIND of item depending on which screen they happened to be looking at.
 // Severity is the app's core safety vocabulary; it cannot mean two things.
 export const SEVERITY_CLASS: Record<Severity, string> = {
-  S0: "border-red-300 bg-red-50 text-red-900",
-  S1: "border-orange-300 bg-orange-50 text-orange-900",
-  S2: "border-amber-300 bg-amber-50 text-amber-900",
-  S3: "border-blue-200 bg-blue-50 text-blue-900",
-  S4: "border-slate-200 bg-slate-50 text-slate-700"
+  S0: "border-severity-stop/30 bg-severity-stop-soft text-severity-stop-ink",
+  S1: "border-severity-required/30 bg-severity-required-soft text-severity-required-ink",
+  S2: "border-severity-review/40 bg-severity-review-soft text-severity-review-ink",
+  S3: "border-severity-style/30 bg-severity-style-soft text-severity-style-ink",
+  S4: "border-severity-info/30 bg-severity-info-soft text-severity-info-ink"
 };
 
 /**
@@ -163,11 +163,11 @@ export const SEVERITY_CLASS: Record<Severity, string> = {
  * does not get re-derived for a second presentation.
  */
 export const SEVERITY_RAIL: Record<Severity, string> = {
-  S0: "border-l-red-500 bg-red-50/60",
-  S1: "border-l-orange-500 bg-orange-50/60",
-  S2: "border-l-amber-500 bg-amber-50/60",
-  S3: "border-l-blue-400 bg-blue-50/50",
-  S4: "border-l-slate-400 bg-slate-50/60"
+  S0: "border-l-severity-stop-rail bg-severity-stop-soft/60",
+  S1: "border-l-severity-required-rail bg-severity-required-soft/60",
+  S2: "border-l-severity-review-rail bg-severity-review-soft/60",
+  S3: "border-l-severity-style-rail bg-severity-style-soft/50",
+  S4: "border-l-severity-info-rail bg-severity-info-soft/60"
 };
 
 /**
@@ -179,35 +179,36 @@ export const SEVERITY_RAIL: Record<Severity, string> = {
  * precisely the same red as a note that could not legally be filed. Colour is
  * the fastest thing on the screen to read and it was saying the wrong word.
  *
- * The hues match the ramp above; only the weight changes, because ink on white
- * needs to be darker than ink on its own tint to clear 4.5:1. Verified on white:
- * red-700 6.5:1, orange-700 5.0:1, amber-700 4.8:1, blue-700 6.9:1,
- * slate-600 5.9:1.
+ * Ink tokens match the shared severity ramp; contrast is asserted in
+ * contrast.test.ts against white.
  */
 export const SEVERITY_TEXT: Record<Severity, string> = {
-  S0: "text-red-700",
-  S1: "text-orange-700",
-  S2: "text-amber-700",
-  S3: "text-blue-700",
-  S4: "text-slate-600"
+  S0: "text-severity-stop-ink",
+  S1: "text-severity-required-ink",
+  S2: "text-severity-review-ink",
+  S3: "text-severity-style-ink",
+  S4: "text-severity-info-ink"
 };
 
 /** The severity word as a small chip. Glanceable, not a headline. */
 export const SEVERITY_CHIP: Record<Severity, string> = {
-  S0: "bg-red-600 text-white",
-  S1: "bg-orange-600 text-white",
-  S2: "bg-amber-500 text-amber-950",
-  S3: "bg-blue-600 text-white",
-  S4: "bg-slate-500 text-white"
+  S0: "bg-severity-stop text-severity-stop-on",
+  S1: "bg-severity-required text-severity-required-on",
+  S2: "bg-severity-review text-severity-review-on",
+  S3: "bg-severity-style text-severity-style-on",
+  S4: "bg-severity-info text-severity-info-on"
 };
 
 // The overall-status banner, keyed on OverallStatus so a renamed status is a
 // type error rather than an unstyled banner.
 export const STATUS_CLASS: Record<OverallStatus, string> = {
-  BLOCKED: "border-red-300 bg-red-100 text-red-900",
-  "NEEDS CLINICIAN ACTION": "border-orange-300 bg-orange-100 text-orange-900",
-  "READY FOR CLINICIAN REVIEW": "border-amber-300 bg-amber-100 text-amber-900",
-  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED": "border-green-300 bg-green-100 text-green-900"
+  BLOCKED: "border-severity-stop/40 bg-severity-stop-soft text-severity-stop-ink",
+  "NEEDS CLINICIAN ACTION":
+    "border-severity-required/40 bg-severity-required-soft text-severity-required-ink",
+  "READY FOR CLINICIAN REVIEW":
+    "border-severity-review/40 bg-severity-review-soft text-severity-review-ink",
+  "AUDIT PASS — CLINICIAN REVIEW STILL REQUIRED":
+    "border-severity-clear/40 bg-severity-clear-soft text-severity-clear-ink"
 };
 
 /**

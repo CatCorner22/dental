@@ -2,7 +2,15 @@ import { describe, expect, it } from "vitest";
 import { readFileSync } from "node:fs";
 import { globSync } from "node:fs";
 
-import { BRAND, contrastRatio, HIGH_CONTRAST, SLATE, WHITE } from "./palette";
+import {
+  BRAND,
+  contrastRatio,
+  HIGH_CONTRAST,
+  luminance,
+  SEVERITY_COLOR,
+  SLATE,
+  WHITE
+} from "./palette";
 
 // WCAG 2.x thresholds. 4.5 for normal text, 3.0 for large text and for the
 // boundary of a user-interface component (1.4.11) — which is what the
@@ -65,6 +73,14 @@ describe("palette contrast", () => {
     expect(contrastRatio(HIGH_CONTRAST.border, WHITE)).toBeGreaterThanOrEqual(UI);
   });
 
+  it("keeps high-contrast CSS hexes in lockstep with HIGH_CONTRAST tokens", () => {
+    const css = readFileSync("src/app/globals.css", "utf8");
+    expect(css).toContain(`color: ${HIGH_CONTRAST.text} !important`);
+    expect(css).toContain(`border-color: ${HIGH_CONTRAST.border} !important`);
+    // Placeholder uses the border token (same slate-600 ink).
+    expect(css.match(new RegExp(HIGH_CONTRAST.border, "g"))?.length ?? 0).toBeGreaterThanOrEqual(2);
+  });
+
   it("orders the neutral ramp monotonically against white", () => {
     // A ramp that is not monotonic makes `text-slate-600` darker than
     // `text-slate-700` somewhere, and every "use one step darker" fix stops
@@ -75,6 +91,48 @@ describe("palette contrast", () => {
       const next = contrastRatio(SLATE[steps[i]], WHITE);
       expect(next, `slate-${steps[i]} vs slate-${steps[i - 1]}`).toBeGreaterThan(prev);
     }
+  });
+});
+
+describe("severity luminance ladder (CVD / grayscale rank)", () => {
+  it("ranks Stop < Required < Review by chip-fill luminance", () => {
+    // Adjacent warm hues collapse under deuteranopia; lightness must still climb.
+    const stop = luminance(SEVERITY_COLOR.stop.fill);
+    const required = luminance(SEVERITY_COLOR.required.fill);
+    const review = luminance(SEVERITY_COLOR.review.fill);
+    expect(required).toBeGreaterThan(stop);
+    expect(review).toBeGreaterThan(required);
+  });
+
+  it("keeps chip label ink AA against every severity fill", () => {
+    for (const [name, swatch] of Object.entries(SEVERITY_COLOR)) {
+      expect(
+        contrastRatio(swatch.onFill, swatch.fill),
+        `${name} onFill vs fill`
+      ).toBeGreaterThanOrEqual(TEXT);
+    }
+  });
+
+  it("keeps soft-panel ink AA on soft fills and on white", () => {
+    for (const [name, swatch] of Object.entries(SEVERITY_COLOR)) {
+      expect(contrastRatio(swatch.ink, swatch.soft), `${name} ink on soft`).toBeGreaterThanOrEqual(
+        TEXT
+      );
+      expect(contrastRatio(swatch.ink, WHITE), `${name} ink on white`).toBeGreaterThanOrEqual(TEXT);
+    }
+  });
+
+  it("keeps Style violet distinct from brand interactive blue (hex)", () => {
+    expect(SEVERITY_COLOR.style.fill.toLowerCase()).not.toBe(BRAND.blue.toLowerCase());
+    expect(SEVERITY_COLOR.style.rail.toLowerCase()).not.toBe(BRAND.blue.toLowerCase());
+  });
+
+  it("keeps Ready/clear bluish-green distinct from Stop vermillion", () => {
+    expect(SEVERITY_COLOR.clear.fill.toLowerCase()).not.toBe(SEVERITY_COLOR.stop.fill.toLowerCase());
+    // Clear should be lighter than Stop so grayscale still separates Ready from Blocked.
+    expect(luminance(SEVERITY_COLOR.clear.fill)).toBeGreaterThan(
+      luminance(SEVERITY_COLOR.stop.fill)
+    );
   });
 });
 

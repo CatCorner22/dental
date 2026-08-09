@@ -1,7 +1,7 @@
 # Smile Notes — Design Tokens (production)
 
 **Status:** Wired into product  
-**Brand:** Daylight chart — warm paper / space navy / note blue / check teal (`#F7F2E8` / `#1E3A5F` / `#2B6CB8` / `#0F766E`)  
+**Brand:** Daylight chart — cooler paper / space navy / note blue / check teal (`#F3F1EB` / `#1E3A5F` / `#2B6CB8` / `#0F766E`); severity luminance ladder in `severity.*`  
 **Sources of truth**
 
 | Layer | File |
@@ -30,7 +30,7 @@ Primitive  →  Semantic  →  Component
 | `action.primary` | Submit (sticky header) | Files a legal record to the office |
 | `action.complete` | Copy for Curve / EDR (Sidekick) | Clipboard handoff; must not look identical to Submit |
 
-Severity colors (rose / amber / green) are **not** in this sheet — they live in `src/lib/audit/types.ts` and must stay one source of truth.
+Severity / Ready colors live as `severity.*` primitives (luminance ladder) and are consumed by `src/lib/audit/types.ts` + draft status chips — still one source of truth, never re-derived per screen.
 
 ## Fast Lane
 

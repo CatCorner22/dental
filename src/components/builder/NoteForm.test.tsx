@@ -418,7 +418,8 @@ describe("inline findings are painted by severity", () => {
   });
 
   it("does not paint an advisory in the stop colour", () => {
-    expect(classesFor(at("S3"))).not.toContain("red");
-    expect(classesFor(at("S0"))).toContain("red");
+    expect(classesFor(at("S3"))).toContain("severity-style");
+    expect(classesFor(at("S3"))).not.toContain("severity-stop");
+    expect(classesFor(at("S0"))).toContain("severity-stop");
   });
 });

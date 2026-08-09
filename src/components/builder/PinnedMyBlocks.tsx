@@ -26,6 +26,12 @@ export function PinnedMyBlocks({
   useEffect(() => {
     if (!canEdit) return;
     let cancelled = false;
+    // Abort on unmount, not just a cancelled flag: the flag stops state
+    // updates but leaves the network request alive, and WebKit reports a
+    // request torn down by navigation as a PAGEERROR ("access control
+    // checks") — the cross-browser smoke fails on it. Same class and fix as
+    // the packs fetch in BuilderShell.
+    const ac = new AbortController();
     // Deferred until the legal-record notice is acknowledged. This strip
     // mounts with the builder the instant somebody signs in, so on a fresh
     // session a bare fetch fires while the blocking gate is still up and every
@@ -33,7 +39,7 @@ export function PinnedMyBlocks({
     // first load. Third component to walk into this; see src/lib/client/apiReady.ts.
     const stop = whenApiReady(() => {
       if (cancelled) return;
-      void fetch("/api/me/blocks")
+      void fetch("/api/me/blocks", { signal: ac.signal })
         .then((r) => r.json())
         .then((d: { blocks?: { id: number; title: string; body: string }[] }) => {
           if (!cancelled) setBlocks(Array.isArray(d.blocks) ? d.blocks : []);
@@ -47,6 +53,7 @@ export function PinnedMyBlocks({
     });
     return () => {
       cancelled = true;
+      ac.abort();
       stop();
     };
   }, [canEdit]);

@@ -40,7 +40,11 @@ export function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
 
   useEffect(() => {
     let cancelled = false;
-    void fetch("/api/me/blocks")
+    // Abort on unmount — a cancelled flag alone leaves the request alive, and
+    // WebKit reports a fetch torn down by navigation as a PAGEERROR, which the
+    // cross-browser smoke fails on. Same fix as the packs fetch in BuilderShell.
+    const ac = new AbortController();
+    void fetch("/api/me/blocks", { signal: ac.signal })
       .then((r) => r.json())
       .then((d: { blocks?: MyBlock[] }) => {
         if (!cancelled) setBlocks(Array.isArray(d.blocks) ? d.blocks : []);
@@ -50,6 +54,7 @@ export function MyBlocks({ onInsert }: { onInsert: (text: string) => void }) {
       });
     return () => {
       cancelled = true;
+      ac.abort();
     };
   }, []);
 

@@ -31,6 +31,17 @@ const FREE_RUNS = 60;
 const PROVIDER_TIMEOUT_MS = 20_000;
 
 export async function GET(): Promise<Response> {
+  // Signed-in only, like every other route here. This handler shipped with no
+  // guard: the POST beside it checks, but the GET did not, and middleware lets
+  // /api/* through by design so nothing else caught it. Two problems, one fix.
+  // It told anonymous callers whether AI is configured and which prompt
+  // version is live, and — the sharper edge — every anonymous hit ran getDb()
+  // plus two audit_log queries against a pool that defaults to ONE connection
+  // per isolate. That is a free database amplifier pointed at the app's
+  // narrowest resource, reachable without an account.
+  const guard = await requireRole("user");
+  if (!guard.ok) return guard.response;
+
   const config = getByteStarConfig();
   const db = await getDb();
   const perma = await isByteStarPermaKilled(db);

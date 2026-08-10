@@ -19,11 +19,15 @@ describe("pinPostgresSslMode", () => {
     );
   });
 
-  it("leaves verify-full and non-Neon urls without sslmode alone", () => {
-    const full = "postgres://h/db?sslmode=verify-full";
+  // This case USED to assert that a non-Neon URL without sslmode was left
+  // alone — i.e. it pinned the plaintext bug as intended behavior. A bare
+  // remote host now gets verify-full; only an explicit verify-full is a no-op.
+  it("leaves an already-pinned url alone and pins a bare remote host", () => {
+    const full = "postgres://db.example.com/db?sslmode=verify-full";
     expect(pinPostgresSslMode(full)).toBe(full);
-    const bare = "postgres://h/db";
-    expect(pinPostgresSslMode(bare)).toBe(bare);
+    expect(pinPostgresSslMode("postgres://db.example.com/db")).toBe(
+      "postgres://db.example.com/db?sslmode=verify-full"
+    );
   });
 
   it("preserves sibling query params", () => {
@@ -51,5 +55,40 @@ describe("pinPostgresSslMode", () => {
     expect(pinPostgresSslMode(withOther)).toBe(
       "postgresql://u:p@ep-x.us-east-1.aws.neon.tech/neondb?channel_binding=require&sslmode=verify-full"
     );
+  });
+
+  // The provider in the URL never decided whether the wire needs encrypting —
+  // whether the bytes leave the machine does. Pinning only *.neon.tech meant a
+  // Supabase/RDS/Railway/self-hosted string without ?sslmode= fell through to
+  // node-pg's default of NO TLS, carrying clinical notes in plaintext.
+  it("adds sslmode=verify-full for ANY remote host that omits it", () => {
+    for (const host of [
+      "db.abcdefgh.supabase.co",
+      "mydb.cluster-xyz.us-east-1.rds.amazonaws.com",
+      "containers-us-west-1.railway.app:6543",
+      "postgres.internal.example.com"
+    ]) {
+      const out = pinPostgresSslMode(`postgresql://u:p@${host}/appdb`);
+      expect(out, host).toContain("sslmode=verify-full");
+    }
+  });
+
+  it("respects an sslmode the operator set deliberately", () => {
+    expect(pinPostgresSslMode("postgresql://u:p@db.example.com/appdb?sslmode=disable")).toBe(
+      "postgresql://u:p@db.example.com/appdb?sslmode=disable"
+    );
+  });
+
+  // Loopback never reaches a network and local Postgres has no certificate to
+  // verify: forcing TLS there breaks development while protecting nothing.
+  it("leaves loopback and unix-socket URLs alone", () => {
+    for (const url of [
+      "postgresql://postgres@127.0.0.1:5433/smilenotes",
+      "postgresql://postgres@localhost:5432/appdb",
+      "postgresql://postgres@[::1]:5432/appdb",
+      "postgresql:///appdb?host=/var/run/postgresql"
+    ]) {
+      expect(pinPostgresSslMode(url), url).not.toContain("sslmode=");
+    }
   });
 });

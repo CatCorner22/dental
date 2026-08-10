@@ -44,9 +44,23 @@ jobs:
             echo "::error::AI prompts changed without touching ASSIST_PROMPT_VERSION in src/lib/assist/prompts.ts"
             exit 1
           fi
+          # SCHEMA_BOOT_VERSION is the ENTIRE migration mechanism: ensureSchema
+          # skips every DDL statement when the stored version already matches.
+          # New DDL under an unchanged constant therefore reaches a fresh local
+          # database (which starts at null and runs everything) and NEVER
+          # reaches production, surfacing as "column does not exist" on a route
+          # nobody tested against a stamped database. Same discipline, enforced.
+          ddl_changed=$(echo "$CHANGED" | grep -c '^src/lib/db/ddl\.ts$' || true)
+          if [ "$ddl_changed" != "0" ] && ! git diff "$BASE"...HEAD -- src/lib/db/ddl.ts | grep -q 'SCHEMA_BOOT_VERSION'; then
+            echo "::error::src/lib/db/ddl.ts changed without bumping SCHEMA_BOOT_VERSION — existing databases would never receive the new DDL."
+            exit 1
+          fi
       - run: npm run build
         env:
           AUTH_SECRET: ci-build-only-secret
+          # NEXT_PUBLIC_* is inlined at build time, so the cross-browser
+          # smoke's feedback assertions need this here, not just at start.
+          NEXT_PUBLIC_FEEDBACK_EMAIL: feedback@example.test
 
   cross-browser:
     # Drives the production build in Chromium, Firefox, and WebKit (Safari's
@@ -78,12 +92,23 @@ jobs:
       - run: npm run build
         env:
           AUTH_SECRET: ci-build-only-secret
+          # Must be here, not only on the start step below: NEXT_PUBLIC_* is
+          # inlined into the client bundle at BUILD time, so setting it at
+          # runtime leaves the smoke looking for a dialog the bundle already
+          # decided not to render.
+          NEXT_PUBLIC_FEEDBACK_EMAIL: feedback@example.test
       - name: Start app and run cross-browser smoke
         env:
           AUTH_SECRET: ci-build-only-secret
           ADMIN_USERNAME: smokeadmin
           ADMIN_PASSWORD: smoke-pass-12345
           PGLITE_DIR: memory://
+          # `next start` sets NODE_ENV=production, and production refuses an
+          # in-memory database without this second, deliberate opt-in — the
+          # guard that stops an operator's env paste from shipping a Vercel
+          # deployment whose records vanish on every cold start.
+          ALLOW_EPHEMERAL_DB: "1"
+          NEXT_PUBLIC_FEEDBACK_EMAIL: feedback@example.test
           SMOKE_USER: smokeadmin
           SMOKE_PASS: smoke-pass-12345
           BASE_URL: http://127.0.0.1:3000

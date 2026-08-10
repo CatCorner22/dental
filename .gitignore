@@ -5,6 +5,9 @@ build/
 .env
 .env.local
 .env.*.local
+# scripts/stability-battery.sh moves .env.local aside for a run and restores
+# it on exit; if a run is killed hard, the stash must never be committable.
+.env.local.battery-stash
 *.tsbuildinfo
 next-env.d.ts
 .DS_Store

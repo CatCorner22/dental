@@ -1,0 +1,5 @@
+# A private clinical tool. Nothing here is for a search index: every page is
+# behind sign-in except /login, /setup, and the password-reset flow, and those
+# three are doors, not content.
+User-agent: *
+Disallow: /

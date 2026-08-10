@@ -24,6 +24,8 @@ import {
 } from "@/lib/wishes/wishes";
 
 export const runtime = "nodejs";
+// Assembles up to 5,000 rows in memory before streaming the CSV.
+export const maxDuration = 60;
 
 type Ctx = { params: Promise<{ table: string }> };
 

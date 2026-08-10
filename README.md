@@ -268,6 +268,10 @@ Open `/setup` to create the first admin, or set `ADMIN_USERNAME` / `ADMIN_PASSWO
 
 ## Deploy to Vercel
 
+**Going live for the first time? Follow [docs/GO-LIVE.md](docs/GO-LIVE.md)** — the
+ordered runbook, including the database proof to run before anyone depends on it.
+The steps below are the short form.
+
 1. Push this repository to GitHub and import it in Vercel.
 2. Add a Postgres database (Vercel Postgres or Neon) and set `POSTGRES_URL`. Set `AUTH_SECRET`.
    The schema is applied automatically on first boot.
